@@ -530,26 +530,28 @@ export default function Home() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
-                      {String(pick.awayTeam ?? "").slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                        {pick.awayTeam}
-                      </p>
-                    </div>
-                  </div>
+  <TeamBadge
+    teamName={pick.awayTeam ?? ""}
+    sport={pick.sport}
+  />
+  <div className="min-w-0">
+    <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+      {getDisplayAbbr(pick.awayTeam ?? "")}
+    </p>
+  </div>
+</div>
 
-                  <div className="mt-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
-                      {String(pick.homeTeam ?? "").slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                        {pick.homeTeam}
-                      </p>
-                    </div>
-                  </div>
+<div className="mt-4 flex items-center gap-3">
+  <TeamBadge
+    teamName={pick.homeTeam ?? ""}
+    sport={pick.sport}
+  />
+  <div className="min-w-0">
+    <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+      {getDisplayAbbr(pick.homeTeam ?? "")}
+    </p>
+  </div>
+</div>
 
                   <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
                     <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
