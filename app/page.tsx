@@ -9,7 +9,7 @@ import mlbTop5 from "@/data/mlb-top5.json";
 import nbaTop5 from "@/data/nba-top5.json";
 import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
-import { teamBranding } from "@/lib/teamBranding";
+import { teamBranding } from "./lib/teamBranding";
 
 type Outcome = {
   name: string;
@@ -622,7 +622,7 @@ function getLogo(teamName: string) {
                         <TeamBadge teamName={game.away_team} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                            {getDisplayName(game.away_team)}
+                            {getDisplayAbbr(game.away_team)}
                           </p>
                         </div>
                       </div>
@@ -631,7 +631,7 @@ function getLogo(teamName: string) {
                         <TeamBadge teamName={game.home_team} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                            {getDisplayName(game.home_team)}
+                            {getDisplayAbbr(game.home_team)}
                           </p>
                         </div>
                       </div>
