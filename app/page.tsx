@@ -372,10 +372,10 @@ export default function Home() {
         <header className="sticky top-0 z-20 border-b border-white/5 bg-[#050816]/95 px-4 pb-4 pt-5 backdrop-blur">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-cyan-400">
+              <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-400/90">
                 Atlas Sportsbook
               </p>
-              <h1 className="mt-1 text-3xl font-bold leading-none">Scores</h1>
+              <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight">Scores</h1>
             </div>
 
             <div className="flex items-center gap-2">
@@ -388,12 +388,12 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {sportsTabs.map((sport) => (
               <button
                 key={sport}
                 onClick={() => setSelectedSport(sport)}
-                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ${
+                className={`min-w-[88px] whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all ${
                   selectedSport === sport
                     ? "bg-cyan-500 text-black"
                     : "bg-white/10 text-white/70"
@@ -415,17 +415,17 @@ export default function Home() {
               {topSignals.map((pick, idx) => (
                 <div
                   key={`top-${idx}`}
-                  className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
+                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
                 >
-                  <div className="mb-2 text-xs font-bold text-yellow-400">
-                    TOP SIGNAL {pick.sport}
-                  </div>
+                  <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-yellow-400/95">
+  Top Signal {pick.sport}
+</div>
 
-                  <div className="text-sm font-medium text-white">
+                  <div className="text-[15px] font-medium leading-snug text-white/90">
                     {pick.awayTeam} vs {pick.homeTeam}
                   </div>
 
-                  <div className="mt-2 text-lg font-bold text-cyan-300">
+                  <div className="mt-3 text-[22px] font-bold tracking-tight text-cyan-300">
                     {formatDisplayedPick(pick.pick, pick.sport)}
                   </div>
 
@@ -494,7 +494,7 @@ export default function Home() {
                         <p className="text-xs font-semibold text-cyan-300">
                           SIGNAL DETECTED
                         </p>
-                        <p className="text-sm text-white">
+                        <p className="text-[15px] font-semibold tracking-tight text-white">
                           {formatDisplayedPick(pickData.pick, selectedSport)}
                         </p>
                         <p className="mt-1 text-[11px] font-medium text-white/60">
@@ -529,8 +529,8 @@ export default function Home() {
           )}
         </section>
 
-        <nav className="sticky bottom-0 border-t border-white/5 bg-[#050816]/95 backdrop-blur">
-          <div className="mx-auto flex max-w-md items-center justify-around px-4 py-3 text-xs">
+        <nav className="sticky bottom-0 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-md items-center justify-around px-4 py-4 text-xs">
             <button className="font-semibold text-cyan-400">Scores</button>
             <button className="text-white/50">News</button>
             <button className="text-white/50">Following</button>
