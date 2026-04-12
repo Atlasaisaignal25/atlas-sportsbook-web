@@ -11,6 +11,37 @@ import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
 
+function getTeamData(teamName: string) {
+  return teamBranding[teamName] ?? null;
+}
+
+function getDisplayName(teamName: string) {
+  return getTeamData(teamName)?.shortName ?? teamName;
+}
+
+function getDisplayAbbr(teamName: string) {
+  return getTeamData(teamName)?.abbr ?? teamName.slice(0, 3).toUpperCase();
+}
+
+function getLogo(teamName: string) {
+  return getTeamData(teamName)?.logo ?? null;
+}
+
+function TeamBadge({ teamName }: { teamName: string }) {
+  const logo = getLogo(teamName);
+
+  if (logo) {
+    return (
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1.5">
+        <img
+          src={logo}
+          alt={teamName}
+          className="h-full w-full object-contain"
+        />
+      </div>
+    );
+  }
+
 type Outcome = {
   name: string;
   price: number;
@@ -341,21 +372,6 @@ function getTeamAbbreviation(teamName: string) {
     .join("");
 }
 
-function TeamBadge({ teamName }: { teamName: string }) {
-  const logo = getLogo(teamName);
-
-  if (logo) {
-    return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1.5">
-        <img
-          src={logo}
-          alt={teamName}
-          className="h-full w-full object-contain"
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold text-white/70">
       {getDisplayAbbr(teamName)}
@@ -470,22 +486,6 @@ export default function Home() {
 
     loadGames();
   }, [selectedSport]);
-
-  function getTeamData(teamName: string) {
-  return teamBranding[teamName] ?? null;
-}
-
-function getDisplayName(teamName: string) {
-  return getTeamData(teamName)?.shortName ?? teamName;
-}
-
-function getDisplayAbbr(teamName: string) {
-  return getTeamData(teamName)?.abbr ?? teamName.slice(0, 3).toUpperCase();
-}
-
-function getLogo(teamName: string) {
-  return getTeamData(teamName)?.logo ?? null;
-}
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
