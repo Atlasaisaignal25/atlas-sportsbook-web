@@ -1,0 +1,46 @@
+{
+  "sport": "MLB",
+  "date": "2026-04-12",
+  "top5": [
+    {
+      "rank": 1,
+      "awayTeam": "Los Angeles Angels",
+      "homeTeam": "Cincinnati Reds",
+      "pick": "Los Angeles Angels",
+      "status": "PENDING",
+      "isTopSignal": true
+    },
+    {
+      "rank": 2,
+      "awayTeam": "Colorado Rockies",
+      "homeTeam": "San Diego Padres",
+      "pick": "Colorado Rockies",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 3,
+      "awayTeam": "Washington Nationals",
+      "homeTeam": "Milwaukee Brewers",
+      "pick": "Washington Nationals",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 4,
+      "awayTeam": "Miami Marlins",
+      "homeTeam": "Detroit Tigers",
+      "pick": "Miami Marlins",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 5,
+      "awayTeam": "Cleveland Guardians",
+      "homeTeam": "Atlanta Braves",
+      "pick": "Cleveland Guardians",
+      "status": "PENDING",
+      "isTopSignal": false
+    }
+  ]
+}

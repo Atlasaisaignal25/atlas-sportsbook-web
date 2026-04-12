@@ -1,0 +1,46 @@
+{
+  "sport": "NHL",
+  "date": "2026-04-12",
+  "top5": [
+    {
+      "rank": 1,
+      "awayTeam": "Utah Mammoth",
+      "homeTeam": "Calgary Flames",
+      "pick": "Over (5.5)",
+      "status": "PENDING",
+      "isTopSignal": true
+    },
+    {
+      "rank": 2,
+      "awayTeam": "Pittsburgh Penguins",
+      "homeTeam": "Washington Capitals",
+      "pick": "Pittsburgh Penguins (+1.5)",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 3,
+      "awayTeam": "Boston Bruins",
+      "homeTeam": "Columbus Blue Jackets",
+      "pick": "Boston Bruins (+1.5)",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 4,
+      "awayTeam": "Montréal Canadiens",
+      "homeTeam": "New York Islanders",
+      "pick": "Montréal Canadiens (+1.5)",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 5,
+      "awayTeam": "Ottawa Senators",
+      "homeTeam": "New Jersey Devils",
+      "pick": "New Jersey Devils (+1.5)",
+      "status": "PENDING",
+      "isTopSignal": false
+    }
+  ]
+}

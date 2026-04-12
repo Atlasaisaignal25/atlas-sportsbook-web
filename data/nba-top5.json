@@ -1,0 +1,46 @@
+{
+  "sport": "NBA",
+  "date": "2026-04-12",
+  "top5": [
+    {
+      "rank": 1,
+      "awayTeam": "Utah Jazz",
+      "homeTeam": "Los Angeles Lakers",
+      "pick": "Under (235)",
+      "status": "PENDING",
+      "isTopSignal": true
+    },
+    {
+      "rank": 2,
+      "awayTeam": "Detroit Pistons",
+      "homeTeam": "Indiana Pacers",
+      "pick": "Detroit Pistons (-13.5)",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 3,
+      "awayTeam": "Milwaukee Bucks",
+      "homeTeam": "Philadelphia 76ers",
+      "pick": "Under (227)",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 4,
+      "awayTeam": "Chicago Bulls",
+      "homeTeam": "Dallas Mavericks",
+      "pick": "Under (245)",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 5,
+      "awayTeam": "New Orleans Pelicans",
+      "homeTeam": "Minnesota Timberwolves",
+      "pick": "Minnesota Timberwolves (-7.5)",
+      "status": "PENDING",
+      "isTopSignal": false
+    }
+  ]
+}

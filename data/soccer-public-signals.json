@@ -1,0 +1,160 @@
+{
+  "sport": "SOCCER",
+  "date": "2026-04-12",
+  "games": [
+    {
+      "gameId": "e4c2f457a464a95a8631ab28ef77b0b9",
+      "awayTeam": "Manchester City",
+      "homeTeam": "Chelsea",
+      "pick": "Manchester City -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "ed245ff0289860db9cd29c9b76b44926",
+      "awayTeam": "Real Betis",
+      "homeTeam": "CA Osasuna",
+      "pick": "CA Osasuna -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "21c5b81029447a350af6e553f1e31c5c",
+      "awayTeam": "Rayo Vallecano",
+      "homeTeam": "Mallorca",
+      "pick": "Mallorca -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "a1e8d7ee23f8c72f75be14bb70723d99",
+      "awayTeam": "Villarreal",
+      "homeTeam": "Athletic Bilbao",
+      "pick": "Athletic Bilbao -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "bc66d1e7b1afd516f0e4fd88414e99a7",
+      "awayTeam": "Le Havre",
+      "homeTeam": "Nice",
+      "pick": "Nice -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "aa83ffb32d9d72361f2cca8c1d3c2b19",
+      "awayTeam": "Newcastle United",
+      "homeTeam": "Crystal Palace",
+      "pick": "Under",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "1a8b233790dce45b2219cdb234a7916c",
+      "awayTeam": "Oviedo",
+      "homeTeam": "Celta Vigo",
+      "pick": "Over",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "292214a603a411e313a6c30ec6d0ca5a",
+      "awayTeam": "Hamburger SV",
+      "homeTeam": "VfB Stuttgart",
+      "pick": "Over",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "5504a8c750f9af9f20ffa2d3bcb22302",
+      "awayTeam": "Lorient",
+      "homeTeam": "Lyon",
+      "pick": "Under",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "97f215ac5ce1c22c25f95a153f04aaed",
+      "awayTeam": "Orlando City SC",
+      "homeTeam": "Columbus Crew SC",
+      "pick": "Over",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "542c7cb070f6d66aa7003cd825d5c199",
+      "awayTeam": "Aston Villa",
+      "homeTeam": "Nottingham Forest",
+      "pick": "Aston Villa -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "5b7b41cabf1a84e8991c9cf3d0a7ab90",
+      "awayTeam": "Tottenham Hotspur",
+      "homeTeam": "Sunderland",
+      "pick": "Tottenham Hotspur -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "85b7fa24125db9f7f782cafe8cac4507",
+      "awayTeam": "Inter Milan",
+      "homeTeam": "Como",
+      "pick": "Inter Milan -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "5a6b97618df4296ab0fe52ddbf8cf9c9",
+      "awayTeam": "Werder Bremen",
+      "homeTeam": "1. FC Köln",
+      "pick": "1. FC Köln -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "06f3024060ccf4d366a992e875d45d65",
+      "awayTeam": "SC Freiburg",
+      "homeTeam": "FSV Mainz 05",
+      "pick": "FSV Mainz 05 -0.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "36775df2bcf046549c9fa7bd4d6f2dcb",
+      "awayTeam": "Lille",
+      "homeTeam": "Toulouse",
+      "pick": "Toulouse",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "faf84aee9f7f605347a77a1c9efa3eeb",
+      "awayTeam": "Napoli",
+      "homeTeam": "Parma",
+      "pick": "Over",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "c187fbd4becdcc4dd23e14aa7416de89",
+      "awayTeam": "Lecce",
+      "homeTeam": "Bologna",
+      "pick": "Over",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "7aba317b73a3af846d840eedd2276e19",
+      "awayTeam": "Atlético San Luis",
+      "homeTeam": "Toluca",
+      "pick": "Over",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "93ea450425fb33645eb3bc56180c4880",
+      "awayTeam": "Real Salt Lake",
+      "homeTeam": "Seattle Sounders FC",
+      "pick": "Under",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "d56c93dbcad2827cb3fa7a4a4f89e9ae",
+      "awayTeam": "Mazatlán FC",
+      "homeTeam": "Pumas",
+      "pick": "Over",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "af7a080341b8f2e80963d09cb7b58ebf",
+      "awayTeam": "Sassuolo",
+      "homeTeam": "Genoa",
+      "pick": "Over",
+      "status": "PENDING"
+    }
+  ]
+}
