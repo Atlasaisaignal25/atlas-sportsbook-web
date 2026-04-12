@@ -268,7 +268,7 @@ export default function Home() {
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
   const [games, setGames] = useState<OddsGame[]>([]);
   const [loading, setLoading] = useState(true);
-  const userPlan: "free" | "regular" | "premium" = "premium";
+  const [userPlan] = useState<"free" | "regular" | "premium">("premium");
 
   const topSignals: TopSignalCard[] = useMemo(
     () =>
