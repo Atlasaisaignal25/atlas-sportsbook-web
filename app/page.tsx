@@ -9,6 +9,7 @@ import mlbTop5 from "@/data/mlb-top5.json";
 import nbaTop5 from "@/data/nba-top5.json";
 import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
+import { teamBranding } from "@/lib/teamBranding";
 
 type Outcome = {
   name: string;
@@ -341,9 +342,23 @@ function getTeamAbbreviation(teamName: string) {
 }
 
 function TeamBadge({ teamName }: { teamName: string }) {
+  const logo = getLogo(teamName);
+
+  if (logo) {
+    return (
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1.5">
+        <img
+          src={logo}
+          alt={teamName}
+          className="h-full w-full object-contain"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
-      {getTeamAbbreviation(teamName)}
+    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold text-white/70">
+      {getDisplayAbbr(teamName)}
     </div>
   );
 }
@@ -455,6 +470,22 @@ export default function Home() {
 
     loadGames();
   }, [selectedSport]);
+
+  function getTeamData(teamName: string) {
+  return teamBranding[teamName] ?? null;
+}
+
+function getDisplayName(teamName: string) {
+  return getTeamData(teamName)?.shortName ?? teamName;
+}
+
+function getDisplayAbbr(teamName: string) {
+  return getTeamData(teamName)?.abbr ?? teamName.slice(0, 3).toUpperCase();
+}
+
+function getLogo(teamName: string) {
+  return getTeamData(teamName)?.logo ?? null;
+}
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
@@ -591,7 +622,7 @@ export default function Home() {
                         <TeamBadge teamName={game.away_team} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                            {getShortTeamName(game.away_team)}
+                            {getDisplayName(game.away_team)}
                           </p>
                         </div>
                       </div>
@@ -600,7 +631,7 @@ export default function Home() {
                         <TeamBadge teamName={game.home_team} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                            {getShortTeamName(game.home_team)}
+                            {getDisplayName(game.home_team)}
                           </p>
                         </div>
                       </div>
