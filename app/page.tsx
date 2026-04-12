@@ -89,6 +89,10 @@ function getLogo(teamName: string, sport: SportTab) {
     return `/team-logos/nhl/${cleanName}.png`;
   }
 
+  if (sport === "MLB") {
+  return `/team-logos/mlb/${cleanName}.png`;
+}
+
   return null;
 }
 
