@@ -576,37 +576,31 @@ export default function Home() {
   key={game.id}
   className="rounded-[32px] border border-white/10 bg-white/[0.04] px-6 py-6 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
 >
-  <div className="mb-5 flex items-start justify-between gap-4">
-    <div>
+  <div className="flex items-start justify-between gap-5">
+    <div className="min-w-0 flex-[1.15]">
       <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/70">
         {selectedSport}
       </p>
-      <p className="mt-1 text-[13px] font-medium text-white/45">
-        {formatTime(game.commence_time)}
-      </p>
-    </div>
 
-    <div className="pt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/30">
-      Lines
-    </div>
-  </div>
-
-  <div className="flex items-start justify-between gap-5">
-    <div className="min-w-0 flex-[1.15]">
-      <div className="space-y-6">
+      <div className="mt-6 space-y-6">
         <div className="flex items-center gap-4">
           <TeamBadge teamName={game.away_team} />
-          <p className="truncate text-[18px] font-medium tracking-tight text-white">
+          <p className="text-[18px] font-medium tracking-tight text-white">
             {getShortTeamName(game.away_team)}
           </p>
         </div>
 
         <div className="flex items-center gap-4">
           <TeamBadge teamName={game.home_team} />
-          <p className="truncate text-[18px] font-medium tracking-tight text-white">
+          <p className="text-[18px] font-medium tracking-tight text-white">
             {getShortTeamName(game.home_team)}
           </p>
         </div>
+      </div>
+
+      <div className="mt-8 flex items-center gap-2 text-[13px] font-medium text-white/45">
+        <span>📅</span>
+        <span>{formatTime(game.commence_time)}</span>
       </div>
     </div>
 
