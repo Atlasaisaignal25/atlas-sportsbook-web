@@ -77,7 +77,11 @@ function getDisplayAbbr(teamName: string) {
 }
 
 function getLogo(teamName: string) {
-  return getTeamData(teamName)?.logo ?? null;
+  const cleanName = String(teamName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+  return `/team-logos/nba/${cleanName}.png`;
 }
 
 function TeamBadge({ teamName }: { teamName: string }) {
