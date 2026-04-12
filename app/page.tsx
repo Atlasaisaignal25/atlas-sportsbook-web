@@ -291,73 +291,77 @@ export default function Home() {
 
   useEffect(() => {
     async function loadGames() {
-      try {
-        setLoading(true);
+  try {
+    setLoading(true);
 
-        if (selectedSport === "TOP") {
-          setGames([]);
-          return;
-        }
+    if (selectedSport === "TOP") {
+      setGames([]);
+      return;
+    }
 
-        if (selectedSport === "SOCCER") {
-          const soccerLeagues = [
-            "soccer_epl",
-            "soccer_spain_la_liga",
-            "soccer_italy_serie_a",
-            "soccer_germany_bundesliga",
-            "soccer_france_ligue_one",
-            "soccer_uefa_champs_league",
-            "soccer_uefa_europa_league",
-            "soccer_uefa_europa_conference_league",
-            "soccer_usa_mls",
-            "soccer_mexico_ligamx",
-            "soccer_fa_cup",
-            "soccer_spain_copa_del_rey",
-          ];
+    if (selectedSport === "SOCCER") {
+      const soccerLeagues = [
+        "soccer_epl",
+        "soccer_spain_la_liga",
+        "soccer_italy_serie_a",
+        "soccer_germany_bundesliga",
+        "soccer_france_ligue_one",
+        "soccer_uefa_champs_league",
+        "soccer_uefa_europa_league",
+        "soccer_uefa_europa_conference_league",
+        "soccer_usa_mls",
+        "soccer_mexico_ligamx",
+        "soccer_fa_cup",
+        "soccer_spain_copa_del_rey",
+      ];
 
-          const responses = await Promise.all(
-            soccerLeagues.map(async (league) => {
-              const res = await fetch(`/api/odds?sport=${league}`, {
-                cache: "no-store",
-              });
-
-              const data = await res.json();
-              return Array.isArray(data) ? (data as OddsGame[]) : [];
-            })
-          );
-
-          const allSoccerGames = responses.flat();
-          const now = new Date();
-
-          const filteredSoccerGames = allSoccerGames.filter((game) => {
-            const gameDate = new Date(game.commence_time);
-            const diffHours =
-              (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-            return diffHours >= -6 && diffHours <= 18;
+      const responses = await Promise.all(
+        soccerLeagues.map(async (league) => {
+          const res = await fetch(`/api/odds?sport=${league}`, {
+            cache: "no-store",
           });
 
-          setGames(filteredSoccerGames);
-          return;
-        }
+          const data = await res.json();
+          return Array.isArray(data) ? (data as OddsGame[]) : [];
+        })
+      );
 
-        const sport =
-  selectedSport === "TOP"
-    ? null
-    : sportsMap[selectedSport as keyof typeof sportsMap];
+      const allSoccerGames = responses.flat();
+      const now = new Date();
 
-        const res = await fetch(`/api/odds?sport=${sport}`, {
-          cache: "no-store",
-        });
+      const filteredSoccerGames = allSoccerGames.filter((game) => {
+        const gameDate = new Date(game.commence_time);
+        const diffHours =
+          (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-        const data = await res.json();
-        setGames(Array.isArray(data) ? (data as OddsGame[]) : []);
-      } catch (error) {
-        setGames([]);
-      } finally {
-        setLoading(false);
-      }
+        return diffHours >= -6 && diffHours <= 18;
+      });
+
+      setGames(filteredSoccerGames);
+      return;
     }
+
+    const regularSportMap: Record<Exclude<SportTab, "TOP" | "SOCCER">, string> = {
+      NHL: "icehockey_nhl",
+      NBA: "basketball_nba",
+      MLB: "baseball_mlb",
+      NFL: "americanfootball_nfl",
+    };
+
+    const sport = regularSportMap[selectedSport as Exclude<SportTab, "TOP" | "SOCCER">];
+
+    const res = await fetch(`/api/odds?sport=${sport}`, {
+      cache: "no-store",
+    });
+
+    const data = await res.json();
+    setGames(Array.isArray(data) ? (data as OddsGame[]) : []);
+  } catch (error) {
+    setGames([]);
+  } finally {
+    setLoading(false);
+  }
+}
 
     loadGames();
   }, [selectedSport]);
