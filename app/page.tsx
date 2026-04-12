@@ -11,37 +11,6 @@ import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
 
-function getTeamData(teamName: string) {
-  return teamBranding[teamName] ?? null;
-}
-
-function getDisplayName(teamName: string) {
-  return getTeamData(teamName)?.shortName ?? teamName;
-}
-
-function getDisplayAbbr(teamName: string) {
-  return getTeamData(teamName)?.abbr ?? teamName.slice(0, 3).toUpperCase();
-}
-
-function getLogo(teamName: string) {
-  return getTeamData(teamName)?.logo ?? null;
-}
-
-function TeamBadge({ teamName }: { teamName: string }) {
-  const logo = getLogo(teamName);
-
-  if (logo) {
-    return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1.5">
-        <img
-          src={logo}
-          alt={teamName}
-          className="h-full w-full object-contain"
-        />
-      </div>
-    );
-  }
-
 type Outcome = {
   name: string;
   price: number;
@@ -95,6 +64,44 @@ type TopSignalCard = Top5Entry & {
 const sportsTabs = ["TOP", "NHL", "NBA", "MLB", "NFL", "SOCCER"] as const;
 type SportTab = (typeof sportsTabs)[number];
 
+function getTeamData(teamName: string) {
+  return teamBranding[teamName] ?? null;
+}
+
+function getDisplayName(teamName: string) {
+  return getTeamData(teamName)?.shortName ?? teamName;
+}
+
+function getDisplayAbbr(teamName: string) {
+  return getTeamData(teamName)?.abbr ?? teamName.slice(0, 3).toUpperCase();
+}
+
+function getLogo(teamName: string) {
+  return getTeamData(teamName)?.logo ?? null;
+}
+
+function TeamBadge({ teamName }: { teamName: string }) {
+  const logo = getLogo(teamName);
+
+  if (logo) {
+    return (
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1.5">
+        <img
+          src={logo}
+          alt={teamName}
+          className="h-full w-full object-contain"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold text-white/70">
+      {getDisplayAbbr(teamName)}
+    </div>
+  );
+}
+
 function getPreferredBookmaker(game: OddsGame) {
   return (
     game.bookmakers?.find((b) => b.key === "draftkings") ||
@@ -123,9 +130,7 @@ function getSpreadValue(game: OddsGame, teamName: string) {
     return "N/A";
   }
 
-  const point =
-    outcome.point > 0 ? `+${outcome.point}` : `${outcome.point}`;
-
+  const point = outcome.point > 0 ? `+${outcome.point}` : `${outcome.point}`;
   return `${point}`;
 }
 
@@ -208,8 +213,8 @@ function formatDisplayedPick(rawPick: string, sport: string) {
       line.startsWith("+") || line.startsWith("-")
         ? line
         : Number(line) > 0
-        ? `+${line}`
-        : line;
+          ? `+${line}`
+          : line;
 
     return `${team} (${formatted})`;
   }
@@ -324,59 +329,6 @@ function findPick(game: OddsGame, sport: string): SignalGame | null {
   }
 
   return null;
-}
-
-function getShortTeamName(teamName: string) {
-  const words = String(teamName ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (words.length === 0) return "TEAM";
-  if (words.length === 1) return words[0];
-
-  const twoWordNicknames = new Set([
-    "Red Sox",
-    "White Sox",
-    "Blue Jays",
-    "Trail Blazers",
-    "Blue Jackets",
-    "Golden Knights",
-    "Maple Leafs",
-    "Red Wings",
-    "Timber Wolves",
-    "FC Dallas",
-    "Inter Miami",
-    "Real Salt",
-    "St Louis",
-  ]);
-
-  const lastTwo = words.slice(-2).join(" ");
-  if (twoWordNicknames.has(lastTwo)) return lastTwo;
-
-  return words[words.length - 1];
-}
-
-function getTeamAbbreviation(teamName: string) {
-  const words = String(teamName ?? "")
-    .replace(/[.'’-]/g, "")
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (words.length === 0) return "TM";
-  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-
-  return words
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-  return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold text-white/70">
-      {getDisplayAbbr(teamName)}
-    </div>
-  );
 }
 
 export default function Home() {
@@ -536,58 +488,58 @@ export default function Home() {
           ) : selectedSport === "TOP" ? (
             <div className="space-y-3">
               {topSignals.map((pick, idx) => (
-  <div
-    key={`top-${idx}`}
-    className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-  >
-    <div className="mb-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-yellow-400/95">
-        Top Signal {pick.sport}
-      </p>
-      {pick.startTime && (
-        <p className="mt-2 text-[13px] font-medium text-white/55">
-          {formatTime(pick.startTime)}
-        </p>
-      )}
-    </div>
+                <div
+                  key={`top-${idx}`}
+                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+                >
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-yellow-400/95">
+                      Top Signal {pick.sport}
+                    </p>
+                    {pick.startTime && (
+                      <p className="mt-2 text-[13px] font-medium text-white/55">
+                        {formatTime(pick.startTime)}
+                      </p>
+                    )}
+                  </div>
 
-    <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
-        {String(pick.awayTeam ?? "").slice(0, 2).toUpperCase()}
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-          {pick.awayTeam}
-        </p>
-      </div>
-    </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
+                      {String(pick.awayTeam ?? "").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                        {pick.awayTeam}
+                      </p>
+                    </div>
+                  </div>
 
-    <div className="mt-4 flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
-        {String(pick.homeTeam ?? "").slice(0, 2).toUpperCase()}
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-          {pick.homeTeam}
-        </p>
-      </div>
-    </div>
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
+                      {String(pick.homeTeam ?? "").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                        {pick.homeTeam}
+                      </p>
+                    </div>
+                  </div>
 
-    <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
-      <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-        Signal Detected
-      </div>
+                  <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
+                    <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                      Signal Detected
+                    </div>
 
-      <p className="text-[20px] font-semibold leading-tight tracking-tight text-cyan-300">
-        {formatDisplayedPick(pick.pick, pick.sport)}
-      </p>
+                    <p className="text-[20px] font-semibold leading-tight tracking-tight text-cyan-300">
+                      {formatDisplayedPick(pick.pick, pick.sport)}
+                    </p>
 
-      <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
-        {pick.status ?? "PENDING"}
-      </p>
-    </div>
-  </div>
-))}
+                    <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+                      {pick.status ?? "PENDING"}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : games.length === 0 ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
