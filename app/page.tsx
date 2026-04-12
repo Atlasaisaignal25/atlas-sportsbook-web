@@ -76,16 +76,30 @@ function getDisplayAbbr(teamName: string) {
   return getTeamData(teamName)?.abbr ?? teamName.slice(0, 3).toUpperCase();
 }
 
-function getLogo(teamName: string) {
+function getLogo(teamName: string, sport: SportTab) {
   const cleanName = String(teamName)
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 
-  return `/team-logos/nba/${cleanName}.png`;
+  if (sport === "NBA") {
+    return `/team-logos/nba/${cleanName}.png`;
+  }
+
+  if (sport === "NHL") {
+    return `/team-logos/nhl/${cleanName}.png`;
+  }
+
+  return null;
 }
 
-function TeamBadge({ teamName }: { teamName: string }) {
-  const logo = getLogo(teamName);
+function TeamBadge({
+  teamName,
+  sport,
+}: {
+  teamName: string;
+  sport: SportTab;
+}) {
+  const logo = getLogo(teamName, sport);
 
   if (logo) {
     return (
@@ -575,7 +589,7 @@ export default function Home() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 space-y-4">
                       <div className="flex items-center gap-3">
-                        <TeamBadge teamName={game.away_team} />
+                        <TeamBadge teamName={game.away_team} sport={selectedSport} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
                             {getDisplayAbbr(game.away_team)}
@@ -584,7 +598,7 @@ export default function Home() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <TeamBadge teamName={game.home_team} />
+                        <TeamBadge teamName={game.home_team} sport={selectedSport} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
                             {getDisplayAbbr(game.home_team)}
