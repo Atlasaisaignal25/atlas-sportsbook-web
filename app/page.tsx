@@ -341,7 +341,10 @@ export default function Home() {
           return;
         }
 
-        const sport = sportsMap[selectedSport as SportsMapKey];
+        const sport =
+  selectedSport === "TOP"
+    ? null
+    : sportsMap[selectedSport as keyof typeof sportsMap];
 
         const res = await fetch(`/api/odds?sport=${sport}`, {
           cache: "no-store",
