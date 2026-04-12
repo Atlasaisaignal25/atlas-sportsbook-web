@@ -514,60 +514,56 @@ export default function Home() {
           ) : selectedSport === "TOP" ? (
             <div className="space-y-3">
               {topSignals.map((pick, idx) => (
-                <div
-                  key={`top-${idx}`}
-                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-                >
-                  <div className="mb-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-yellow-400/95">
-                      Top Signal {pick.sport}
-                    </p>
-                    {pick.startTime && (
-                      <p className="mt-2 text-[13px] font-medium text-white/55">
-                        {formatTime(pick.startTime)}
-                      </p>
-                    )}
-                  </div>
+  <article
+    key={`top-${idx}`}
+    className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+  >
+    <div className="mb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-400/95">
+        Top Signal {pick.sport}
+      </p>
+      {pick.startTime && (
+        <p className="mt-2 text-[13px] font-medium text-white/55">
+          {formatTime(pick.startTime)}
+        </p>
+      )}
+    </div>
 
-                  <div className="flex items-center gap-3">
-  <TeamBadge
-    teamName={pick.awayTeam ?? ""}
-    sport={pick.sport}
-  />
-  <div className="min-w-0">
-    <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-      {getDisplayAbbr(pick.awayTeam ?? "")}
-    </p>
-  </div>
-</div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <TeamBadge teamName={pick.awayTeam ?? ""} sport={pick.sport} />
+        <div className="min-w-0">
+          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+            {getDisplayAbbr(pick.awayTeam ?? "")}
+          </p>
+        </div>
+      </div>
 
-<div className="mt-4 flex items-center gap-3">
-  <TeamBadge
-    teamName={pick.homeTeam ?? ""}
-    sport={pick.sport}
-  />
-  <div className="min-w-0">
-    <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-      {getDisplayAbbr(pick.homeTeam ?? "")}
-    </p>
-  </div>
-</div>
+      <div className="flex items-center gap-3">
+        <TeamBadge teamName={pick.homeTeam ?? ""} sport={pick.sport} />
+        <div className="min-w-0">
+          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+            {getDisplayAbbr(pick.homeTeam ?? "")}
+          </p>
+        </div>
+      </div>
+    </div>
 
-                  <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
-                    <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                      Signal Detected
-                    </div>
+    <div className="mt-4 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
+      <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+        Signal Detected
+      </div>
 
-                    <p className="text-[20px] font-semibold leading-tight tracking-tight text-cyan-300">
-                      {formatDisplayedPick(pick.pick, pick.sport)}
-                    </p>
+      <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
+        {formatDisplayedPick(pick.pick, pick.sport)}
+      </p>
 
-                    <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
-                      {pick.status ?? "PENDING"}
-                    </p>
-                  </div>
-                </div>
-              ))}
+      <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+        {pick.status ?? "PENDING"}
+      </p>
+    </div>
+  </article>
+))}
             </div>
           ) : games.length === 0 ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
