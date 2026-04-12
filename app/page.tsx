@@ -43,6 +43,7 @@ type SignalGame = {
   status?: string;
   isTop5?: boolean;
   isTopSignal?: boolean;
+  topRank?: number | null;
 };
 
 type Top5Entry = {
@@ -59,32 +60,73 @@ type TopSignalCard = Top5Entry & {
   sport: "MLB" | "NBA" | "NHL" | "SOCCER";
 };
 
-function getMoneyline(game: OddsGame, teamName: string) {
-  const bookmaker =
+const sportsTabs = ["TOP", "NHL", "NBA", "MLB", "NFL", "SOCCER"] as const;
+type SportTab = (typeof sportsTabs)[number];
+
+function getPreferredBookmaker(game: OddsGame) {
+  return (
     game.bookmakers?.find((b) => b.key === "draftkings") ||
-    game.bookmakers?.[0];
+    game.bookmakers?.[0] ||
+    null
+  );
+}
 
-  const market = bookmaker?.markets?.find((m) => m.key === "h2h");
+function getMarket(game: OddsGame, marketKey: string) {
+  const bookmaker = getPreferredBookmaker(game);
+  return bookmaker?.markets?.find((m) => m.key === marketKey) || null;
+}
+
+function getMoneyline(game: OddsGame, teamName: string) {
+  const market = getMarket(game, "h2h");
   const outcome = market?.outcomes?.find((o) => o.name === teamName);
-
   return outcome?.price ?? null;
 }
 
-function getTotal(game: OddsGame) {
-  const bookmaker =
-    game.bookmakers?.find((b) => b.key === "draftkings") ||
-    game.bookmakers?.[0];
+function getSpreadValue(game: OddsGame, teamName: string) {
+  const market = getMarket(game, "spreads");
+  const outcome = market?.outcomes?.find((o) => o.name === teamName);
 
-  const market = bookmaker?.markets?.find((m) => m.key === "totals");
+  if (!outcome) return "N/A";
+  if (outcome.point === undefined || outcome.price === undefined) {
+    return "N/A";
+  }
 
-  if (!market) return "N/A";
+  const point =
+    outcome.point > 0 ? `+${outcome.point}` : `${outcome.point}`;
+
+  return `${point}`;
+}
+
+function getTotalValues(game: OddsGame) {
+  const market = getMarket(game, "totals");
+
+  if (!market) {
+    return {
+      overLabel: "N/A",
+      underLabel: "N/A",
+      summary: "N/A",
+    };
+  }
 
   const over = market.outcomes.find((o) => o.name === "Over");
   const under = market.outcomes.find((o) => o.name === "Under");
 
-  if (!over || !under) return "N/A";
+  if (!over || !under) {
+    return {
+      overLabel: "N/A",
+      underLabel: "N/A",
+      summary: "N/A",
+    };
+  }
 
-  return `O ${over.point} / U ${under.point}`;
+  const overPoint = over.point !== undefined ? over.point : "N/A";
+  const underPoint = under.point !== undefined ? under.point : "N/A";
+
+  return {
+    overLabel: `O ${overPoint}`,
+    underLabel: `U ${underPoint}`,
+    summary: `O ${overPoint} / U ${underPoint}`,
+  };
 }
 
 function formatTime(dateString: string) {
@@ -175,7 +217,7 @@ function isSameMatch(
   return gameAway === signalAway && gameHome === signalHome;
 }
 
-function findPick(game: OddsGame, sport: string) {
+function findPick(game: OddsGame, sport: string): SignalGame | null {
   if (sport === "MLB") {
     const direct = mlbSignals.games.find(
       (g) => String(g.gameId) === String(game.id)
@@ -252,17 +294,59 @@ function findPick(game: OddsGame, sport: string) {
   return null;
 }
 
-const sportsMap = {
-  NHL: "icehockey_nhl",
-  NBA: "basketball_nba",
-  MLB: "baseball_mlb",
-  NFL: "americanfootball_nfl",
-  SOCCER: "soccer_epl",
-} as const;
+function getShortTeamName(teamName: string) {
+  const words = String(teamName ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-const sportsTabs = ["TOP", "NHL", "NBA", "MLB", "NFL", "SOCCER"] as const;
-type SportTab = (typeof sportsTabs)[number];
-type SportsMapKey = keyof typeof sportsMap;
+  if (words.length === 0) return "TEAM";
+  if (words.length === 1) return words[0];
+
+  const twoWordNicknames = new Set([
+    "Red Sox",
+    "White Sox",
+    "Blue Jays",
+    "Trail Blazers",
+    "Blue Jackets",
+    "Golden Knights",
+    "Maple Leafs",
+    "Red Wings",
+    "Timber Wolves",
+    "FC Dallas",
+    "Inter Miami",
+    "Real Salt",
+    "St Louis",
+  ]);
+
+  const lastTwo = words.slice(-2).join(" ");
+  if (twoWordNicknames.has(lastTwo)) return lastTwo;
+
+  return words[words.length - 1];
+}
+
+function getTeamAbbreviation(teamName: string) {
+  const words = String(teamName ?? "")
+    .replace(/[.'’-]/g, "")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (words.length === 0) return "TM";
+  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+
+  return words
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function TeamBadge({ teamName }: { teamName: string }) {
+  return (
+    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
+      {getTeamAbbreviation(teamName)}
+    </div>
+  );
+}
 
 export default function Home() {
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
@@ -291,77 +375,83 @@ export default function Home() {
 
   useEffect(() => {
     async function loadGames() {
-  try {
-    setLoading(true);
+      try {
+        setLoading(true);
 
-    if (selectedSport === "TOP") {
-      setGames([]);
-      return;
-    }
+        if (selectedSport === "TOP") {
+          setGames([]);
+          return;
+        }
 
-    if (selectedSport === "SOCCER") {
-      const soccerLeagues = [
-        "soccer_epl",
-        "soccer_spain_la_liga",
-        "soccer_italy_serie_a",
-        "soccer_germany_bundesliga",
-        "soccer_france_ligue_one",
-        "soccer_uefa_champs_league",
-        "soccer_uefa_europa_league",
-        "soccer_uefa_europa_conference_league",
-        "soccer_usa_mls",
-        "soccer_mexico_ligamx",
-        "soccer_fa_cup",
-        "soccer_spain_copa_del_rey",
-      ];
+        if (selectedSport === "SOCCER") {
+          const soccerLeagues = [
+            "soccer_epl",
+            "soccer_spain_la_liga",
+            "soccer_italy_serie_a",
+            "soccer_germany_bundesliga",
+            "soccer_france_ligue_one",
+            "soccer_uefa_champs_league",
+            "soccer_uefa_europa_league",
+            "soccer_uefa_europa_conference_league",
+            "soccer_usa_mls",
+            "soccer_mexico_ligamx",
+            "soccer_fa_cup",
+            "soccer_spain_copa_del_rey",
+          ];
 
-      const responses = await Promise.all(
-        soccerLeagues.map(async (league) => {
-          const res = await fetch(`/api/odds?sport=${league}`, {
-            cache: "no-store",
+          const responses = await Promise.all(
+            soccerLeagues.map(async (league) => {
+              const res = await fetch(`/api/odds?sport=${league}`, {
+                cache: "no-store",
+              });
+
+              const data = await res.json();
+              return Array.isArray(data) ? (data as OddsGame[]) : [];
+            })
+          );
+
+          const allSoccerGames = responses.flat();
+          const now = new Date();
+
+          const filteredSoccerGames = allSoccerGames.filter((game) => {
+            const gameDate = new Date(game.commence_time);
+            const diffHours =
+              (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+            return diffHours >= -6 && diffHours <= 18;
           });
 
-          const data = await res.json();
-          return Array.isArray(data) ? (data as OddsGame[]) : [];
-        })
-      );
+          setGames(filteredSoccerGames);
+          return;
+        }
 
-      const allSoccerGames = responses.flat();
-      const now = new Date();
+        const regularSportMap: Record<
+          Exclude<SportTab, "TOP" | "SOCCER">,
+          string
+        > = {
+          NHL: "icehockey_nhl",
+          NBA: "basketball_nba",
+          MLB: "baseball_mlb",
+          NFL: "americanfootball_nfl",
+        };
 
-      const filteredSoccerGames = allSoccerGames.filter((game) => {
-        const gameDate = new Date(game.commence_time);
-        const diffHours =
-          (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const sport =
+          regularSportMap[
+            selectedSport as Exclude<SportTab, "TOP" | "SOCCER">
+          ];
 
-        return diffHours >= -6 && diffHours <= 18;
-      });
+        const res = await fetch(`/api/odds?sport=${sport}`, {
+          cache: "no-store",
+        });
 
-      setGames(filteredSoccerGames);
-      return;
+        const data = await res.json();
+        setGames(Array.isArray(data) ? (data as OddsGame[]) : []);
+      } catch (error) {
+        setGames([]);
+      } finally {
+        setLoading(false);
+      }
     }
-
-    const regularSportMap: Record<Exclude<SportTab, "TOP" | "SOCCER">, string> = {
-      NHL: "icehockey_nhl",
-      NBA: "basketball_nba",
-      MLB: "baseball_mlb",
-      NFL: "americanfootball_nfl",
-    };
-
-    const sport = regularSportMap[selectedSport as Exclude<SportTab, "TOP" | "SOCCER">];
-
-    const res = await fetch(`/api/odds?sport=${sport}`, {
-      cache: "no-store",
-    });
-
-    const data = await res.json();
-    setGames(Array.isArray(data) ? (data as OddsGame[]) : []);
-  } catch (error) {
-    setGames([]);
-  } finally {
-    setLoading(false);
-  }
-}
 
     loadGames();
   }, [selectedSport]);
@@ -375,7 +465,9 @@ export default function Home() {
               <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-400/90">
                 Atlas Sportsbook
               </p>
-              <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight">Scores</h1>
+              <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight">
+                Signals
+              </h1>
             </div>
 
             <div className="flex items-center gap-2">
@@ -418,8 +510,8 @@ export default function Home() {
                   className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
                 >
                   <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-yellow-400/95">
-  Top Signal {pick.sport}
-</div>
+                    Top Signal {pick.sport}
+                  </div>
 
                   <div className="text-[15px] font-medium leading-snug text-white/90">
                     {pick.awayTeam} vs {pick.homeTeam}
@@ -445,87 +537,139 @@ export default function Home() {
             games.map((game) => {
               const homeOdds = getMoneyline(game, game.home_team);
               const awayOdds = getMoneyline(game, game.away_team);
-              const total = getTotal(game);
+              const awaySpread = getSpreadValue(game, game.away_team);
+              const homeSpread = getSpreadValue(game, game.home_team);
+              const totalValues = getTotalValues(game);
               const pickData = findPick(game, selectedSport);
 
               return (
-  <article
-    key={game.id}
-    className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-  >
-    <div className="mb-4 flex items-start justify-between gap-3">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
-          {selectedSport}
-        </p>
-        <p className="mt-2 text-[13px] font-medium text-white/55">
-          {formatTime(game.commence_time)}
-        </p>
-      </div>
+                <article
+                  key={game.id}
+                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+                >
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                      {selectedSport}
+                    </p>
+                    <p className="mt-2 text-[13px] font-medium text-white/55">
+                      {formatTime(game.commence_time)}
+                    </p>
+                  </div>
 
-      <span className="shrink-0 rounded-full bg-cyan-500/15 px-3 py-1.5 text-[11px] font-semibold tracking-tight text-cyan-300">
-        {total}
-      </span>
-    </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <TeamBadge teamName={game.away_team} />
+                        <div className="min-w-0">
+                          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                            {getShortTeamName(game.away_team)}
+                          </p>
+                        </div>
+                      </div>
 
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[17px] font-semibold tracking-tight text-white">
-          {game.away_team}
-        </p>
-        <span className="min-w-[72px] rounded-full border border-white/8 bg-white/10 px-3 py-1.5 text-center text-[15px] font-semibold tracking-tight text-white">
-          {awayOdds ?? "N/A"}
-        </span>
-      </div>
+                      <div className="flex items-center gap-3">
+                        <TeamBadge teamName={game.home_team} />
+                        <div className="min-w-0">
+                          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                            {getShortTeamName(game.home_team)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[17px] font-semibold tracking-tight text-white">
-          {game.home_team}
-        </p>
-        <span className="min-w-[72px] rounded-full border border-white/8 bg-white/10 px-3 py-1.5 text-center text-[15px] font-semibold tracking-tight text-white">
-          {homeOdds ?? "N/A"}
-        </span>
-      </div>
-    </div>
+                    <div className="grid shrink-0 grid-cols-3 gap-2">
+                      <div className="flex flex-col gap-2">
+                        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+                          Spread
+                        </div>
+                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
+                          {awaySpread}
+                        </div>
+                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
+                          {homeSpread}
+                        </div>
+                      </div>
 
-    {pickData ? (
-      <div className="mt-4 space-y-3">
-        <div className="rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
-          <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-            Signal Detected
+                      <div className="flex flex-col gap-2">
+                        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300/70">
+                          Total
+                        </div>
+                        <div className="w-[72px] rounded-xl border border-cyan-500/10 bg-cyan-500/10 px-3 py-2 text-center text-[13px] font-semibold text-cyan-200">
+                          {totalValues.overLabel}
+                        </div>
+                        <div className="w-[72px] rounded-xl border border-cyan-500/10 bg-cyan-500/10 px-3 py-2 text-center text-[13px] font-semibold text-cyan-200">
+                          {totalValues.underLabel}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+                          ML
+                        </div>
+                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
+                          {awayOdds ?? "N/A"}
+                        </div>
+                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
+                          {homeOdds ?? "N/A"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {pickData ? (
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
+                        <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                          Signal Detected
+                        </div>
+
+                        <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
+                          {formatDisplayedPick(pickData.pick, selectedSport)}
+                        </p>
+
+                        <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+                          {pickData.status ?? "PENDING"}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {pickData.isTop5 && userPlan === "regular" && (
+                          <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
+                            Top 5
+                          </span>
+                        )}
+
+                        {pickData.isTopSignal && userPlan === "premium" && (
+                          <span className="inline-flex rounded-full bg-purple-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-purple-300">
+                            Top Signal #{pickData.topRank ?? 1}
+                          </span>
+                        )}
+
+                        {pickData.isTop5 &&
+                          !pickData.isTopSignal &&
+                          userPlan === "premium" && (
+                            <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
+                              Top 5 #{pickData.topRank ?? ""}
+                            </span>
+                          )}
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })
+          )}
+        </section>
+
+        <nav className="sticky bottom-0 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-md items-center justify-around px-4 py-4 text-xs">
+            <button className="font-semibold text-cyan-400">Signals</button>
+            <button className="text-white/50">News</button>
+            <button className="text-white/50">Following</button>
+            <button className="text-white/50">More</button>
           </div>
-
-          <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
-            {formatDisplayedPick(pickData.pick, selectedSport)}
-          </p>
-
-          <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
-            {pickData.status ?? "PENDING"}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {pickData.isTop5 && userPlan === "regular" && (
-            <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
-              Top 5
-            </span>
-          )}
-
-          {pickData.isTopSignal && userPlan === "premium" && (
-            <span className="inline-flex rounded-full bg-purple-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-purple-300">
-              Top Signal #{pickData.topRank ?? 1}
-            </span>
-          )}
-
-          {pickData.isTop5 &&
-            !pickData.isTopSignal &&
-            userPlan === "premium" && (
-              <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
-                Top 5 #{pickData.topRank ?? ""}
-              </span>
-            )}
-        </div>
+        </nav>
       </div>
-    ) : null}
-  </article>
-);
+    </main>
+  );
+}
