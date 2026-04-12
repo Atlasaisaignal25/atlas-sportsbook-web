@@ -505,29 +505,58 @@ export default function Home() {
           ) : selectedSport === "TOP" ? (
             <div className="space-y-3">
               {topSignals.map((pick, idx) => (
-                <div
-                  key={`top-${idx}`}
-                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-                >
-                  <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-yellow-400/95">
-                    Top Signal {pick.sport}
-                  </div>
+  <div
+    key={`top-${idx}`}
+    className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+  >
+    <div className="mb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-yellow-400/95">
+        Top Signal {pick.sport}
+      </p>
+      {pick.startTime && (
+        <p className="mt-2 text-[13px] font-medium text-white/55">
+          {formatTime(pick.startTime)}
+        </p>
+      )}
+    </div>
 
-                  <div className="text-[15px] font-medium leading-snug text-white/90">
-                    {pick.awayTeam} vs {pick.homeTeam}
-                  </div>
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
+        {String(pick.awayTeam ?? "").slice(0, 2).toUpperCase()}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+          {pick.awayTeam}
+        </p>
+      </div>
+    </div>
 
-                  <div className="mt-3 text-[22px] font-bold tracking-tight text-cyan-300">
-                    {formatDisplayedPick(pick.pick, pick.sport)}
-                  </div>
+    <div className="mt-4 flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
+        {String(pick.homeTeam ?? "").slice(0, 2).toUpperCase()}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+          {pick.homeTeam}
+        </p>
+      </div>
+    </div>
 
-                  {pick.startTime && (
-                    <div className="mt-1 text-xs text-white/60">
-                      {formatTime(pick.startTime)}
-                    </div>
-                  )}
-                </div>
-              ))}
+    <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
+      <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+        Signal Detected
+      </div>
+
+      <p className="text-[20px] font-semibold leading-tight tracking-tight text-cyan-300">
+        {formatDisplayedPick(pick.pick, pick.sport)}
+      </p>
+
+      <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+        {pick.status ?? "PENDING"}
+      </p>
+    </div>
+  </div>
+))}
             </div>
           ) : games.length === 0 ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
@@ -556,7 +585,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 space-y-4">
                       <div className="flex items-center gap-3">
                         <TeamBadge teamName={game.away_team} />
@@ -577,15 +606,15 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="grid shrink-0 grid-cols-3 gap-2">
+                    <div className="grid shrink-0 grid-cols-3 gap-1.5">
                       <div className="flex flex-col gap-2">
                         <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
                           Spread
                         </div>
-                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
+                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
                           {awaySpread}
                         </div>
-                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
+                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
                           {homeSpread}
                         </div>
                       </div>
@@ -594,10 +623,10 @@ export default function Home() {
                         <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300/70">
                           Total
                         </div>
-                        <div className="w-[72px] rounded-xl border border-cyan-500/10 bg-cyan-500/10 px-3 py-2 text-center text-[13px] font-semibold text-cyan-200">
+                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
                           {totalValues.overLabel}
                         </div>
-                        <div className="w-[72px] rounded-xl border border-cyan-500/10 bg-cyan-500/10 px-3 py-2 text-center text-[13px] font-semibold text-cyan-200">
+                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
                           {totalValues.underLabel}
                         </div>
                       </div>
