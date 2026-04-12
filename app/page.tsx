@@ -449,95 +449,83 @@ export default function Home() {
               const pickData = findPick(game, selectedSport);
 
               return (
-                <article
-                  key={game.id}
-                  className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-white/80">
-                        {selectedSport}
-                      </p>
-                      <p className="mt-1 text-[11px] text-white/45">
-                        {formatTime(game.commence_time)}
-                      </p>
-                    </div>
-
-                    <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-[11px] font-semibold text-cyan-300">
-                      {total}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-white">
-                        {game.away_team}
-                      </p>
-                      <span className="min-w-[64px] rounded-full bg-white/10 px-3 py-1 text-center text-sm font-semibold text-white">
-                        {awayOdds ?? "N/A"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-white">
-                        {game.home_team}
-                      </p>
-                      <span className="min-w-[64px] rounded-full bg-white/10 px-3 py-1 text-center text-sm font-semibold text-white">
-                        {homeOdds ?? "N/A"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {pickData && (
-                    <div className="mt-3 space-y-2">
-                      <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-2">
-                        <p className="text-xs font-semibold text-cyan-300">
-                          SIGNAL DETECTED
-                        </p>
-                        <p className="text-[15px] font-semibold tracking-tight text-white">
-                          {formatDisplayedPick(pickData.pick, selectedSport)}
-                        </p>
-                        <p className="mt-1 text-[11px] font-medium text-white/60">
-                          {pickData.status ?? "PENDING"}
-                        </p>
-                      </div>
-
-                      {pickData.isTop5 && userPlan === "regular" && (
-                        <span className="inline-block rounded-full bg-yellow-500/20 px-2 py-1 text-[10px] font-semibold text-yellow-300">
-                          TOP 5
-                        </span>
-                      )}
-
-                      {pickData.isTopSignal && userPlan === "premium" && (
-                        <span className="inline-block rounded-full bg-purple-500/20 px-2 py-1 text-[10px] font-semibold text-purple-300">
-                          TOP SIGNAL #{pickData.topRank ?? 1}
-                        </span>
-                      )}
-
-                      {pickData.isTop5 &&
-                        !pickData.isTopSignal &&
-                        userPlan === "premium" && (
-                          <span className="inline-block rounded-full bg-yellow-500/20 px-2 py-1 text-[10px] font-semibold text-yellow-300">
-                            TOP 5 #{pickData.topRank ?? ""}
-                          </span>
-                        )}
-                    </div>
-                  )}
-                </article>
-              );
-            })
-          )}
-        </section>
-
-        <nav className="sticky bottom-0 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-md items-center justify-around px-4 py-4 text-xs">
-            <button className="font-semibold text-cyan-400">Scores</button>
-            <button className="text-white/50">News</button>
-            <button className="text-white/50">Following</button>
-            <button className="text-white/50">More</button>
-          </div>
-        </nav>
+  <article
+    key={game.id}
+    className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+  >
+    <div className="mb-4 flex items-start justify-between gap-3">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+          {selectedSport}
+        </p>
+        <p className="mt-2 text-[13px] font-medium text-white/55">
+          {formatTime(game.commence_time)}
+        </p>
       </div>
-    </main>
-  );
-}
+
+      <span className="shrink-0 rounded-full bg-cyan-500/15 px-3 py-1.5 text-[11px] font-semibold tracking-tight text-cyan-300">
+        {total}
+      </span>
+    </div>
+
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[17px] font-semibold tracking-tight text-white">
+          {game.away_team}
+        </p>
+        <span className="min-w-[72px] rounded-full border border-white/8 bg-white/10 px-3 py-1.5 text-center text-[15px] font-semibold tracking-tight text-white">
+          {awayOdds ?? "N/A"}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[17px] font-semibold tracking-tight text-white">
+          {game.home_team}
+        </p>
+        <span className="min-w-[72px] rounded-full border border-white/8 bg-white/10 px-3 py-1.5 text-center text-[15px] font-semibold tracking-tight text-white">
+          {homeOdds ?? "N/A"}
+        </span>
+      </div>
+    </div>
+
+    {pickData ? (
+      <div className="mt-4 space-y-3">
+        <div className="rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
+          <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+            Signal Detected
+          </div>
+
+          <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
+            {formatDisplayedPick(pickData.pick, selectedSport)}
+          </p>
+
+          <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+            {pickData.status ?? "PENDING"}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {pickData.isTop5 && userPlan === "regular" && (
+            <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
+              Top 5
+            </span>
+          )}
+
+          {pickData.isTopSignal && userPlan === "premium" && (
+            <span className="inline-flex rounded-full bg-purple-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-purple-300">
+              Top Signal #{pickData.topRank ?? 1}
+            </span>
+          )}
+
+          {pickData.isTop5 &&
+            !pickData.isTopSignal &&
+            userPlan === "premium" && (
+              <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
+                Top 5 #{pickData.topRank ?? ""}
+              </span>
+            )}
+        </div>
+      </div>
+    ) : null}
+  </article>
+);
