@@ -295,29 +295,234 @@ function findPick(game: OddsGame, sport: string): SignalGame | null {
 }
 
 function getShortTeamName(teamName: string) {
-  const words = String(teamName ?? "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const nicknameMap: Record<string, string> = {
+    // NBA
+    "Atlanta Hawks": "Hawks",
+    "Boston Celtics": "Celtics",
+    "Brooklyn Nets": "Nets",
+    "Charlotte Hornets": "Hornets",
+    "Chicago Bulls": "Bulls",
+    "Cleveland Cavaliers": "Cavaliers",
+    "Dallas Mavericks": "Mavericks",
+    "Denver Nuggets": "Nuggets",
+    "Detroit Pistons": "Pistons",
+    "Golden State Warriors": "Warriors",
+    "Houston Rockets": "Rockets",
+    "Indiana Pacers": "Pacers",
+    "LA Clippers": "Clippers",
+    "Los Angeles Clippers": "Clippers",
+    "Los Angeles Lakers": "Lakers",
+    "Memphis Grizzlies": "Grizzlies",
+    "Miami Heat": "Heat",
+    "Milwaukee Bucks": "Bucks",
+    "Minnesota Timberwolves": "Timberwolves",
+    "New Orleans Pelicans": "Pelicans",
+    "New York Knicks": "Knicks",
+    "Oklahoma City Thunder": "Thunder",
+    "Orlando Magic": "Magic",
+    "Philadelphia 76ers": "76ers",
+    "Phoenix Suns": "Suns",
+    "Portland Trail Blazers": "Blazers",
+    "Sacramento Kings": "Kings",
+    "San Antonio Spurs": "Spurs",
+    "Toronto Raptors": "Raptors",
+    "Utah Jazz": "Jazz",
+    "Washington Wizards": "Wizards",
 
-  if (words.length === 0) return "TEAM";
-  if (words.length === 1) return words[0];
+    // NHL
+    "Anaheim Ducks": "Ducks",
+    "Boston Bruins": "Bruins",
+    "Buffalo Sabres": "Sabres",
+    "Calgary Flames": "Flames",
+    "Carolina Hurricanes": "Hurricanes",
+    "Chicago Blackhawks": "Blackhawks",
+    "Colorado Avalanche": "Avalanche",
+    "Columbus Blue Jackets": "Blue Jackets",
+    "Dallas Stars": "Stars",
+    "Detroit Red Wings": "Red Wings",
+    "Edmonton Oilers": "Oilers",
+    "Florida Panthers": "Panthers",
+    "Los Angeles Kings": "Kings",
+    "Minnesota Wild": "Wild",
+    "Montreal Canadiens": "Canadiens",
+    "Nashville Predators": "Predators",
+    "New Jersey Devils": "Devils",
+    "New York Islanders": "Islanders",
+    "New York Rangers": "Rangers",
+    "Ottawa Senators": "Senators",
+    "Philadelphia Flyers": "Flyers",
+    "Pittsburgh Penguins": "Penguins",
+    "San Jose Sharks": "Sharks",
+    "Seattle Kraken": "Kraken",
+    "St. Louis Blues": "Blues",
+    "Tampa Bay Lightning": "Lightning",
+    "Toronto Maple Leafs": "Maple Leafs",
+    "Utah Hockey Club": "Utah",
+    "Vancouver Canucks": "Canucks",
+    "Vegas Golden Knights": "Golden Knights",
+    "Washington Capitals": "Capitals",
+    "Winnipeg Jets": "Jets",
 
-  const twoWordNicknames = new Set([
-    "Red Sox",
-    "White Sox",
-    "Blue Jays",
-    "Trail Blazers",
-    "Blue Jackets",
-    "Golden Knights",
-    "Maple Leafs",
-    "Red Wings",
-    "Timber Wolves",
-    "FC Dallas",
-    "Inter Miami",
-    "Real Salt",
-    "St Louis",
-  ]);
+    // MLB
+    "Arizona Diamondbacks": "Diamondbacks",
+    "Atlanta Braves": "Braves",
+    "Baltimore Orioles": "Orioles",
+    "Boston Red Sox": "Red Sox",
+    "Chicago Cubs": "Cubs",
+    "Chicago White Sox": "White Sox",
+    "Cincinnati Reds": "Reds",
+    "Cleveland Guardians": "Guardians",
+    "Colorado Rockies": "Rockies",
+    "Detroit Tigers": "Tigers",
+    "Houston Astros": "Astros",
+    "Kansas City Royals": "Royals",
+    "Los Angeles Angels": "Angels",
+    "Los Angeles Dodgers": "Dodgers",
+    "Miami Marlins": "Marlins",
+    "Milwaukee Brewers": "Brewers",
+    "Minnesota Twins": "Twins",
+    "New York Mets": "Mets",
+    "New York Yankees": "Yankees",
+    "Oakland Athletics": "Athletics",
+    "Philadelphia Phillies": "Phillies",
+    "Pittsburgh Pirates": "Pirates",
+    "San Diego Padres": "Padres",
+    "San Francisco Giants": "Giants",
+    "Seattle Mariners": "Mariners",
+    "St. Louis Cardinals": "Cardinals",
+    "Tampa Bay Rays": "Rays",
+    "Texas Rangers": "Rangers",
+    "Toronto Blue Jays": "Blue Jays",
+    "Washington Nationals": "Nationals",
+
+    // Soccer
+    "Arsenal": "Arsenal",
+    "Aston Villa": "Villa",
+    "Atlético Madrid": "Atlético",
+    "Atletico Madrid": "Atlético",
+    "Barcelona": "Barcelona",
+    "Bayern Munich": "Bayern",
+    "Borussia Dortmund": "Dortmund",
+    "Chelsea": "Chelsea",
+    "Inter Miami CF": "Inter Miami",
+    "Inter Miami": "Inter Miami",
+    "Juventus": "Juventus",
+    "Liverpool": "Liverpool",
+    "Manchester City": "Man City",
+    "Manchester United": "Man United",
+    "Paris Saint-Germain": "PSG",
+    "PSG": "PSG",
+    "Real Madrid": "Real Madrid",
+    "Tottenham Hotspur": "Tottenham",
+  };
+
+  return nicknameMap[teamName] ?? teamName;
+}
+
+function getTeamLogoUrl(teamName: string, sport: string) {
+  const logoMap: Record<string, string> = {
+    // NBA
+    "Atlanta Hawks": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+    "Boston Celtics": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+    "Brooklyn Nets": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+    "Charlotte Hornets": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+    "Chicago Bulls": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+    "Cleveland Cavaliers": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+    "Dallas Mavericks": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+    "Denver Nuggets": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+    "Detroit Pistons": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+    "Golden State Warriors": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
+    "Houston Rockets": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+    "Indiana Pacers": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+    "LA Clippers": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+    "Los Angeles Clippers": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+    "Los Angeles Lakers": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+    "Memphis Grizzlies": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+    "Miami Heat": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+    "Milwaukee Bucks": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+    "Minnesota Timberwolves": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+    "New Orleans Pelicans": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
+    "New York Knicks": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+    "Oklahoma City Thunder": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+    "Orlando Magic": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+    "Philadelphia 76ers": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+    "Phoenix Suns": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+    "Portland Trail Blazers": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
+    "Sacramento Kings": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+    "San Antonio Spurs": "https://a.espncdn.com/i/teamlogos/nba/500/sa.png",
+    "Toronto Raptors": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+    "Utah Jazz": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png",
+    "Washington Wizards": "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
+
+    // NHL
+    "Anaheim Ducks": "https://a.espncdn.com/i/teamlogos/nhl/500/ana.png",
+    "Boston Bruins": "https://a.espncdn.com/i/teamlogos/nhl/500/bos.png",
+    "Buffalo Sabres": "https://a.espncdn.com/i/teamlogos/nhl/500/buf.png",
+    "Calgary Flames": "https://a.espncdn.com/i/teamlogos/nhl/500/cgy.png",
+    "Carolina Hurricanes": "https://a.espncdn.com/i/teamlogos/nhl/500/car.png",
+    "Chicago Blackhawks": "https://a.espncdn.com/i/teamlogos/nhl/500/chi.png",
+    "Colorado Avalanche": "https://a.espncdn.com/i/teamlogos/nhl/500/col.png",
+    "Columbus Blue Jackets": "https://a.espncdn.com/i/teamlogos/nhl/500/cbj.png",
+    "Dallas Stars": "https://a.espncdn.com/i/teamlogos/nhl/500/dal.png",
+    "Detroit Red Wings": "https://a.espncdn.com/i/teamlogos/nhl/500/det.png",
+    "Edmonton Oilers": "https://a.espncdn.com/i/teamlogos/nhl/500/edm.png",
+    "Florida Panthers": "https://a.espncdn.com/i/teamlogos/nhl/500/fla.png",
+    "Los Angeles Kings": "https://a.espncdn.com/i/teamlogos/nhl/500/la.png",
+    "Minnesota Wild": "https://a.espncdn.com/i/teamlogos/nhl/500/min.png",
+    "Montreal Canadiens": "https://a.espncdn.com/i/teamlogos/nhl/500/mtl.png",
+    "Nashville Predators": "https://a.espncdn.com/i/teamlogos/nhl/500/nsh.png",
+    "New Jersey Devils": "https://a.espncdn.com/i/teamlogos/nhl/500/nj.png",
+    "New York Islanders": "https://a.espncdn.com/i/teamlogos/nhl/500/nyi.png",
+    "New York Rangers": "https://a.espncdn.com/i/teamlogos/nhl/500/nyr.png",
+    "Ottawa Senators": "https://a.espncdn.com/i/teamlogos/nhl/500/ott.png",
+    "Philadelphia Flyers": "https://a.espncdn.com/i/teamlogos/nhl/500/phi.png",
+    "Pittsburgh Penguins": "https://a.espncdn.com/i/teamlogos/nhl/500/pit.png",
+    "San Jose Sharks": "https://a.espncdn.com/i/teamlogos/nhl/500/sj.png",
+    "Seattle Kraken": "https://a.espncdn.com/i/teamlogos/nhl/500/sea.png",
+    "St. Louis Blues": "https://a.espncdn.com/i/teamlogos/nhl/500/stl.png",
+    "Tampa Bay Lightning": "https://a.espncdn.com/i/teamlogos/nhl/500/tb.png",
+    "Toronto Maple Leafs": "https://a.espncdn.com/i/teamlogos/nhl/500/tor.png",
+    "Utah Hockey Club": "https://a.espncdn.com/i/teamlogos/nhl/500/uta.png",
+    "Vancouver Canucks": "https://a.espncdn.com/i/teamlogos/nhl/500/van.png",
+    "Vegas Golden Knights": "https://a.espncdn.com/i/teamlogos/nhl/500/vgk.png",
+    "Washington Capitals": "https://a.espncdn.com/i/teamlogos/nhl/500/wsh.png",
+    "Winnipeg Jets": "https://a.espncdn.com/i/teamlogos/nhl/500/wpg.png",
+
+    // MLB
+    "Arizona Diamondbacks": "https://a.espncdn.com/i/teamlogos/mlb/500/ari.png",
+    "Atlanta Braves": "https://a.espncdn.com/i/teamlogos/mlb/500/atl.png",
+    "Baltimore Orioles": "https://a.espncdn.com/i/teamlogos/mlb/500/bal.png",
+    "Boston Red Sox": "https://a.espncdn.com/i/teamlogos/mlb/500/bos.png",
+    "Chicago Cubs": "https://a.espncdn.com/i/teamlogos/mlb/500/chc.png",
+    "Chicago White Sox": "https://a.espncdn.com/i/teamlogos/mlb/500/chw.png",
+    "Cincinnati Reds": "https://a.espncdn.com/i/teamlogos/mlb/500/cin.png",
+    "Cleveland Guardians": "https://a.espncdn.com/i/teamlogos/mlb/500/cle.png",
+    "Colorado Rockies": "https://a.espncdn.com/i/teamlogos/mlb/500/col.png",
+    "Detroit Tigers": "https://a.espncdn.com/i/teamlogos/mlb/500/det.png",
+    "Houston Astros": "https://a.espncdn.com/i/teamlogos/mlb/500/hou.png",
+    "Kansas City Royals": "https://a.espncdn.com/i/teamlogos/mlb/500/kc.png",
+    "Los Angeles Angels": "https://a.espncdn.com/i/teamlogos/mlb/500/laa.png",
+    "Los Angeles Dodgers": "https://a.espncdn.com/i/teamlogos/mlb/500/lad.png",
+    "Miami Marlins": "https://a.espncdn.com/i/teamlogos/mlb/500/mia.png",
+    "Milwaukee Brewers": "https://a.espncdn.com/i/teamlogos/mlb/500/mil.png",
+    "Minnesota Twins": "https://a.espncdn.com/i/teamlogos/mlb/500/min.png",
+    "New York Mets": "https://a.espncdn.com/i/teamlogos/mlb/500/nym.png",
+    "New York Yankees": "https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png",
+    "Oakland Athletics": "https://a.espncdn.com/i/teamlogos/mlb/500/oak.png",
+    "Philadelphia Phillies": "https://a.espncdn.com/i/teamlogos/mlb/500/phi.png",
+    "Pittsburgh Pirates": "https://a.espncdn.com/i/teamlogos/mlb/500/pit.png",
+    "San Diego Padres": "https://a.espncdn.com/i/teamlogos/mlb/500/sd.png",
+    "San Francisco Giants": "https://a.espncdn.com/i/teamlogos/mlb/500/sf.png",
+    "Seattle Mariners": "https://a.espncdn.com/i/teamlogos/mlb/500/sea.png",
+    "St. Louis Cardinals": "https://a.espncdn.com/i/teamlogos/mlb/500/stl.png",
+    "Tampa Bay Rays": "https://a.espncdn.com/i/teamlogos/mlb/500/tb.png",
+    "Texas Rangers": "https://a.espncdn.com/i/teamlogos/mlb/500/tex.png",
+    "Toronto Blue Jays": "https://a.espncdn.com/i/teamlogos/mlb/500/tor.png",
+    "Washington Nationals": "https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png",
+  };
+
+  return logoMap[teamName] ?? null;
+}
 
   const lastTwo = words.slice(-2).join(" ");
   if (twoWordNicknames.has(lastTwo)) return lastTwo;
@@ -340,7 +545,27 @@ function getTeamAbbreviation(teamName: string) {
     .join("");
 }
 
-function TeamBadge({ teamName }: { teamName: string }) {
+function TeamBadge({
+  teamName,
+  sport,
+}: {
+  teamName: string;
+  sport: string;
+}) {
+  const logoUrl = getTeamLogoUrl(teamName, sport);
+
+  if (logoUrl) {
+    return (
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1.5">
+        <img
+          src={logoUrl}
+          alt={teamName}
+          className="h-full w-full object-contain"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold tracking-[0.12em] text-white/75">
       {getTeamAbbreviation(teamName)}
@@ -588,7 +813,7 @@ export default function Home() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 space-y-4">
                       <div className="flex items-center gap-3">
-                        <TeamBadge teamName={game.away_team} />
+                        <TeamBadge teamName={game.away_team} sport={selectedSport} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
                             {getShortTeamName(game.away_team)}
@@ -597,7 +822,7 @@ export default function Home() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <TeamBadge teamName={game.home_team} />
+                        <TeamBadge teamName={game.home_team} sport={selectedSport} />
                         <div className="min-w-0">
                           <p className="truncate text-[16px] font-semibold tracking-tight text-white">
                             {getShortTeamName(game.home_team)}
