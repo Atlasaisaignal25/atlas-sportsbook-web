@@ -1,44 +1,49 @@
 {
   "sport": "NHL",
-  "date": "2026-04-12",
+  "date": "2026-04-13",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Utah Mammoth",
-      "homeTeam": "Calgary Flames",
+      "awayTeam": "Carolina Hurricanes",
+      "homeTeam": "Philadelphia Flyers",
       "pick": "Over (5.5)",
+      "startTime": "2026-04-13T23:10:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Pittsburgh Penguins",
-      "homeTeam": "Washington Capitals",
-      "pick": "Pittsburgh Penguins (+1.5)",
+      "awayTeam": "Minnesota Wild",
+      "homeTeam": "St Louis Blues",
+      "pick": "Over (5.5)",
+      "startTime": "2026-04-14T00:10:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Boston Bruins",
-      "homeTeam": "Columbus Blue Jackets",
-      "pick": "Boston Bruins (+1.5)",
+      "awayTeam": "Los Angeles Kings",
+      "homeTeam": "Seattle Kraken",
+      "pick": "Over (5.5)",
+      "startTime": "2026-04-14T01:40:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "Montréal Canadiens",
-      "homeTeam": "New York Islanders",
-      "pick": "Montréal Canadiens (+1.5)",
+      "awayTeam": "Winnipeg Jets",
+      "homeTeam": "Vegas Golden Knights",
+      "pick": "Over (5.5)",
+      "startTime": "2026-04-14T02:10:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "Ottawa Senators",
-      "homeTeam": "New Jersey Devils",
-      "pick": "New Jersey Devils (+1.5)",
+      "awayTeam": "Detroit Red Wings",
+      "homeTeam": "Tampa Bay Lightning",
+      "pick": "Detroit Red Wings (+1.5)",
+      "startTime": "2026-04-13T23:10:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

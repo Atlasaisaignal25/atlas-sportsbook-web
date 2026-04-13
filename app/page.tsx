@@ -122,13 +122,6 @@ function TeamBadge({
   }
 
   return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[10px] font-bold text-white/70">
-      {getDisplayAbbr(teamName)}
-    </div>
-  );
-}
-
-  return (
     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold text-white/70">
       {getDisplayAbbr(teamName)}
     </div>

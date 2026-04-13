@@ -1,44 +1,31 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-12",
+  "date": "2026-04-13",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Manchester City",
-      "homeTeam": "Chelsea",
-      "pick": "Manchester City -0.5",
+      "awayTeam": "Getafe",
+      "homeTeam": "Levante",
+      "pick": "Getafe ML",
+      "startTime": "2026-04-13T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Real Betis",
-      "homeTeam": "CA Osasuna",
-      "pick": "CA Osasuna -0.5",
+      "awayTeam": "Leeds United",
+      "homeTeam": "Manchester United",
+      "pick": "Under 2.5",
+      "startTime": "2026-04-13T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Rayo Vallecano",
-      "homeTeam": "Mallorca",
-      "pick": "Mallorca -0.5",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 4,
-      "awayTeam": "Villarreal",
-      "homeTeam": "Athletic Bilbao",
-      "pick": "Athletic Bilbao -0.5",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 5,
-      "awayTeam": "Le Havre",
-      "homeTeam": "Nice",
-      "pick": "Nice -0.5",
+      "awayTeam": "Lazio",
+      "homeTeam": "Fiorentina",
+      "pick": "Fiorentina ML",
+      "startTime": "2026-04-13T18:45:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

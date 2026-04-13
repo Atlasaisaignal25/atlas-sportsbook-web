@@ -1,47 +1,75 @@
 {
   "sport": "NHL",
-  "date": "2026-04-12",
+  "date": "2026-04-13",
   "games": [
     {
-      "gameId": "89b1cd5af8c961cacf717aa39b626f47",
-      "awayTeam": "Utah Mammoth",
-      "homeTeam": "Calgary Flames",
+      "gameId": "efd342f9176c794b9effd595260264d0",
+      "awayTeam": "Carolina Hurricanes",
+      "homeTeam": "Philadelphia Flyers",
       "pick": "Over (5.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "eb2e9eeee862cc6668c7304236c8b6a2",
-      "awayTeam": "Pittsburgh Penguins",
-      "homeTeam": "Washington Capitals",
-      "pick": "Pittsburgh Penguins (+1.5)",
+      "gameId": "3f7ae1ea8cc82f1934f0db4da52eb8cb",
+      "awayTeam": "Minnesota Wild",
+      "homeTeam": "St Louis Blues",
+      "pick": "Over (5.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "1d4358a4cd2a67836ece95826721475d",
-      "awayTeam": "Boston Bruins",
-      "homeTeam": "Columbus Blue Jackets",
-      "pick": "Boston Bruins (+1.5)",
+      "gameId": "a4e642bde213d01b2ee7c67659ab1b7f",
+      "awayTeam": "Los Angeles Kings",
+      "homeTeam": "Seattle Kraken",
+      "pick": "Over (5.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "89ad13fce8722c03cc9adfd62246b139",
-      "awayTeam": "Montréal Canadiens",
-      "homeTeam": "New York Islanders",
-      "pick": "Montréal Canadiens (+1.5)",
+      "gameId": "02cd436c4433adc651fc51ef06898b6d",
+      "awayTeam": "Winnipeg Jets",
+      "homeTeam": "Vegas Golden Knights",
+      "pick": "Over (5.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "ed6cfdc51af955fef6aef5a50b31a653",
-      "awayTeam": "Ottawa Senators",
-      "homeTeam": "New Jersey Devils",
-      "pick": "New Jersey Devils (+1.5)",
+      "gameId": "f85edd1853a7f222a98966be1584348d",
+      "awayTeam": "Detroit Red Wings",
+      "homeTeam": "Tampa Bay Lightning",
+      "pick": "Detroit Red Wings (+1.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "85a783c58b0e8c374840728506c370ce",
-      "awayTeam": "Vancouver Canucks",
-      "homeTeam": "Anaheim Ducks",
-      "pick": "Anaheim Ducks",
+      "gameId": "71a2a22f2aeb6a68b093f9d31ffe835a",
+      "awayTeam": "New York Rangers",
+      "homeTeam": "Florida Panthers",
+      "pick": "Florida Panthers (+1.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "7c23e65aed95672326f5b51d78a18746",
+      "awayTeam": "Dallas Stars",
+      "homeTeam": "Toronto Maple Leafs",
+      "pick": "Dallas Stars",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "472be2fa83d65418ccd23cfe75d5ae49",
+      "awayTeam": "San Jose Sharks",
+      "homeTeam": "Nashville Predators",
+      "pick": "Nashville Predators",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "543fd68bbc58d6300577c48ced1fe675",
+      "awayTeam": "Buffalo Sabres",
+      "homeTeam": "Chicago Blackhawks",
+      "pick": "Buffalo Sabres",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "63a04dd550f7203005f749be9394826c",
+      "awayTeam": "Colorado Avalanche",
+      "homeTeam": "Edmonton Oilers",
+      "pick": "Colorado Avalanche",
       "status": "PENDING"
     }
   ]
