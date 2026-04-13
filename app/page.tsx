@@ -731,7 +731,43 @@ useEffect(() => {
 
       <section className="flex-1 space-y-3 px-4 py-4">
         {viewMode === "live" ? (
-          liveLoading ? (
+  <>
+    <div className="mb-1 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <button
+        onClick={() => setActiveDay("yesterday")}
+        className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
+          activeDay === "yesterday"
+            ? "bg-cyan-500 text-black"
+            : "bg-white/10 text-white/65"
+        }`}
+      >
+        Yesterday
+      </button>
+
+      <button
+        onClick={() => setActiveDay("today")}
+        className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
+          activeDay === "today"
+            ? "bg-cyan-500 text-black"
+            : "bg-white/10 text-white/65"
+        }`}
+      >
+        Today
+      </button>
+
+      <button
+        onClick={() => setActiveDay("tomorrow")}
+        className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
+          activeDay === "tomorrow"
+            ? "bg-cyan-500 text-black"
+            : "bg-white/10 text-white/65"
+        }`}
+      >
+        Tomorrow
+      </button>
+    </div>
+
+    {liveLoading ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
               Loading live games...
             </div>
