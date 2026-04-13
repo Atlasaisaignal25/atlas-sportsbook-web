@@ -122,7 +122,7 @@ function TeamBadge({
   }
 
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[11px] font-bold text-white/70">
+    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[10px] font-bold text-white/70">
       {getDisplayAbbr(teamName)}
     </div>
   );
@@ -622,8 +622,21 @@ export default function Home() {
                     </p>
                   </div>
 
-                 <div className="flex items-start justify-between gap-3">
-  <div className="w-[112px] shrink-0 pt-1">
+                 <div className="mt-2">
+  <div className="mb-2 grid grid-cols-[128px_70px_70px_70px] gap-x-[6px]">
+    <div />
+    <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+      Spread
+    </div>
+    <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/75">
+      Total
+    </div>
+    <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+      ML
+    </div>
+  </div>
+
+  <div className="grid grid-cols-[128px_70px_70px_70px] gap-x-[6px] gap-y-[8px] items-center">
     <div className="flex items-center gap-2.5">
       <TeamBadge teamName={game.away_team} sport={selectedSport} />
       <p className="truncate text-[16px] font-medium tracking-tight text-white">
@@ -631,73 +644,59 @@ export default function Home() {
       </p>
     </div>
 
-    <div className="mt-[18px] flex items-center gap-2.5">
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+      <span className="text-[13px] font-semibold leading-none text-white">
+        {awaySpread}
+      </span>
+      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
+        {awaySpreadPrice}
+      </span>
+    </div>
+
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+      <span className="text-[13px] font-semibold leading-none text-white">
+        {totalValues.overLabel}
+      </span>
+      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
+        {totalPrices.overPrice}
+      </span>
+    </div>
+
+    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
+      <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
+        {awayOdds !== null ? formatAmericanOdds(awayOdds) : "N/A"}
+      </span>
+    </div>
+
+    <div className="flex items-center gap-2.5">
       <TeamBadge teamName={game.home_team} sport={selectedSport} />
       <p className="truncate text-[16px] font-medium tracking-tight text-white">
         {getDisplayAbbr(game.home_team)}
       </p>
     </div>
-  </div>
 
-  <div className="ml-auto w-[222px] shrink-0">
-    <div className="grid grid-cols-3 gap-x-[5px] gap-y-[4px]">
-      <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
-        Spread
-      </div>
-      <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/75">
-        Total
-      </div>
-      <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
-        ML
-      </div>
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+      <span className="text-[13px] font-semibold leading-none text-white">
+        {homeSpread}
+      </span>
+      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
+        {homeSpreadPrice}
+      </span>
+    </div>
 
-      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[13px] font-semibold leading-none text-white">
-          {awaySpread}
-        </span>
-        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-          {awaySpreadPrice}
-        </span>
-      </div>
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+      <span className="text-[13px] font-semibold leading-none text-white">
+        {totalValues.underLabel}
+      </span>
+      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
+        {totalPrices.underPrice}
+      </span>
+    </div>
 
-      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[13px] font-semibold leading-none text-white">
-          {totalValues.overLabel}
-        </span>
-        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-          {totalPrices.overPrice}
-        </span>
-      </div>
-
-      <div className="flex h-[66px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
-          {awayOdds !== null ? formatAmericanOdds(awayOdds) : "N/A"}
-        </span>
-      </div>
-
-      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[13px] font-semibold leading-none text-white">
-          {homeSpread}
-        </span>
-        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-          {homeSpreadPrice}
-        </span>
-      </div>
-
-      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[13px] font-semibold leading-none text-white">
-          {totalValues.underLabel}
-        </span>
-        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-          {totalPrices.underPrice}
-        </span>
-      </div>
-
-      <div className="flex h-[66px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
-          {homeOdds !== null ? formatAmericanOdds(homeOdds) : "N/A"}
-        </span>
-      </div>
+    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
+      <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
+        {homeOdds !== null ? formatAmericanOdds(homeOdds) : "N/A"}
+      </span>
     </div>
   </div>
 </div>
