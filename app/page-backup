@@ -657,7 +657,7 @@ export default function Home() {
       </p>
     </div>
 
-    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/[0.08] border border-white/[0.06] text-center">
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
       <span className="text-[13px] font-semibold leading-none text-white">
         {awaySpread}
       </span>
@@ -666,7 +666,7 @@ export default function Home() {
       </span>
     </div>
 
-    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/[0.08] border border-white/[0.06] text-center">
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
       <span className="text-[13px] font-semibold leading-none text-white">
         {totalValues.overLabel}
       </span>
@@ -675,7 +675,7 @@ export default function Home() {
       </span>
     </div>
 
-    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] bg-white/[0.08] border border-white/[0.06] text-center">
+    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
       <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
         {awayOdds !== null ? formatAmericanOdds(awayOdds) : "N/A"}
       </span>
@@ -688,7 +688,7 @@ export default function Home() {
       </p>
     </div>
 
-    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/[0.08] border border-white/[0.06] text-center">
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
       <span className="text-[13px] font-semibold leading-none text-white">
         {homeSpread}
       </span>
@@ -697,7 +697,7 @@ export default function Home() {
       </span>
     </div>
 
-    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/[0.08] border border-white/[0.06] text-center">
+    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
       <span className="text-[13px] font-semibold leading-none text-white">
         {totalValues.underLabel}
       </span>
@@ -706,7 +706,7 @@ export default function Home() {
       </span>
     </div>
 
-    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] bg-white/[0.08] border border-white/[0.06] text-center">
+    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
       <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
         {homeOdds !== null ? formatAmericanOdds(homeOdds) : "N/A"}
       </span>
