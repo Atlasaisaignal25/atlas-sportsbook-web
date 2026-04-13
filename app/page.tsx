@@ -252,6 +252,36 @@ function formatTime(dateString: string) {
   });
 }
 
+function getLiveSportFromKey(sportKey: string): SportTab {
+  if (sportKey.includes("basketball")) return "NBA";
+  if (sportKey.includes("icehockey")) return "NHL";
+  if (sportKey.includes("baseball")) return "MLB";
+  return "SOCCER";
+}
+
+function getLeagueDisplayName(sportKey: string) {
+  const leagueMap: Record<string, string> = {
+    basketball_nba: "NBA (Estados Unidos)",
+    icehockey_nhl: "NHL (Estados Unidos)",
+    baseball_mlb: "MLB (Estados Unidos)",
+    soccer_epl: "Premier League (Inglaterra)",
+    soccer_spain_la_liga: "La Liga (España)",
+    soccer_italy_serie_a: "Serie A (Italia)",
+    soccer_germany_bundesliga: "Bundesliga (Alemania)",
+    soccer_france_ligue_one: "Ligue 1 (Francia)",
+    soccer_usa_mls: "MLS (Estados Unidos)",
+    soccer_mexico_ligamx: "Liga MX (México)",
+    soccer_uefa_champs_league: "Champions League",
+    soccer_uefa_europa_league: "Europa League",
+    soccer_uefa_europa_conference_league: "Conference League",
+  };
+
+  return (
+    leagueMap[sportKey] ??
+    sportKey.replace(/^soccer_/, "").replace(/_/g, " ").toUpperCase()
+  );
+}
+
 function formatDisplayedPick(rawPick: string, sport: string) {
   const pick = String(rawPick ?? "").trim();
 
@@ -440,6 +470,27 @@ const [liveLoading, setLiveLoading] = useState(false);
   []
 );
 
+const groupedLiveGames = useMemo(() => {
+  const groups: Record<string, LiveScore[]> = {};
+
+  liveGames.forEach((game) => {
+    const key = game.sport_key || "unknown";
+
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+
+    groups[key].push(game);
+  });
+
+  return Object.entries(groups).map(([leagueKey, games]) => ({
+    leagueKey,
+    title: getLeagueDisplayName(leagueKey),
+    sport: getLiveSportFromKey(leagueKey),
+    games,
+  }));
+}, [liveGames]);
+
   useEffect(() => {
   async function loadGames() {
     try {
@@ -582,145 +633,132 @@ useEffect(() => {
   <button
     onClick={() => setViewMode("live")}
     className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
-      viewMode === "live"
-        ? "bg-cyan-500 text-black"
-        : "bg-white/10 text-white/70"
-    }`}
-  >
-    Live
-  </button>
-</div>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {sportsTabs.map((sport) => (
-              <button
-                key={sport}
-                onClick={() => setSelectedSport(sport)}
-                className={`min-w-[88px] whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                  selectedSport === sport
-                    ? "bg-cyan-500 text-black"
-                    : "bg-white/10 text-white/70"
-                }`}
-              >
-                {sport}
-              </button>
-            ))}
-          </div>
-        </header>
-
-        <section className="flex-1 space-y-3 px-4 py-4">
-  {viewMode === "live" ? (
-    liveLoading ? (
-      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-        Loading live games...
-      </div>
-    ) : liveGames.length === 0 ? (
-      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-        No live games available.
-      </div>
-    ) : (
-      <div className="space-y-3">
-        {liveGames.map((game, idx) => {
-          const awayScore =
-            game.scores?.find((s) => s.name === game.away_team)?.score ?? "-";
-          const homeScore =
-            game.scores?.find((s) => s.name === game.home_team)?.score ?? "-";
-
-          const liveSport: SportTab =
-            game.sport_key.includes("basketball")
-              ? "NBA"
-              : game.sport_key.includes("icehockey")
-                ? "NHL"
-                : game.sport_key.includes("baseball")
-                  ? "MLB"
-                  : "SOCCER";
-
-          return (
-  <article
-    key={`${game.id}-${idx}`}
-    className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-  >
-    <div className="mb-3 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
-          {liveSport}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span
-          className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-            game.completed
-              ? "bg-white/10 text-white/65"
-              : "bg-red-500/15 text-red-300"
-          }`}
+      {viewMode === "live" ? (
+  liveLoading ? (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+      Loading live games...
+    </div>
+  ) : groupedLiveGames.length === 0 ? (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+      No live games available.
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {groupedLiveGames.map((group) => (
+        <article
+          key={group.leagueKey}
+          className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.04]"
         >
-          {game.completed ? "Final" : "Live"}
-        </span>
+          <div className="border-b border-white/10 px-4 py-3">
+            <p className="text-[15px] font-semibold tracking-tight text-white">
+              {group.title}
+            </p>
+          </div>
 
-        <span className="text-[11px] font-medium text-cyan-300/80">
-          {formatTime(game.commence_time)}
-        </span>
-      </div>
+          <div>
+            {group.games.map((game, idx) => {
+              const awayScore =
+                game.scores?.find((s) => s.name === game.away_team)?.score ?? "-";
+              const homeScore =
+                game.scores?.find((s) => s.name === game.home_team)?.score ?? "-";
+
+              return (
+                <div
+                  key={`${game.id}-${idx}`}
+                  className={`px-4 py-4 ${
+                    idx !== group.games.length - 1 ? "border-b border-white/10" : ""
+                  }`}
+                >
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                    <div className="min-w-0 text-left">
+                      <div className="flex items-center gap-2.5">
+                        <p className="truncate text-[16px] font-medium text-white">
+                          {game.away_team}
+                        </p>
+                        <TeamBadge teamName={game.away_team} sport={group.sport} />
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2.5">
+                        <p className="truncate text-[16px] font-medium text-white">
+                          {game.home_team}
+                        </p>
+                        <TeamBadge teamName={game.home_team} sport={group.sport} />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center px-2 text-center">
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          game.completed ? "text-white/60" : "text-red-300"
+                        }`}
+                      >
+                        {game.completed ? "FINAL" : formatTime(game.commence_time)}
+                      </span>
+
+                      <div className="mt-2 flex items-center gap-3">
+                        <span className="text-[22px] font-bold leading-none text-white">
+                          {awayScore}
+                        </span>
+                        <span className="text-[22px] font-bold leading-none text-white/55">
+                          -
+                        </span>
+                        <span className="text-[22px] font-bold leading-none text-white">
+                          {homeScore}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="min-w-0 text-right">
+                      <div className="flex items-center justify-end gap-2.5">
+                        <TeamBadge teamName={game.away_team} sport={group.sport} />
+                        <p className="truncate text-[16px] font-medium text-white">
+                          {getDisplayAbbr(game.away_team)}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-end gap-2.5">
+                        <TeamBadge teamName={game.home_team} sport={group.sport} />
+                        <p className="truncate text-[16px] font-medium text-white">
+                          {getDisplayAbbr(game.home_team)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-3">
+                    <div className="rounded-full bg-black/60 px-3 py-2 text-center">
+                      <p className="text-[12px] font-semibold text-white">Live ML</p>
+                    </div>
+
+                    <div className="rounded-full bg-black/60 px-3 py-2 text-center">
+                      <p className="text-[12px] font-semibold text-white">Live O/U</p>
+                    </div>
+
+                    <div className="rounded-full bg-black/60 px-3 py-2 text-center">
+                      <p className="text-[12px] font-semibold text-white">Live Spread</p>
+                    </div>
+                  </div>
+
+                  {/* LIVE SIGNAL DETECTED - lo activamos después
+                  <div className="mt-3 rounded-[14px] border border-cyan-400/20 bg-cyan-400/10 px-3 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+                      Live Signal Detected
+                    </p>
+                    <p className="mt-1 text-[14px] font-semibold text-white">
+                      Heat +8.5
+                    </p>
+                  </div>
+                  */}
+                </div>
+              );
+            })}
+          </div>
+        </article>
+      ))}
     </div>
+  )
+) : loading ? (
 
-    <div className="space-y-3">
-      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <TeamBadge teamName={game.away_team} sport={liveSport} />
-          <p className="truncate text-[17px] font-medium tracking-tight text-white">
-            {getDisplayAbbr(game.away_team)}
-          </p>
-        </div>
-
-        <p className="text-[28px] font-bold leading-none text-white">
-          {awayScore}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <TeamBadge teamName={game.home_team} sport={liveSport} />
-          <p className="truncate text-[17px] font-medium tracking-tight text-white">
-            {getDisplayAbbr(game.home_team)}
-          </p>
-        </div>
-
-        <p className="text-[28px] font-bold leading-none text-white">
-          {homeScore}
-        </p>
-      </div>
-    </div>
-
-    <div className="mt-3 grid grid-cols-3 gap-2">
-      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.05] px-2 py-2 text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-          Spread
-        </p>
-        <p className="mt-1 text-[12px] font-semibold text-white">Live</p>
-      </div>
-
-      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.05] px-2 py-2 text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-          Total
-        </p>
-        <p className="mt-1 text-[12px] font-semibold text-white">Live</p>
-      </div>
-
-      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.05] px-2 py-2 text-center">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-          ML
-        </p>
-        <p className="mt-1 text-[12px] font-semibold text-white">Live</p>
-      </div>
-    </div>
-  </article>
-);
-        })}
-      </div>
-    )
-  ) : loading ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
               Loading {selectedSport} games...
             </div>
