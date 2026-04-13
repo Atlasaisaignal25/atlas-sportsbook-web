@@ -61,6 +61,16 @@ type TopSignalCard = Top5Entry & {
   sport: "MLB" | "NBA" | "NHL" | "SOCCER";
 };
 
+const mlbSignalsData = mlbSignals as { games: SignalGame[] };
+const nbaSignalsData = nbaSignals as { games: SignalGame[] };
+const nhlSignalsData = nhlSignals as { games: SignalGame[] };
+const soccerSignalsData = soccerSignals as { games: SignalGame[] };
+
+const mlbTop5Data = mlbTop5 as { top5: Top5Entry[] };
+const nbaTop5Data = nbaTop5 as { top5: Top5Entry[] };
+const nhlTop5Data = nhlTop5 as { top5: Top5Entry[] };
+const soccerTop5Data = soccerTop5 as { top5: Top5Entry[] };
+
 const sportsTabs = ["TOP", "NHL", "NBA", "MLB", "NFL", "SOCCER"] as const;
 type SportTab = (typeof sportsTabs)[number];
 
@@ -309,14 +319,15 @@ function isSameMatch(
 
 function findPick(game: OddsGame, sport: string): SignalGame | null {
   if (sport === "MLB") {
-    const direct = mlbSignals.games.find(
+    const direct = mlbSignalsData.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
     const baseMatch =
-      direct || mlbSignals.games.find((g) => isSameMatch(game, g)) || null;
+      direct || mlbSignalsData.games.find((g) => isSameMatch(game, g)) || null;
     if (!baseMatch) return null;
 
-    const top5Match = mlbTop5.top5.find((g) => isSameMatch(game, g)) || null;
+    const top5Match =
+      mlbTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
 
     return {
       ...baseMatch,
@@ -327,14 +338,15 @@ function findPick(game: OddsGame, sport: string): SignalGame | null {
   }
 
   if (sport === "NBA") {
-    const direct = nbaSignals.games.find(
+    const direct = nbaSignalsData.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
     const baseMatch =
-      direct || nbaSignals.games.find((g) => isSameMatch(game, g)) || null;
+      direct || nbaSignalsData.games.find((g) => isSameMatch(game, g)) || null;
     if (!baseMatch) return null;
 
-    const top5Match = nbaTop5.top5.find((g) => isSameMatch(game, g)) || null;
+    const top5Match =
+      nbaTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
 
     return {
       ...baseMatch,
@@ -345,14 +357,15 @@ function findPick(game: OddsGame, sport: string): SignalGame | null {
   }
 
   if (sport === "NHL") {
-    const direct = nhlSignals.games.find(
+    const direct = nhlSignalsData.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
     const baseMatch =
-      direct || nhlSignals.games.find((g) => isSameMatch(game, g)) || null;
+      direct || nhlSignalsData.games.find((g) => isSameMatch(game, g)) || null;
     if (!baseMatch) return null;
 
-    const top5Match = nhlTop5.top5.find((g) => isSameMatch(game, g)) || null;
+    const top5Match =
+      nhlTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
 
     return {
       ...baseMatch,
@@ -363,15 +376,15 @@ function findPick(game: OddsGame, sport: string): SignalGame | null {
   }
 
   if (sport === "SOCCER") {
-    const direct = soccerSignals.games.find(
+    const direct = soccerSignalsData.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
     const baseMatch =
-      direct || soccerSignals.games.find((g) => isSameMatch(game, g)) || null;
+      direct || soccerSignalsData.games.find((g) => isSameMatch(game, g)) || null;
     if (!baseMatch) return null;
 
     const top5Match =
-      soccerTop5.top5.find((g) => isSameMatch(game, g)) || null;
+      soccerTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
 
     return {
       ...baseMatch,
@@ -391,23 +404,23 @@ export default function Home() {
   const [userPlan] = useState<"free" | "regular" | "premium">("premium");
 
   const topSignals: TopSignalCard[] = useMemo(
-    () =>
-      [
-        mlbTop5.top5?.[0]
-          ? { ...(mlbTop5.top5[0] as Top5Entry), sport: "MLB" as const }
-          : null,
-        nbaTop5.top5?.[0]
-          ? { ...(nbaTop5.top5[0] as Top5Entry), sport: "NBA" as const }
-          : null,
-        nhlTop5.top5?.[0]
-          ? { ...(nhlTop5.top5[0] as Top5Entry), sport: "NHL" as const }
-          : null,
-        soccerTop5.top5?.[0]
-          ? { ...(soccerTop5.top5[0] as Top5Entry), sport: "SOCCER" as const }
-          : null,
-      ].filter((pick): pick is TopSignalCard => Boolean(pick)),
-    []
-  );
+  () =>
+    [
+      mlbTop5Data.top5?.[0]
+        ? { ...(mlbTop5Data.top5[0] as Top5Entry), sport: "MLB" as const }
+        : null,
+      nbaTop5Data.top5?.[0]
+        ? { ...(nbaTop5Data.top5[0] as Top5Entry), sport: "NBA" as const }
+        : null,
+      nhlTop5Data.top5?.[0]
+        ? { ...(nhlTop5Data.top5[0] as Top5Entry), sport: "NHL" as const }
+        : null,
+      soccerTop5Data.top5?.[0]
+        ? { ...(soccerTop5Data.top5[0] as Top5Entry), sport: "SOCCER" as const }
+        : null,
+    ].filter((pick): pick is TopSignalCard => Boolean(pick)),
+  []
+);
 
   useEffect(() => {
     async function loadGames() {
