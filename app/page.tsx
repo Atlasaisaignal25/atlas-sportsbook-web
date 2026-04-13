@@ -282,6 +282,29 @@ function getLeagueDisplayName(sportKey: string) {
   );
 }
 
+function getDayKey(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getRelativeDayKey(offset: -1 | 0 | 1) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + offset);
+  return getDayKey(d);
+}
+
+function getGameDayKey(dateString: string) {
+  const d = new Date(dateString);
+  return getDayKey(d);
+}
+
+function isGameLive(game: LiveScore) {
+  return !game.completed && Array.isArray(game.scores) && game.scores.length > 0;
+}
+
 function formatDisplayedPick(rawPick: string, sport: string) {
   const pick = String(rawPick ?? "").trim();
 
@@ -450,6 +473,7 @@ export default function Home() {
 const [viewMode, setViewMode] = useState<"odds" | "live">("odds");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
 const [liveLoading, setLiveLoading] = useState(false);
+const [activeDay, setActiveDay] = useState<"yesterday" | "today" | "tomorrow">("today");
 
   const topSignals: TopSignalCard[] = useMemo(
   () =>
@@ -490,6 +514,51 @@ const groupedLiveGames = useMemo(() => {
     games,
   }));
 }, [liveGames]);
+
+const filteredLiveGames = useMemo(() => {
+  const todayKey = getRelativeDayKey(0);
+  const yesterdayKey = getRelativeDayKey(-1);
+  const tomorrowKey = getRelativeDayKey(1);
+
+  const targetDayKey =
+    activeDay === "today"
+      ? todayKey
+      : activeDay === "yesterday"
+        ? yesterdayKey
+        : tomorrowKey;
+
+  return liveGames.filter((game) => {
+    const gameDayKey = getGameDayKey(game.commence_time);
+    const live = isGameLive(game);
+
+    if (activeDay === "today") {
+      return gameDayKey === todayKey || live;
+    }
+
+    return gameDayKey === targetDayKey;
+  });
+}, [liveGames, activeDay]);
+
+const groupedFilteredLiveGames = useMemo(() => {
+  const groups: Record<string, LiveScore[]> = {};
+
+  filteredLiveGames.forEach((game) => {
+    const key = game.sport_key || "unknown";
+
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+
+    groups[key].push(game);
+  });
+
+  return Object.entries(groups).map(([leagueKey, games]) => ({
+    leagueKey,
+    title: getLeagueDisplayName(leagueKey),
+    sport: getLiveSportFromKey(leagueKey),
+    games,
+  }));
+}, [filteredLiveGames]);
 
   useEffect(() => {
   async function loadGames() {
@@ -666,13 +735,13 @@ useEffect(() => {
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
               Loading live games...
             </div>
-          ) : groupedLiveGames.length === 0 ? (
+          ) : groupedFilteredLiveGames.length === 0 ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
               No live games available.
             </div>
           ) : (
             <div className="space-y-4">
-              {groupedLiveGames.map((group) => (
+              {groupedFilteredLiveGames.map((group) => (
                 <article
                   key={group.leagueKey}
                   className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.04]"
