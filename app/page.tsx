@@ -64,6 +64,7 @@ type TopSignalCard = Top5Entry & {
 type LiveScore = {
   id: string;
   sport_key: string;
+  sport_title?: string;
   commence_time: string;
   home_team: string;
   away_team: string;
@@ -636,54 +637,86 @@ useEffect(() => {
                   : "SOCCER";
 
           return (
-            <article
-              key={`${game.id}-${idx}`}
-              className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
-                    {liveSport}
-                  </p>
-                  <p className="mt-2 text-[13px] font-medium text-white/55">
-                    {game.completed ? "Final" : "Live"}
-                  </p>
-                </div>
+  <article
+    key={`${game.id}-${idx}`}
+    className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+  >
+    <div className="mb-3 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/55">
+          {liveSport}
+        </span>
+      </div>
 
-                <p className="text-[12px] font-medium text-cyan-300/80">
-                  {formatTime(game.commence_time)}
-                </p>
-              </div>
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+            game.completed
+              ? "bg-white/10 text-white/65"
+              : "bg-red-500/15 text-red-300"
+          }`}
+        >
+          {game.completed ? "Final" : "Live"}
+        </span>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <TeamBadge teamName={game.away_team} sport={liveSport} />
-                    <p className="truncate text-[18px] font-medium tracking-tight text-white">
-                      {getDisplayAbbr(game.away_team)}
-                    </p>
-                  </div>
+        <span className="text-[11px] font-medium text-cyan-300/80">
+          {formatTime(game.commence_time)}
+        </span>
+      </div>
+    </div>
 
-                  <p className="text-[30px] font-bold leading-none text-white">
-                    {awayScore}
-                  </p>
-                </div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <TeamBadge teamName={game.away_team} sport={liveSport} />
+          <p className="truncate text-[17px] font-medium tracking-tight text-white">
+            {getDisplayAbbr(game.away_team)}
+          </p>
+        </div>
 
-                <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <TeamBadge teamName={game.home_team} sport={liveSport} />
-                    <p className="truncate text-[18px] font-medium tracking-tight text-white">
-                      {getDisplayAbbr(game.home_team)}
-                    </p>
-                  </div>
+        <p className="text-[28px] font-bold leading-none text-white">
+          {awayScore}
+        </p>
+      </div>
 
-                  <p className="text-[30px] font-bold leading-none text-white">
-                    {homeScore}
-                  </p>
-                </div>
-              </div>
-            </article>
-          );
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <TeamBadge teamName={game.home_team} sport={liveSport} />
+          <p className="truncate text-[17px] font-medium tracking-tight text-white">
+            {getDisplayAbbr(game.home_team)}
+          </p>
+        </div>
+
+        <p className="text-[28px] font-bold leading-none text-white">
+          {homeScore}
+        </p>
+      </div>
+    </div>
+
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.05] px-2 py-2 text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          Spread
+        </p>
+        <p className="mt-1 text-[12px] font-semibold text-white">Live</p>
+      </div>
+
+      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.05] px-2 py-2 text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          Total
+        </p>
+        <p className="mt-1 text-[12px] font-semibold text-white">Live</p>
+      </div>
+
+      <div className="rounded-[14px] border border-white/[0.06] bg-white/[0.05] px-2 py-2 text-center">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          ML
+        </p>
+        <p className="mt-1 text-[12px] font-semibold text-white">Live</p>
+      </div>
+    </div>
+  </article>
+);
         })}
       </div>
     )
