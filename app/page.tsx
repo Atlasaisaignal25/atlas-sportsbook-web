@@ -61,6 +61,19 @@ type TopSignalCard = Top5Entry & {
   sport: "MLB" | "NBA" | "NHL" | "SOCCER";
 };
 
+type LiveScore = {
+  id: string;
+  sport_key: string;
+  commence_time: string;
+  home_team: string;
+  away_team: string;
+  completed?: boolean;
+  scores?: Array<{
+    name: string;
+    score: string;
+  }>;
+};
+
 const mlbSignalsData = mlbSignals as { games: SignalGame[] };
 const nbaSignalsData = nbaSignals as { games: SignalGame[] };
 const nhlSignalsData = nhlSignals as { games: SignalGame[] };
@@ -403,6 +416,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [userPlan] = useState<"free" | "regular" | "premium">("premium");
 
+const [viewMode, setViewMode] = useState<"odds" | "live">("odds");
+const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
+const [liveLoading, setLiveLoading] = useState(false);
+
   const topSignals: TopSignalCard[] = useMemo(
   () =>
     [
@@ -502,6 +519,34 @@ export default function Home() {
       }
     }
 
+useEffect(() => {
+  async function loadLiveGames() {
+    if (viewMode !== "live") return;
+
+    try {
+      setLiveLoading(true);
+
+      const sportForLive =
+        selectedSport === "TOP" || selectedSport === "NFL"
+          ? "NBA"
+          : selectedSport;
+
+      const res = await fetch(`/api/scores?sport=${sportForLive}`, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+      setLiveGames(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setLiveGames([]);
+    } finally {
+      setLiveLoading(false);
+    }
+  }
+
+  loadLiveGames();
+}, [viewMode, selectedSport]);
+
     loadGames();
   }, [selectedSport]);
 
@@ -520,13 +565,28 @@ export default function Home() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button className="rounded-full bg-cyan-500 px-4 py-2 text-sm font-semibold text-black">
-                Odds
-              </button>
-              <button className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/70">
-                Live
-              </button>
-            </div>
+  <button
+    onClick={() => setViewMode("odds")}
+    className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+      viewMode === "odds"
+        ? "bg-cyan-500 text-black"
+        : "bg-white/10 text-white/70"
+    }`}
+  >
+    Odds
+  </button>
+
+  <button
+    onClick={() => setViewMode("live")}
+    className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+      viewMode === "live"
+        ? "bg-cyan-500 text-black"
+        : "bg-white/10 text-white/70"
+    }`}
+  >
+    Live
+  </button>
+</div>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
