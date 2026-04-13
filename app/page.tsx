@@ -609,7 +609,6 @@ useEffect(() => {
         </header>
 
         <section className="flex-1 space-y-3 px-4 py-4">
-          <section className="flex-1 space-y-3 px-4 py-4">
   {viewMode === "live" ? (
     liveLoading ? (
       <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
