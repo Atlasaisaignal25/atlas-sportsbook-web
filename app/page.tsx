@@ -731,134 +731,160 @@ useEffect(() => {
 
       <section className="flex-1 space-y-3 px-4 py-4">
         {viewMode === "live" ? (
-  <>
-    <div className="mb-1 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-      <button
-        onClick={() => setActiveDay("yesterday")}
-        className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
-          activeDay === "yesterday"
-            ? "bg-cyan-500 text-black"
-            : "bg-white/10 text-white/65"
-        }`}
-      >
-        Yesterday
-      </button>
+          <>
+            <div className="mb-1 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <button
+                onClick={() => setActiveDay("yesterday")}
+                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
+                  activeDay === "yesterday"
+                    ? "bg-cyan-500 text-black"
+                    : "bg-white/10 text-white/65"
+                }`}
+              >
+                Ayer
+              </button>
 
-      <button
-        onClick={() => setActiveDay("today")}
-        className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
-          activeDay === "today"
-            ? "bg-cyan-500 text-black"
-            : "bg-white/10 text-white/65"
-        }`}
-      >
-        Today
-      </button>
+              <button
+                onClick={() => setActiveDay("today")}
+                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
+                  activeDay === "today"
+                    ? "bg-cyan-500 text-black"
+                    : "bg-white/10 text-white/65"
+                }`}
+              >
+                Hoy
+              </button>
 
-      <button
-        onClick={() => setActiveDay("tomorrow")}
-        className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
-          activeDay === "tomorrow"
-            ? "bg-cyan-500 text-black"
-            : "bg-white/10 text-white/65"
-        }`}
-      >
-        Tomorrow
-      </button>
-    </div>
-
-    {liveLoading ? (
-            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-              Loading live games...
+              <button
+                onClick={() => setActiveDay("tomorrow")}
+                className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-all ${
+                  activeDay === "tomorrow"
+                    ? "bg-cyan-500 text-black"
+                    : "bg-white/10 text-white/65"
+                }`}
+              >
+                Mañana
+              </button>
             </div>
-          ) : groupedFilteredLiveGames.length === 0 ? (
-            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-              No live games available.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {groupedFilteredLiveGames.map((group) => (
-                <article
-                  key={group.leagueKey}
-                  className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.04]"
-                >
-                  <div className="border-b border-white/10 px-4 py-3">
-                    <p className="text-[15px] font-semibold tracking-tight text-white">
-                      {group.title}
-                    </p>
-                  </div>
 
-                  <div>
-                    {group.games.map((game, idx) => {
-                      const awayScore =
-                        game.scores?.find((s) => s.name === game.away_team)
-                          ?.score ?? "-";
-                      const homeScore =
-                        game.scores?.find((s) => s.name === game.home_team)
-                          ?.score ?? "-";
+            {liveLoading ? (
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+                Loading live games...
+              </div>
+            ) : groupedFilteredLiveGames.length === 0 ? (
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+                No live games available.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {groupedFilteredLiveGames.map((group) => (
+                  <article
+                    key={group.leagueKey}
+                    className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.04]"
+                  >
+                    <div className="border-b border-white/10 px-4 py-3">
+                      <p className="text-[15px] font-semibold tracking-tight text-white">
+                        {group.title}
+                      </p>
+                    </div>
 
-                      return (
-  <div
-    key={`${game.id}-${idx}`}
-    className={`px-4 py-4 ${
-      idx !== group.games.length - 1 ? "border-b border-white/10" : ""
-    }`}
-  >
-    {/* FILA PRINCIPAL */}
-    <div className="flex items-center justify-between">
-      
-      {/* EQUIPO IZQUIERDA */}
-      <div className="flex items-center gap-2.5 min-w-0 w-[40%]">
-        <TeamBadge teamName={game.away_team} sport={group.sport} />
-        <p className="truncate text-[14px] font-medium text-white">
-          {game.away_team}
-        </p>
-      </div>
+                    <div>
+                      {group.games.map((game, idx) => {
+                        const awayScore =
+                          game.scores?.find((s) => s.name === game.away_team)
+                            ?.score ?? "-";
+                        const homeScore =
+                          game.scores?.find((s) => s.name === game.home_team)
+                            ?.score ?? "-";
 
-      {/* CENTRO */}
-      <div className="flex flex-col items-center justify-center w-[20%]">
-        <span className="text-[12px] font-medium text-white/60">
-          {game.completed ? "FINAL" : formatTime(game.commence_time)}
-        </span>
+                        return (
+                          <div
+                            key={`${game.id}-${idx}`}
+                            className={`px-4 py-4 ${
+                              idx !== group.games.length - 1
+                                ? "border-b border-white/10"
+                                : ""
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex min-w-0 w-[40%] items-center gap-2.5">
+                                <TeamBadge
+                                  teamName={game.away_team}
+                                  sport={group.sport}
+                                />
+                                <p className="truncate text-[14px] font-medium text-white">
+                                  {game.away_team}
+                                </p>
+                              </div>
 
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-[16px] font-bold">{awayScore}</span>
-          <span className="text-white/50">-</span>
-          <span className="text-[16px] font-bold">{homeScore}</span>
-        </div>
-      </div>
+                              <div className="flex w-[20%] flex-col items-center justify-center">
+                                <span
+                                  className={`text-[12px] font-medium ${
+                                    game.completed
+                                      ? "text-white/60"
+                                      : "text-red-300"
+                                  }`}
+                                >
+                                  {game.completed
+                                    ? "FINAL"
+                                    : formatTime(game.commence_time)}
+                                </span>
 
-      {/* EQUIPO DERECHA */}
-      <div className="flex items-center justify-end gap-2.5 min-w-0 w-[40%] text-right">
-        <p className="truncate text-[14px] font-medium text-white">
-          {game.home_team}
-        </p>
-        <TeamBadge teamName={game.home_team} sport={group.sport} />
-      </div>
-    </div>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <span className="text-[16px] font-bold">
+                                    {awayScore}
+                                  </span>
+                                  <span className="text-white/50">-</span>
+                                  <span className="text-[16px] font-bold">
+                                    {homeScore}
+                                  </span>
+                                </div>
+                              </div>
 
-    {/* ODDS / LIVE BET */}
-    <div className="mt-3 flex justify-center gap-3">
-      <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
-        -203
-      </div>
+                              <div className="flex min-w-0 w-[40%] items-center justify-end gap-2.5 text-right">
+                                <p className="truncate text-[14px] font-medium text-white">
+                                  {game.home_team}
+                                </p>
+                                <TeamBadge
+                                  teamName={game.home_team}
+                                  sport={group.sport}
+                                />
+                              </div>
+                            </div>
 
-      <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
-        O/U 6
-      </div>
+                            <div className="mt-3 flex justify-center gap-3">
+                              <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+                                -203
+                              </div>
 
-      <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
-        +164
-      </div>
-    </div>
-  </div>
-);
-                    })}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )
+                              <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+                                O/U 6
+                              </div>
+
+                              <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+                                +164
+                              </div>
+                            </div>
+
+                            {/*
+                            <div className="mt-3 rounded-[14px] border border-cyan-400/20 bg-cyan-400/10 px-3 py-3">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+                                Live Signal Detected
+                              </p>
+                              <p className="mt-1 text-[14px] font-semibold text-white">
+                                Heat +8.5
+                              </p>
+                            </div>
+                            */}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </>
         ) : loading ? (
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
             Loading {selectedSport} games...
