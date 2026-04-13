@@ -245,11 +245,19 @@ function getTotalPrices(game: OddsGame) {
 
 function formatTime(dateString: string) {
   return new Date(dateString).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  });
+    hour12: true,
+  })
+  .replace(" AM", " am")
+  .replace(" PM", " pm");
+}
+
+function getGameMinute(game: LiveScore) {
+  if (game.completed) return "Finalizado";
+
+  const hasScores = Array.isArray(game.scores) && game.scores.length > 0;
+  return hasScores ? "En vivo" : "";
 }
 
 function getLiveSportFromKey(sportKey: string): SportTab {
@@ -818,28 +826,28 @@ useEffect(() => {
                               </div>
 
                               <div className="flex w-[20%] flex-col items-center justify-center">
-                                <span
-                                  className={`text-[12px] font-medium ${
-                                    game.completed
-                                      ? "text-white/60"
-                                      : "text-red-300"
-                                  }`}
-                                >
-                                  {game.completed
-                                    ? "FINAL"
-                                    : formatTime(game.commence_time)}
-                                </span>
+  {awayScore === "-" && homeScore === "-" ? (
+    <span className="text-[15px] font-semibold text-white">
+      {formatTime(game.commence_time)}
+    </span>
+  ) : (
+    <>
+      <span
+        className={`text-[11px] font-semibold ${
+          game.completed ? "text-white/60" : "text-red-400"
+        }`}
+      >
+        {getGameMinute(game)}
+      </span>
 
-                                <div className="mt-1 flex items-center gap-2">
-                                  <span className="text-[16px] font-bold">
-                                    {awayScore}
-                                  </span>
-                                  <span className="text-white/50">-</span>
-                                  <span className="text-[16px] font-bold">
-                                    {homeScore}
-                                  </span>
-                                </div>
-                              </div>
+      <div className="mt-1 flex items-center gap-2">
+        <span className="text-[18px] font-bold text-white">{awayScore}</span>
+        <span className="text-white/50">-</span>
+        <span className="text-[18px] font-bold text-white">{homeScore}</span>
+      </div>
+    </>
+  )}
+</div>
 
                               <div className="flex min-w-0 w-[40%] items-center justify-end gap-2.5 text-right">
                                 <p className="truncate text-[14px] font-medium text-white">
