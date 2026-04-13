@@ -440,84 +440,89 @@ const [liveLoading, setLiveLoading] = useState(false);
 );
 
   useEffect(() => {
-    async function loadGames() {
-      try {
-        setLoading(true);
+  async function loadGames() {
+    try {
+      setLoading(true);
 
-        if (selectedSport === "TOP") {
-          setGames([]);
-          return;
-        }
+      if (selectedSport === "TOP") {
+        setGames([]);
+        return;
+      }
 
-        if (selectedSport === "SOCCER") {
-          const soccerLeagues = [
-            "soccer_epl",
-            "soccer_spain_la_liga",
-            "soccer_italy_serie_a",
-            "soccer_germany_bundesliga",
-            "soccer_france_ligue_one",
-            "soccer_uefa_champs_league",
-            "soccer_uefa_europa_league",
-            "soccer_uefa_europa_conference_league",
-            "soccer_usa_mls",
-            "soccer_mexico_ligamx",
-            "soccer_fa_cup",
-            "soccer_spain_copa_del_rey",
-          ];
+      if (selectedSport === "SOCCER") {
+        const soccerLeagues = [
+          "soccer_epl",
+          "soccer_spain_la_liga",
+          "soccer_italy_serie_a",
+          "soccer_germany_bundesliga",
+          "soccer_france_ligue_one",
+          "soccer_uefa_champs_league",
+          "soccer_uefa_europa_league",
+          "soccer_uefa_europa_conference_league",
+          "soccer_usa_mls",
+          "soccer_mexico_ligamx",
+          "soccer_fa_cup",
+          "soccer_spain_copa_del_rey",
+        ];
 
-          const responses = await Promise.all(
-            soccerLeagues.map(async (league) => {
-              const res = await fetch(`/api/odds?sport=${league}`, {
-                cache: "no-store",
-              });
+        const responses = await Promise.all(
+          soccerLeagues.map(async (league) => {
+            const res = await fetch(`/api/odds?sport=${league}`, {
+              cache: "no-store",
+            });
 
-              const data = await res.json();
-              return Array.isArray(data) ? (data as OddsGame[]) : [];
-            })
-          );
+            const data = await res.json();
+            return Array.isArray(data) ? (data as OddsGame[]) : [];
+          })
+        );
 
-          const allSoccerGames = responses.flat();
-          const now = new Date();
+        const allSoccerGames = responses.flat();
+        const now = new Date();
 
-          const filteredSoccerGames = allSoccerGames.filter((game) => {
-            const gameDate = new Date(game.commence_time);
-            const diffHours =
-              (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const filteredSoccerGames = allSoccerGames.filter((game) => {
+          const gameDate = new Date(game.commence_time);
+          const diffHours =
+            (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-            return diffHours >= -6 && diffHours <= 18;
-          });
-
-          setGames(filteredSoccerGames);
-          return;
-        }
-
-        const regularSportMap: Record<
-          Exclude<SportTab, "TOP" | "SOCCER">,
-          string
-        > = {
-          NHL: "icehockey_nhl",
-          NBA: "basketball_nba",
-          MLB: "baseball_mlb",
-          NFL: "americanfootball_nfl",
-        };
-
-        const sport =
-          regularSportMap[
-            selectedSport as Exclude<SportTab, "TOP" | "SOCCER">
-          ];
-
-        const res = await fetch(`/api/odds?sport=${sport}`, {
-          cache: "no-store",
+          return diffHours >= -6 && diffHours <= 18;
         });
 
-        const data = await res.json();
-        setGames(Array.isArray(data) ? (data as OddsGame[]) : []);
-      } catch (error) {
-        setGames([]);
-      } finally {
-        setLoading(false);
+        setGames(filteredSoccerGames);
+        return;
       }
+
+      const regularSportMap: Record<
+        Exclude<SportTab, "TOP" | "SOCCER">,
+        string
+      > = {
+        NHL: "icehockey_nhl",
+        NBA: "basketball_nba",
+        MLB: "baseball_mlb",
+        NFL: "americanfootball_nfl",
+      };
+
+      const sport =
+        regularSportMap[
+          selectedSport as Exclude<SportTab, "TOP" | "SOCCER">
+        ];
+
+      const res = await fetch(`/api/odds?sport=${sport}`, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+      setGames(Array.isArray(data) ? (data as OddsGame[]) : []);
+    } catch (error) {
+      setGames([]);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  if (viewMode === "odds") {
+    loadGames();
+  }
+}, [selectedSport, viewMode]);
 
 useEffect(() => {
   async function loadLiveGames() {
@@ -546,9 +551,6 @@ useEffect(() => {
 
   loadLiveGames();
 }, [viewMode, selectedSport]);
-
-    loadGames();
-  }, [selectedSport]);
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
@@ -607,7 +609,86 @@ useEffect(() => {
         </header>
 
         <section className="flex-1 space-y-3 px-4 py-4">
-          {loading ? (
+          <section className="flex-1 space-y-3 px-4 py-4">
+  {viewMode === "live" ? (
+    liveLoading ? (
+      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+        Loading live games...
+      </div>
+    ) : liveGames.length === 0 ? (
+      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+        No live games available.
+      </div>
+    ) : (
+      <div className="space-y-3">
+        {liveGames.map((game, idx) => {
+          const awayScore =
+            game.scores?.find((s) => s.name === game.away_team)?.score ?? "-";
+          const homeScore =
+            game.scores?.find((s) => s.name === game.home_team)?.score ?? "-";
+
+          const liveSport: SportTab =
+            game.sport_key.includes("basketball")
+              ? "NBA"
+              : game.sport_key.includes("icehockey")
+                ? "NHL"
+                : game.sport_key.includes("baseball")
+                  ? "MLB"
+                  : "SOCCER";
+
+          return (
+            <article
+              key={`${game.id}-${idx}`}
+              className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                    {liveSport}
+                  </p>
+                  <p className="mt-2 text-[13px] font-medium text-white/55">
+                    {game.completed ? "Final" : "Live"}
+                  </p>
+                </div>
+
+                <p className="text-[12px] font-medium text-cyan-300/80">
+                  {formatTime(game.commence_time)}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+                  <div className="flex items-center gap-3">
+                    <TeamBadge teamName={game.away_team} sport={liveSport} />
+                    <p className="truncate text-[18px] font-medium tracking-tight text-white">
+                      {getDisplayAbbr(game.away_team)}
+                    </p>
+                  </div>
+
+                  <p className="text-[30px] font-bold leading-none text-white">
+                    {awayScore}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+                  <div className="flex items-center gap-3">
+                    <TeamBadge teamName={game.home_team} sport={liveSport} />
+                    <p className="truncate text-[18px] font-medium tracking-tight text-white">
+                      {getDisplayAbbr(game.home_team)}
+                    </p>
+                  </div>
+
+                  <p className="text-[30px] font-bold leading-none text-white">
+                    {homeScore}
+                  </p>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    )
+  ) : loading ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
               Loading {selectedSport} games...
             </div>
