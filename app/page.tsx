@@ -90,10 +90,10 @@ function getLogo(teamName: string, sport: SportTab) {
   }
 
   if (sport === "MLB") {
-  return `/team-logos/mlb/${cleanName}.png`;
-}
+    return `/team-logos/mlb/${cleanName}.png`;
+  }
 
-if (sport === "SOCCER") {
+  if (sport === "SOCCER") {
     return `/team-logos/soccer/${cleanName}.png`;
   }
 
@@ -111,7 +111,7 @@ function TeamBadge({
 
   if (logo) {
     return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1.5">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1">
         <img
           src={logo}
           alt={teamName}
@@ -141,6 +141,11 @@ function getMarket(game: OddsGame, marketKey: string) {
   return bookmaker?.markets?.find((m) => m.key === marketKey) || null;
 }
 
+function formatAmericanOdds(value?: number | null) {
+  if (value === null || value === undefined) return "N/A";
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
 function getMoneyline(game: OddsGame, teamName: string) {
   const market = getMarket(game, "h2h");
   const outcome = market?.outcomes?.find((o) => o.name === teamName);
@@ -152,12 +157,15 @@ function getSpreadValue(game: OddsGame, teamName: string) {
   const outcome = market?.outcomes?.find((o) => o.name === teamName);
 
   if (!outcome) return "N/A";
-  if (outcome.point === undefined || outcome.price === undefined) {
-    return "N/A";
-  }
+  if (outcome.point === undefined) return "N/A";
 
-  const point = outcome.point > 0 ? `+${outcome.point}` : `${outcome.point}`;
-  return `${point}`;
+  return outcome.point > 0 ? `+${outcome.point}` : `${outcome.point}`;
+}
+
+function getSpreadPrice(game: OddsGame, teamName: string) {
+  const market = getMarket(game, "spreads");
+  const outcome = market?.outcomes?.find((o) => o.name === teamName);
+  return formatAmericanOdds(outcome?.price);
 }
 
 function getTotalValues(game: OddsGame) {
@@ -189,6 +197,25 @@ function getTotalValues(game: OddsGame) {
     overLabel: `O ${overPoint}`,
     underLabel: `U ${underPoint}`,
     summary: `O ${overPoint} / U ${underPoint}`,
+  };
+}
+
+function getTotalPrices(game: OddsGame) {
+  const market = getMarket(game, "totals");
+
+  if (!market) {
+    return {
+      overPrice: "N/A",
+      underPrice: "N/A",
+    };
+  }
+
+  const over = market.outcomes.find((o) => o.name === "Over");
+  const under = market.outcomes.find((o) => o.name === "Under");
+
+  return {
+    overPrice: formatAmericanOdds(over?.price),
+    underPrice: formatAmericanOdds(under?.price),
   };
 }
 
@@ -512,59 +539,58 @@ export default function Home() {
               Loading {selectedSport} games...
             </div>
           ) : selectedSport === "TOP" ? (
-  <div className="space-y-3">
-    {topSignals.map((pick, idx) => (
-      <article
-        key={`top-${idx}`}
-        className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-      >
-        <div className="mb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-400/95">
-            Top Signal {pick.sport}
-          </p>
-          {pick.startTime && (
-            <p className="mt-2 text-[13px] font-medium text-white/55">
-              {formatTime(pick.startTime)}
-            </p>
-          )}
-        </div>
+            <div className="space-y-3">
+              {topSignals.map((pick, idx) => (
+                <article
+                  key={`top-${idx}`}
+                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+                >
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-400/95">
+                      Top Signal {pick.sport}
+                    </p>
+                    {pick.startTime && (
+                      <p className="mt-2 text-[13px] font-medium text-white/55">
+                        {formatTime(pick.startTime)}
+                      </p>
+                    )}
+                  </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <TeamBadge teamName={pick.awayTeam ?? ""} sport={pick.sport} />
-            <div className="min-w-0">
-              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                {getDisplayAbbr(pick.awayTeam ?? "")}
-              </p>
-            </div>
-          </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <TeamBadge teamName={pick.awayTeam ?? ""} sport={pick.sport} />
+                      <div className="min-w-0">
+                        <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                          {getDisplayAbbr(pick.awayTeam ?? "")}
+                        </p>
+                      </div>
+                    </div>
 
-          <div className="flex items-center gap-3">
-            <TeamBadge teamName={pick.homeTeam ?? ""} sport={pick.sport} />
-            <div className="min-w-0">
-              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                {getDisplayAbbr(pick.homeTeam ?? "")}
-              </p>
-            </div>
-          </div>
-        </div>
+                    <div className="flex items-center gap-3">
+                      <TeamBadge teamName={pick.homeTeam ?? ""} sport={pick.sport} />
+                      <div className="min-w-0">
+                        <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                          {getDisplayAbbr(pick.homeTeam ?? "")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
-        <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-          <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-            Signal Detected
-          </div>
+                  <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+                    <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                      Signal Detected
+                    </div>
 
-          <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
-            {formatDisplayedPick(pick.pick, pick.sport)}
-          </p>
+                    <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
+                      {formatDisplayedPick(pick.pick, pick.sport)}
+                    </p>
 
-          <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-white/55">
-            {pick.status ?? "PENDING"}
-          </p>
-        </div>
-      </article>
-    ))}
-
+                    <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-white/55">
+                      {pick.status ?? "PENDING"}
+                    </p>
+                  </div>
+                </article>
+              ))}
             </div>
           ) : games.length === 0 ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
@@ -576,7 +602,10 @@ export default function Home() {
               const awayOdds = getMoneyline(game, game.away_team);
               const awaySpread = getSpreadValue(game, game.away_team);
               const homeSpread = getSpreadValue(game, game.home_team);
+              const awaySpreadPrice = getSpreadPrice(game, game.away_team);
+              const homeSpreadPrice = getSpreadPrice(game, game.home_team);
               const totalValues = getTotalValues(game);
+              const totalPrices = getTotalPrices(game);
               const pickData = findPick(game, selectedSport);
 
               return (
@@ -593,70 +622,90 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <TeamBadge teamName={game.away_team} sport={selectedSport} />
-                        <div className="min-w-0">
-                          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                            {getDisplayAbbr(game.away_team)}
-                          </p>
-                        </div>
-                      </div>
+                 <div className="flex items-start justify-between gap-3">
+  <div className="w-[112px] shrink-0 pt-1">
+    <div className="flex items-center gap-2.5">
+      <TeamBadge teamName={game.away_team} sport={selectedSport} />
+      <p className="truncate text-[16px] font-medium tracking-tight text-white">
+        {getDisplayAbbr(game.away_team)}
+      </p>
+    </div>
 
-                      <div className="flex items-center gap-3">
-                        <TeamBadge teamName={game.home_team} sport={selectedSport} />
-                        <div className="min-w-0">
-                          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                            {getDisplayAbbr(game.home_team)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+    <div className="mt-[18px] flex items-center gap-2.5">
+      <TeamBadge teamName={game.home_team} sport={selectedSport} />
+      <p className="truncate text-[16px] font-medium tracking-tight text-white">
+        {getDisplayAbbr(game.home_team)}
+      </p>
+    </div>
+  </div>
 
-                    <div className="grid shrink-0 grid-cols-3 gap-1.5">
-                      <div className="flex flex-col gap-2">
-                        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-                          Spread
-                        </div>
-                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
-                          {awaySpread}
-                        </div>
-                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
-                          {homeSpread}
-                        </div>
-                      </div>
+  <div className="ml-auto w-[246px] shrink-0">
+    <div className="grid grid-cols-3 gap-x-[7px] gap-y-[5px]">
+      <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        Spread
+      </div>
+      <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/75">
+        Total
+      </div>
+      <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        ML
+      </div>
 
-                      <div className="flex flex-col gap-2">
-                        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-300/70">
-                          Total
-                        </div>
-                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
-                          {totalValues.overLabel}
-                        </div>
-                        <div className="w-[64px] rounded-xl border border-white/8 bg-white/10 px-2 py-2 text-center text-[13px] font-semibold text-white">
-                          {totalValues.underLabel}
-                        </div>
-                      </div>
+      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[14px] font-semibold leading-none text-white">
+          {awaySpread}
+        </span>
+        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+          {awaySpreadPrice}
+        </span>
+      </div>
 
-                      <div className="flex flex-col gap-2">
-                        <div className="text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-                          ML
-                        </div>
-                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
-                          {awayOdds ?? "N/A"}
-                        </div>
-                        <div className="w-[72px] rounded-xl border border-white/8 bg-white/10 px-3 py-2 text-center text-[14px] font-semibold text-white">
-                          {homeOdds ?? "N/A"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[14px] font-semibold leading-none text-white">
+          {totalValues.overLabel}
+        </span>
+        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+          {totalPrices.overPrice}
+        </span>
+      </div>
+
+      <div className="flex h-[72px] w-[78px] items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[14px] font-semibold leading-none text-[#8f7cff]">
+          {awayOdds !== null ? formatAmericanOdds(awayOdds) : "N/A"}
+        </span>
+      </div>
+
+      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[14px] font-semibold leading-none text-white">
+          {homeSpread}
+        </span>
+        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+          {homeSpreadPrice}
+        </span>
+      </div>
+
+      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[14px] font-semibold leading-none text-white">
+          {totalValues.underLabel}
+        </span>
+        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+          {totalPrices.underPrice}
+        </span>
+      </div>
+
+      <div className="flex h-[72px] w-[78px] items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[14px] font-semibold leading-none text-[#8f7cff]">
+          {homeOdds !== null ? formatAmericanOdds(homeOdds) : "N/A"}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
 
                   {pickData ? (
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-3">
-                        <div className="mb-2 inline-flex rounded-full bg-cyan-300/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                    <div className="mt-5 space-y-3">
+                      <div className="rounded-[22px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+                        <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
                           Signal Detected
                         </div>
 
@@ -664,7 +713,7 @@ export default function Home() {
                           {formatDisplayedPick(pickData.pick, selectedSport)}
                         </p>
 
-                        <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+                        <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
                           {pickData.status ?? "PENDING"}
                         </p>
                       </div>
