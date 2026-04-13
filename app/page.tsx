@@ -568,6 +568,10 @@ const groupedFilteredLiveGames = useMemo(() => {
   }));
 }, [filteredLiveGames]);
 
+function getLiveDisplayName(teamName: string) {
+  return getTeamData(teamName)?.shortName ?? teamName;
+}
+
   useEffect(() => {
   async function loadGames() {
     try {
@@ -821,7 +825,7 @@ useEffect(() => {
                                   sport={group.sport}
                                 />
                                 <p className="truncate text-[14px] font-medium text-white">
-  {getDisplayName(game.away_team)}
+  {getLiveDisplayName(game.away_team)}
 </p>
                               </div>
 
@@ -851,7 +855,7 @@ useEffect(() => {
 
                               <div className="flex min-w-0 w-[40%] items-center justify-end gap-2.5 text-right">
                                 <p className="truncate text-[14px] font-medium text-white">
-  {getDisplayName(game.home_team)}
+  {getLiveDisplayName(game.home_team)}
 </p>
                                 <TeamBadge
                                   teamName={game.home_team}
