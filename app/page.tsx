@@ -639,8 +639,8 @@ export default function Home() {
     </div>
   </div>
 
-  <div className="ml-auto w-[246px] shrink-0">
-    <div className="grid grid-cols-3 gap-x-[7px] gap-y-[5px]">
+  <div className="ml-auto w-[222px] shrink-0">
+    <div className="grid grid-cols-3 gap-x-[5px] gap-y-[4px]">
       <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
         Spread
       </div>
@@ -651,50 +651,50 @@ export default function Home() {
         ML
       </div>
 
-      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[14px] font-semibold leading-none text-white">
+      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[13px] font-semibold leading-none text-white">
           {awaySpread}
         </span>
-        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
           {awaySpreadPrice}
         </span>
       </div>
 
-      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[14px] font-semibold leading-none text-white">
+      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[13px] font-semibold leading-none text-white">
           {totalValues.overLabel}
         </span>
-        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
           {totalPrices.overPrice}
         </span>
       </div>
 
-      <div className="flex h-[72px] w-[78px] items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[14px] font-semibold leading-none text-[#8f7cff]">
+      <div className="flex h-[66px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
           {awayOdds !== null ? formatAmericanOdds(awayOdds) : "N/A"}
         </span>
       </div>
 
-      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[14px] font-semibold leading-none text-white">
+      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[13px] font-semibold leading-none text-white">
           {homeSpread}
         </span>
-        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
           {homeSpreadPrice}
         </span>
       </div>
 
-      <div className="flex h-[72px] w-[78px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[14px] font-semibold leading-none text-white">
+      <div className="flex h-[66px] w-[70px] flex-col items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[13px] font-semibold leading-none text-white">
           {totalValues.underLabel}
         </span>
-        <span className="mt-1.5 text-[11px] font-semibold leading-none text-[#8f7cff]">
+        <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
           {totalPrices.underPrice}
         </span>
       </div>
 
-      <div className="flex h-[72px] w-[78px] items-center justify-center rounded-[14px] bg-white/10 text-center">
-        <span className="text-[14px] font-semibold leading-none text-[#8f7cff]">
+      <div className="flex h-[66px] w-[70px] items-center justify-center rounded-[14px] bg-white/10 text-center">
+        <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
           {homeOdds !== null ? formatAmericanOdds(homeOdds) : "N/A"}
         </span>
       </div>
