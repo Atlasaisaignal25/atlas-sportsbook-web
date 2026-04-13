@@ -693,118 +693,61 @@ useEffect(() => {
                           ?.score ?? "-";
 
                       return (
-                        <div
-                          key={`${game.id}-${idx}`}
-                          className={`px-4 py-4 ${
-                            idx !== group.games.length - 1
-                              ? "border-b border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-                            <div className="min-w-0 text-left">
-                              <div className="flex items-center gap-2.5">
-                                <p className="truncate text-[16px] font-medium text-white">
-                                  {game.away_team}
-                                </p>
-                                <TeamBadge
-                                  teamName={game.away_team}
-                                  sport={group.sport}
-                                />
-                              </div>
+  <div
+    key={`${game.id}-${idx}`}
+    className={`px-4 py-4 ${
+      idx !== group.games.length - 1 ? "border-b border-white/10" : ""
+    }`}
+  >
+    {/* FILA PRINCIPAL */}
+    <div className="flex items-center justify-between">
+      
+      {/* EQUIPO IZQUIERDA */}
+      <div className="flex items-center gap-2.5 min-w-0 w-[40%]">
+        <TeamBadge teamName={game.away_team} sport={group.sport} />
+        <p className="truncate text-[14px] font-medium text-white">
+          {game.away_team}
+        </p>
+      </div>
 
-                              <div className="mt-3 flex items-center gap-2.5">
-                                <p className="truncate text-[16px] font-medium text-white">
-                                  {game.home_team}
-                                </p>
-                                <TeamBadge
-                                  teamName={game.home_team}
-                                  sport={group.sport}
-                                />
-                              </div>
-                            </div>
+      {/* CENTRO */}
+      <div className="flex flex-col items-center justify-center w-[20%]">
+        <span className="text-[12px] font-medium text-white/60">
+          {game.completed ? "FINAL" : formatTime(game.commence_time)}
+        </span>
 
-                            <div className="flex flex-col items-center justify-center px-2 text-center">
-                              <span
-                                className={`text-[11px] font-semibold ${
-                                  game.completed
-                                    ? "text-white/60"
-                                    : "text-red-300"
-                                }`}
-                              >
-                                {game.completed
-                                  ? "FINAL"
-                                  : formatTime(game.commence_time)}
-                              </span>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[16px] font-bold">{awayScore}</span>
+          <span className="text-white/50">-</span>
+          <span className="text-[16px] font-bold">{homeScore}</span>
+        </div>
+      </div>
 
-                              <div className="mt-2 flex items-center gap-3">
-                                <span className="text-[22px] font-bold leading-none text-white">
-                                  {awayScore}
-                                </span>
-                                <span className="text-[22px] font-bold leading-none text-white/55">
-                                  -
-                                </span>
-                                <span className="text-[22px] font-bold leading-none text-white">
-                                  {homeScore}
-                                </span>
-                              </div>
-                            </div>
+      {/* EQUIPO DERECHA */}
+      <div className="flex items-center justify-end gap-2.5 min-w-0 w-[40%] text-right">
+        <p className="truncate text-[14px] font-medium text-white">
+          {game.home_team}
+        </p>
+        <TeamBadge teamName={game.home_team} sport={group.sport} />
+      </div>
+    </div>
 
-                            <div className="min-w-0 text-right">
-                              <div className="flex items-center justify-end gap-2.5">
-                                <TeamBadge
-                                  teamName={game.away_team}
-                                  sport={group.sport}
-                                />
-                                <p className="truncate text-[16px] font-medium text-white">
-                                  {getDisplayAbbr(game.away_team)}
-                                </p>
-                              </div>
+    {/* ODDS / LIVE BET */}
+    <div className="mt-3 flex justify-center gap-3">
+      <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+        -203
+      </div>
 
-                              <div className="mt-3 flex items-center justify-end gap-2.5">
-                                <TeamBadge
-                                  teamName={game.home_team}
-                                  sport={group.sport}
-                                />
-                                <p className="truncate text-[16px] font-medium text-white">
-                                  {getDisplayAbbr(game.home_team)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+      <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+        O/U 6
+      </div>
 
-                          <div className="mt-4 grid grid-cols-3 gap-3">
-                            <div className="rounded-full bg-black/60 px-3 py-2 text-center">
-                              <p className="text-[12px] font-semibold text-white">
-                                Live ML
-                              </p>
-                            </div>
-
-                            <div className="rounded-full bg-black/60 px-3 py-2 text-center">
-                              <p className="text-[12px] font-semibold text-white">
-                                Live O/U
-                              </p>
-                            </div>
-
-                            <div className="rounded-full bg-black/60 px-3 py-2 text-center">
-                              <p className="text-[12px] font-semibold text-white">
-                                Live Spread
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* LIVE SIGNAL DETECTED - lo activamos después
-                          <div className="mt-3 rounded-[14px] border border-cyan-400/20 bg-cyan-400/10 px-3 py-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
-                              Live Signal Detected
-                            </p>
-                            <p className="mt-1 text-[14px] font-semibold text-white">
-                              Heat +8.5
-                            </p>
-                          </div>
-                          */}
-                        </div>
-                      );
+      <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+        +164
+      </div>
+    </div>
+  </div>
+);
                     })}
                   </div>
                 </article>
