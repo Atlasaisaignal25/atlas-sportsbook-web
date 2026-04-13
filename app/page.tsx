@@ -819,15 +819,19 @@ useEffect(() => {
                             }`}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex min-w-0 w-[40%] items-center gap-2.5">
-                                <TeamBadge
-                                  teamName={game.away_team}
-                                  sport={group.sport}
-                                />
-                                <p className="truncate text-[14px] font-medium text-white">
-  {getLiveDisplayName(game.away_team)}
-</p>
-                              </div>
+                              <div className="flex min-w-0 w-[40%] items-center justify-end">
+  <div className="flex min-w-0 items-center gap-2.5">
+    <p className="truncate text-right text-[14px] font-medium text-white">
+      {getLiveDisplayName(game.away_team)}
+    </p>
+    <div className="shrink-0">
+      <TeamBadge
+        teamName={game.away_team}
+        sport={group.sport}
+      />
+    </div>
+  </div>
+</div>
 
                               <div className="flex w-[20%] flex-col items-center justify-center">
   {awayScore === "-" && homeScore === "-" ? (
@@ -853,15 +857,19 @@ useEffect(() => {
   )}
 </div>
 
-                              <div className="flex min-w-0 w-[40%] items-center justify-end gap-2.5 text-right">
-                                <p className="truncate text-[14px] font-medium text-white">
-  {getLiveDisplayName(game.home_team)}
-</p>
-                                <TeamBadge
-                                  teamName={game.home_team}
-                                  sport={group.sport}
-                                />
-                              </div>
+                              <div className="flex min-w-0 w-[40%] items-center">
+  <div className="flex min-w-0 items-center gap-2.5">
+    <div className="shrink-0">
+      <TeamBadge
+        teamName={game.home_team}
+        sport={group.sport}
+      />
+    </div>
+    <p className="truncate text-left text-[14px] font-medium text-white">
+      {getLiveDisplayName(game.home_team)}
+    </p>
+  </div>
+</div>
                             </div>
 
                             <div className="mt-3 flex justify-center gap-3">
