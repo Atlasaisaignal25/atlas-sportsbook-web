@@ -1,31 +1,22 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-13",
+  "date": "2026-04-15",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Getafe",
-      "homeTeam": "Levante",
-      "pick": "Getafe ML",
-      "startTime": "2026-04-13T19:00:00Z",
+      "awayTeam": "Bayern Munich",
+      "homeTeam": "Real Madrid",
+      "pick": "Bayern Munich (-1.5)",
+      "startTime": "2026-04-15T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Leeds United",
-      "homeTeam": "Manchester United",
+      "awayTeam": "Arsenal",
+      "homeTeam": "Sporting Lisbon",
       "pick": "Under 2.5",
-      "startTime": "2026-04-13T19:00:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 3,
-      "awayTeam": "Lazio",
-      "homeTeam": "Fiorentina",
-      "pick": "Fiorentina ML",
-      "startTime": "2026-04-13T18:45:00Z",
+      "startTime": "2026-04-15T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

@@ -1,26 +1,19 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-13",
+  "date": "2026-04-15",
   "games": [
     {
-      "gameId": "c4a4e452254d87ff646343d0357d58e7",
-      "awayTeam": "Getafe",
-      "homeTeam": "Levante",
-      "pick": "Getafe ML",
+      "gameId": "76200682955d7f62f3b051a14f5f67fa",
+      "awayTeam": "Bayern Munich",
+      "homeTeam": "Real Madrid",
+      "pick": "Bayern Munich (-1.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "7d48c93e68e7403998d0ed38e99caae5",
-      "awayTeam": "Leeds United",
-      "homeTeam": "Manchester United",
+      "gameId": "02ff9b02f1eab3394f9e38d70e257e12",
+      "awayTeam": "Arsenal",
+      "homeTeam": "Sporting Lisbon",
       "pick": "Under 2.5",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "0ae9d856d4839d6d82d566e7166413f1",
-      "awayTeam": "Lazio",
-      "homeTeam": "Fiorentina",
-      "pick": "Fiorentina ML",
       "status": "PENDING"
     }
   ]
