@@ -1,13 +1,1 @@
-{
-  "sport": "NBA",
-  "date": "2026-04-15",
-  "games": [
-    {
-      "gameId": "f7264c00c662a127d58f4ab12fc498bc",
-      "awayTeam": "Orlando Magic",
-      "homeTeam": "Philadelphia 76ers",
-      "pick": "Over (222.5)",
-      "status": "PENDING"
-    }
-  ]
-}
+{}

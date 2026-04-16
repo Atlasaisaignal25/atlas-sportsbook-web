@@ -1,15 +1,1 @@
-{
-  "sport": "NBA",
-  "date": "2026-04-15",
-  "top5": [
-    {
-      "rank": 1,
-      "awayTeam": "Orlando Magic",
-      "homeTeam": "Philadelphia 76ers",
-      "pick": "Over (222.5)",
-      "startTime": "2026-04-15T23:40:00Z",
-      "status": "PENDING",
-      "isTopSignal": true
-    }
-  ]
-}
+{}
