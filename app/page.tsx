@@ -692,10 +692,10 @@ useEffect(() => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-400/90">
-              Atlas Sportsbook
+              Atlas Signals
             </p>
             <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight">
-              Signals
+              Sportsbook
             </h1>
           </div>
 
