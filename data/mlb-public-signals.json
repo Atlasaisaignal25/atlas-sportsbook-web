@@ -1,95 +1,67 @@
 {
   "sport": "MLB",
-  "date": "2026-04-15",
+  "date": "2026-04-16",
   "games": [
     {
-      "gameId": "f330db82278ea4535ef5b2b1571ee7d1",
-      "awayTeam": "Cleveland Guardians",
-      "homeTeam": "St. Louis Cardinals",
-      "pick": "Cleveland Guardians",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "5dde1728cec88d86d8dbbaa27a572697",
-      "awayTeam": "San Francisco Giants",
-      "homeTeam": "Cincinnati Reds",
-      "pick": "Cincinnati Reds",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "f3b41be4bbb9dbffe13b5c0c9f57bb50",
-      "awayTeam": "Seattle Mariners",
-      "homeTeam": "San Diego Padres",
-      "pick": "Seattle Mariners",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "851336f466000da358ea664a9302c8f4",
-      "awayTeam": "Tampa Bay Rays",
-      "homeTeam": "Chicago White Sox",
-      "pick": "Chicago White Sox",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "ae6a5b39c2617185d491849bed3ddff8",
-      "awayTeam": "Texas Rangers",
-      "homeTeam": "Athletics",
-      "pick": "Texas Rangers",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "e39af7619a05b0b5a99bc6dcd7fbc12b",
-      "awayTeam": "Boston Red Sox",
-      "homeTeam": "Minnesota Twins",
-      "pick": "Boston Red Sox",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "69d8354de162a3ae1d59bf8aa804c3ca",
+      "gameId": "01461c715fdcb8321ca3e4ed2762e436",
       "awayTeam": "Kansas City Royals",
       "homeTeam": "Detroit Tigers",
       "pick": "Detroit Tigers",
       "status": "PENDING"
     },
     {
-      "gameId": "e1d1d3bf816d477e6f48db9e600d48bf",
+      "gameId": "1be686414809592c870949866675b3f0",
+      "awayTeam": "Texas Rangers",
+      "homeTeam": "Athletics",
+      "pick": "Texas Rangers",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "34fa181a3e06104ac8bb8d652bffbae7",
+      "awayTeam": "Seattle Mariners",
+      "homeTeam": "San Diego Padres",
+      "pick": "Seattle Mariners",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "58f0238587c37c6200e35bece1cdc6a2",
+      "awayTeam": "San Francisco Giants",
+      "homeTeam": "Cincinnati Reds",
+      "pick": "Cincinnati Reds",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "d28f023fdea4d8299ebf509d22707293",
       "awayTeam": "Toronto Blue Jays",
       "homeTeam": "Milwaukee Brewers",
-      "pick": "Toronto Blue Jays",
+      "pick": "Milwaukee Brewers",
       "status": "PENDING"
     },
     {
-      "gameId": "30d1ac7c8c0a6c6b760667043f6569aa",
-      "awayTeam": "Arizona Diamondbacks",
-      "homeTeam": "Baltimore Orioles",
-      "pick": "Baltimore Orioles",
+      "gameId": "99d0656dfdf7a804df87e510c4687f62",
+      "awayTeam": "Tampa Bay Rays",
+      "homeTeam": "Chicago White Sox",
+      "pick": "Tampa Bay Rays",
       "status": "PENDING"
     },
     {
-      "gameId": "748d289cf73992eb235de4c4f66d4175",
-      "awayTeam": "Chicago Cubs",
-      "homeTeam": "Philadelphia Phillies",
-      "pick": "Philadelphia Phillies",
+      "gameId": "50a6b335289549d2d3f41d9072e8d031",
+      "awayTeam": "Baltimore Orioles",
+      "homeTeam": "Cleveland Guardians",
+      "pick": "Cleveland Guardians",
       "status": "PENDING"
     },
     {
-      "gameId": "a9a5304518c8a2714a581f284aa4cb4f",
-      "awayTeam": "Los Angeles Angels",
-      "homeTeam": "New York Yankees",
-      "pick": "Under",
+      "gameId": "74f39156689a078022ede0ab999cd304",
+      "awayTeam": "Washington Nationals",
+      "homeTeam": "Pittsburgh Pirates",
+      "pick": "Pittsburgh Pirates",
       "status": "PENDING"
     },
     {
-      "gameId": "0addbc8d6735535fe5cf8e6aa6c955e1",
+      "gameId": "2813553c6a0cdab5c77497cf373aa7af",
       "awayTeam": "Colorado Rockies",
       "homeTeam": "Houston Astros",
-      "pick": "Under",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "c4b632a3318002ec947a0861f17d8583",
-      "awayTeam": "New York Mets",
-      "homeTeam": "Los Angeles Dodgers",
       "pick": "Under",
       "status": "PENDING"
     }

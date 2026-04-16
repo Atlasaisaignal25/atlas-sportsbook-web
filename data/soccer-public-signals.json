@@ -1,19 +1,61 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-15",
+  "date": "2026-04-16",
   "games": [
     {
-      "gameId": "76200682955d7f62f3b051a14f5f67fa",
-      "awayTeam": "Bayern Munich",
-      "homeTeam": "Real Madrid",
-      "pick": "Bayern Munich (-1.5)",
+      "gameId": "c56c224a9f71ded70a010ef457f6816f",
+      "awayTeam": "Celta Vigo",
+      "homeTeam": "SC Freiburg",
+      "pick": "Celta Vigo ML",
       "status": "PENDING"
     },
     {
-      "gameId": "02ff9b02f1eab3394f9e38d70e257e12",
-      "awayTeam": "Arsenal",
-      "homeTeam": "Sporting Lisbon",
-      "pick": "Under 2.5",
+      "gameId": "1e99ca015e59dafe2d397a0be198650e",
+      "awayTeam": "Aston Villa",
+      "homeTeam": "Bologna",
+      "pick": "Aston Villa ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "af977fbae8c6d3fe8847ec01b42f270f",
+      "awayTeam": "Real Betis",
+      "homeTeam": "SC Braga",
+      "pick": "Real Betis ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "4c8731bc9416f579d441c5f63d3bb42d",
+      "awayTeam": "AZ Alkmaar",
+      "homeTeam": "Shakhtar Donetsk",
+      "pick": "AZ Alkmaar ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "c5c382d74154b05dce39ca14a422780f",
+      "awayTeam": "Strasbourg",
+      "homeTeam": "FSV Mainz 05",
+      "pick": "Strasbourg ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "7bd6146745b2765c8c6207daacff37db",
+      "awayTeam": "Nottingham Forest",
+      "homeTeam": "Porto",
+      "pick": "Nottingham Forest ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "2e2e5e58256650964e31161d0da9ed1e",
+      "awayTeam": "AEK Athens",
+      "homeTeam": "Rayo Vallecano",
+      "pick": "AEK Athens ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "f0ce06e05c789703d4f91069487487c2",
+      "awayTeam": "Fiorentina",
+      "homeTeam": "Crystal Palace",
+      "pick": "Over 2.5",
       "status": "PENDING"
     }
   ]

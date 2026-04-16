@@ -1,47 +1,47 @@
 {
   "sport": "NHL",
-  "date": "2026-04-15",
+  "date": "2026-04-16",
   "games": [
     {
-      "gameId": "7db68d6db2127f93ee8278eca727ff32",
-      "awayTeam": "New York Rangers",
-      "homeTeam": "Tampa Bay Lightning",
+      "gameId": "88586e525b98a2c062f1f6d75e8d0fe1",
+      "awayTeam": "Los Angeles Kings",
+      "homeTeam": "Calgary Flames",
       "pick": "Over (5.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "c6dc2eb7ca9bcce1e2735b4673fc88b1",
+      "gameId": "2aa3249b78d693529c951547a82f134f",
+      "awayTeam": "St Louis Blues",
+      "homeTeam": "Utah Mammoth",
+      "pick": "St Louis Blues (+1.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "72aacc9aeb0595468a61d147df27e838",
       "awayTeam": "San Jose Sharks",
-      "homeTeam": "Chicago Blackhawks",
-      "pick": "Chicago Blackhawks (+1.5)",
+      "homeTeam": "Winnipeg Jets",
+      "pick": "San Jose Sharks (+1.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "95e2cb9751126776827294c1530f4823",
+      "gameId": "112a39ac7f4a08fcb78fe38362f343ed",
+      "awayTeam": "Anaheim Ducks",
+      "homeTeam": "Nashville Predators",
+      "pick": "Anaheim Ducks",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "9d37384a47dfd1b17638086559bb3726",
+      "awayTeam": "Vancouver Canucks",
+      "homeTeam": "Edmonton Oilers",
+      "pick": "Edmonton Oilers",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "96784cc6006a3540914823666e6561d1",
       "awayTeam": "Seattle Kraken",
-      "homeTeam": "Vegas Golden Knights",
-      "pick": "Seattle Kraken (+1.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "c36f011df8ff2ff994bb46373c5831ea",
-      "awayTeam": "Dallas Stars",
-      "homeTeam": "Buffalo Sabres",
-      "pick": "Buffalo Sabres",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "aab12987f6385f068a9b1c6feb785ecc",
-      "awayTeam": "Detroit Red Wings",
-      "homeTeam": "Florida Panthers",
-      "pick": "Detroit Red Wings",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "ecf6c5f973a42e5dcd559cd2ac2e0d3a",
-      "awayTeam": "Toronto Maple Leafs",
-      "homeTeam": "Ottawa Senators",
-      "pick": "Ottawa Senators",
+      "homeTeam": "Colorado Avalanche",
+      "pick": "Colorado Avalanche",
       "status": "PENDING"
     }
   ]

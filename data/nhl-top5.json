@@ -1,49 +1,49 @@
 {
   "sport": "NHL",
-  "date": "2026-04-15",
+  "date": "2026-04-16",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "New York Rangers",
-      "homeTeam": "Tampa Bay Lightning",
+      "awayTeam": "Los Angeles Kings",
+      "homeTeam": "Calgary Flames",
       "pick": "Over (5.5)",
-      "startTime": "2026-04-15T23:10:00Z",
+      "startTime": "2026-04-17T01:00:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "San Jose Sharks",
-      "homeTeam": "Chicago Blackhawks",
-      "pick": "Chicago Blackhawks (+1.5)",
-      "startTime": "2026-04-16T00:40:00Z",
+      "awayTeam": "St Louis Blues",
+      "homeTeam": "Utah Mammoth",
+      "pick": "St Louis Blues (+1.5)",
+      "startTime": "2026-04-16T23:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Seattle Kraken",
-      "homeTeam": "Vegas Golden Knights",
-      "pick": "Seattle Kraken (+1.5)",
-      "startTime": "2026-04-16T02:10:00Z",
+      "awayTeam": "San Jose Sharks",
+      "homeTeam": "Winnipeg Jets",
+      "pick": "San Jose Sharks (+1.5)",
+      "startTime": "2026-04-17T00:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "Dallas Stars",
-      "homeTeam": "Buffalo Sabres",
-      "pick": "Buffalo Sabres",
-      "startTime": "2026-04-15T23:10:00Z",
+      "awayTeam": "Anaheim Ducks",
+      "homeTeam": "Nashville Predators",
+      "pick": "Anaheim Ducks",
+      "startTime": "2026-04-17T00:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "Detroit Red Wings",
-      "homeTeam": "Florida Panthers",
-      "pick": "Detroit Red Wings",
-      "startTime": "2026-04-15T23:10:00Z",
+      "awayTeam": "Vancouver Canucks",
+      "homeTeam": "Edmonton Oilers",
+      "pick": "Edmonton Oilers",
+      "startTime": "2026-04-17T01:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

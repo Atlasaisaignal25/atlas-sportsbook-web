@@ -1,22 +1,49 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-15",
+  "date": "2026-04-16",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Bayern Munich",
-      "homeTeam": "Real Madrid",
-      "pick": "Bayern Munich (-1.5)",
-      "startTime": "2026-04-15T19:00:00Z",
+      "awayTeam": "Celta Vigo",
+      "homeTeam": "SC Freiburg",
+      "pick": "Celta Vigo ML",
+      "startTime": "2026-04-16T16:45:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Arsenal",
-      "homeTeam": "Sporting Lisbon",
-      "pick": "Under 2.5",
-      "startTime": "2026-04-15T19:00:00Z",
+      "awayTeam": "Aston Villa",
+      "homeTeam": "Bologna",
+      "pick": "Aston Villa ML",
+      "startTime": "2026-04-16T19:00:00Z",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 3,
+      "awayTeam": "Real Betis",
+      "homeTeam": "SC Braga",
+      "pick": "Real Betis ML",
+      "startTime": "2026-04-16T19:00:00Z",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 4,
+      "awayTeam": "AZ Alkmaar",
+      "homeTeam": "Shakhtar Donetsk",
+      "pick": "AZ Alkmaar ML",
+      "startTime": "2026-04-16T16:45:00Z",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 5,
+      "awayTeam": "Strasbourg",
+      "homeTeam": "FSV Mainz 05",
+      "pick": "Strasbourg ML",
+      "startTime": "2026-04-16T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }
