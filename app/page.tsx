@@ -472,6 +472,31 @@ function findPick(game: OddsGame, sport: string): SignalGame | null {
   return null;
 }
 
+function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
+  const signalSource =
+    sport === "MLB"
+      ? mlbSignalsData.games
+      : sport === "NBA"
+        ? nbaSignalsData.games
+        : sport === "NHL"
+          ? nhlSignalsData.games
+          : sport === "SOCCER"
+            ? soccerSignalsData.games
+            : [];
+
+  const liveAway = normalizeName(game.away_team);
+  const liveHome = normalizeName(game.home_team);
+
+  const match =
+    signalSource.find((g) => {
+      const signalAway = normalizeName(g.awayTeam ?? "");
+      const signalHome = normalizeName(g.homeTeam ?? "");
+      return liveAway === signalAway && liveHome === signalHome;
+    }) || null;
+
+  return match;
+}
+
 export default function Home() {
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
   const [games, setGames] = useState<OddsGame[]>([]);
@@ -802,6 +827,8 @@ useEffect(() => {
 
                     <div>
                       {group.games.map((game, idx) => {
+                        const livePickData = findLivePick(game, group.sport);
+
                         const awayScore =
                           game.scores?.find((s) => s.name === game.away_team)
                             ?.score ?? "-";
@@ -886,16 +913,15 @@ useEffect(() => {
                               </div>
                             </div>
 
-                            {/*
-                            <div className="mt-3 rounded-[14px] border border-cyan-400/20 bg-cyan-400/10 px-3 py-3">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
-                                Live Signal Detected
-                              </p>
-                              <p className="mt-1 text-[14px] font-semibold text-white">
-                                Heat +8.5
-                              </p>
-                            </div>
-                            */}
+                            {livePickData ? (
+  <div className="mt-3 flex justify-center">
+    <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+        Signal Detected
+      </p>
+    </div>
+  </div>
+) : null}
                           </div>
                         );
                       })}
