@@ -135,7 +135,7 @@ function TeamBadge({
 
   if (logo) {
     return (
-      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1">
         <img
           src={logo}
           alt={teamName}
@@ -146,7 +146,7 @@ function TeamBadge({
   }
 
   return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[10px] font-bold text-white/70">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[10px] font-bold text-white/70">
       {getDisplayAbbr(teamName)}
     </div>
   );
@@ -713,7 +713,7 @@ useEffect(() => {
   return (
   <main className="min-h-screen bg-[#050816] text-white">
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
-      <header className="sticky top-0 z-20 border-b border-white/5 bg-[#050816]/95 px-4 pb-4 pt-5 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-white/5 bg-[#050816]/95 px-4 pb-3 pt-5 backdrop-blur">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-400/90">
@@ -766,7 +766,7 @@ useEffect(() => {
         </div>
       </header>
 
-      <section className="flex-1 space-y-3 px-4 py-4">
+      <section className="flex-1 space-y-3 px-4 py-3">
         {viewMode === "live" ? (
           <>
             <div className="mb-1 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -813,14 +813,14 @@ useEffect(() => {
                 No live games available.
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {groupedFilteredLiveGames.map((group) => (
                   <article
                     key={group.leagueKey}
-                    className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.04]"
+                    className="overflow-hidden rounded-[20px] border border-white/10 bg-white/[0.04]"
                   >
-                    <div className="border-b border-white/10 px-4 py-3">
-                      <p className="text-[15px] font-semibold tracking-tight text-white">
+                    <div className="border-b border-white/10 px-3 py-2.5">
+                      <p className="text-[14px] font-semibold tracking-tight text-white">
                         {group.title}
                       </p>
                     </div>
@@ -839,89 +839,95 @@ useEffect(() => {
                         return (
                           <div
                             key={`${game.id}-${idx}`}
-                            className={`px-4 py-4 ${
+                            className={`px-3 py-2.5 ${
                               idx !== group.games.length - 1
                                 ? "border-b border-white/10"
                                 : ""
                             }`}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex min-w-0 w-[40%] items-center justify-end">
-  <div className="flex min-w-0 items-center gap-2.5">
-    <p className="truncate text-right text-[14px] font-medium text-white">
-      {getLiveDisplayName(game.away_team)}
-    </p>
-    <div className="shrink-0">
-      <TeamBadge
-        teamName={game.away_team}
-        sport={group.sport}
-      />
-    </div>
-  </div>
-</div>
+                              <div className="flex min-w-0 w-[38%] items-center justify-end">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <p className="truncate text-right text-[13px] font-medium text-white">
+                                    {getLiveDisplayName(game.away_team)}
+                                  </p>
+                                  <div className="shrink-0">
+                                    <TeamBadge
+                                      teamName={game.away_team}
+                                      sport={group.sport}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
 
-                              <div className="flex w-[20%] flex-col items-center justify-center">
-  {awayScore === "-" && homeScore === "-" ? (
-    <span className="text-[15px] font-semibold text-white">
-      {formatTime(game.commence_time)}
-    </span>
-  ) : (
-    <>
-      <span
-        className={`text-[11px] font-semibold ${
-          game.completed ? "text-white/60" : "text-red-400"
-        }`}
-      >
-        {getGameMinute(game)}
-      </span>
+                              <div className="flex w-[24%] flex-col items-center justify-center">
+                                {awayScore === "-" && homeScore === "-" ? (
+                                  <span className="text-[14px] font-semibold text-white">
+                                    {formatTime(game.commence_time)}
+                                  </span>
+                                ) : (
+                                  <>
+                                    <span
+                                      className={`text-[10px] font-semibold ${
+                                        game.completed
+                                          ? "text-white/60"
+                                          : "text-red-400"
+                                      }`}
+                                    >
+                                      {getGameMinute(game)}
+                                    </span>
 
-      <div className="mt-1 flex items-center gap-2">
-        <span className="text-[18px] font-bold text-white">{awayScore}</span>
-        <span className="text-white/50">-</span>
-        <span className="text-[18px] font-bold text-white">{homeScore}</span>
-      </div>
-    </>
-  )}
-</div>
+                                    <div className="mt-0.5 flex items-center gap-1.5">
+                                      <span className="text-[16px] font-bold text-white">
+                                        {awayScore}
+                                      </span>
+                                      <span className="text-white/50">-</span>
+                                      <span className="text-[16px] font-bold text-white">
+                                        {homeScore}
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
 
-                              <div className="flex min-w-0 w-[40%] items-center">
-  <div className="flex min-w-0 items-center gap-2.5">
-    <div className="shrink-0">
-      <TeamBadge
-        teamName={game.home_team}
-        sport={group.sport}
-      />
-    </div>
-    <p className="truncate text-left text-[14px] font-medium text-white">
-      {getLiveDisplayName(game.home_team)}
-    </p>
-  </div>
-</div>
+                              <div className="flex min-w-0 w-[38%] items-center">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <div className="shrink-0">
+                                    <TeamBadge
+                                      teamName={game.home_team}
+                                      sport={group.sport}
+                                    />
+                                  </div>
+                                  <p className="truncate text-left text-[13px] font-medium text-white">
+                                    {getLiveDisplayName(game.home_team)}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="mt-3 flex justify-center gap-3">
-                              <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+                            <div className="mt-2 flex justify-center gap-2">
+                              <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
                                 -203
                               </div>
 
-                              <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+                              <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
                                 O/U 6
                               </div>
 
-                              <div className="rounded-full bg-black/60 px-3 py-1.5 text-[12px]">
+                              <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
                                 +164
                               </div>
                             </div>
 
                             {livePickData ? (
-  <div className="mt-3 flex justify-center">
-    <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
-        Signal Detected
-      </p>
-    </div>
-  </div>
-) : null}
+                              <div className="mt-2 flex justify-center">
+                                <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
+                                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
+                                    Signal Detected
+                                  </p>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         );
                       })}
