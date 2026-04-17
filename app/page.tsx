@@ -836,6 +836,8 @@ const eliteTopSignals = useMemo(() => {
   return topSignals;
 }, [topSignals]);
 
+const isTopTab = selectedSport === "TOP";
+
   return (
   <main className="min-h-screen bg-[#050816] text-white">
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
@@ -1137,7 +1139,7 @@ const eliteTopSignals = useMemo(() => {
   )
 
         ) : userAccess.plan === "elite" ? (
-  selectedSport === "TOP" ? (
+  isTopTab ? (
     eliteTopSignals.length === 0 ? (
       <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
         No Top Signals available today.
