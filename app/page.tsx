@@ -76,6 +76,13 @@ type LiveScore = {
   }>;
 };
 
+type UserPlan = "free" | "exclusive" | "premium" | "elite";
+
+type UserAccess = {
+  plan: UserPlan;
+  sports: SportTab[];
+};
+
 const mlbSignalsData = mlbSignals as { games: SignalGame[] };
 const nbaSignalsData = nbaSignals as { games: SignalGame[] };
 const nhlSignalsData = nhlSignals as { games: SignalGame[] };
