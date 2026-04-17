@@ -1071,7 +1071,7 @@ const isTopTab = selectedSport === "TOP";
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
             Loading {selectedSport} games...
           </div>
-        ) : selectedSport === "TOP" ? (
+        ) : isTopTab ? (
   canViewTopTab(userAccess) ? (
     <div className="space-y-3">
             {topSignals.map((pick, idx) => (
@@ -1204,7 +1204,7 @@ const isTopTab = selectedSport === "TOP";
   <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
     Your current subscription does not include {selectedSport}.
   </div>
-) : selectedSport === "TOP" ? (
+) : isTopTab ? (
   <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
     TOP is available only for Elite subscribers.
   </div>
