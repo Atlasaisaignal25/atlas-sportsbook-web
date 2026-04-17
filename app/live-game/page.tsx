@@ -532,12 +532,23 @@ function LiveGameContent() {
             </div>
 
             <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
-              {pickData ? formatDisplayedPick(pickData.pick, sport) : "No signal available"}
-            </p>
+  {pickData
+    ? formatDisplayedPick(pickData.pick, sport)
+    : "No signal detected yet"}
+</p>
 
-            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
-              {pickData?.status ?? "PENDING"}
-            </p>
+<div className="mt-3 flex items-center gap-2">
+  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-white/70">
+    Pending
+  </span>
+
+  <span className="rounded-full bg-cyan-400/20 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-cyan-300">
+    Early Signal
+  </span>
+</div>
+<p className="mt-2 text-[11px] text-white/45">
+  Market activity detected • Monitoring for confirmation
+</p>
           </div>
         </section>
 
@@ -547,11 +558,11 @@ function LiveGameContent() {
           </p>
 
           <h2 className="mt-2 text-[18px] font-semibold tracking-tight text-white">
-            Validate this signal with a subscription
+            Unlock confirmed signal & premium validation
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-white/70">
-            Subscribe to unlock confirmed signals, ranked Top 5 plays, premium signal access and stronger validation layers for this matchup.
+            This signal was detected early. Subscribers get access to confirmed signals, ranked top plays and stronger validation before game time.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
