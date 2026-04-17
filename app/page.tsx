@@ -498,13 +498,76 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
   return match;
 }
 
+function hasSportAccess(userAccess: UserAccess, sport: SportTab) {
+  if (userAccess.plan === "elite") return true;
+  return userAccess.sports.includes(sport);
+}
+
+function canViewTopTab(userAccess: UserAccess) {
+  return userAccess.plan === "elite";
+}
+
+function canViewPickInSubs(
+  userAccess: UserAccess,
+  sport: SportTab,
+  pickData: SignalGame | null
+) {
+  if (!pickData) return false;
+  if (!hasSportAccess(userAccess, sport)) return false;
+
+  if (userAccess.plan === "exclusive") {
+    return !!pickData.isTop5;
+  }
+
+  if (userAccess.plan === "premium") {
+    return !!pickData.isTop5 || !!pickData.isTopSignal;
+  }
+
+  if (userAccess.plan === "elite") {
+    return true;
+  }
+
+  return false;
+}
+
+function getSubsBadgeLabel(
+  userAccess: UserAccess,
+  pickData: SignalGame
+) {
+  if (userAccess.plan === "exclusive" && pickData.isTop5) {
+    return "Top 5";
+  }
+
+  if (userAccess.plan === "premium") {
+    if (pickData.isTopSignal) {
+      return `Top Signal #${pickData.topRank ?? 1}`;
+    }
+
+    if (pickData.isTop5) {
+      return `Top 5 #${pickData.topRank ?? ""}`;
+    }
+  }
+
+  return null;
+}
+
 export default function Home() {
   const router = useRouter();
 
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
   const [games, setGames] = useState<OddsGame[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userPlan] = useState<"free" | "regular" | "premium">("premium");
+  type UserPlan = "free" | "exclusive" | "premium" | "elite";
+
+type UserAccess = {
+  plan: UserPlan;
+  sports: SportTab[];
+};
+
+const [userAccess] = useState<UserAccess>({
+  plan: "premium",
+  sports: ["MLB"],
+});
 
 const [viewMode, setViewMode] = useState<"odds" | "live">("odds");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
@@ -955,7 +1018,8 @@ useEffect(() => {
             Loading {selectedSport} games...
           </div>
         ) : selectedSport === "TOP" ? (
-          <div className="space-y-3">
+  canViewTopTab(userAccess) ? (
+    <div className="space-y-3">
             {topSignals.map((pick, idx) => (
               <article
                 key={`top-${idx}`}
@@ -1014,6 +1078,12 @@ useEffect(() => {
               </article>
             ))}
           </div>
+  ) : (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+      Top Signals are available only for Elite subscribers.
+    </div>
+  )
+
         ) : games.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
             No games available for {selectedSport}.
@@ -1029,6 +1099,9 @@ useEffect(() => {
             const totalValues = getTotalValues(game);
             const totalPrices = getTotalPrices(game);
             const pickData = findPick(game, selectedSport);
+            const sportAccess = hasSportAccess(userAccess, selectedSport);
+const canSeeThisPick = canViewPickInSubs(userAccess, selectedSport, pickData);
+const subsBadgeLabel = pickData ? getSubsBadgeLabel(userAccess, pickData) : null;
 
             return (
               <article
@@ -1124,44 +1197,62 @@ useEffect(() => {
                 </div>
 
                 {pickData ? (
-                  <div className="mt-5 space-y-3">
-                    <div className="rounded-[22px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-                      <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                        Signal Detected
-                      </div>
+  <div className="mt-5 space-y-3">
+    <div className="rounded-[22px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+      <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+        Signal Detected
+      </div>
 
-                      <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
-                        {formatDisplayedPick(pickData.pick, selectedSport)}
-                      </p>
+      {sportAccess ? (
+        canSeeThisPick ? (
+          <>
+            <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
+              {formatDisplayedPick(pickData.pick, selectedSport)}
+            </p>
 
-                      <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
-                        {pickData.status ?? "PENDING"}
-                      </p>
-                    </div>
+            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-green-300">
+              Confirmed
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[17px] font-semibold leading-tight tracking-tight text-white/45">
+              Locked for your current plan
+            </p>
 
-                    <div className="flex flex-wrap gap-2">
-                      {pickData.isTop5 && userPlan === "regular" && (
-                        <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
-                          Top 5
-                        </span>
-                      )}
+            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+              Upgrade required
+            </p>
+          </>
+        )
+      ) : (
+        <>
+          <p className="text-[17px] font-semibold leading-tight tracking-tight text-white/45">
+            Subscription required for {selectedSport}
+          </p>
 
-                      {pickData.isTopSignal && userPlan === "premium" && (
-                        <span className="inline-flex rounded-full bg-purple-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-purple-300">
-                          Top Signal #{pickData.topRank ?? 1}
-                        </span>
-                      )}
+          <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
+            Sport not included
+          </p>
+        </>
+      )}
+    </div>
 
-                      {pickData.isTop5 &&
-                        !pickData.isTopSignal &&
-                        userPlan === "premium" && (
-                          <span className="inline-flex rounded-full bg-yellow-500/18 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
-                            Top 5 #{pickData.topRank ?? ""}
-                          </span>
-                        )}
-                    </div>
-                  </div>
-                ) : null}
+    {sportAccess && canSeeThisPick && subsBadgeLabel ? (
+      <div className="flex flex-wrap gap-2">
+        <span
+          className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+            subsBadgeLabel.includes("Top Signal")
+              ? "bg-purple-500/18 text-purple-300"
+              : "bg-yellow-500/18 text-yellow-300"
+          }`}
+        >
+          {subsBadgeLabel}
+        </span>
+      </div>
+    ) : null}
+  </div>
+) : null}
               </article>
             );
           })
