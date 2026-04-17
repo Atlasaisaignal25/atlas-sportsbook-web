@@ -695,7 +695,7 @@ useEffect(() => {
               Atlas Signals
             </p>
             <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight">
-              Sportsbook
+              Games
             </h1>
           </div>
 
@@ -708,7 +708,7 @@ useEffect(() => {
                   : "bg-white/10 text-white/70"
               }`}
             >
-              Odds
+              Subs
             </button>
 
             <button
@@ -753,7 +753,7 @@ useEffect(() => {
                     : "bg-white/10 text-white/65"
                 }`}
               >
-                Ayer
+                Previous
               </button>
 
               <button
@@ -764,7 +764,7 @@ useEffect(() => {
                     : "bg-white/10 text-white/65"
                 }`}
               >
-                Hoy
+                Today
               </button>
 
               <button
@@ -775,7 +775,7 @@ useEffect(() => {
                     : "bg-white/10 text-white/65"
                 }`}
               >
-                Mañana
+                Upcoming
               </button>
             </div>
 
