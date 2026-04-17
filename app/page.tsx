@@ -505,6 +505,43 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
   return match;
 }
 
+function getTop5BySport(sport: SportTab): Top5Entry[] {
+  if (sport === "MLB") return mlbTop5Data.top5 ?? [];
+  if (sport === "NBA") return nbaTop5Data.top5 ?? [];
+  if (sport === "NHL") return nhlTop5Data.top5 ?? [];
+  if (sport === "SOCCER") return soccerTop5Data.top5 ?? [];
+  return [];
+}
+
+function getTopSignalBySport(sport: SportTab): Top5Entry | null {
+  const top5 = getTop5BySport(sport);
+  return top5.find((pick) => pick.isTopSignal) || top5[0] || null;
+}
+
+function getSubPicksForUser(userAccess: UserAccess, selectedSport: SportTab) {
+  if (!hasSportAccess(userAccess, selectedSport)) return [];
+
+  const top5 = getTop5BySport(selectedSport);
+
+  if (userAccess.plan === "exclusive") {
+    return top5.map((pick) => ({
+      ...pick,
+      label: "Top 5",
+    }));
+  }
+
+  if (userAccess.plan === "premium") {
+    return top5.map((pick) => ({
+      ...pick,
+      label: pick.isTopSignal
+        ? `Top Signal #${pick.rank ?? 1}`
+        : `Top 5 #${pick.rank ?? ""}`,
+    }));
+  }
+
+  return [];
+}
+
 function hasSportAccess(userAccess: UserAccess, sport: SportTab) {
   if (userAccess.plan === "elite") return true;
   return userAccess.sports.includes(sport);
@@ -572,11 +609,11 @@ type UserAccess = {
 };
 
 const [userAccess] = useState<UserAccess>({
-  plan: "premium",
+  plan: "exclusive",
   sports: ["MLB"],
 });
 
-const [viewMode, setViewMode] = useState<"odds" | "live">("odds");
+const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
 const [liveLoading, setLiveLoading] = useState(false);
 const [activeDay, setActiveDay] = useState<"yesterday" | "today" | "tomorrow">("today");
@@ -790,6 +827,14 @@ useEffect(() => {
 
   loadLiveGames();
 }, [viewMode, selectedSport]);
+
+const subsPicks = useMemo(() => {
+  return getSubPicksForUser(userAccess, selectedSport);
+}, [userAccess, selectedSport]);
+
+const eliteTopSignals = useMemo(() => {
+  return topSignals;
+}, [topSignals]);
 
   return (
   <main className="min-h-screen bg-[#050816] text-white">
@@ -1091,179 +1136,143 @@ useEffect(() => {
     </div>
   )
 
-        ) : games.length === 0 ? (
-          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-            No games available for {selectedSport}.
-          </div>
-        ) : (
-          games.map((game) => {
-            const homeOdds = getMoneyline(game, game.home_team);
-            const awayOdds = getMoneyline(game, game.away_team);
-            const awaySpread = getSpreadValue(game, game.away_team);
-            const homeSpread = getSpreadValue(game, game.home_team);
-            const awaySpreadPrice = getSpreadPrice(game, game.away_team);
-            const homeSpreadPrice = getSpreadPrice(game, game.home_team);
-            const totalValues = getTotalValues(game);
-            const totalPrices = getTotalPrices(game);
-            const pickData = findPick(game, selectedSport);
-            const sportAccess = hasSportAccess(userAccess, selectedSport);
-const canSeeThisPick = canViewPickInSubs(userAccess, selectedSport, pickData);
-const subsBadgeLabel = pickData ? getSubsBadgeLabel(userAccess, pickData) : null;
-
-            return (
-              <article
-                key={game.id}
-                className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-              >
-                <div className="mb-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
-                    {selectedSport}
-                  </p>
-                  <p className="mt-2 text-[13px] font-medium text-white/55">
-                    {formatTime(game.commence_time)}
-                  </p>
-                </div>
-
-                <div className="mt-2">
-                  <div className="mb-2 grid grid-cols-[128px_70px_70px_70px] gap-x-[6px]">
-                    <div />
-                    <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
-                      Spread
-                    </div>
-                    <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/75">
-                      Total
-                    </div>
-                    <div className="text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
-                      ML
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-[128px_70px_70px_70px] gap-x-[6px] gap-y-[8px] items-center">
-                    <div className="flex items-center gap-2.5">
-                      <TeamBadge teamName={game.away_team} sport={selectedSport} />
-                      <p className="truncate text-[16px] font-medium tracking-tight text-white">
-                        {getDisplayAbbr(game.away_team)}
-                      </p>
-                    </div>
-
-                    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.08] text-center">
-                      <span className="text-[13px] font-semibold leading-none text-white">
-                        {awaySpread}
-                      </span>
-                      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-                        {awaySpreadPrice}
-                      </span>
-                    </div>
-
-                    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.08] text-center">
-                      <span className="text-[13px] font-semibold leading-none text-white">
-                        {totalValues.overLabel}
-                      </span>
-                      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-                        {totalPrices.overPrice}
-                      </span>
-                    </div>
-
-                    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.08] text-center">
-                      <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
-                        {awayOdds !== null ? formatAmericanOdds(awayOdds) : "N/A"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2.5">
-                      <TeamBadge teamName={game.home_team} sport={selectedSport} />
-                      <p className="truncate text-[16px] font-medium tracking-tight text-white">
-                        {getDisplayAbbr(game.home_team)}
-                      </p>
-                    </div>
-
-                    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.08] text-center">
-                      <span className="text-[13px] font-semibold leading-none text-white">
-                        {homeSpread}
-                      </span>
-                      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-                        {homeSpreadPrice}
-                      </span>
-                    </div>
-
-                    <div className="flex h-[64px] w-[70px] flex-col items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.08] text-center">
-                      <span className="text-[13px] font-semibold leading-none text-white">
-                        {totalValues.underLabel}
-                      </span>
-                      <span className="mt-1 text-[10px] font-semibold leading-none text-[#8f7cff]">
-                        {totalPrices.underPrice}
-                      </span>
-                    </div>
-
-                    <div className="flex h-[64px] w-[70px] items-center justify-center rounded-[14px] border border-white/[0.06] bg-white/[0.08] text-center">
-                      <span className="text-[13px] font-semibold leading-none text-[#8f7cff]">
-                        {homeOdds !== null ? formatAmericanOdds(homeOdds) : "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {pickData ? (
-  <div className="mt-5 space-y-3">
-    <div className="rounded-[22px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-      <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-        Signal Detected
+        ) : userAccess.plan === "elite" ? (
+  selectedSport === "TOP" ? (
+    eliteTopSignals.length === 0 ? (
+      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+        No Top Signals available today.
       </div>
+    ) : (
+      <div className="space-y-3">
+        {eliteTopSignals.map((pick, idx) => (
+          <article
+            key={`elite-top-${idx}`}
+            className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+          >
+            <div className="mb-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-400/95">
+                Top Signal {pick.sport}
+              </p>
+              {pick.startTime && (
+                <p className="mt-2 text-[13px] font-medium text-white/55">
+                  {formatTime(pick.startTime)}
+                </p>
+              )}
+            </div>
 
-      {sportAccess ? (
-        canSeeThisPick ? (
-          <>
-            <p className="text-[17px] font-semibold leading-tight tracking-tight text-white">
-              {formatDisplayedPick(pickData.pick, selectedSport)}
-            </p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <TeamBadge teamName={pick.awayTeam ?? ""} sport={pick.sport} />
+                <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                  {getDisplayAbbr(pick.awayTeam ?? "")}
+                </p>
+              </div>
 
-            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-green-300">
-              Confirmed
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-[17px] font-semibold leading-tight tracking-tight text-white/45">
-              Locked for your current plan
-            </p>
+              <div className="flex items-center gap-3">
+                <TeamBadge teamName={pick.homeTeam ?? ""} sport={pick.sport} />
+                <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                  {getDisplayAbbr(pick.homeTeam ?? "")}
+                </p>
+              </div>
+            </div>
 
-            <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
-              Upgrade required
-            </p>
-          </>
-        )
-      ) : (
-        <>
-          <p className="text-[17px] font-semibold leading-tight tracking-tight text-white/45">
-            Subscription required for {selectedSport}
-          </p>
+            <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+              <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                Signal Detected
+              </div>
 
-          <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.08em] text-white/55">
-            Sport not included
-          </p>
-        </>
-      )}
+              <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
+                {formatDisplayedPick(pick.pick, pick.sport)}
+              </p>
+
+              <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-white/55">
+                {pick.status ?? "PENDING"}
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+    )
+  ) : (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+      Elite subscribers review their plays from the TOP tab.
     </div>
-
-    {sportAccess && canSeeThisPick && subsBadgeLabel ? (
-      <div className="flex flex-wrap gap-2">
-        <span
-          className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-            subsBadgeLabel.includes("Top Signal")
-              ? "bg-purple-500/18 text-purple-300"
-              : "bg-yellow-500/18 text-yellow-300"
-          }`}
-        >
-          {subsBadgeLabel}
-        </span>
-      </div>
-    ) : null}
+  )
+) : !hasSportAccess(userAccess, selectedSport) ? (
+  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+    Your current subscription does not include {selectedSport}.
   </div>
-) : null}
-              </article>
-            );
-          })
-        )}
+) : selectedSport === "TOP" ? (
+  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+    TOP is available only for Elite subscribers.
+  </div>
+) : subsPicks.length === 0 ? (
+  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+    No subscription picks available for {selectedSport}.
+  </div>
+) : (
+  <div className="space-y-3">
+    {subsPicks.map((pick, idx) => (
+      <article
+        key={`subs-pick-${selectedSport}-${idx}`}
+        className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+      >
+        <div className="mb-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+            {selectedSport}
+          </p>
+          {pick.startTime && (
+            <p className="mt-2 text-[13px] font-medium text-white/55">
+              {formatTime(pick.startTime)}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
+            <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+              {getDisplayAbbr(pick.awayTeam ?? "")}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
+            <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+              {getDisplayAbbr(pick.homeTeam ?? "")}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+          <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+            Signal Detected
+          </div>
+
+          <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
+            {formatDisplayedPick(pick.pick, selectedSport)}
+          </p>
+
+          <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-white/55">
+            {pick.status ?? "PENDING"}
+          </p>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span
+            className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+              String(pick.label).includes("Top Signal")
+                ? "bg-purple-500/18 text-purple-300"
+                : "bg-yellow-500/18 text-yellow-300"
+            }`}
+          >
+            {pick.label}
+          </span>
+        </div>
+      </article>
+    ))}
+  </div>
+)}
       </section>
 
       <nav className="sticky bottom-0 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
