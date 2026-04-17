@@ -282,8 +282,34 @@ function findPickForGame(game: OddsGame, sport: SportTab): SignalGame | null {
             ? soccerSignalsData.games
             : [];
 
-  const direct = source.find((g) => String(g.gameId) === String(game.id));
-  return direct || source.find((g) => isSameMatch(game, g)) || null;
+  // 1. intenta por gameId
+  const direct = source.find(
+    (g) => String(g.gameId) === String(game.id)
+  );
+
+  if (direct) return direct;
+
+  // 2. intenta por nombre exacto
+  const byName = source.find((g) => isSameMatch(game, g));
+  if (byName) return byName;
+
+  // 3. fallback agresivo (por palabras clave)
+  const gameAway = normalizeName(game.away_team);
+  const gameHome = normalizeName(game.home_team);
+
+  const fallback = source.find((g) => {
+    const signalAway = normalizeName(g.awayTeam ?? "");
+    const signalHome = normalizeName(g.homeTeam ?? "");
+
+    return (
+      gameAway.includes(signalAway) ||
+      signalAway.includes(gameAway) ||
+      gameHome.includes(signalHome) ||
+      signalHome.includes(gameHome)
+    );
+  });
+
+  return fallback || null;
 }
 
 function getSportApiValue(sport: SportTab) {
@@ -303,6 +329,7 @@ function LiveGameContent() {
 
   const [game, setGame] = useState<OddsGame | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userPlan] = useState<"free" | "regular" | "premium">("premium");
 
   useEffect(() => {
     async function loadGame() {
@@ -538,9 +565,13 @@ function LiveGameContent() {
 </p>
 
 <div className="mt-3 flex items-center gap-2">
-  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-white/70">
-    Pending
-  </span>
+  <span className={`rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
+  userPlan === "free"
+    ? "bg-white/10 text-white/70"
+    : "bg-green-500/20 text-green-300"
+}`}>
+  {userPlan === "free" ? "Pending" : "Confirmed"}
+</span>
 
   <span className="rounded-full bg-cyan-400/20 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-cyan-300">
     Early Signal

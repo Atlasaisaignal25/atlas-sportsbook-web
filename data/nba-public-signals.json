@@ -1,1 +1,20 @@
-{}
+{
+  "sport": "NBA",
+  "date": "2026-04-17",
+  "games": [
+    {
+      "gameId": "c8d1b7fd06c21e259b9416daf596f023",
+      "awayTeam": "Golden State Warriors",
+      "homeTeam": "Phoenix Suns",
+      "pick": "Under (219)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "fc16dfbe5b438857b93902fa811dd8f6",
+      "awayTeam": "Charlotte Hornets",
+      "homeTeam": "Orlando Magic",
+      "pick": "Under (218)",
+      "status": "PENDING"
+    }
+  ]
+}

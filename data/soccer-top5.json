@@ -1,49 +1,49 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-16",
+  "date": "2026-04-17",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Celta Vigo",
-      "homeTeam": "SC Freiburg",
-      "pick": "Celta Vigo ML",
-      "startTime": "2026-04-16T16:45:00Z",
+      "awayTeam": "Rio Ave FC",
+      "homeTeam": "AVS Futebol SAD",
+      "pick": "Rio Ave FC ML",
+      "startTime": "2026-04-17T19:45:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Aston Villa",
-      "homeTeam": "Bologna",
-      "pick": "Aston Villa ML",
-      "startTime": "2026-04-16T19:00:00Z",
+      "awayTeam": "Blackburn Rovers",
+      "homeTeam": "Coventry City",
+      "pick": "Coventry City ML",
+      "startTime": "2026-04-17T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Real Betis",
-      "homeTeam": "SC Braga",
-      "pick": "Real Betis ML",
-      "startTime": "2026-04-16T19:00:00Z",
+      "awayTeam": "FC St. Pauli",
+      "homeTeam": "1. FC Köln",
+      "pick": "Over 2.5",
+      "startTime": "2026-04-17T18:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "AZ Alkmaar",
-      "homeTeam": "Shakhtar Donetsk",
-      "pick": "AZ Alkmaar ML",
-      "startTime": "2026-04-16T16:45:00Z",
+      "awayTeam": "Inter Milan",
+      "homeTeam": "Cagliari",
+      "pick": "Under 2.5",
+      "startTime": "2026-04-17T18:45:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "Strasbourg",
-      "homeTeam": "FSV Mainz 05",
-      "pick": "Strasbourg ML",
-      "startTime": "2026-04-16T19:00:00Z",
+      "awayTeam": "RC Lens",
+      "homeTeam": "Toulouse",
+      "pick": "Under 2.5",
+      "startTime": "2026-04-17T18:45:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

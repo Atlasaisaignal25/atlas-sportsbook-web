@@ -1,61 +1,54 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-16",
+  "date": "2026-04-17",
   "games": [
     {
-      "gameId": "c56c224a9f71ded70a010ef457f6816f",
-      "awayTeam": "Celta Vigo",
-      "homeTeam": "SC Freiburg",
-      "pick": "Celta Vigo ML",
+      "gameId": "e3cd75323645d0d1bae2af8685d990a9",
+      "awayTeam": "Rio Ave FC",
+      "homeTeam": "AVS Futebol SAD",
+      "pick": "Rio Ave FC ML",
       "status": "PENDING"
     },
     {
-      "gameId": "1e99ca015e59dafe2d397a0be198650e",
-      "awayTeam": "Aston Villa",
-      "homeTeam": "Bologna",
-      "pick": "Aston Villa ML",
+      "gameId": "b68962085069c4f1a6138137137c83e6",
+      "awayTeam": "Blackburn Rovers",
+      "homeTeam": "Coventry City",
+      "pick": "Coventry City ML",
       "status": "PENDING"
     },
     {
-      "gameId": "af977fbae8c6d3fe8847ec01b42f270f",
-      "awayTeam": "Real Betis",
-      "homeTeam": "SC Braga",
-      "pick": "Real Betis ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "4c8731bc9416f579d441c5f63d3bb42d",
-      "awayTeam": "AZ Alkmaar",
-      "homeTeam": "Shakhtar Donetsk",
-      "pick": "AZ Alkmaar ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "c5c382d74154b05dce39ca14a422780f",
-      "awayTeam": "Strasbourg",
-      "homeTeam": "FSV Mainz 05",
-      "pick": "Strasbourg ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "7bd6146745b2765c8c6207daacff37db",
-      "awayTeam": "Nottingham Forest",
-      "homeTeam": "Porto",
-      "pick": "Nottingham Forest ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "2e2e5e58256650964e31161d0da9ed1e",
-      "awayTeam": "AEK Athens",
-      "homeTeam": "Rayo Vallecano",
-      "pick": "AEK Athens ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "f0ce06e05c789703d4f91069487487c2",
-      "awayTeam": "Fiorentina",
-      "homeTeam": "Crystal Palace",
+      "gameId": "be9eda34a4ddf026072d12f7db44ec28",
+      "awayTeam": "FC St. Pauli",
+      "homeTeam": "1. FC Köln",
       "pick": "Over 2.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "3c0a6c55120809a87abc49406bb86657",
+      "awayTeam": "Inter Milan",
+      "homeTeam": "Cagliari",
+      "pick": "Under 2.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "6856b3123aaf14ce6c63669005568ba1",
+      "awayTeam": "RC Lens",
+      "homeTeam": "Toulouse",
+      "pick": "Under 2.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "a2d714226e359e11994632f530a047e8",
+      "awayTeam": "Sassuolo",
+      "homeTeam": "Como",
+      "pick": "Under 2.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "0eb89a3e70708aa669fdf2bbf2c78aac",
+      "awayTeam": "Atlético San Luis",
+      "homeTeam": "Pumas",
+      "pick": "Under 2.5",
       "status": "PENDING"
     }
   ]

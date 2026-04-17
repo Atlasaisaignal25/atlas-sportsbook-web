@@ -1,1 +1,24 @@
-{}
+{
+  "sport": "NBA",
+  "date": "2026-04-17",
+  "top5": [
+    {
+      "rank": 1,
+      "awayTeam": "Golden State Warriors",
+      "homeTeam": "Phoenix Suns",
+      "pick": "Under (219)",
+      "startTime": "2026-04-18T02:10:00Z",
+      "status": "PENDING",
+      "isTopSignal": true
+    },
+    {
+      "rank": 2,
+      "awayTeam": "Charlotte Hornets",
+      "homeTeam": "Orlando Magic",
+      "pick": "Under (218)",
+      "startTime": "2026-04-17T23:40:00Z",
+      "status": "PENDING",
+      "isTopSignal": false
+    }
+  ]
+}
