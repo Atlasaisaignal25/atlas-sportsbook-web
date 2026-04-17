@@ -10,6 +10,7 @@ import nbaTop5 from "@/data/nba-top5.json";
 import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
+import { useRouter } from "next/navigation";
 
 type Outcome = {
   name: string;
@@ -498,6 +499,8 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
 }
 
 export default function Home() {
+  const router = useRouter();
+
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
   const [games, setGames] = useState<OddsGame[]>([]);
   const [loading, setLoading] = useState(true);
@@ -595,6 +598,14 @@ const groupedFilteredLiveGames = useMemo(() => {
 
 function getLiveDisplayName(teamName: string) {
   return getTeamData(teamName)?.shortName ?? teamName;
+}
+
+function handleLiveGameClick(game: LiveScore, sport: SportTab) {
+  router.push(
+    `/live-game?sport=${encodeURIComponent(sport)}&gameId=${encodeURIComponent(
+      game.id
+    )}`
+  );
 }
 
   useEffect(() => {
@@ -837,14 +848,16 @@ useEffect(() => {
                             ?.score ?? "-";
 
                         return (
-                          <div
-                            key={`${game.id}-${idx}`}
-                            className={`px-3 py-2.5 ${
-                              idx !== group.games.length - 1
-                                ? "border-b border-white/10"
-                                : ""
-                            }`}
-                          >
+                          <button
+  key={`${game.id}-${idx}`}
+  type="button"
+  onClick={() => handleLiveGameClick(game, group.sport)}
+  className={`block w-full px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
+    idx !== group.games.length - 1
+      ? "border-b border-white/10"
+      : ""
+  }`}
+>
                             <div className="flex items-center justify-between">
                               <div className="flex min-w-0 w-[38%] items-center justify-end">
                                 <div className="flex min-w-0 items-center gap-2">
@@ -928,7 +941,7 @@ useEffect(() => {
                                 </div>
                               </div>
                             ) : null}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
