@@ -1,8 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function LiveGamePage() {
+function LiveGameContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -12,6 +13,7 @@ export default function LiveGamePage() {
   return (
     <main className="min-h-screen bg-[#050816] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-5">
+        
         <div className="mb-5 flex items-center justify-between">
           <button
             onClick={() => router.back()}
@@ -66,23 +68,20 @@ export default function LiveGamePage() {
             Subscribe to unlock confirmed signals, ranked Top 5 plays and premium signal access.
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-              Exclusive: Top 5
-            </span>
-            <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-              Premium: Ranked + Top Signal
-            </span>
-            <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-              Elite: Top by Sport
-            </span>
-          </div>
-
-          <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
+          <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black">
             View Subscription Options
           </button>
         </section>
+
       </div>
     </main>
+  );
+}
+
+export default function LiveGamePage() {
+  return (
+    <Suspense fallback={<div className="text-white p-4">Loading...</div>}>
+      <LiveGameContent />
+    </Suspense>
   );
 }
