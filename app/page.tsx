@@ -624,6 +624,7 @@ const [userAccess] = useState<UserAccess>({
   plan: "admin",
   sports: ["MLB", "NBA", "NHL", "SOCCER"],
 });
+console.log("USER PLAN:", userAccess.plan);
 
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
@@ -908,6 +909,8 @@ const isTopTab = selectedSport === "TOP";
           ))}
         </div>
       </header>
+
+      <p className="px-4 text-xs text-red-400">PLAN: {userAccess.plan}</p>
 
       <section className="flex-1 space-y-3 px-4 py-3">
         {viewMode === "live" ? (
