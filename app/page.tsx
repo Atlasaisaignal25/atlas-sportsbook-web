@@ -76,7 +76,7 @@ type LiveScore = {
   }>;
 };
 
-type UserPlan = "free" | "exclusive" | "premium" | "elite";
+type UserPlan = "free" | "exclusive" | "premium" | "elite" | "admin";
 
 type UserAccess = {
   plan: UserPlan;
@@ -561,12 +561,12 @@ function getSubPicksForUser(userAccess: UserAccess, selectedSport: SportTab) {
 }
 
 function hasSportAccess(userAccess: UserAccess, sport: SportTab) {
-  if (userAccess.plan === "elite") return true;
+  if (userAccess.plan === "elite" || userAccess.plan === "admin") return true;
   return userAccess.sports.includes(sport);
 }
 
 function canViewTopTab(userAccess: UserAccess) {
-  return userAccess.plan === "elite";
+  return userAccess.plan === "elite" || userAccess.plan === "admin";
 }
 
 function canViewPickInSubs(
@@ -585,7 +585,7 @@ function canViewPickInSubs(
     return !!pickData.isTop5 || !!pickData.isTopSignal;
   }
 
-  if (userAccess.plan === "elite") {
+  if (userAccess.plan === "elite" || userAccess.plan === "admin") {
     return true;
   }
 
@@ -619,16 +619,10 @@ export default function Home() {
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
   const [games, setGames] = useState<OddsGame[]>([]);
   const [loading, setLoading] = useState(true);
-  type UserPlan = "free" | "exclusive" | "premium" | "elite";
-
-type UserAccess = {
-  plan: UserPlan;
-  sports: SportTab[];
-};
 
 const [userAccess] = useState<UserAccess>({
-  plan: "elite",
-  sports: [],
+  plan: "admin",
+  sports: ["MLB", "NBA", "NHL", "SOCCER"],
 });
 
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
