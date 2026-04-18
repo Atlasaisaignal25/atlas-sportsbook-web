@@ -825,10 +825,13 @@ useEffect(() => {
     try {
       setLiveLoading(true);
 
-      const sportForLive =
-        selectedSport === "TOP" || selectedSport === "NFL"
-          ? "NBA"
-          : selectedSport;
+      if (selectedSport === "TOP" || selectedSport === "NFL") {
+  setLiveGames([]);
+  setLiveLoading(false);
+  return;
+}
+
+const sportForLive = selectedSport;
 
       const res = await fetch(`/api/scores?sport=${sportForLive}`, {
         cache: "no-store",
@@ -955,10 +958,40 @@ const isTopTab = selectedSport === "TOP";
                 Loading live games...
               </div>
             ) : groupedFilteredLiveGames.length === 0 ? (
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-                No live games available.
-              </div>
-            ) : (
+  selectedSport === "TOP" ? (
+    <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+        TOP Live
+      </p>
+
+      <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+        TOP is not available in Live
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-white/70">
+        Use the Subs section to unlock Top Signals and review the strongest plays available with an Elite subscription.
+      </p>
+    </div>
+  ) : selectedSport === "NFL" ? (
+    <div className="rounded-[28px] border border-yellow-400/20 bg-yellow-500/10 p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-yellow-300">
+        NFL
+      </p>
+
+      <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+        NFL is not available yet
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-white/70">
+        NFL support is coming in a future update. This section will activate once the market and signal system are ready.
+      </p>
+    </div>
+  ) : (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+      No live games available.
+    </div>
+  )
+) : (
               <div className="space-y-3">
                 {groupedFilteredLiveGames.map((group) => (
                   <article
@@ -1228,6 +1261,29 @@ const isTopTab = selectedSport === "TOP";
       Elite subscribers review their plays from the TOP tab.
     </div>
   )
+) : selectedSport === "NFL" ? (
+  <div className="rounded-[28px] border border-yellow-400/20 bg-yellow-500/10 p-5">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-yellow-300">
+      NFL
+    </p>
+
+    <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+      NFL is not available yet
+    </h2>
+
+    <p className="mt-2 text-sm leading-6 text-white/70">
+      NFL subscriptions are not active yet. This sport will be added once the signal engine and market workflow are ready.
+    </p>
+
+    <div className="mt-4 flex flex-wrap gap-2">
+      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+        Coming soon
+      </span>
+      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+        Signals in development
+      </span>
+    </div>
+  </div>
 ) : !hasSportAccess(userAccess, selectedSport) ? (
   <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
@@ -1262,8 +1318,41 @@ const isTopTab = selectedSport === "TOP";
     </button>
   </div>
 ) : isTopTab ? (
-  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-    TOP is available only for Elite subscribers.
+  <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+      Unlock TOP
+    </p>
+
+    <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+      Access Top Signals across all sports
+    </h2>
+
+    <p className="mt-2 text-sm leading-6 text-white/70">
+      The TOP section is reserved for Elite subscribers and includes the strongest signal detected in each available sport for the day.
+    </p>
+
+    <div className="mt-4 flex flex-wrap gap-2">
+      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+        Elite only
+      </span>
+      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+        Top signal by sport
+      </span>
+      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+        Daily strongest signals
+      </span>
+    </div>
+
+    <div className="mt-5 space-y-2 text-[13px] text-white/65">
+      <p>• NBA Top Signal</p>
+      <p>• NHL Top Signal</p>
+      <p>• MLB Top Signal</p>
+      <p>• Soccer Top Signal</p>
+    </div>
+
+    <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
+      Unlock TOP Access
+    </button>
   </div>
 ) : subsPicks.length === 0 ? (
   <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
