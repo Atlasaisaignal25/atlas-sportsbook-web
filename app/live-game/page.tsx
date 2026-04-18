@@ -326,6 +326,8 @@ function LiveGameContent() {
 
   const sport = (searchParams.get("sport") || "MLB") as SportTab;
   const gameId = searchParams.get("gameId") || "";
+const returnSport = searchParams.get("returnSport") || sport;
+const returnView = searchParams.get("returnView") || "live";
 
   const [game, setGame] = useState<OddsGame | null>(null);
   const [loading, setLoading] = useState(true);
@@ -420,7 +422,11 @@ function LiveGameContent() {
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-5">
           <div className="mb-5 flex items-center justify-between">
             <button
-              onClick={() => router.back()}
+  onClick={() =>
+    router.push(
+      `/?view=${encodeURIComponent(returnView)}&sport=${encodeURIComponent(returnSport)}`
+    )
+  }
               className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80"
             >
               Back

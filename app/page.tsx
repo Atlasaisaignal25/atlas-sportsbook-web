@@ -10,7 +10,7 @@ import nbaTop5 from "@/data/nba-top5.json";
 import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Outcome = {
   name: string;
@@ -624,6 +624,7 @@ function getSubsBadgeLabel(
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
   const [games, setGames] = useState<OddsGame[]>([]);
@@ -697,7 +698,7 @@ const filteredLiveGames = useMemo(() => {
     const live = isGameLive(game);
 
     if (activeDay === "today") {
-      return gameDayKey === todayKey || live;
+      return gameDayKey === todayKey;
     }
 
     return gameDayKey === targetDayKey;
@@ -733,9 +734,22 @@ function handleLiveGameClick(game: LiveScore, sport: SportTab) {
   router.push(
     `/live-game?sport=${encodeURIComponent(sport)}&gameId=${encodeURIComponent(
       game.id
-    )}`
+    )}&returnSport=${encodeURIComponent(sport)}&returnView=live`
   );
 }
+
+useEffect(() => {
+  const sportFromUrl = searchParams.get("sport") as SportTab | null;
+  const viewFromUrl = searchParams.get("view") as "odds" | "live" | null;
+
+  if (sportFromUrl && sportsTabs.includes(sportFromUrl)) {
+    setSelectedSport(sportFromUrl);
+  }
+
+  if (viewFromUrl === "live" || viewFromUrl === "odds") {
+    setViewMode(viewFromUrl);
+  }
+}, [searchParams]);
 
   useEffect(() => {
   async function loadGames() {
