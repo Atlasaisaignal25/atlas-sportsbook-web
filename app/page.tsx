@@ -731,16 +731,10 @@ function getLiveDisplayName(teamName: string) {
 }
 
 function handleLiveGameClick(game: LiveScore, sport: SportTab) {
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem("atlas_return_sport", sport);
-    sessionStorage.setItem("atlas_return_view", "live");
-    sessionStorage.setItem("atlas_return_day", activeDay);
-  }
-
   router.push(
     `/live-game?sport=${encodeURIComponent(sport)}&gameId=${encodeURIComponent(
       game.id
-    )}`
+    )}&returnSport=${encodeURIComponent(sport)}&returnView=live&returnDay=${encodeURIComponent(activeDay)}`
   );
 }
 

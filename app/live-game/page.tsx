@@ -324,10 +324,11 @@ function LiveGameContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const sport = (searchParams.get("sport") || "MLB") as SportTab;
-  const gameId = searchParams.get("gameId") || "";
+  const sport = searchParams.get("sport") || "MLB";
+const gameId = searchParams.get("gameId") || "";
 const returnSport = searchParams.get("returnSport") || sport;
 const returnView = searchParams.get("returnView") || "live";
+const returnDay = searchParams.get("returnDay") || "today";
 
   const [game, setGame] = useState<OddsGame | null>(null);
   const [loading, setLoading] = useState(true);
@@ -422,26 +423,17 @@ const returnView = searchParams.get("returnView") || "live";
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-5">
           <div className="mb-5 flex items-center justify-between">
             <button
-  onClick={() => {
-    if (typeof window !== "undefined") {
-      const savedSport = sessionStorage.getItem("atlas_return_sport") || "MLB";
-      const savedView = sessionStorage.getItem("atlas_return_view") || "live";
-      const savedDay = sessionStorage.getItem("atlas_return_day") || "today";
-
-      router.push(
-        `/?restore=1&sport=${encodeURIComponent(savedSport)}&view=${encodeURIComponent(
-          savedView
-        )}&day=${encodeURIComponent(savedDay)}`
-      );
-      return;
-    }
-
-    router.push("/");
-  }}
-              className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80"
-            >
-              Back
-            </button>
+  onClick={() =>
+    router.push(
+      `/?sport=${encodeURIComponent(returnSport)}&view=${encodeURIComponent(
+        returnView
+      )}&day=${encodeURIComponent(returnDay)}`
+    )
+  }
+  className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80"
+>
+  Back
+</button>
 
             <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-400/90">
               Atlas Signals
