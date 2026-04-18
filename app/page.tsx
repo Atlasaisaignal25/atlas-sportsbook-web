@@ -495,31 +495,60 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
   const liveAway = normalizeName(game.away_team);
   const liveHome = normalizeName(game.home_team);
 
-  // 1. match exacto
-  const exactMatch =
+  const normalizeSignal = (g: SignalGame) => ({
+    signalAway: normalizeName(g.awayTeam ?? ""),
+    signalHome: normalizeName(g.homeTeam ?? ""),
+  });
+
+  // 1. exacto normal
+  const exactNormal =
     signalSource.find((g) => {
-      const signalAway = normalizeName(g.awayTeam ?? "");
-      const signalHome = normalizeName(g.homeTeam ?? "");
+      const { signalAway, signalHome } = normalizeSignal(g);
       return liveAway === signalAway && liveHome === signalHome;
     }) || null;
 
-  if (exactMatch) return exactMatch;
+  if (exactNormal) return exactNormal;
 
-  // 2. fallback flexible
-  const fallback =
+  // 2. exacto invertido
+  const exactReversed =
     signalSource.find((g) => {
-      const signalAway = normalizeName(g.awayTeam ?? "");
-      const signalHome = normalizeName(g.homeTeam ?? "");
-
-      return (
-        liveAway.includes(signalAway) ||
-        signalAway.includes(liveAway) ||
-        liveHome.includes(signalHome) ||
-        signalHome.includes(liveHome)
-      );
+      const { signalAway, signalHome } = normalizeSignal(g);
+      return liveAway === signalHome && liveHome === signalAway;
     }) || null;
 
-  return fallback;
+  if (exactReversed) return exactReversed;
+
+  // 3. flexible normal
+  const flexibleNormal =
+    signalSource.find((g) => {
+      const { signalAway, signalHome } = normalizeSignal(g);
+
+      const awayMatch =
+        liveAway.includes(signalAway) || signalAway.includes(liveAway);
+
+      const homeMatch =
+        liveHome.includes(signalHome) || signalHome.includes(liveHome);
+
+      return awayMatch && homeMatch;
+    }) || null;
+
+  if (flexibleNormal) return flexibleNormal;
+
+  // 4. flexible invertido
+  const flexibleReversed =
+    signalSource.find((g) => {
+      const { signalAway, signalHome } = normalizeSignal(g);
+
+      const awayMatch =
+        liveAway.includes(signalHome) || signalHome.includes(liveAway);
+
+      const homeMatch =
+        liveHome.includes(signalAway) || signalAway.includes(liveHome);
+
+      return awayMatch && homeMatch;
+    }) || null;
+
+  return flexibleReversed;
 }
 
 function getStatusStyles(status?: string) {
@@ -1051,6 +1080,10 @@ const isTopTab = selectedSport === "TOP";
                     <div>
                       {group.games.map((game, idx) => {
                         const livePickData = findLivePick(game, group.sport);
+                        const showDebug =
+  group.sport === "SOCCER"
+    ? `DEBUG: ${game.away_team} vs ${game.home_team} | signal: ${livePickData ? "YES" : "NO"}`
+    : "";
 
                         const awayScore =
                           game.scores?.find((s) => s.name === game.away_team)
@@ -1131,6 +1164,7 @@ const isTopTab = selectedSport === "TOP";
                             </div>
 
                             <div className="mt-2 flex justify-center gap-2">
+
                               <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
                                 -203
                               </div>
@@ -1143,6 +1177,12 @@ const isTopTab = selectedSport === "TOP";
                                 +164
                               </div>
                             </div>
+
+{group.sport === "SOCCER" ? (
+  <p className="mt-2 text-center text-[10px] text-red-400">
+    {showDebug}
+  </p>
+) : null}
 
                             {livePickData ? (
                               <div className="mt-2 flex justify-center">
