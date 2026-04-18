@@ -628,7 +628,7 @@ type UserAccess = {
 
 const [userAccess] = useState<UserAccess>({
   plan: "elite",
-  sports: ["MLB", "NBA", "NHL", "SOCCER"],
+  sports: [],
 });
 
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
