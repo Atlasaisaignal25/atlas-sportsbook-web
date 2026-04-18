@@ -1,49 +1,49 @@
 {
   "sport": "MLB",
-  "date": "2026-04-16",
+  "date": "2026-04-18",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Kansas City Royals",
-      "homeTeam": "Detroit Tigers",
-      "pick": "Detroit Tigers",
-      "startTime": "2026-04-16T17:11:00Z",
+      "awayTeam": "Milwaukee Brewers",
+      "homeTeam": "Miami Marlins",
+      "pick": "Milwaukee Brewers",
+      "startTime": "2026-04-18T20:11:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Texas Rangers",
-      "homeTeam": "Athletics",
-      "pick": "Texas Rangers",
-      "startTime": "2026-04-16T19:06:00Z",
+      "awayTeam": "San Diego Padres",
+      "homeTeam": "Los Angeles Angels",
+      "pick": "Los Angeles Angels",
+      "startTime": "2026-04-19T01:39:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Seattle Mariners",
-      "homeTeam": "San Diego Padres",
-      "pick": "Seattle Mariners",
-      "startTime": "2026-04-17T00:41:00Z",
+      "awayTeam": "New York Mets",
+      "homeTeam": "Chicago Cubs",
+      "pick": "Chicago Cubs",
+      "startTime": "2026-04-18T18:21:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
       "awayTeam": "San Francisco Giants",
-      "homeTeam": "Cincinnati Reds",
-      "pick": "Cincinnati Reds",
-      "startTime": "2026-04-16T16:41:00Z",
+      "homeTeam": "Washington Nationals",
+      "pick": "Washington Nationals",
+      "startTime": "2026-04-18T20:06:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
       "awayTeam": "Toronto Blue Jays",
-      "homeTeam": "Milwaukee Brewers",
-      "pick": "Milwaukee Brewers",
-      "startTime": "2026-04-16T17:41:00Z",
+      "homeTeam": "Arizona Diamondbacks",
+      "pick": "Toronto Blue Jays",
+      "startTime": "2026-04-19T00:11:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }
