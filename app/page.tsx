@@ -557,6 +557,15 @@ function getSubPicksForUser(userAccess: UserAccess, selectedSport: SportTab) {
     }));
   }
 
+  if (userAccess.plan === "elite" || userAccess.plan === "admin") {
+    return top5.map((pick) => ({
+      ...pick,
+      label: pick.isTopSignal
+        ? `Top Signal #${pick.rank ?? 1}`
+        : `Top 5 #${pick.rank ?? ""}`,
+    }));
+  }
+
   return [];
 }
 
