@@ -1,49 +1,31 @@
 {
   "sport": "NHL",
-  "date": "2026-04-16",
+  "date": "2026-04-18",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Los Angeles Kings",
-      "homeTeam": "Calgary Flames",
+      "awayTeam": "Ottawa Senators",
+      "homeTeam": "Carolina Hurricanes",
       "pick": "Over (5.5)",
-      "startTime": "2026-04-17T01:00:00Z",
+      "startTime": "2026-04-18T19:10:47Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "St Louis Blues",
-      "homeTeam": "Utah Mammoth",
-      "pick": "St Louis Blues (+1.5)",
-      "startTime": "2026-04-16T23:30:00Z",
+      "awayTeam": "Minnesota Wild",
+      "homeTeam": "Dallas Stars",
+      "pick": "Over (5.5)",
+      "startTime": "2026-04-18T21:40:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "San Jose Sharks",
-      "homeTeam": "Winnipeg Jets",
-      "pick": "San Jose Sharks (+1.5)",
-      "startTime": "2026-04-17T00:00:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 4,
-      "awayTeam": "Anaheim Ducks",
-      "homeTeam": "Nashville Predators",
-      "pick": "Anaheim Ducks",
-      "startTime": "2026-04-17T00:00:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 5,
-      "awayTeam": "Vancouver Canucks",
-      "homeTeam": "Edmonton Oilers",
-      "pick": "Edmonton Oilers",
-      "startTime": "2026-04-17T01:00:00Z",
+      "awayTeam": "Philadelphia Flyers",
+      "homeTeam": "Pittsburgh Penguins",
+      "pick": "Philadelphia Flyers (+1.5)",
+      "startTime": "2026-04-19T00:00:26Z",
       "status": "PENDING",
       "isTopSignal": false
     }

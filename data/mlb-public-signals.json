@@ -1,65 +1,79 @@
 {
   "sport": "MLB",
-  "date": "2026-04-17",
+  "date": "2026-04-18",
   "games": [
     {
-      "gameId": "7067ff8b35400b4b9c0c1b2cf807fe58",
-      "awayTeam": "Atlanta Braves",
-      "homeTeam": "Philadelphia Phillies",
-      "pick": "Atlanta Braves",
+      "gameId": "f191de07e9e709e1723e5815840236c0",
+      "awayTeam": "Milwaukee Brewers",
+      "homeTeam": "Miami Marlins",
+      "pick": "Milwaukee Brewers",
       "status": "PENDING"
     },
     {
-      "gameId": "3eb605c9b25ccc2ad16334a2f4a4c17e",
-      "awayTeam": "Baltimore Orioles",
-      "homeTeam": "Cleveland Guardians",
-      "pick": "Cleveland Guardians",
+      "gameId": "18200eb582e3bee33b38016accc8cc4e",
+      "awayTeam": "San Diego Padres",
+      "homeTeam": "Los Angeles Angels",
+      "pick": "Los Angeles Angels",
       "status": "PENDING"
     },
     {
-      "gameId": "534d4f4aa2042d0efb0d307c77b7b0bf",
-      "awayTeam": "Tampa Bay Rays",
-      "homeTeam": "Pittsburgh Pirates",
-      "pick": "Pittsburgh Pirates",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "f396e7f6c0d265d701a8b7123bbcee83",
-      "awayTeam": "Detroit Tigers",
-      "homeTeam": "Boston Red Sox",
-      "pick": "Boston Red Sox",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "ed205a37de8d35d5fe44ef82f8644637",
-      "awayTeam": "Toronto Blue Jays",
-      "homeTeam": "Arizona Diamondbacks",
-      "pick": "Arizona Diamondbacks",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "0d33220f9d453b16cf8525818ee29051",
-      "awayTeam": "Texas Rangers",
-      "homeTeam": "Seattle Mariners",
-      "pick": "Seattle Mariners",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "45655eea8b0523564f56d5ba45520388",
+      "gameId": "2ea66f343279c5bb39b4cb87f04810e7",
       "awayTeam": "New York Mets",
       "homeTeam": "Chicago Cubs",
       "pick": "Chicago Cubs",
       "status": "PENDING"
     },
     {
-      "gameId": "72adcb72b594dcf90c1756f4f9358d4c",
+      "gameId": "ff3a4cea8f327d320fac1af61a34e8c3",
       "awayTeam": "San Francisco Giants",
       "homeTeam": "Washington Nationals",
-      "pick": "San Francisco Giants",
+      "pick": "Washington Nationals",
       "status": "PENDING"
     },
     {
-      "gameId": "4dab71b3bef20d97c215141ed121a95b",
+      "gameId": "6e5129c6e0fc6e1f6fcaff97e0a79ebc",
+      "awayTeam": "Toronto Blue Jays",
+      "homeTeam": "Arizona Diamondbacks",
+      "pick": "Toronto Blue Jays",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "38325b462bdab2c582eec8fa2fe82395",
+      "awayTeam": "Baltimore Orioles",
+      "homeTeam": "Cleveland Guardians",
+      "pick": "Cleveland Guardians",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "912d3bf4c4f1b996c5903aa3b6e3bc2a",
+      "awayTeam": "Atlanta Braves",
+      "homeTeam": "Philadelphia Phillies",
+      "pick": "Philadelphia Phillies",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "e2145c6f89c91d068baad1ef60cb1205",
+      "awayTeam": "Cincinnati Reds",
+      "homeTeam": "Minnesota Twins",
+      "pick": "Minnesota Twins",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "23317fc37d8b970abb36b16450935fe2",
+      "awayTeam": "St. Louis Cardinals",
+      "homeTeam": "Houston Astros",
+      "pick": "Houston Astros",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "b4b4c5e63320cc913bd4ac9d7c447f23",
+      "awayTeam": "Texas Rangers",
+      "homeTeam": "Seattle Mariners",
+      "pick": "Seattle Mariners",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "c3b12d49874633d7b722325998bebdd3",
       "awayTeam": "Chicago White Sox",
       "homeTeam": "Athletics",
       "pick": "Athletics",

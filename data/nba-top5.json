@@ -1,22 +1,22 @@
 {
   "sport": "NBA",
-  "date": "2026-04-17",
+  "date": "2026-04-18",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Golden State Warriors",
-      "homeTeam": "Phoenix Suns",
+      "awayTeam": "Toronto Raptors",
+      "homeTeam": "Cleveland Cavaliers",
       "pick": "Under (219)",
-      "startTime": "2026-04-18T02:10:00Z",
+      "startTime": "2026-04-18T17:10:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Charlotte Hornets",
-      "homeTeam": "Orlando Magic",
-      "pick": "Under (218)",
-      "startTime": "2026-04-17T23:40:00Z",
+      "awayTeam": "Minnesota Timberwolves",
+      "homeTeam": "Denver Nuggets",
+      "pick": "Over (232)",
+      "startTime": "2026-04-18T19:40:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

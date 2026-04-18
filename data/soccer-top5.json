@@ -1,49 +1,49 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-17",
+  "date": "2026-04-18",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Rio Ave FC",
-      "homeTeam": "AVS Futebol SAD",
-      "pick": "Rio Ave FC ML",
-      "startTime": "2026-04-17T19:45:00Z",
+      "awayTeam": "Guadalajara",
+      "homeTeam": "Puebla",
+      "pick": "Guadalajara (-1.5)",
+      "startTime": "2026-04-19T01:07:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Blackburn Rovers",
-      "homeTeam": "Coventry City",
-      "pick": "Coventry City ML",
-      "startTime": "2026-04-17T19:00:00Z",
+      "awayTeam": "Leeds United",
+      "homeTeam": "Wolverhampton Wanderers",
+      "pick": "Leeds United ML",
+      "startTime": "2026-04-18T14:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "FC St. Pauli",
-      "homeTeam": "1. FC Köln",
-      "pick": "Over 2.5",
-      "startTime": "2026-04-17T18:30:00Z",
+      "awayTeam": "Lorient",
+      "homeTeam": "Marseille",
+      "pick": "Marseille ML",
+      "startTime": "2026-04-18T15:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "Inter Milan",
-      "homeTeam": "Cagliari",
-      "pick": "Under 2.5",
-      "startTime": "2026-04-17T18:45:00Z",
+      "awayTeam": "Derby County",
+      "homeTeam": "Oxford United",
+      "pick": "Derby County ML",
+      "startTime": "2026-04-18T11:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "RC Lens",
-      "homeTeam": "Toulouse",
-      "pick": "Under 2.5",
-      "startTime": "2026-04-17T18:45:00Z",
+      "awayTeam": "Millwall",
+      "homeTeam": "Queens Park Rangers",
+      "pick": "Millwall ML",
+      "startTime": "2026-04-18T11:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

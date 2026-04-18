@@ -1,54 +1,299 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-17",
+  "date": "2026-04-18",
   "games": [
     {
-      "gameId": "e3cd75323645d0d1bae2af8685d990a9",
-      "awayTeam": "Rio Ave FC",
-      "homeTeam": "AVS Futebol SAD",
-      "pick": "Rio Ave FC ML",
+      "gameId": "28af082527fdb09fdfe53f5016b277c4",
+      "awayTeam": "Guadalajara",
+      "homeTeam": "Puebla",
+      "pick": "Guadalajara (-1.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "b68962085069c4f1a6138137137c83e6",
-      "awayTeam": "Blackburn Rovers",
-      "homeTeam": "Coventry City",
-      "pick": "Coventry City ML",
+      "gameId": "d137c5f062243e857803fcebfdda2953",
+      "awayTeam": "Leeds United",
+      "homeTeam": "Wolverhampton Wanderers",
+      "pick": "Leeds United ML",
       "status": "PENDING"
     },
     {
-      "gameId": "be9eda34a4ddf026072d12f7db44ec28",
-      "awayTeam": "FC St. Pauli",
-      "homeTeam": "1. FC Köln",
+      "gameId": "fe782261cb033b4af93a5093bacae6ac",
+      "awayTeam": "Lorient",
+      "homeTeam": "Marseille",
+      "pick": "Marseille ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "ac5274aa76452165617c427585fdfa79",
+      "awayTeam": "Derby County",
+      "homeTeam": "Oxford United",
+      "pick": "Derby County ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "157086900b215f3d825e2a538bb2ca84",
+      "awayTeam": "Millwall",
+      "homeTeam": "Queens Park Rangers",
+      "pick": "Millwall ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "02db5dbf281b27de13449ff46a035181",
+      "awayTeam": "Sheffield Wednesday",
+      "homeTeam": "Charlton Athletic",
+      "pick": "Charlton Athletic ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "91b6f2e28843065412a9c65ff495bc0a",
+      "awayTeam": "Swansea City",
+      "homeTeam": "Southampton",
+      "pick": "Southampton ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "4bcbfe3bf9cf87fe21afe69da2ef7d41",
+      "awayTeam": "Wrexham AFC",
+      "homeTeam": "Stoke City",
+      "pick": "Wrexham AFC ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "fc0c1bd7e31464c91263d11ae43cc848",
+      "awayTeam": "Toronto FC",
+      "homeTeam": "Austin FC",
+      "pick": "Toronto FC ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "fabe6980f9e2675cce2e0968e667e13a",
+      "awayTeam": "Colorado Rapids",
+      "homeTeam": "Inter Miami CF",
+      "pick": "Inter Miami CF ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "f332a42829108ec3ff50e94f67ace49c",
+      "awayTeam": "New York City FC",
+      "homeTeam": "Charlotte FC",
+      "pick": "New York City FC ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "f2d9879b6c2e0ed172c05059e3dc6dc0",
+      "awayTeam": "Philadelphia Union",
+      "homeTeam": "D.C. United",
+      "pick": "Philadelphia Union ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "8bab2f7af0aa59276fb4110639aff07f",
+      "awayTeam": "Minnesota United FC",
+      "homeTeam": "Portland Timbers",
+      "pick": "Minnesota United FC ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "cb4aa47238290c51ef341a5c63e27da9",
+      "awayTeam": "Seattle Sounders FC",
+      "homeTeam": "St. Louis City SC",
+      "pick": "Seattle Sounders FC ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "8aaf4698f230d407dbe545eb2e5b9027",
+      "awayTeam": "Necaxa",
+      "homeTeam": "Tigres",
+      "pick": "Tigres ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "2c2061ffc9ee67808fd45273089d7795",
+      "awayTeam": "Brentford",
+      "homeTeam": "Fulham",
+      "pick": "Brentford ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "be6cdb6ddd27d099b5291f0d1e051d92",
+      "awayTeam": "Newcastle United",
+      "homeTeam": "Bournemouth",
+      "pick": "Newcastle United ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "933e20e0892b28ca075a9ab5465d5c6d",
+      "awayTeam": "Chelsea",
+      "homeTeam": "Manchester United",
+      "pick": "Chelsea ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "a19f68e47f4b431a518ad31058ab0a20",
+      "awayTeam": "Udinese",
+      "homeTeam": "Parma",
+      "pick": "Udinese ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "12ea6b540ca92cfb666ee8e9f96b8867",
+      "awayTeam": "Werder Bremen",
+      "homeTeam": "Hamburger SV",
+      "pick": "Werder Bremen ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "b5a6981b2a16f2cac6de83db44efcead",
+      "awayTeam": "Union Berlin",
+      "homeTeam": "VfL Wolfsburg",
+      "pick": "Union Berlin ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "8e0a3736b06bce73da2581f75e2cf194",
+      "awayTeam": "Eintracht Frankfurt",
+      "homeTeam": "RB Leipzig",
+      "pick": "RB Leipzig ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "b60ab9bb1fb38896bd19c87e779e9907",
+      "awayTeam": "Nacional",
+      "homeTeam": "Alverca",
+      "pick": "Nacional ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "bbf4c9232ab8abe994ee4031d36ab761",
+      "awayTeam": "Casa Pia",
+      "homeTeam": "Santa Clara",
+      "pick": "Santa Clara ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "a449db5a39a6b54c39288859943352f5",
+      "awayTeam": "Gil Vicente",
+      "homeTeam": "Vitória SC",
+      "pick": "Gil Vicente ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "4bca66c14c000ea5c9bde7d0de6a1d80",
+      "awayTeam": "Portsmouth",
+      "homeTeam": "Leicester City",
+      "pick": "Portsmouth ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "e6f0598722dc2d8279642efcde202bd7",
+      "awayTeam": "Preston North End",
+      "homeTeam": "West Bromwich Albion",
+      "pick": "West Bromwich Albion ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "92f0daacbdf04b9c871cdd253e0e6573",
+      "awayTeam": "Atlanta United FC",
+      "homeTeam": "Nashville SC",
+      "pick": "Nashville SC ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "79c4a625313b47abf9aa37ba5502d6c7",
+      "awayTeam": "New England Revolution",
+      "homeTeam": "Columbus Crew SC",
+      "pick": "Columbus Crew SC ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "9fe71d3dfc28006f7a6bea4129d360fd",
+      "awayTeam": "FC Dallas",
+      "homeTeam": "LA Galaxy",
+      "pick": "FC Dallas ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "fe0a658b9a91c52f9332627387b1d6e7",
+      "awayTeam": "Real Salt Lake",
+      "homeTeam": "San Diego FC",
+      "pick": "Real Salt Lake ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "f85066fab8794d945db08d1ba0cb5500",
+      "awayTeam": "Monterrey",
+      "homeTeam": "Pachuca",
+      "pick": "Monterrey ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "d8b797f1bd054e86e99f48a02f448f9e",
+      "awayTeam": "León",
+      "homeTeam": "FC Juárez",
+      "pick": "León ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "5e7f44119f2e640fdf04c245a764657f",
+      "awayTeam": "Tottenham Hotspur",
+      "homeTeam": "Brighton and Hove Albion",
+      "pick": "Under 2.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "c036050b0e0a7c47198af093319deab9",
+      "awayTeam": "Bayer Leverkusen",
+      "homeTeam": "Augsburg",
+      "pick": "Bayer Leverkusen (-1.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "ff74c4774d5aff7bbe007eccb425e8ae",
+      "awayTeam": "América",
+      "homeTeam": "Toluca",
       "pick": "Over 2.5",
       "status": "PENDING"
     },
     {
-      "gameId": "3c0a6c55120809a87abc49406bb86657",
-      "awayTeam": "Inter Milan",
-      "homeTeam": "Cagliari",
+      "gameId": "4206b10bde703ad297b5c642ea89e6e7",
+      "awayTeam": "AS Roma",
+      "homeTeam": "Atalanta BC",
+      "pick": "Over 2.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "fd06669b5bc8a7a788e4d7f4bcb2d095",
+      "awayTeam": "Atlético Madrid",
+      "homeTeam": "Real Sociedad",
+      "pick": "Atlético Madrid ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "0845c6b9308e935df2f559c553ae650a",
+      "awayTeam": "FC Cincinnati",
+      "homeTeam": "Chicago Fire",
       "pick": "Under 2.5",
       "status": "PENDING"
     },
     {
-      "gameId": "6856b3123aaf14ce6c63669005568ba1",
-      "awayTeam": "RC Lens",
-      "homeTeam": "Toulouse",
+      "gameId": "e76b1c707308d3a64f6d7e5591ec9414",
+      "awayTeam": "Angers",
+      "homeTeam": "Le Havre",
+      "pick": "Over 2.5",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "0588a6d228e5a982a9cda86d41832b2d",
+      "awayTeam": "Watford",
+      "homeTeam": "Sheffield United",
       "pick": "Under 2.5",
       "status": "PENDING"
     },
     {
-      "gameId": "a2d714226e359e11994632f530a047e8",
-      "awayTeam": "Sassuolo",
-      "homeTeam": "Como",
-      "pick": "Under 2.5",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "0eb89a3e70708aa669fdf2bbf2c78aac",
-      "awayTeam": "Atlético San Luis",
-      "homeTeam": "Pumas",
-      "pick": "Under 2.5",
+      "gameId": "2ffb1d9222cfde6afe062e6da1ac19d6",
+      "awayTeam": "Napoli",
+      "homeTeam": "Lazio",
+      "pick": "Over 2.5",
       "status": "PENDING"
     }
   ]
