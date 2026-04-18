@@ -1119,88 +1119,11 @@ const isTopTab = selectedSport === "TOP";
             )}
           </>
         ) : loading ? (
-          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-            Loading {selectedSport} games...
-          </div>
-        ) : isTopTab ? (
+  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+    Loading {selectedSport} games...
+  </div>
+) : isTopTab ? (
   canViewTopTab(userAccess) ? (
-    <div className="space-y-3">
-            {topSignals.map((pick, idx) => (
-              <article
-                key={`top-${idx}`}
-                className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-              >
-                <div className="mb-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-400/95">
-                    Top Signal {pick.sport}
-                  </p>
-                  {pick.startTime && (
-                    <p className="mt-2 text-[13px] font-medium text-white/55">
-                      {formatTime(pick.startTime)}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <TeamBadge
-                      teamName={pick.awayTeam ?? ""}
-                      sport={pick.sport}
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                        {getDisplayAbbr(pick.awayTeam ?? "")}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <TeamBadge
-                      teamName={pick.homeTeam ?? ""}
-                      sport={pick.sport}
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                        {getDisplayAbbr(pick.homeTeam ?? "")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-                  <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                    Signal Detected
-                  </div>
-
-                  <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
-                    {formatDisplayedPick(pick.pick, pick.sport)}
-                  </p>
-
-                  <div
-  className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(pick.status)}`}
->
-  {String(pick.status ?? "PENDING")}
-</div>
-
-<p className="mt-2 text-[11px] text-white/40">
-  {pick.status === "CONFIRMED" && "Validated by system"}
-  {pick.status === "REMOVED" && "Signal removed due to market shift"}
-  {pick.status === "DOWNGRADED" && "Confidence reduced before game time"}
-  {!pick.status && "Monitoring market conditions"}
-</p>
-
-                </div>
-              </article>
-            ))}
-          </div>
-  ) : (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-      Top Signals are available only for Elite subscribers.
-    </div>
-  )
-
-        ) : userAccess.plan === "elite" ? (
-  isTopTab ? (
     eliteTopSignals.length === 0 ? (
       <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
         No Top Signals available today.
@@ -1209,7 +1132,7 @@ const isTopTab = selectedSport === "TOP";
       <div className="space-y-3">
         {eliteTopSignals.map((pick, idx) => (
           <article
-            key={`elite-top-${idx}`}
+            key={`top-${idx}`}
             className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
           >
             <div className="mb-4">
@@ -1225,17 +1148,27 @@ const isTopTab = selectedSport === "TOP";
 
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <TeamBadge teamName={pick.awayTeam ?? ""} sport={pick.sport} />
-                <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                  {getDisplayAbbr(pick.awayTeam ?? "")}
-                </p>
+                <TeamBadge
+                  teamName={pick.awayTeam ?? ""}
+                  sport={pick.sport}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                    {getDisplayAbbr(pick.awayTeam ?? "")}
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <TeamBadge teamName={pick.homeTeam ?? ""} sport={pick.sport} />
-                <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                  {getDisplayAbbr(pick.homeTeam ?? "")}
-                </p>
+                <TeamBadge
+                  teamName={pick.homeTeam ?? ""}
+                  sport={pick.sport}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                    {getDisplayAbbr(pick.homeTeam ?? "")}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1248,8 +1181,20 @@ const isTopTab = selectedSport === "TOP";
                 {formatDisplayedPick(pick.pick, pick.sport)}
               </p>
 
-              <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-white/55">
-                {pick.status ?? "PENDING"}
+              <div
+                className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
+                  pick.status
+                )}`}
+              >
+                {String(pick.status ?? "PENDING")}
+              </div>
+
+              <p className="mt-2 text-[11px] text-white/40">
+                {pick.status === "CONFIRMED" && "Validated by system"}
+                {pick.status === "REMOVED" && "Signal removed due to market shift"}
+                {pick.status === "DOWNGRADED" &&
+                  "Confidence reduced before game time"}
+                {!pick.status && "Monitoring market conditions"}
               </p>
             </div>
           </article>
@@ -1257,8 +1202,42 @@ const isTopTab = selectedSport === "TOP";
       </div>
     )
   ) : (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-      Elite subscribers review their plays from the TOP tab.
+    <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+        Unlock TOP
+      </p>
+
+      <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+        Access Top Signals across all sports
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-white/70">
+        The TOP section is reserved for Elite subscribers and includes the strongest
+        signal detected in each available sport for the day.
+      </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+          Elite only
+        </span>
+        <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+          Top signal by sport
+        </span>
+        <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+          Daily strongest signals
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-2 text-[13px] text-white/65">
+        <p>• NBA Top Signal</p>
+        <p>• NHL Top Signal</p>
+        <p>• MLB Top Signal</p>
+        <p>• Soccer Top Signal</p>
+      </div>
+
+      <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
+        Unlock TOP Access
+      </button>
     </div>
   )
 ) : selectedSport === "NFL" ? (
@@ -1272,7 +1251,8 @@ const isTopTab = selectedSport === "TOP";
     </h2>
 
     <p className="mt-2 text-sm leading-6 text-white/70">
-      NFL subscriptions are not active yet. This sport will be added once the signal engine and market workflow are ready.
+      NFL subscriptions are not active yet. This sport will be added once the
+      signal engine and market workflow are ready.
     </p>
 
     <div className="mt-4 flex flex-wrap gap-2">
@@ -1295,7 +1275,8 @@ const isTopTab = selectedSport === "TOP";
     </h2>
 
     <p className="mt-2 text-sm leading-6 text-white/70">
-      Access today’s signals for {selectedSport}, track the strongest opportunities and unlock premium validation before game time.
+      Access today’s signals for {selectedSport}, track the strongest opportunities
+      and unlock premium validation before game time.
     </p>
 
     <div className="mt-4 flex flex-wrap gap-2">
@@ -1315,43 +1296,6 @@ const isTopTab = selectedSport === "TOP";
 
     <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
       Subscribe to {selectedSport}
-    </button>
-  </div>
-) : isTopTab ? (
-  <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-      Unlock TOP
-    </p>
-
-    <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
-      Access Top Signals across all sports
-    </h2>
-
-    <p className="mt-2 text-sm leading-6 text-white/70">
-      The TOP section is reserved for Elite subscribers and includes the strongest signal detected in each available sport for the day.
-    </p>
-
-    <div className="mt-4 flex flex-wrap gap-2">
-      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-        Elite only
-      </span>
-      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-        Top signal by sport
-      </span>
-      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-        Daily strongest signals
-      </span>
-    </div>
-
-    <div className="mt-5 space-y-2 text-[13px] text-white/65">
-      <p>• NBA Top Signal</p>
-      <p>• NHL Top Signal</p>
-      <p>• MLB Top Signal</p>
-      <p>• Soccer Top Signal</p>
-    </div>
-
-    <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
-      Unlock TOP Access
     </button>
   </div>
 ) : subsPicks.length === 0 ? (
@@ -1401,8 +1345,20 @@ const isTopTab = selectedSport === "TOP";
             {formatDisplayedPick(pick.pick, selectedSport)}
           </p>
 
-          <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-white/55">
-            {pick.status ?? "PENDING"}
+          <div
+            className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
+              pick.status
+            )}`}
+          >
+            {String(pick.status ?? "PENDING")}
+          </div>
+
+          <p className="mt-2 text-[11px] text-white/40">
+            {pick.status === "CONFIRMED" && "Validated by system"}
+            {pick.status === "REMOVED" && "Signal removed due to market shift"}
+            {pick.status === "DOWNGRADED" &&
+              "Confidence reduced before game time"}
+            {!pick.status && "Monitoring market conditions"}
           </p>
         </div>
 
