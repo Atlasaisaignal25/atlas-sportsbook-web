@@ -1080,10 +1080,6 @@ const isTopTab = selectedSport === "TOP";
                     <div>
                       {group.games.map((game, idx) => {
                         const livePickData = findLivePick(game, group.sport);
-                        const showDebug =
-  group.sport === "SOCCER"
-    ? `DEBUG: ${game.away_team} vs ${game.home_team} | signal: ${livePickData ? "YES" : "NO"}`
-    : "";
 
                         const awayScore =
                           game.scores?.find((s) => s.name === game.away_team)
