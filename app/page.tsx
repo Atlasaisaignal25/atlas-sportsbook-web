@@ -745,30 +745,6 @@ function handleLiveGameClick(game: LiveScore, sport: SportTab) {
 }
 
 useEffect(() => {
-  if (typeof window === "undefined") return;
-
-  const savedSport = sessionStorage.getItem("atlas_return_sport") as SportTab | null;
-  const savedView = sessionStorage.getItem("atlas_return_view") as "odds" | "live" | null;
-  const savedDay = sessionStorage.getItem("atlas_return_day") as
-    | "yesterday"
-    | "today"
-    | "tomorrow"
-    | null;
-
-  if (savedSport && sportsTabs.includes(savedSport)) {
-    setSelectedSport(savedSport);
-  }
-
-  if (savedView === "live" || savedView === "odds") {
-    setViewMode(savedView);
-  }
-
-  if (savedDay === "yesterday" || savedDay === "today" || savedDay === "tomorrow") {
-    setActiveDay(savedDay);
-  }
-}, []);
-
-useEffect(() => {
   const sportFromUrl = searchParams.get("sport") as SportTab | null;
   const viewFromUrl = searchParams.get("view") as "odds" | "live" | null;
   const dayFromUrl = searchParams.get("day") as
