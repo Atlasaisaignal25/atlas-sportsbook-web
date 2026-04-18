@@ -731,16 +731,51 @@ function getLiveDisplayName(teamName: string) {
 }
 
 function handleLiveGameClick(game: LiveScore, sport: SportTab) {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem("atlas_return_sport", sport);
+    sessionStorage.setItem("atlas_return_view", "live");
+    sessionStorage.setItem("atlas_return_day", activeDay);
+  }
+
   router.push(
     `/live-game?sport=${encodeURIComponent(sport)}&gameId=${encodeURIComponent(
       game.id
-    )}&returnSport=${encodeURIComponent(sport)}&returnView=live`
+    )}`
   );
 }
 
 useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  const savedSport = sessionStorage.getItem("atlas_return_sport") as SportTab | null;
+  const savedView = sessionStorage.getItem("atlas_return_view") as "odds" | "live" | null;
+  const savedDay = sessionStorage.getItem("atlas_return_day") as
+    | "yesterday"
+    | "today"
+    | "tomorrow"
+    | null;
+
+  if (savedSport && sportsTabs.includes(savedSport)) {
+    setSelectedSport(savedSport);
+  }
+
+  if (savedView === "live" || savedView === "odds") {
+    setViewMode(savedView);
+  }
+
+  if (savedDay === "yesterday" || savedDay === "today" || savedDay === "tomorrow") {
+    setActiveDay(savedDay);
+  }
+}, []);
+
+useEffect(() => {
   const sportFromUrl = searchParams.get("sport") as SportTab | null;
   const viewFromUrl = searchParams.get("view") as "odds" | "live" | null;
+  const dayFromUrl = searchParams.get("day") as
+    | "yesterday"
+    | "today"
+    | "tomorrow"
+    | null;
 
   if (sportFromUrl && sportsTabs.includes(sportFromUrl)) {
     setSelectedSport(sportFromUrl);
@@ -748,6 +783,10 @@ useEffect(() => {
 
   if (viewFromUrl === "live" || viewFromUrl === "odds") {
     setViewMode(viewFromUrl);
+  }
+
+  if (dayFromUrl === "yesterday" || dayFromUrl === "today" || dayFromUrl === "tomorrow") {
+    setActiveDay(dayFromUrl);
   }
 }, [searchParams]);
 

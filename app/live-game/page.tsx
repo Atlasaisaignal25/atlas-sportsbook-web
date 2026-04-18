@@ -422,11 +422,22 @@ const returnView = searchParams.get("returnView") || "live";
         <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-5">
           <div className="mb-5 flex items-center justify-between">
             <button
-  onClick={() =>
-    router.push(
-      `/?view=${encodeURIComponent(returnView)}&sport=${encodeURIComponent(returnSport)}`
-    )
-  }
+  onClick={() => {
+    if (typeof window !== "undefined") {
+      const savedSport = sessionStorage.getItem("atlas_return_sport") || "MLB";
+      const savedView = sessionStorage.getItem("atlas_return_view") || "live";
+      const savedDay = sessionStorage.getItem("atlas_return_day") || "today";
+
+      router.push(
+        `/?restore=1&sport=${encodeURIComponent(savedSport)}&view=${encodeURIComponent(
+          savedView
+        )}&day=${encodeURIComponent(savedDay)}`
+      );
+      return;
+    }
+
+    router.push("/");
+  }}
               className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80"
             >
               Back
@@ -571,18 +582,15 @@ const returnView = searchParams.get("returnView") || "live";
 </p>
 
 <div className="mt-3 flex items-center gap-2">
-  <span className={`rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] ${
-  userPlan === "free"
-    ? "bg-white/10 text-white/70"
-    : "bg-green-500/20 text-green-300"
-}`}>
-  {userPlan === "free" ? "Pending" : "Confirmed"}
-</span>
+  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-white/70">
+    Pending
+  </span>
 
   <span className="rounded-full bg-cyan-400/20 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-cyan-300">
     Early Signal
   </span>
 </div>
+
 <p className="mt-2 text-[11px] text-white/45">
   Market activity detected • Monitoring for confirmation
 </p>
