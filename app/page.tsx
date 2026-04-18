@@ -495,14 +495,31 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
   const liveAway = normalizeName(game.away_team);
   const liveHome = normalizeName(game.home_team);
 
-  const match =
+  // 1. match exacto
+  const exactMatch =
     signalSource.find((g) => {
       const signalAway = normalizeName(g.awayTeam ?? "");
       const signalHome = normalizeName(g.homeTeam ?? "");
       return liveAway === signalAway && liveHome === signalHome;
     }) || null;
 
-  return match;
+  if (exactMatch) return exactMatch;
+
+  // 2. fallback flexible
+  const fallback =
+    signalSource.find((g) => {
+      const signalAway = normalizeName(g.awayTeam ?? "");
+      const signalHome = normalizeName(g.homeTeam ?? "");
+
+      return (
+        liveAway.includes(signalAway) ||
+        signalAway.includes(liveAway) ||
+        liveHome.includes(signalHome) ||
+        signalHome.includes(liveHome)
+      );
+    }) || null;
+
+  return fallback;
 }
 
 function getStatusStyles(status?: string) {
