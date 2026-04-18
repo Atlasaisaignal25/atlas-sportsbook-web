@@ -483,11 +483,17 @@ const returnDay = searchParams.get("returnDay") || "today";
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-5">
         <div className="mb-5 flex items-center justify-between">
           <button
-            onClick={() => router.back()}
-            className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80"
-          >
-            Back
-          </button>
+  onClick={() =>
+    router.push(
+      `/?sport=${encodeURIComponent(returnSport)}&view=${encodeURIComponent(
+        returnView
+      )}&day=${encodeURIComponent(returnDay)}`
+    )
+  }
+  className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80"
+>
+  Back
+</button>
 
           <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-400/90">
             Atlas Signals
