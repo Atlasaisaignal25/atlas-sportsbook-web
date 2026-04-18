@@ -505,6 +505,24 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
   return match;
 }
 
+function getStatusStyles(status?: string) {
+  const s = String(status ?? "PENDING").toUpperCase();
+
+  if (s === "CONFIRMED") {
+    return "bg-green-500/15 text-green-300 border-green-400/30";
+  }
+
+  if (s === "REMOVED") {
+    return "bg-red-500/15 text-red-300 border-red-400/30";
+  }
+
+  if (s === "DOWNGRADED") {
+    return "bg-yellow-500/15 text-yellow-300 border-yellow-400/30";
+  }
+
+  return "bg-white/10 text-white/60 border-white/15";
+}
+
 function getTop5BySport(sport: SportTab): Top5Entry[] {
   if (sport === "MLB") return mlbTop5Data.top5 ?? [];
   if (sport === "NBA") return nbaTop5Data.top5 ?? [];
@@ -1125,9 +1143,19 @@ const isTopTab = selectedSport === "TOP";
                     {formatDisplayedPick(pick.pick, pick.sport)}
                   </p>
 
-                  <p className="mt-3 text-[12px] font-medium uppercase tracking-[0.08em] text-white/55">
-                    {pick.status ?? "PENDING"}
-                  </p>
+                  <div
+  className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(pick.status)}`}
+>
+  {String(pick.status ?? "PENDING")}
+</div>
+
+<p className="mt-2 text-[11px] text-white/40">
+  {pick.status === "CONFIRMED" && "Validated by system"}
+  {pick.status === "REMOVED" && "Signal removed due to market shift"}
+  {pick.status === "DOWNGRADED" && "Confidence reduced before game time"}
+  {!pick.status && "Monitoring market conditions"}
+</p>
+
                 </div>
               </article>
             ))}
@@ -1201,8 +1229,37 @@ const isTopTab = selectedSport === "TOP";
     </div>
   )
 ) : !hasSportAccess(userAccess, selectedSport) ? (
-  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-    Your current subscription does not include {selectedSport}.
+  <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
+    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+      Unlock {selectedSport}
+    </p>
+
+    <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+      Add {selectedSport} to your subscription
+    </h2>
+
+    <p className="mt-2 text-sm leading-6 text-white/70">
+      Access today’s signals for {selectedSport}, track the strongest opportunities and unlock premium validation before game time.
+    </p>
+
+    <div className="mt-4 flex flex-wrap gap-2">
+      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+        Exclusive: Top 5
+      </span>
+      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+        Premium: Ranked + Top Signal
+      </span>
+    </div>
+
+    <div className="mt-5 space-y-2 text-[13px] text-white/65">
+      <p>• Access signals for {selectedSport}</p>
+      <p>• View the daily Top 5 picks</p>
+      <p>• Unlock stronger premium validation</p>
+    </div>
+
+    <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
+      Subscribe to {selectedSport}
+    </button>
   </div>
 ) : isTopTab ? (
   <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
