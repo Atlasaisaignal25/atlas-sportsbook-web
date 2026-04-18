@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import mlbSignals from "@/data/mlb-public-signals.json";
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
@@ -622,7 +622,7 @@ function getSubsBadgeLabel(
   return null;
 }
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1408,4 +1408,21 @@ const isTopTab = selectedSport === "TOP";
     </div>
   </main>
 );
+}
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#050816] text-white">
+          <div className="mx-auto flex min-h-screen w-full max-w-md flex-col px-4 py-6">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+              Loading...
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <HomeContent />
+    </Suspense>
+  );
 }
