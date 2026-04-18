@@ -551,6 +551,42 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
   return flexibleReversed;
 }
 
+function getLiveMLResult(game: LiveScore, pickData: SignalGame | null) {
+  if (!pickData) return null;
+
+  if (!game.completed) return "PENDING";
+
+  const awayScore = Number(
+    game.scores?.find((s) => s.name === game.away_team)?.score ?? NaN
+  );
+
+  const homeScore = Number(
+    game.scores?.find((s) => s.name === game.home_team)?.score ?? NaN
+  );
+
+  if (!Number.isFinite(awayScore) || !Number.isFinite(homeScore)) {
+    return "PENDING";
+  }
+
+  const pick = String(pickData.pick ?? "").toLowerCase();
+
+  const awayName = normalizeName(game.away_team);
+  const homeName = normalizeName(game.home_team);
+
+  // SOLO ML
+  if (pick.includes("ml")) {
+    if (pick.includes(awayName)) {
+      return awayScore > homeScore ? "WON" : "LOST";
+    }
+
+    if (pick.includes(homeName)) {
+      return homeScore > awayScore ? "WON" : "LOST";
+    }
+  }
+
+  return "PENDING";
+}
+
 function getStatusStyles(status?: string) {
   const s = String(status ?? "PENDING").toUpperCase();
 
@@ -1086,6 +1122,7 @@ const isTopTab = selectedSport === "TOP";
                     <div>
                       {group.games.map((game, idx) => {
                         const livePickData = findLivePick(game, group.sport);
+                        const result = getLiveMLResult(game, livePickData);
 
                         const awayScore =
                           game.scores?.find((s) => s.name === game.away_team)
@@ -1181,14 +1218,28 @@ const isTopTab = selectedSport === "TOP";
                             </div>
 
                             {livePickData ? (
-                              <div className="mt-2 flex justify-center">
-                                <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
-                                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
-                                    Signal Detected
-                                  </p>
-                                </div>
-                              </div>
-                            ) : null}
+  <div className="mt-2 flex justify-center">
+    {result === "WON" ? (
+      <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-green-300">
+          Won
+        </p>
+      </div>
+    ) : result === "LOST" ? (
+      <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-2.5 py-1">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-red-300">
+          Lost
+        </p>
+      </div>
+    ) : (
+      <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
+          Signal Detected
+        </p>
+      </div>
+    )}
+  </div>
+) : null}
                           </button>
                         );
                       })}
