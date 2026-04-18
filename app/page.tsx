@@ -780,7 +780,13 @@ function handleLiveGameClick(game: LiveScore, sport: SportTab) {
   router.push(
     `/live-game?sport=${encodeURIComponent(sport)}&gameId=${encodeURIComponent(
       game.id
-    )}&returnSport=${encodeURIComponent(sport)}&returnView=live&returnDay=${encodeURIComponent(activeDay)}`
+    )}&awayTeam=${encodeURIComponent(game.away_team)}&homeTeam=${encodeURIComponent(
+      game.home_team
+    )}&commenceTime=${encodeURIComponent(
+      game.commence_time
+    )}&returnSport=${encodeURIComponent(sport)}&returnView=live&returnDay=${encodeURIComponent(
+      activeDay
+    )}`
   );
 }
 

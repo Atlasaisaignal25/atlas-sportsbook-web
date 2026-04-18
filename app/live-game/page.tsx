@@ -336,6 +336,9 @@ const sport: SportTab =
     : "MLB";
 
 const gameId = searchParams.get("gameId") || "";
+const awayTeamParam = searchParams.get("awayTeam") || "";
+const homeTeamParam = searchParams.get("homeTeam") || "";
+const commenceTimeParam = searchParams.get("commenceTime") || "";
 
 const returnSportParam = searchParams.get("returnSport");
 const returnSport: SportTab =
@@ -356,70 +359,102 @@ const returnDay = searchParams.get("returnDay") || "today";
   const [userPlan] = useState<"free" | "regular" | "premium">("premium");
 
   useEffect(() => {
-    async function loadGame() {
-      try {
-        setLoading(true);
+  async function loadGame() {
+    try {
+      setLoading(true);
 
-        if (sport === "SOCCER") {
-          const soccerLeagues = [
-            "soccer_epl",
-            "soccer_spain_la_liga",
-            "soccer_italy_serie_a",
-            "soccer_germany_bundesliga",
-            "soccer_france_ligue_one",
-            "soccer_uefa_champs_league",
-            "soccer_uefa_europa_league",
-            "soccer_uefa_europa_conference_league",
-            "soccer_usa_mls",
-            "soccer_mexico_ligamx",
-            "soccer_fa_cup",
-            "soccer_spain_copa_del_rey",
-          ];
+      if (sport === "SOCCER") {
+        const soccerLeagues = [
+          "soccer_epl",
+          "soccer_spain_la_liga",
+          "soccer_italy_serie_a",
+          "soccer_germany_bundesliga",
+          "soccer_france_ligue_one",
+          "soccer_uefa_champs_league",
+          "soccer_uefa_europa_league",
+          "soccer_uefa_europa_conference_league",
+          "soccer_usa_mls",
+          "soccer_mexico_ligamx",
+          "soccer_fa_cup",
+          "soccer_spain_copa_del_rey",
+        ];
 
-          const responses = await Promise.all(
-            soccerLeagues.map(async (league) => {
-              const res = await fetch(`/api/odds?sport=${league}`, {
-                cache: "no-store",
-              });
-              const data = await res.json();
-              return Array.isArray(data) ? (data as OddsGame[]) : [];
-            })
-          );
+        const responses = await Promise.all(
+          soccerLeagues.map(async (league) => {
+            const res = await fetch(`/api/odds?sport=${league}`, {
+              cache: "no-store",
+            });
+            const data = await res.json();
+            return Array.isArray(data) ? (data as OddsGame[]) : [];
+          })
+        );
 
-          const allGames = responses.flat();
-          const foundGame =
-            allGames.find((g) => String(g.id) === String(gameId)) || null;
+        const allGames = responses.flat();
+        const foundGame =
+          allGames.find((g) => String(g.id) === String(gameId)) || null;
 
+        if (foundGame) {
           setGame(foundGame);
           return;
         }
 
-        const apiSport = getSportApiValue(sport);
-
-        if (!apiSport) {
-          setGame(null);
+        if (awayTeamParam && homeTeamParam) {
+          setGame({
+            id: gameId,
+            away_team: awayTeamParam,
+            home_team: homeTeamParam,
+            commence_time: commenceTimeParam || new Date().toISOString(),
+            bookmakers: [],
+          });
           return;
         }
 
-        const res = await fetch(`/api/odds?sport=${apiSport}`, {
-          cache: "no-store",
-        });
-
-        const data = await res.json();
-        const games = Array.isArray(data) ? (data as OddsGame[]) : [];
-        const foundGame =
-          games.find((g) => String(g.id) === String(gameId)) || null;
-
-        setGame(foundGame);
-      } catch (error) {
         setGame(null);
-      } finally {
-        setLoading(false);
+        return;
       }
-    }
 
-    loadGame();
-  }, [sport, gameId]);
+      const apiSport = getSportApiValue(sport);
+
+      if (!apiSport) {
+        setGame(null);
+        return;
+      }
+
+      const res = await fetch(`/api/odds?sport=${apiSport}`, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+      const games = Array.isArray(data) ? (data as OddsGame[]) : [];
+      const foundGame =
+        games.find((g) => String(g.id) === String(gameId)) || null;
+
+      if (foundGame) {
+        setGame(foundGame);
+        return;
+      }
+
+      if (awayTeamParam && homeTeamParam) {
+        setGame({
+          id: gameId,
+          away_team: awayTeamParam,
+          home_team: homeTeamParam,
+          commence_time: commenceTimeParam || new Date().toISOString(),
+          bookmakers: [],
+        });
+        return;
+      }
+
+      setGame(null);
+    } catch (error) {
+      setGame(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadGame();
+}, [sport, gameId, awayTeamParam, homeTeamParam, commenceTimeParam]);
 
   const pickData = useMemo(() => {
     if (!game) return null;
