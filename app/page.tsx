@@ -919,11 +919,6 @@ const isTopTab = selectedSport === "TOP";
         </div>
       </header>
 
-      <p className="px-4 pt-2 text-xs text-red-400">PLAN: {userAccess.plan}</p>
-<p className="px-4 text-xs text-yellow-400">
-  MLB TOP5 FIRST PICK: {mlbTop5Data.top5?.[0]?.pick ?? "NO PICK"}
-</p>
-
       <section className="flex-1 space-y-3 px-4 py-3">
         {viewMode === "live" ? (
           <>
