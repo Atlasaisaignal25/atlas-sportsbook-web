@@ -1174,12 +1174,6 @@ const isTopTab = selectedSport === "TOP";
                               </div>
                             </div>
 
-{group.sport === "SOCCER" ? (
-  <p className="mt-2 text-center text-[10px] text-red-400">
-    {showDebug}
-  </p>
-) : null}
-
                             {livePickData ? (
                               <div className="mt-2 flex justify-center">
                                 <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
