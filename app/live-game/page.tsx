@@ -324,10 +324,31 @@ function LiveGameContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const sport = searchParams.get("sport") || "MLB";
+  const sportParam = searchParams.get("sport");
+const sport: SportTab =
+  sportParam === "TOP" ||
+  sportParam === "NHL" ||
+  sportParam === "NBA" ||
+  sportParam === "MLB" ||
+  sportParam === "NFL" ||
+  sportParam === "SOCCER"
+    ? sportParam
+    : "MLB";
+
 const gameId = searchParams.get("gameId") || "";
-const returnSport = searchParams.get("returnSport") || sport;
-const returnView = searchParams.get("returnView") || "live";
+
+const returnSportParam = searchParams.get("returnSport");
+const returnSport: SportTab =
+  returnSportParam === "TOP" ||
+  returnSportParam === "NHL" ||
+  returnSportParam === "NBA" ||
+  returnSportParam === "MLB" ||
+  returnSportParam === "NFL" ||
+  returnSportParam === "SOCCER"
+    ? returnSportParam
+    : sport;
+    
+    const returnView = searchParams.get("returnView") || "live";
 const returnDay = searchParams.get("returnDay") || "today";
 
   const [game, setGame] = useState<OddsGame | null>(null);
