@@ -1230,18 +1230,40 @@ useEffect(() => {
       setLiveLoading(true);
 
       if (selectedSport === "TOP" || selectedSport === "NFL") {
+        console.log("LIVE DEBUG blocked sport:", selectedSport);
         setLiveGames([]);
         setLiveOddsGames([]);
         setLiveLoading(false);
         return;
       }
 
-      const scoresRes = await fetch(`/api/scores?sport=${selectedSport}`, {
-        cache: "no-store",
-      });
+     const scoresRes = await fetch(`/api/scores?sport=${selectedSport}`, {
+  cache: "no-store",
+});
 
-      const scoresData = await scoresRes.json();
-      setLiveGames(Array.isArray(scoresData) ? scoresData : []);
+const scoresData = await scoresRes.json();
+
+console.log("LIVE DEBUG selectedSport:", selectedSport);
+console.log("LIVE DEBUG scoresRes.ok:", scoresRes.ok);
+console.log("LIVE DEBUG scoresData:", scoresData);
+
+if (!scoresRes.ok) {
+  setLiveGames([]);
+  return;
+}
+
+setLiveGames(Array.isArray(scoresData) ? scoresData : []);
+
+console.log("LIVE DEBUG selectedSport:", selectedSport);
+console.log("LIVE DEBUG scoresRes.ok:", scoresRes.ok);
+console.log("LIVE DEBUG scoresData:", scoresData);
+
+if (!scoresRes.ok) {
+  setLiveGames([]);
+  return;
+}
+
+setLiveGames(Array.isArray(scoresData) ? scoresData : []);
 
       if (selectedSport === "SOCCER") {
         const soccerLeagues = [
