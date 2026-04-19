@@ -265,6 +265,32 @@ function getGameMinute(game: LiveScore) {
   if (game.completed) return "Finalizado";
 
   const hasScores = Array.isArray(game.scores) && game.scores.length > 0;
+
+  const clock =
+    (game as any)?.clock ??
+    (game as any)?.time_remaining ??
+    (game as any)?.timer ??
+    null;
+
+  const period =
+    (game as any)?.period ??
+    (game as any)?.current_period ??
+    (game as any)?.quarter ??
+    (game as any)?.inning ??
+    null;
+
+  if (hasScores && clock && period) {
+    return `${clock} • ${period}`;
+  }
+
+  if (hasScores && clock) {
+    return String(clock);
+  }
+
+  if (hasScores && period) {
+    return String(period);
+  }
+
   return hasScores ? "En vivo" : "";
 }
 
@@ -563,6 +589,8 @@ function getLivePickResult(game: LiveScore, pickData: SignalGame | null) {
   const homeScore = Number(
     game.scores?.find((s) => s.name === game.home_team)?.score ?? NaN
   );
+
+  console.log("LIVE GAME DEBUG", game);
 
   if (!Number.isFinite(awayScore) || !Number.isFinite(homeScore)) {
     return "PENDING";
@@ -1497,18 +1525,29 @@ const isTopTab = selectedSport === "TOP";
                             </div>
 
                             <div className="mt-2 flex justify-center gap-2">
-                              <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
-                                -203
-                              </div>
+  <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
+    {(() => {
+      const awayMl = getMoneyline(game as unknown as OddsGame, game.away_team);
+      return awayMl !== null ? formatAmericanOdds(awayMl) : "N/A";
+    })()}
+  </div>
 
-                              <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
-                                O/U 6
-                              </div>
+  <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
+    {(() => {
+      const totalValues = getTotalValues(game as unknown as OddsGame);
+      return totalValues.overLabel !== "N/A"
+        ? `${totalValues.overLabel.replace("O ", "O/U ")}`
+        : "N/A";
+    })()}
+  </div>
 
-                              <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
-                                +164
-                              </div>
-                            </div>
+  <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
+    {(() => {
+      const homeMl = getMoneyline(game as unknown as OddsGame, game.home_team);
+      return homeMl !== null ? formatAmericanOdds(homeMl) : "N/A";
+    })()}
+  </div>
+</div>
 
                             {livePickData ? (
                               <div className="mt-2 flex justify-center">
@@ -1834,11 +1873,7 @@ const isTopTab = selectedSport === "TOP";
                     <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
                       {formatDisplayedPick(pick.pick, selectedSport)}
                     </p>
-
-                    <p className="mt-2 text-[10px] text-red-400">
-  DEBUG | match: {matchedScoreGame ? "YES" : "NO"} | completed:{" "}
-  {matchedScoreGame?.completed ? "YES" : "NO"} | result: {String(finalResult)}
-</p>
+                  
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       {showPending ? (
@@ -1873,10 +1908,7 @@ const isTopTab = selectedSport === "TOP";
                     </p>
                   </div>
 
-                  <p className="mt-2 text-[10px] text-red-400">
-  DEBUG: match {matchedScoreGame ? "YES" : "NO"} | completed{" "}
-  {matchedScoreGame?.completed ? "YES" : "NO"} | result {String(finalResult)}
-</p>
+                  
 
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span
