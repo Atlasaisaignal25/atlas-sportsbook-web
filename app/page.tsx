@@ -972,6 +972,7 @@ function HomeContent() {
   const [selectedSport, setSelectedSport] = useState<SportTab>("NHL");
   const [games, setGames] = useState<OddsGame[]>([]);
   const [loading, setLoading] = useState(true);
+  const [liveOddsGames, setLiveOddsGames] = useState<OddsGame[]>([]);
 
 const [userAccess] = useState<UserAccess>({
   plan: "admin",
@@ -1086,6 +1087,26 @@ function handleLiveGameClick(game: LiveScore, sport: SportTab) {
     )}&returnSport=${encodeURIComponent(sport)}&returnView=live&returnDay=${encodeURIComponent(
       activeDay
     )}`
+  );
+}
+
+function findOddsGameForLive(
+  liveGame: LiveScore,
+  oddsGames: OddsGame[]
+) {
+  const liveAway = normalizeName(liveGame.away_team);
+  const liveHome = normalizeName(liveGame.home_team);
+
+  return (
+    oddsGames.find((game) => {
+      const away = normalizeName(game.away_team);
+      const home = normalizeName(game.home_team);
+
+      return (
+        (liveAway === away && liveHome === home) ||
+        (liveAway === home && liveHome === away)
+      );
+    }) || null
   );
 }
 
@@ -1204,21 +1225,39 @@ useEffect(() => {
       setLiveLoading(true);
 
       if (selectedSport === "TOP" || selectedSport === "NFL") {
-  setLiveGames([]);
-  setLiveLoading(false);
-  return;
-}
+        setLiveGames([]);
+        return;
+      }
 
-const sportForLive = selectedSport;
+      const sportMap: Record<string, string> = {
+        NHL: "icehockey_nhl",
+        NBA: "basketball_nba",
+        MLB: "baseball_mlb",
+        SOCCER: "soccer_epl", // puedes mejorar luego
+      };
 
-      const res = await fetch(`/api/scores?sport=${sportForLive}`, {
+      const apiSport = sportMap[selectedSport];
+
+      // 🔥 FETCH SCORES
+      const scoresRes = await fetch(`/api/scores?sport=${selectedSport}`, {
         cache: "no-store",
       });
 
-      const data = await res.json();
-      setLiveGames(Array.isArray(data) ? data : []);
+      const scoresData = await scoresRes.json();
+
+      // 🔥 FETCH ODDS
+      const oddsRes = await fetch(`/api/odds?sport=${apiSport}`, {
+        cache: "no-store",
+      });
+
+      const oddsData = await oddsRes.json();
+
+      setLiveGames(Array.isArray(scoresData) ? scoresData : []);
+      setLiveOddsGames(Array.isArray(oddsData) ? oddsData : []);
+
     } catch (error) {
       setLiveGames([]);
+      setLiveOddsGames([]);
     } finally {
       setLiveLoading(false);
     }
@@ -1428,6 +1467,7 @@ const isTopTab = selectedSport === "TOP";
 
                     <div>
                       {group.games.map((game, idx) => {
+                        const oddsGame = findOddsGameForLive(game, liveOddsGames);
                         const livePickData = findLivePick(game, group.sport);
                         const isTop5 = (() => {
                           const top5 = getTop5BySport(group.sport);
@@ -1526,26 +1566,21 @@ const isTopTab = selectedSport === "TOP";
 
                             <div className="mt-2 flex justify-center gap-2">
   <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
-    {(() => {
-      const awayMl = getMoneyline(game as unknown as OddsGame, game.away_team);
-      return awayMl !== null ? formatAmericanOdds(awayMl) : "N/A";
-    })()}
+    {oddsGame
+      ? formatAmericanOdds(getMoneyline(oddsGame, oddsGame.away_team))
+      : "N/A"}
   </div>
 
   <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
-    {(() => {
-      const totalValues = getTotalValues(game as unknown as OddsGame);
-      return totalValues.overLabel !== "N/A"
-        ? `${totalValues.overLabel.replace("O ", "O/U ")}`
-        : "N/A";
-    })()}
+    {oddsGame
+      ? getTotalValues(oddsGame).overLabel.replace("O ", "O/U ")
+      : "N/A"}
   </div>
 
   <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
-    {(() => {
-      const homeMl = getMoneyline(game as unknown as OddsGame, game.home_team);
-      return homeMl !== null ? formatAmericanOdds(homeMl) : "N/A";
-    })()}
+    {oddsGame
+      ? formatAmericanOdds(getMoneyline(oddsGame, oddsGame.home_team))
+      : "N/A"}
   </div>
 </div>
 
