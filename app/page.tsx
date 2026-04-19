@@ -1050,7 +1050,7 @@ const filteredLiveGames = useMemo(() => {
     const live = isGameLive(game);
 
     if (activeDay === "today") {
-      return gameDayKey === todayKey || live;
+      return gameDayKey === todayKey;
     }
 
     return gameDayKey === targetDayKey;
@@ -1267,6 +1267,11 @@ useEffect(() => {
               });
 
               const data = await res.json();
+
+              console.log("LIVE DEBUG selectedSport:", selectedSport);
+console.log("LIVE DEBUG raw data:", data);
+console.log("LIVE DEBUG is array:", Array.isArray(data));
+console.log("LIVE DEBUG length:", Array.isArray(data) ? data.length : "not array");
               return Array.isArray(data) ? (data as OddsGame[]) : [];
             } catch {
               return [];
@@ -1275,6 +1280,9 @@ useEffect(() => {
         );
 
         setLiveOddsGames(oddsResponses.flat());
+
+        console.log("LIVE DEBUG after setLiveGames");
+        
         return;
       }
 
