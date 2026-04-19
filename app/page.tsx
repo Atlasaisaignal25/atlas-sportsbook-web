@@ -551,7 +551,7 @@ function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
   return flexibleReversed;
 }
 
-function getLiveMLResult(game: LiveScore, pickData: SignalGame | null) {
+function getLivePickResult(game: LiveScore, pickData: SignalGame | null) {
   if (!pickData) return null;
 
   if (!game.completed) return "PENDING";
@@ -568,19 +568,72 @@ function getLiveMLResult(game: LiveScore, pickData: SignalGame | null) {
     return "PENDING";
   }
 
-  const pick = String(pickData.pick ?? "").toLowerCase();
+  const pickRaw = String(pickData.pick ?? "").trim();
+  const pick = pickRaw.toLowerCase();
+  const totalScore = awayScore + homeScore;
 
   const awayName = normalizeName(game.away_team);
   const homeName = normalizeName(game.home_team);
 
-  // SOLO ML
+  // MONEYLINE
   if (pick.includes("ml")) {
-    if (pick.includes(awayName)) {
+    const pickNorm = normalizeName(pickRaw);
+
+    if (pickNorm.includes(awayName)) {
       return awayScore > homeScore ? "WON" : "LOST";
     }
 
-    if (pick.includes(homeName)) {
+    if (pickNorm.includes(homeName)) {
       return homeScore > awayScore ? "WON" : "LOST";
+    }
+
+    return "PENDING";
+  }
+
+  // TOTALS
+  const totalMatch =
+    pick.match(/over\s*([0-9]+(?:\.[0-9]+)?)/i) ||
+    pick.match(/under\s*([0-9]+(?:\.[0-9]+)?)/i);
+
+  if (totalMatch) {
+    const line = Number(totalMatch[1]);
+
+    if (!Number.isFinite(line)) return "PENDING";
+
+    if (pick.includes("over")) {
+      if (totalScore > line) return "WON";
+      if (totalScore < line) return "LOST";
+      return "PUSH";
+    }
+
+    if (pick.includes("under")) {
+      if (totalScore < line) return "WON";
+      if (totalScore > line) return "LOST";
+      return "PUSH";
+    }
+  }
+
+  // SPREADS
+  const spreadMatch = pickRaw.match(/^(.*?)(?:\s*[\(\s])([+-]\d+(?:\.\d+)?)(?:\))?$/);
+
+  if (spreadMatch) {
+    const teamPart = normalizeName(spreadMatch[1]);
+    const line = Number(spreadMatch[2]);
+
+    if (!Number.isFinite(line)) return "PENDING";
+
+    if (teamPart.includes(awayName) || awayName.includes(teamPart)) {
+      const adjusted = awayScore + line;
+      if (adjusted > homeScore) return "WON";
+      if (adjusted < homeScore) return "LOST";
+      return "PUSH";
+    }
+
+    if (teamPart.includes(homeName) || homeName.includes(teamPart)) {
+      const adjusted = homeScore + line;
+      if (adjusted > awayScore) return "WON";
+      if (adjusted < awayScore) return "LOST";
+      return "PUSH";
     }
   }
 
@@ -1122,7 +1175,22 @@ const isTopTab = selectedSport === "TOP";
                     <div>
                       {group.games.map((game, idx) => {
                         const livePickData = findLivePick(game, group.sport);
-                        const result = getLiveMLResult(game, livePickData);
+                        const isTop5 = (() => {
+  const top5 = getTop5BySport(group.sport);
+  return top5.some((p) => {
+    const away = normalizeName(p.awayTeam ?? "");
+    const home = normalizeName(p.homeTeam ?? "");
+
+    const liveAway = normalizeName(game.away_team);
+    const liveHome = normalizeName(game.home_team);
+
+    return (
+      (away === liveAway && home === liveHome) ||
+      (away === liveHome && home === liveAway)
+    );
+  });
+})();
+                        const result = getLivePickResult(game, livePickData);
 
                         const awayScore =
                           game.scores?.find((s) => s.name === game.away_team)
@@ -1220,24 +1288,30 @@ const isTopTab = selectedSport === "TOP";
                             {livePickData ? (
   <div className="mt-2 flex justify-center">
     {result === "WON" ? (
-      <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-green-300">
-          Won
-        </p>
-      </div>
-    ) : result === "LOST" ? (
-      <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-2.5 py-1">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-red-300">
-          Lost
-        </p>
-      </div>
-    ) : (
-      <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
-          Signal Detected
-        </p>
-      </div>
-    )}
+  <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
+    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-green-300">
+      {isTop5 ? "Signal Won • Top 5" : "Signal Won"}
+    </p>
+  </div>
+) : result === "LOST" ? (
+  <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-2.5 py-1">
+    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-red-300">
+      {isTop5 ? "Signal Lost • Top 5" : "Signal Lost"}
+    </p>
+  </div>
+) : result === "PUSH" ? (
+  <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-2.5 py-1">
+    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-yellow-300">
+      {isTop5 ? "Signal Push • Top 5" : "Signal Push"}
+    </p>
+  </div>
+) : (
+  <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
+    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
+      Signal Detected
+    </p>
+  </div>
+)}
   </div>
 ) : null}
                           </button>
