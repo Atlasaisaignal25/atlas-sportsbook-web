@@ -184,6 +184,12 @@ function getMoneyline(game: OddsGame, teamName: string) {
   return outcome?.price ?? null;
 }
 
+function getDrawOdds(game: OddsGame) {
+  const market = getMarket(game, "h2h");
+  const outcome = market?.outcomes?.find((o) => normalizeName(o.name) === "draw");
+  return outcome?.price ?? null;
+}
+
 function getSpreadValue(game: OddsGame, teamName: string) {
   const market = getMarket(game, "spreads");
   const outcome = market?.outcomes?.find((o) => o.name === teamName);
@@ -1603,9 +1609,19 @@ const isTopTab = selectedSport === "TOP";
   </div>
 
   <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
-    {oddsGame
-      ? getTotalValues(oddsGame).overLabel.replace("O ", "O/U ")
-      : "N/A"}
+    {(() => {
+      if (!oddsGame) return "N/A";
+
+      if (selectedSport === "SOCCER") {
+        const drawOdds = getDrawOdds(oddsGame);
+        return drawOdds !== null ? formatAmericanOdds(drawOdds) : "DRAW";
+      }
+
+      const totalValues = getTotalValues(oddsGame);
+      return totalValues.overLabel !== "N/A"
+        ? totalValues.overLabel.replace("O ", "O/U ")
+        : "N/A";
+    })()}
   </div>
 
   <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
