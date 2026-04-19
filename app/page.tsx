@@ -647,7 +647,8 @@ function findScoreGameForPick(
   const pickAway = normalizeName(pick.awayTeam ?? "");
   const pickHome = normalizeName(pick.homeTeam ?? "");
 
-  return (
+  // 1. match exacto normal o invertido
+  const exactMatch =
     scoreGames.find((game) => {
       const gameAway = normalizeName(game.away_team);
       const gameHome = normalizeName(game.home_team);
@@ -656,8 +657,30 @@ function findScoreGameForPick(
         (pickAway === gameAway && pickHome === gameHome) ||
         (pickAway === gameHome && pickHome === gameAway)
       );
-    }) || null
-  );
+    }) || null;
+
+  if (exactMatch) return exactMatch;
+
+  // 2. match flexible normal o invertido
+  const flexibleMatch =
+    scoreGames.find((game) => {
+      const gameAway = normalizeName(game.away_team);
+      const gameHome = normalizeName(game.home_team);
+
+      const normalAway =
+        pickAway.includes(gameAway) || gameAway.includes(pickAway);
+      const normalHome =
+        pickHome.includes(gameHome) || gameHome.includes(pickHome);
+
+      const reversedAway =
+        pickAway.includes(gameHome) || gameHome.includes(pickAway);
+      const reversedHome =
+        pickHome.includes(gameAway) || gameAway.includes(pickHome);
+
+      return (normalAway && normalHome) || (reversedAway && reversedHome);
+    }) || null;
+
+  return flexibleMatch;
 }
 
 function gradePickFromScoreGame(
