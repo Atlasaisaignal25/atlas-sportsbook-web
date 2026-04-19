@@ -1783,6 +1783,7 @@ const isTopTab = selectedSport === "TOP";
 
             {subsPicks.map((pick, idx) => {
               const finalResult = getSubsPickResult(pick, subsScoreGames);
+              const matchedScoreGame = findScoreGameForPick(pick, subsScoreGames);
               const showPending = finalResult === "PENDING";
 
               return (
