@@ -1449,11 +1449,14 @@ const isTopTab = selectedSport === "TOP";
                 Upcoming
               </button>
             </div>
-
+<div className="text-[10px] text-red-400">
+  liveGames: {liveGames.length} | filteredLiveGames: {filteredLiveGames.length} | groupedFilteredLiveGames: {groupedFilteredLiveGames.length}
+</div>
             {liveLoading ? (
               <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
                 Loading live games...
               </div>
+              
             ) : groupedFilteredLiveGames.length === 0 ? (
               selectedSport === "TOP" ? (
                 <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
