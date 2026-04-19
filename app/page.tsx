@@ -640,6 +640,147 @@ function getLivePickResult(game: LiveScore, pickData: SignalGame | null) {
   return "PENDING";
 }
 
+function findScoreGameForPick(
+  pick: { awayTeam?: string; homeTeam?: string },
+  scoreGames: LiveScore[]
+) {
+  const pickAway = normalizeName(pick.awayTeam ?? "");
+  const pickHome = normalizeName(pick.homeTeam ?? "");
+
+  return (
+    scoreGames.find((game) => {
+      const gameAway = normalizeName(game.away_team);
+      const gameHome = normalizeName(game.home_team);
+
+      return (
+        (pickAway === gameAway && pickHome === gameHome) ||
+        (pickAway === gameHome && pickHome === gameAway)
+      );
+    }) || null
+  );
+}
+
+function gradePickFromScoreGame(
+  game: LiveScore | null,
+  rawPick: string
+): "WON" | "LOST" | "PUSH" | "PENDING" {
+  if (!game) return "PENDING";
+  if (!game.completed) return "PENDING";
+
+  const awayScore = Number(
+    game.scores?.find((s) => s.name === game.away_team)?.score ?? NaN
+  );
+  const homeScore = Number(
+    game.scores?.find((s) => s.name === game.home_team)?.score ?? NaN
+  );
+
+  if (!Number.isFinite(awayScore) || !Number.isFinite(homeScore)) {
+    return "PENDING";
+  }
+
+  const pickRaw = String(rawPick ?? "").trim();
+  const pick = pickRaw.toLowerCase();
+  const totalScore = awayScore + homeScore;
+
+  const awayName = normalizeName(game.away_team);
+  const homeName = normalizeName(game.home_team);
+
+  // MONEYLINE
+  if (pick.includes("ml")) {
+    const pickNorm = normalizeName(pickRaw);
+
+    if (pickNorm.includes(awayName)) {
+      return awayScore > homeScore ? "WON" : "LOST";
+    }
+
+    if (pickNorm.includes(homeName)) {
+      return homeScore > awayScore ? "WON" : "LOST";
+    }
+
+    return "PENDING";
+  }
+
+  // TOTALS
+  const totalMatch =
+    pick.match(/over\s*([0-9]+(?:\.[0-9]+)?)/i) ||
+    pick.match(/under\s*([0-9]+(?:\.[0-9]+)?)/i);
+
+  if (totalMatch) {
+    const line = Number(totalMatch[1]);
+
+    if (!Number.isFinite(line)) return "PENDING";
+
+    if (pick.includes("over")) {
+      if (totalScore > line) return "WON";
+      if (totalScore < line) return "LOST";
+      return "PUSH";
+    }
+
+    if (pick.includes("under")) {
+      if (totalScore < line) return "WON";
+      if (totalScore > line) return "LOST";
+      return "PUSH";
+    }
+  }
+
+  // SPREADS
+  const spreadMatch = pickRaw.match(
+    /^(.*?)(?:\s*[\(\s])([+-]\d+(?:\.\d+)?)(?:\))?$/
+  );
+
+  if (spreadMatch) {
+    const teamPart = normalizeName(spreadMatch[1]);
+    const line = Number(spreadMatch[2]);
+
+    if (!Number.isFinite(line)) return "PENDING";
+
+    if (teamPart.includes(awayName) || awayName.includes(teamPart)) {
+      const adjusted = awayScore + line;
+      if (adjusted > homeScore) return "WON";
+      if (adjusted < homeScore) return "LOST";
+      return "PUSH";
+    }
+
+    if (teamPart.includes(homeName) || homeName.includes(teamPart)) {
+      const adjusted = homeScore + line;
+      if (adjusted > awayScore) return "WON";
+      if (adjusted < awayScore) return "LOST";
+      return "PUSH";
+    }
+  }
+
+  return "PENDING";
+}
+
+function getSubsPickResult(
+  pick: { awayTeam?: string; homeTeam?: string; pick: string },
+  scoreGames: LiveScore[]
+) {
+  const game = findScoreGameForPick(pick, scoreGames);
+  return gradePickFromScoreGame(game, pick.pick);
+}
+
+function buildRecordStats(
+  picks: Array<{ awayTeam?: string; homeTeam?: string; pick: string; isTopSignal?: boolean }>,
+  scoreGames: LiveScore[]
+) {
+  const graded = picks.map((pick) => getSubsPickResult(pick, scoreGames));
+
+  const wins = graded.filter((r) => r === "WON").length;
+  const losses = graded.filter((r) => r === "LOST").length;
+  const pushes = graded.filter((r) => r === "PUSH").length;
+  const decided = wins + losses;
+  const winRate = decided > 0 ? Math.round((wins / decided) * 100) : 0;
+
+  return {
+    wins,
+    losses,
+    pushes,
+    decided,
+    winRate,
+  };
+}
+
 function getStatusStyles(status?: string) {
   const s = String(status ?? "PENDING").toUpperCase();
 
@@ -775,6 +916,8 @@ const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
 const [liveLoading, setLiveLoading] = useState(false);
 const [activeDay, setActiveDay] = useState<"yesterday" | "today" | "tomorrow">("today");
+const [subsScoreGames, setSubsScoreGames] = useState<LiveScore[]>([]);
+const [subsScoresLoading, setSubsScoresLoading] = useState(false);
 
   const topSignals: TopSignalCard[] = useMemo(
   () =>
@@ -1017,15 +1160,59 @@ const sportForLive = selectedSport;
   loadLiveGames();
 }, [viewMode, selectedSport]);
 
+useEffect(() => {
+  async function loadSubsScores() {
+    if (viewMode !== "odds") return;
+
+    try {
+      setSubsScoresLoading(true);
+
+      if (selectedSport === "TOP" || selectedSport === "NFL") {
+        setSubsScoreGames([]);
+        return;
+      }
+
+      const sportForScores = selectedSport;
+
+      const res = await fetch(`/api/scores?sport=${sportForScores}`, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+      setSubsScoreGames(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setSubsScoreGames([]);
+    } finally {
+      setSubsScoresLoading(false);
+    }
+  }
+
+  loadSubsScores();
+}, [viewMode, selectedSport]);
+
 const subsPicks = useMemo(() => {
   return getSubPicksForUser(userAccess, selectedSport);
 }, [userAccess, selectedSport]);
+
+const topSignalPicks = useMemo(() => {
+  return subsPicks.filter((pick) => pick.isTopSignal);
+}, [subsPicks]);
+
+const top5RecordStats = useMemo(() => {
+  return buildRecordStats(subsPicks, subsScoreGames);
+}, [subsPicks, subsScoreGames]);
+
+const topSignalRecordStats = useMemo(() => {
+  return buildRecordStats(topSignalPicks, subsScoreGames);
+}, [topSignalPicks, subsScoreGames]);
 
 const eliteTopSignals = useMemo(() => {
   return topSignals;
 }, [topSignals]);
 
 const isTopTab = selectedSport === "TOP";
+
+
 
   return (
   <main className="min-h-screen bg-[#050816] text-white">
@@ -1509,77 +1696,141 @@ const isTopTab = selectedSport === "TOP";
   </div>
 ) : (
   <div className="space-y-3">
-    {subsPicks.map((pick, idx) => (
-      <article
-        key={`subs-pick-${selectedSport}-${idx}`}
-        className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-      >
-        <div className="mb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
-            {selectedSport}
-          </p>
-          {pick.startTime && (
-            <p className="mt-2 text-[13px] font-medium text-white/55">
-              {formatTime(pick.startTime)}
+    <div className="grid grid-cols-3 gap-2">
+      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+          Top Signal
+        </p>
+        <p className="mt-2 text-[16px] font-bold text-white">
+          {topSignalRecordStats.wins}-{topSignalRecordStats.losses}
+        </p>
+        <p className="mt-1 text-[11px] text-white/55">
+          Push: {topSignalRecordStats.pushes}
+        </p>
+      </div>
+
+      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+          Top 5
+        </p>
+        <p className="mt-2 text-[16px] font-bold text-white">
+          {top5RecordStats.wins}-{top5RecordStats.losses}
+        </p>
+        <p className="mt-1 text-[11px] text-white/55">
+          Push: {top5RecordStats.pushes}
+        </p>
+      </div>
+
+      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+          Win Rate
+        </p>
+        <p className="mt-2 text-[16px] font-bold text-white">
+          {top5RecordStats.winRate}%
+        </p>
+        <p className="mt-1 text-[11px] text-white/55">
+          Overall
+        </p>
+      </div>
+    </div>
+
+    {subsScoresLoading ? (
+      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+        Loading results...
+      </div>
+    ) : null}
+
+    {subsPicks.map((pick, idx) => {
+      const finalResult = getSubsPickResult(pick, subsScoreGames);
+
+      return (
+        <article
+          key={`subs-pick-${selectedSport}-${idx}`}
+          className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+        >
+          <div className="mb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+              {selectedSport}
             </p>
-          )}
-        </div>
+            {pick.startTime && (
+              <p className="mt-2 text-[13px] font-medium text-white/55">
+                {formatTime(pick.startTime)}
+              </p>
+            )}
+          </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
-            <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-              {getDisplayAbbr(pick.awayTeam ?? "")}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
+              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                {getDisplayAbbr(pick.awayTeam ?? "")}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
+              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                {getDisplayAbbr(pick.homeTeam ?? "")}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+            <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+              Signal Detected
+            </div>
+
+            <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
+              {formatDisplayedPick(pick.pick, selectedSport)}
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <div
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
+                  pick.status
+                )}`}
+              >
+                {String(pick.status ?? "PENDING")}
+              </div>
+
+              {finalResult === "WON" ? (
+                <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-green-300">
+                  Won
+                </div>
+              ) : finalResult === "LOST" ? (
+                <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-red-300">
+                  Lost
+                </div>
+              ) : finalResult === "PUSH" ? (
+                <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
+                  Push
+                </div>
+              ) : null}
+            </div>
+
+            <p className="mt-2 text-[11px] text-white/40">
+              {pick.status === "CONFIRMED" && "Validated by system"}
+              {pick.status === "REMOVED" && "Signal removed due to market shift"}
+              {pick.status === "DOWNGRADED" &&
+                "Confidence reduced before game time"}
+              {!pick.status && "Monitoring market conditions"}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
-            <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-              {getDisplayAbbr(pick.homeTeam ?? "")}
-            </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span
+              className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                String(pick.label).includes("Top Signal")
+                  ? "bg-purple-500/18 text-purple-300"
+                  : "bg-yellow-500/18 text-yellow-300"
+              }`}
+            >
+              {pick.label}
+            </span>
           </div>
-        </div>
-
-        <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-          <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-            Signal Detected
-          </div>
-
-          <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
-            {formatDisplayedPick(pick.pick, selectedSport)}
-          </p>
-
-          <div
-            className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
-              pick.status
-            )}`}
-          >
-            {String(pick.status ?? "PENDING")}
-          </div>
-
-          <p className="mt-2 text-[11px] text-white/40">
-            {pick.status === "CONFIRMED" && "Validated by system"}
-            {pick.status === "REMOVED" && "Signal removed due to market shift"}
-            {pick.status === "DOWNGRADED" &&
-              "Confidence reduced before game time"}
-            {!pick.status && "Monitoring market conditions"}
-          </p>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span
-            className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-              String(pick.label).includes("Top Signal")
-                ? "bg-purple-500/18 text-purple-300"
-                : "bg-yellow-500/18 text-yellow-300"
-            }`}
-          >
-            {pick.label}
-          </span>
-        </div>
-      </article>
-    ))}
+        </article>
+      );
+    })}
   </div>
 )}
       </section>
