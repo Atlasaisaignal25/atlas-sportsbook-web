@@ -1050,7 +1050,7 @@ const filteredLiveGames = useMemo(() => {
     const live = isGameLive(game);
 
     if (activeDay === "today") {
-      return gameDayKey === todayKey;
+      return gameDayKey === todayKey || live;
     }
 
     return gameDayKey === targetDayKey;
