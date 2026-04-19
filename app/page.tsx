@@ -1243,26 +1243,6 @@ useEffect(() => {
 
 const scoresData = await scoresRes.json();
 
-console.log("LIVE DEBUG selectedSport:", selectedSport);
-console.log("LIVE DEBUG scoresRes.ok:", scoresRes.ok);
-console.log("LIVE DEBUG scoresData:", scoresData);
-
-if (!scoresRes.ok) {
-  setLiveGames([]);
-  return;
-}
-
-setLiveGames(Array.isArray(scoresData) ? scoresData : []);
-
-console.log("LIVE DEBUG selectedSport:", selectedSport);
-console.log("LIVE DEBUG scoresRes.ok:", scoresRes.ok);
-console.log("LIVE DEBUG scoresData:", scoresData);
-
-if (!scoresRes.ok) {
-  setLiveGames([]);
-  return;
-}
-
 setLiveGames(Array.isArray(scoresData) ? scoresData : []);
 
       if (selectedSport === "SOCCER") {
@@ -1471,9 +1451,7 @@ const isTopTab = selectedSport === "TOP";
                 Upcoming
               </button>
             </div>
-<div className="text-[10px] text-red-400">
-  liveGames: {liveGames.length} | filteredLiveGames: {filteredLiveGames.length} | groupedFilteredLiveGames: {groupedFilteredLiveGames.length}
-</div>
+
             {liveLoading ? (
               <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
                 Loading live games...
