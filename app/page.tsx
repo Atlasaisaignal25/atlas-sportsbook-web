@@ -640,44 +640,60 @@ function getLivePickResult(game: LiveScore, pickData: SignalGame | null) {
   return "PENDING";
 }
 
+function getLastWord(value: string) {
+  const parts = normalizeName(value).split(" ").filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : "";
+}
+
+function isNameClose(a: string, b: string) {
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+
+  if (!na || !nb) return false;
+
+  if (na === nb) return true;
+  if (na.includes(nb) || nb.includes(na)) return true;
+
+  const lastA = getLastWord(a);
+  const lastB = getLastWord(b);
+
+  if (lastA && lastB && lastA === lastB) return true;
+
+  return false;
+}
+
 function findScoreGameForPick(
   pick: { awayTeam?: string; homeTeam?: string },
   scoreGames: LiveScore[]
 ) {
-  const pickAway = normalizeName(pick.awayTeam ?? "");
-  const pickHome = normalizeName(pick.homeTeam ?? "");
+  const pickAway = pick.awayTeam ?? "";
+  const pickHome = pick.homeTeam ?? "";
 
-  // 1. match exacto normal o invertido
+  // 1. match exacto o invertido
   const exactMatch =
     scoreGames.find((game) => {
-      const gameAway = normalizeName(game.away_team);
-      const gameHome = normalizeName(game.home_team);
-
       return (
-        (pickAway === gameAway && pickHome === gameHome) ||
-        (pickAway === gameHome && pickHome === gameAway)
+        (normalizeName(pickAway) === normalizeName(game.away_team) &&
+          normalizeName(pickHome) === normalizeName(game.home_team)) ||
+        (normalizeName(pickAway) === normalizeName(game.home_team) &&
+          normalizeName(pickHome) === normalizeName(game.away_team))
       );
     }) || null;
 
   if (exactMatch) return exactMatch;
 
-  // 2. match flexible normal o invertido
+  // 2. match flexible o invertido
   const flexibleMatch =
     scoreGames.find((game) => {
-      const gameAway = normalizeName(game.away_team);
-      const gameHome = normalizeName(game.home_team);
+      const normalMatch =
+        isNameClose(pickAway, game.away_team) &&
+        isNameClose(pickHome, game.home_team);
 
-      const normalAway =
-        pickAway.includes(gameAway) || gameAway.includes(pickAway);
-      const normalHome =
-        pickHome.includes(gameHome) || gameHome.includes(pickHome);
+      const reversedMatch =
+        isNameClose(pickAway, game.home_team) &&
+        isNameClose(pickHome, game.away_team);
 
-      const reversedAway =
-        pickAway.includes(gameHome) || gameHome.includes(pickAway);
-      const reversedHome =
-        pickHome.includes(gameAway) || gameAway.includes(pickHome);
-
-      return (normalAway && normalHome) || (reversedAway && reversedHome);
+      return normalMatch || reversedMatch;
     }) || null;
 
   return flexibleMatch;
