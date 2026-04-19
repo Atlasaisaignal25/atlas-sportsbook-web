@@ -1313,40 +1313,40 @@ const isTopTab = selectedSport === "TOP";
                 Loading live games...
               </div>
             ) : groupedFilteredLiveGames.length === 0 ? (
-  selectedSport === "TOP" ? (
-    <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-        TOP Live
-      </p>
+              selectedSport === "TOP" ? (
+                <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                    TOP Live
+                  </p>
 
-      <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
-        TOP is not available in Live
-      </h2>
+                  <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+                    TOP is not available in Live
+                  </h2>
 
-      <p className="mt-2 text-sm leading-6 text-white/70">
-        Use the Subs section to unlock Top Signals and review the strongest plays available with an Elite subscription.
-      </p>
-    </div>
-  ) : selectedSport === "NFL" ? (
-    <div className="rounded-[28px] border border-yellow-400/20 bg-yellow-500/10 p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-yellow-300">
-        NFL
-      </p>
+                  <p className="mt-2 text-sm leading-6 text-white/70">
+                    Use the Subs section to unlock Top Signals and review the strongest plays available with an Elite subscription.
+                  </p>
+                </div>
+              ) : selectedSport === "NFL" ? (
+                <div className="rounded-[28px] border border-yellow-400/20 bg-yellow-500/10 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-yellow-300">
+                    NFL
+                  </p>
 
-      <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
-        NFL is not available yet
-      </h2>
+                  <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+                    NFL is not available yet
+                  </h2>
 
-      <p className="mt-2 text-sm leading-6 text-white/70">
-        NFL support is coming in a future update. This section will activate once the market and signal system are ready.
-      </p>
-    </div>
-  ) : (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-      No live games available.
-    </div>
-  )
-) : (
+                  <p className="mt-2 text-sm leading-6 text-white/70">
+                    NFL support is coming in a future update. This section will activate once the market and signal system are ready.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+                  No live games available.
+                </div>
+              )
+            ) : (
               <div className="space-y-3">
                 {groupedFilteredLiveGames.map((group) => (
                   <article
@@ -1363,20 +1363,20 @@ const isTopTab = selectedSport === "TOP";
                       {group.games.map((game, idx) => {
                         const livePickData = findLivePick(game, group.sport);
                         const isTop5 = (() => {
-  const top5 = getTop5BySport(group.sport);
-  return top5.some((p) => {
-    const away = normalizeName(p.awayTeam ?? "");
-    const home = normalizeName(p.homeTeam ?? "");
+                          const top5 = getTop5BySport(group.sport);
+                          return top5.some((p) => {
+                            const away = normalizeName(p.awayTeam ?? "");
+                            const home = normalizeName(p.homeTeam ?? "");
 
-    const liveAway = normalizeName(game.away_team);
-    const liveHome = normalizeName(game.home_team);
+                            const liveAway = normalizeName(game.away_team);
+                            const liveHome = normalizeName(game.home_team);
 
-    return (
-      (away === liveAway && home === liveHome) ||
-      (away === liveHome && home === liveAway)
-    );
-  });
-})();
+                            return (
+                              (away === liveAway && home === liveHome) ||
+                              (away === liveHome && home === liveAway)
+                            );
+                          });
+                        })();
                         const result = getLivePickResult(game, livePickData);
 
                         const awayScore =
@@ -1388,15 +1388,15 @@ const isTopTab = selectedSport === "TOP";
 
                         return (
                           <button
-  key={`${game.id}-${idx}`}
-  type="button"
-  onClick={() => handleLiveGameClick(game, group.sport)}
-  className={`block w-full px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
-    idx !== group.games.length - 1
-      ? "border-b border-white/10"
-      : ""
-  }`}
->
+                            key={`${game.id}-${idx}`}
+                            type="button"
+                            onClick={() => handleLiveGameClick(game, group.sport)}
+                            className={`block w-full px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
+                              idx !== group.games.length - 1
+                                ? "border-b border-white/10"
+                                : ""
+                            }`}
+                          >
                             <div className="flex items-center justify-between">
                               <div className="flex min-w-0 w-[38%] items-center justify-end">
                                 <div className="flex min-w-0 items-center gap-2">
@@ -1458,7 +1458,6 @@ const isTopTab = selectedSport === "TOP";
                             </div>
 
                             <div className="mt-2 flex justify-center gap-2">
-
                               <div className="min-w-[68px] rounded-full bg-black/60 px-2.5 py-1 text-center text-[11px]">
                                 -203
                               </div>
@@ -1473,34 +1472,34 @@ const isTopTab = selectedSport === "TOP";
                             </div>
 
                             {livePickData ? (
-  <div className="mt-2 flex justify-center">
-    {result === "WON" ? (
-  <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
-    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-green-300">
-      {isTop5 ? "Signal Won • Top 5" : "Signal Won"}
-    </p>
-  </div>
-) : result === "LOST" ? (
-  <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-2.5 py-1">
-    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-red-300">
-      {isTop5 ? "Signal Lost • Top 5" : "Signal Lost"}
-    </p>
-  </div>
-) : result === "PUSH" ? (
-  <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-2.5 py-1">
-    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-yellow-300">
-      {isTop5 ? "Signal Push • Top 5" : "Signal Push"}
-    </p>
-  </div>
-) : (
-  <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
-    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
-      Signal Detected
-    </p>
-  </div>
-)}
-  </div>
-) : null}
+                              <div className="mt-2 flex justify-center">
+                                {result === "WON" ? (
+                                  <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-green-300">
+                                      {isTop5 ? "Signal Won • Top 5" : "Signal Won"}
+                                    </p>
+                                  </div>
+                                ) : result === "LOST" ? (
+                                  <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-2.5 py-1">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-red-300">
+                                      {isTop5 ? "Signal Lost • Top 5" : "Signal Lost"}
+                                    </p>
+                                  </div>
+                                ) : result === "PUSH" ? (
+                                  <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-2.5 py-1">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-yellow-300">
+                                      {isTop5 ? "Signal Push • Top 5" : "Signal Push"}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1">
+                                    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
+                                      Signal Detected
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
                           </button>
                         );
                       })}
@@ -1511,328 +1510,340 @@ const isTopTab = selectedSport === "TOP";
             )}
           </>
         ) : loading ? (
-  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-    Loading {selectedSport} games...
-  </div>
-) : isTopTab ? (
-  canViewTopTab(userAccess) ? (
-    eliteTopSignals.length === 0 ? (
-      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-        No Top Signals available today.
-      </div>
-    ) : (
-      <div className="space-y-3">
-        {eliteTopSignals.map((pick, idx) => (
-          <article
-            key={`top-${idx}`}
-            className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-          >
-            <div className="mb-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-400/95">
-                Top Signal {pick.sport}
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+            Loading {selectedSport} games...
+          </div>
+        ) : isTopTab ? (
+          canViewTopTab(userAccess) ? (
+            eliteTopSignals.length === 0 ? (
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+                No Top Signals available today.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {eliteTopSignals.map((pick, idx) => (
+                  <article
+                    key={`top-${idx}`}
+                    className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+                  >
+                    <div className="mb-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-yellow-400/95">
+                        Top Signal {pick.sport}
+                      </p>
+                      {pick.startTime && (
+                        <p className="mt-2 text-[13px] font-medium text-white/55">
+                          {formatTime(pick.startTime)}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <TeamBadge
+                          teamName={pick.awayTeam ?? ""}
+                          sport={pick.sport}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                            {getDisplayAbbr(pick.awayTeam ?? "")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <TeamBadge
+                          teamName={pick.homeTeam ?? ""}
+                          sport={pick.sport}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                            {getDisplayAbbr(pick.homeTeam ?? "")}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+                      <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                        Signal Detected
+                      </div>
+
+                      <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
+                        {formatDisplayedPick(pick.pick, pick.sport)}
+                      </p>
+
+                      <div
+                        className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
+                          pick.status
+                        )}`}
+                      >
+                        {String(pick.status ?? "PENDING")}
+                      </div>
+
+                      <p className="mt-2 text-[11px] text-white/40">
+                        {pick.status === "CONFIRMED" && "Validated by system"}
+                        {pick.status === "REMOVED" && "Signal removed due to market shift"}
+                        {pick.status === "DOWNGRADED" &&
+                          "Confidence reduced before game time"}
+                        {!pick.status && "Monitoring market conditions"}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )
+          ) : (
+            <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                Unlock TOP
               </p>
-              {pick.startTime && (
-                <p className="mt-2 text-[13px] font-medium text-white/55">
-                  {formatTime(pick.startTime)}
+
+              <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+                Access Top Signals across all sports
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-white/70">
+                The TOP section is reserved for Elite subscribers and includes the strongest
+                signal detected in each available sport for the day.
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+                  Elite only
+                </span>
+                <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+                  Top signal by sport
+                </span>
+                <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+                  Daily strongest signals
+                </span>
+              </div>
+
+              <div className="mt-5 space-y-2 text-[13px] text-white/65">
+                <p>• NBA Top Signal</p>
+                <p>• NHL Top Signal</p>
+                <p>• MLB Top Signal</p>
+                <p>• Soccer Top Signal</p>
+              </div>
+
+              <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
+                Unlock TOP Access
+              </button>
+            </div>
+          )
+        ) : selectedSport === "NFL" ? (
+          <div className="rounded-[28px] border border-yellow-400/20 bg-yellow-500/10 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-yellow-300">
+              NFL
+            </p>
+
+            <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+              NFL is not available yet
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-white/70">
+              NFL subscriptions are not active yet. This sport will be added once the
+              signal engine and market workflow are ready.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+                Coming soon
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+                Signals in development
+              </span>
+            </div>
+          </div>
+        ) : !hasSportAccess(userAccess, selectedSport) ? (
+          <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+              Unlock {selectedSport}
+            </p>
+
+            <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
+              Add {selectedSport} to your subscription
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-white/70">
+              Access today’s signals for {selectedSport}, track the strongest opportunities
+              and unlock premium validation before game time.
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+                Exclusive: Top 5
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
+                Premium: Ranked + Top Signal
+              </span>
+            </div>
+
+            <div className="mt-5 space-y-2 text-[13px] text-white/65">
+              <p>• Access signals for {selectedSport}</p>
+              <p>• View the daily Top 5 picks</p>
+              <p>• Unlock stronger premium validation</p>
+            </div>
+
+            <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
+              Subscribe to {selectedSport}
+            </button>
+          </div>
+        ) : subsPicks.length === 0 ? (
+          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+            No subscription picks available for {selectedSport}.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+                  Top Signal
                 </p>
-              )}
+                <p className="mt-2 text-[16px] font-bold text-white">
+                  {topSignalRecordStats.wins}-{topSignalRecordStats.losses}
+                </p>
+                <p className="mt-1 text-[11px] text-white/55">
+                  Push: {topSignalRecordStats.pushes}
+                </p>
+              </div>
+
+              <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+                  Top 5
+                </p>
+                <p className="mt-2 text-[16px] font-bold text-white">
+                  {top5RecordStats.wins}-{top5RecordStats.losses}
+                </p>
+                <p className="mt-1 text-[11px] text-white/55">
+                  Push: {top5RecordStats.pushes}
+                </p>
+                <p className="mt-1 text-[11px] text-white/55">
+                  Today
+                </p>
+              </div>
+
+              <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+                  Win Rate
+                </p>
+                <p className="mt-2 text-[16px] font-bold text-white">
+                  {topSignalRecordStats.winRate}%
+                </p>
+                <p className="mt-1 text-[11px] text-white/55">
+                  Global
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <TeamBadge
-                  teamName={pick.awayTeam ?? ""}
-                  sport={pick.sport}
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                    {getDisplayAbbr(pick.awayTeam ?? "")}
-                  </p>
-                </div>
+            {subsScoresLoading ? (
+              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+                Loading results...
               </div>
+            ) : null}
 
-              <div className="flex items-center gap-3">
-                <TeamBadge
-                  teamName={pick.homeTeam ?? ""}
-                  sport={pick.sport}
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                    {getDisplayAbbr(pick.homeTeam ?? "")}
-                  </p>
-                </div>
-              </div>
-            </div>
+            {subsPicks.map((pick, idx) => {
+              const finalResult = getSubsPickResult(pick, subsScoreGames);
+              const showPending = finalResult === "PENDING";
 
-            <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-              <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                Signal Detected
-              </div>
+              return (
+                <article
+                  key={`subs-pick-${selectedSport}-${idx}`}
+                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+                >
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                      {selectedSport}
+                    </p>
+                    {pick.startTime && (
+                      <p className="mt-2 text-[13px] font-medium text-white/55">
+                        {formatTime(pick.startTime)}
+                      </p>
+                    )}
+                  </div>
 
-              <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
-                {formatDisplayedPick(pick.pick, pick.sport)}
-              </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
+                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                        {getDisplayAbbr(pick.awayTeam ?? "")}
+                      </p>
+                    </div>
 
-              <div
-                className={`mt-3 inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
-                  pick.status
-                )}`}
-              >
-                {String(pick.status ?? "PENDING")}
-              </div>
+                    <div className="flex items-center gap-3">
+                      <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
+                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                        {getDisplayAbbr(pick.homeTeam ?? "")}
+                      </p>
+                    </div>
+                  </div>
 
-              <p className="mt-2 text-[11px] text-white/40">
-                {pick.status === "CONFIRMED" && "Validated by system"}
-                {pick.status === "REMOVED" && "Signal removed due to market shift"}
-                {pick.status === "DOWNGRADED" &&
-                  "Confidence reduced before game time"}
-                {!pick.status && "Monitoring market conditions"}
-              </p>
-            </div>
-          </article>
-        ))}
-      </div>
-    )
-  ) : (
-    <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-        Unlock TOP
-      </p>
+                  <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+                    <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
+                        {finalResult === "WON"
+                          ? "Signal Won"
+                          : finalResult === "LOST"
+                          ? "Signal Lost"
+                          : finalResult === "PUSH"
+                          ? "Signal Push"
+                          : "Signal Detected"}
+                      </p>
+                    </div>
 
-      <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
-        Access Top Signals across all sports
-      </h2>
+                    <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
+                      {formatDisplayedPick(pick.pick, selectedSport)}
+                    </p>
 
-      <p className="mt-2 text-sm leading-6 text-white/70">
-        The TOP section is reserved for Elite subscribers and includes the strongest
-        signal detected in each available sport for the day.
-      </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {showPending ? (
+                        <div
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
+                            pick.status
+                          )}`}
+                        >
+                          {String(pick.status ?? "PENDING")}
+                        </div>
+                      ) : finalResult === "WON" ? (
+                        <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-green-300">
+                          Won
+                        </div>
+                      ) : finalResult === "LOST" ? (
+                        <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-red-300">
+                          Lost
+                        </div>
+                      ) : finalResult === "PUSH" ? (
+                        <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
+                          Push
+                        </div>
+                      ) : null}
+                    </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-          Elite only
-        </span>
-        <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-          Top signal by sport
-        </span>
-        <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-          Daily strongest signals
-        </span>
-      </div>
+                    <p className="mt-2 text-[11px] text-white/40">
+                      {pick.status === "CONFIRMED" && "Validated by system"}
+                      {pick.status === "REMOVED" && "Signal removed due to market shift"}
+                      {pick.status === "DOWNGRADED" &&
+                        "Confidence reduced before game time"}
+                      {!pick.status && "Monitoring market conditions"}
+                    </p>
+                  </div>
 
-      <div className="mt-5 space-y-2 text-[13px] text-white/65">
-        <p>• NBA Top Signal</p>
-        <p>• NHL Top Signal</p>
-        <p>• MLB Top Signal</p>
-        <p>• Soccer Top Signal</p>
-      </div>
-
-      <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
-        Unlock TOP Access
-      </button>
-    </div>
-  )
-) : selectedSport === "NFL" ? (
-  <div className="rounded-[28px] border border-yellow-400/20 bg-yellow-500/10 p-5">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-yellow-300">
-      NFL
-    </p>
-
-    <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
-      NFL is not available yet
-    </h2>
-
-    <p className="mt-2 text-sm leading-6 text-white/70">
-      NFL subscriptions are not active yet. This sport will be added once the
-      signal engine and market workflow are ready.
-    </p>
-
-    <div className="mt-4 flex flex-wrap gap-2">
-      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-        Coming soon
-      </span>
-      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-        Signals in development
-      </span>
-    </div>
-  </div>
-) : !hasSportAccess(userAccess, selectedSport) ? (
-  <div className="rounded-[28px] border border-cyan-400/20 bg-cyan-400/10 p-5">
-    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-      Unlock {selectedSport}
-    </p>
-
-    <h2 className="mt-2 text-[20px] font-semibold tracking-tight text-white">
-      Add {selectedSport} to your subscription
-    </h2>
-
-    <p className="mt-2 text-sm leading-6 text-white/70">
-      Access today’s signals for {selectedSport}, track the strongest opportunities
-      and unlock premium validation before game time.
-    </p>
-
-    <div className="mt-4 flex flex-wrap gap-2">
-      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-        Exclusive: Top 5
-      </span>
-      <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-        Premium: Ranked + Top Signal
-      </span>
-    </div>
-
-    <div className="mt-5 space-y-2 text-[13px] text-white/65">
-      <p>• Access signals for {selectedSport}</p>
-      <p>• View the daily Top 5 picks</p>
-      <p>• Unlock stronger premium validation</p>
-    </div>
-
-    <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
-      Subscribe to {selectedSport}
-    </button>
-  </div>
-) : subsPicks.length === 0 ? (
-  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-    No subscription picks available for {selectedSport}.
-  </div>
-) : (
-  <div className="space-y-3">
-    <div className="grid grid-cols-3 gap-2">
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-          Top Signal
-        </p>
-        <p className="mt-2 text-[16px] font-bold text-white">
-          {topSignalRecordStats.wins}-{topSignalRecordStats.losses}
-        </p>
-        <p className="mt-1 text-[11px] text-white/55">
-          Push: {topSignalRecordStats.pushes}
-        </p>
-      </div>
-
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-          Top 5
-        </p>
-        <p className="mt-2 text-[16px] font-bold text-white">
-          {top5RecordStats.wins}-{top5RecordStats.losses}
-        </p>
-        <p className="mt-1 text-[11px] text-white/55">
-          Push: {top5RecordStats.pushes}
-        </p>
-      </div>
-
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-          Win Rate
-        </p>
-        <p className="mt-2 text-[16px] font-bold text-white">
-          {top5RecordStats.winRate}%
-        </p>
-        <p className="mt-1 text-[11px] text-white/55">
-          Overall
-        </p>
-      </div>
-    </div>
-
-    {subsScoresLoading ? (
-      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-        Loading results...
-      </div>
-    ) : null}
-
-    {subsPicks.map((pick, idx) => {
-      const finalResult = getSubsPickResult(pick, subsScoreGames);
-
-      return (
-        <article
-          key={`subs-pick-${selectedSport}-${idx}`}
-          className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-        >
-          <div className="mb-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
-              {selectedSport}
-            </p>
-            {pick.startTime && (
-              <p className="mt-2 text-[13px] font-medium text-white/55">
-                {formatTime(pick.startTime)}
-              </p>
-            )}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                        String(pick.label).includes("Top Signal")
+                          ? "bg-purple-500/18 text-purple-300"
+                          : "bg-yellow-500/18 text-yellow-300"
+                      }`}
+                    >
+                      {pick.label}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
           </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
-              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                {getDisplayAbbr(pick.awayTeam ?? "")}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
-              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                {getDisplayAbbr(pick.homeTeam ?? "")}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-            <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-              Signal Detected
-            </div>
-
-            <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
-              {formatDisplayedPick(pick.pick, selectedSport)}
-            </p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              <div
-                className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
-                  pick.status
-                )}`}
-              >
-                {String(pick.status ?? "PENDING")}
-              </div>
-
-              {finalResult === "WON" ? (
-                <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-green-300">
-                  Won
-                </div>
-              ) : finalResult === "LOST" ? (
-                <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-red-300">
-                  Lost
-                </div>
-              ) : finalResult === "PUSH" ? (
-                <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
-                  Push
-                </div>
-              ) : null}
-            </div>
-
-            <p className="mt-2 text-[11px] text-white/40">
-              {pick.status === "CONFIRMED" && "Validated by system"}
-              {pick.status === "REMOVED" && "Signal removed due to market shift"}
-              {pick.status === "DOWNGRADED" &&
-                "Confidence reduced before game time"}
-              {!pick.status && "Monitoring market conditions"}
-            </p>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span
-              className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                String(pick.label).includes("Top Signal")
-                  ? "bg-purple-500/18 text-purple-300"
-                  : "bg-yellow-500/18 text-yellow-300"
-              }`}
-            >
-              {pick.label}
-            </span>
-          </div>
-        </article>
-      );
-    })}
-  </div>
-)}
+        )}
       </section>
 
       <nav className="sticky bottom-0 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
