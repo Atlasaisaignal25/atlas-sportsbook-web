@@ -1835,6 +1835,11 @@ const isTopTab = selectedSport === "TOP";
                       {formatDisplayedPick(pick.pick, selectedSport)}
                     </p>
 
+                    <p className="mt-2 text-[10px] text-red-400">
+  DEBUG | match: {matchedScoreGame ? "YES" : "NO"} | completed:{" "}
+  {matchedScoreGame?.completed ? "YES" : "NO"} | result: {String(finalResult)}
+</p>
+
                     <div className="mt-3 flex flex-wrap gap-2">
                       {showPending ? (
                         <div
@@ -1867,6 +1872,11 @@ const isTopTab = selectedSport === "TOP";
                       {!pick.status && "Monitoring market conditions"}
                     </p>
                   </div>
+
+                  <p className="mt-2 text-[10px] text-red-400">
+  DEBUG: match {matchedScoreGame ? "YES" : "NO"} | completed{" "}
+  {matchedScoreGame?.completed ? "YES" : "NO"} | result {String(finalResult)}
+</p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span
