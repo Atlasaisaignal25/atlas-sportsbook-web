@@ -1,22 +1,40 @@
 {
   "sport": "NBA",
-  "date": "2026-04-18",
+  "date": "2026-04-19",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Toronto Raptors",
-      "homeTeam": "Cleveland Cavaliers",
-      "pick": "Under (219)",
-      "startTime": "2026-04-18T17:10:00Z",
+      "awayTeam": "Philadelphia 76ers",
+      "homeTeam": "Boston Celtics",
+      "pick": "Under (213)",
+      "startTime": "2026-04-19T17:10:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Minnesota Timberwolves",
-      "homeTeam": "Denver Nuggets",
-      "pick": "Over (232)",
-      "startTime": "2026-04-18T19:40:00Z",
+      "awayTeam": "Phoenix Suns",
+      "homeTeam": "Oklahoma City Thunder",
+      "pick": "Under (215.5)",
+      "startTime": "2026-04-19T19:40:00Z",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 3,
+      "awayTeam": "Orlando Magic",
+      "homeTeam": "Detroit Pistons",
+      "pick": "Under (218)",
+      "startTime": "2026-04-19T22:40:00Z",
+      "status": "PENDING",
+      "isTopSignal": false
+    },
+    {
+      "rank": 4,
+      "awayTeam": "Portland Trail Blazers",
+      "homeTeam": "San Antonio Spurs",
+      "pick": "Under (222)",
+      "startTime": "2026-04-20T01:10:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }
