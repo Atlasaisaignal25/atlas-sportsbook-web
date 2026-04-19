@@ -331,10 +331,9 @@ function getLeagueDisplayName(sportKey: string) {
 }
 
 function getDayKey(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return date.toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
 }
 
 function getRelativeDayKey(offset: -1 | 0 | 1) {
@@ -1050,7 +1049,7 @@ const filteredLiveGames = useMemo(() => {
     const live = isGameLive(game);
 
     if (activeDay === "today") {
-      return gameDayKey === todayKey;
+      return gameDayKey === todayKey || live;
     }
 
     return gameDayKey === targetDayKey;
