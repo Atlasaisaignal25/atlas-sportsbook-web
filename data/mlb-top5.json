@@ -1,49 +1,49 @@
 {
   "sport": "MLB",
-  "date": "2026-04-18",
+  "date": "2026-04-19",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Milwaukee Brewers",
-      "homeTeam": "Miami Marlins",
-      "pick": "Milwaukee Brewers",
-      "startTime": "2026-04-18T20:11:00Z",
+      "awayTeam": "Tampa Bay Rays",
+      "homeTeam": "Pittsburgh Pirates",
+      "pick": "Pittsburgh Pirates",
+      "startTime": "2026-04-19T17:36:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "San Diego Padres",
-      "homeTeam": "Los Angeles Angels",
-      "pick": "Los Angeles Angels",
-      "startTime": "2026-04-19T01:39:00Z",
+      "awayTeam": "Toronto Blue Jays",
+      "homeTeam": "Arizona Diamondbacks",
+      "pick": "Arizona Diamondbacks",
+      "startTime": "2026-04-19T20:11:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "New York Mets",
-      "homeTeam": "Chicago Cubs",
-      "pick": "Chicago Cubs",
-      "startTime": "2026-04-18T18:21:00Z",
+      "awayTeam": "Baltimore Orioles",
+      "homeTeam": "Cleveland Guardians",
+      "pick": "Baltimore Orioles",
+      "startTime": "2026-04-19T17:41:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "San Francisco Giants",
-      "homeTeam": "Washington Nationals",
-      "pick": "Washington Nationals",
-      "startTime": "2026-04-18T20:06:00Z",
+      "awayTeam": "San Diego Padres",
+      "homeTeam": "Los Angeles Angels",
+      "pick": "Los Angeles Angels",
+      "startTime": "2026-04-19T20:08:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "Toronto Blue Jays",
-      "homeTeam": "Arizona Diamondbacks",
-      "pick": "Toronto Blue Jays",
-      "startTime": "2026-04-19T00:11:00Z",
+      "awayTeam": "Atlanta Braves",
+      "homeTeam": "Philadelphia Phillies",
+      "pick": "Philadelphia Phillies",
+      "startTime": "2026-04-19T23:21:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }
