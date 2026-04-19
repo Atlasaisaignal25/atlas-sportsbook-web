@@ -1226,35 +1226,66 @@ useEffect(() => {
 
       if (selectedSport === "TOP" || selectedSport === "NFL") {
         setLiveGames([]);
+        setLiveOddsGames([]);
         return;
       }
 
-      const sportMap: Record<string, string> = {
-        NHL: "icehockey_nhl",
-        NBA: "basketball_nba",
-        MLB: "baseball_mlb",
-        SOCCER: "soccer_epl", // puedes mejorar luego
-      };
-
-      const apiSport = sportMap[selectedSport];
-
-      // 🔥 FETCH SCORES
       const scoresRes = await fetch(`/api/scores?sport=${selectedSport}`, {
         cache: "no-store",
       });
 
       const scoresData = await scoresRes.json();
+      setLiveGames(Array.isArray(scoresData) ? scoresData : []);
 
-      // 🔥 FETCH ODDS
+      if (selectedSport === "SOCCER") {
+        const soccerLeagues = [
+          "soccer_epl",
+          "soccer_spain_la_liga",
+          "soccer_italy_serie_a",
+          "soccer_germany_bundesliga",
+          "soccer_france_ligue_one",
+          "soccer_uefa_champs_league",
+          "soccer_uefa_europa_league",
+          "soccer_uefa_europa_conference_league",
+          "soccer_usa_mls",
+          "soccer_mexico_ligamx",
+          "soccer_fa_cup",
+          "soccer_spain_copa_del_rey",
+        ];
+
+        const oddsResponses = await Promise.all(
+          soccerLeagues.map(async (league) => {
+            try {
+              const res = await fetch(`/api/odds?sport=${league}`, {
+                cache: "no-store",
+              });
+
+              const data = await res.json();
+              return Array.isArray(data) ? (data as OddsGame[]) : [];
+            } catch {
+              return [];
+            }
+          })
+        );
+
+        setLiveOddsGames(oddsResponses.flat());
+        return;
+      }
+
+      const sportMap: Record<"NHL" | "NBA" | "MLB", string> = {
+        NHL: "icehockey_nhl",
+        NBA: "basketball_nba",
+        MLB: "baseball_mlb",
+      };
+
+      const apiSport = sportMap[selectedSport as "NHL" | "NBA" | "MLB"];
+
       const oddsRes = await fetch(`/api/odds?sport=${apiSport}`, {
         cache: "no-store",
       });
 
       const oddsData = await oddsRes.json();
-
-      setLiveGames(Array.isArray(scoresData) ? scoresData : []);
-      setLiveOddsGames(Array.isArray(oddsData) ? oddsData : []);
-
+      setLiveOddsGames(Array.isArray(oddsData) ? (oddsData as OddsGame[]) : []);
     } catch (error) {
       setLiveGames([]);
       setLiveOddsGames([]);
