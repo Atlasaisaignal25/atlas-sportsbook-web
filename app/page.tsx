@@ -1414,9 +1414,11 @@ const eliteTopSignals = useMemo(() => {
 }, [topSignals]);
 
 useEffect(() => {
+  if (!mlbTop5Data.top5 || mlbTop5Data.top5.length === 0) return;
+
   const mlbTopSignal =
-    mlbTop5Data.top5?.find((pick) => pick.isTopSignal) ||
-    mlbTop5Data.top5?.[0];
+    mlbTop5Data.top5.find((pick) => pick.isTopSignal) ||
+    mlbTop5Data.top5[0];
 
   if (!mlbTopSignal) return;
 
@@ -1449,8 +1451,11 @@ useEffect(() => {
       isTopSignal: true,
       startTime: mlbTopSignal.startTime ?? null,
     }),
-  });
-}, []);
+  })
+    .then((res) => res.json())
+    .then((data) => console.log("MLB saved:", data))
+    .catch((err) => console.log("MLB error:", err));
+}, [mlbTop5Data]);
 
 const isTopTab = selectedSport === "TOP";
 
