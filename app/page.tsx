@@ -337,15 +337,24 @@ function getDayKey(date: Date) {
 }
 
 function getRelativeDayKey(offset: -1 | 0 | 1) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + offset);
-  return getDayKey(d);
+  const now = new Date();
+
+  const nyNow = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/New_York" })
+  );
+
+  nyNow.setHours(0, 0, 0, 0);
+  nyNow.setDate(nyNow.getDate() + offset);
+
+  return nyNow.toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
 }
 
 function getGameDayKey(dateString: string) {
-  const d = new Date(dateString);
-  return getDayKey(d);
+  return new Date(dateString).toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
 }
 
 function isGameLive(game: LiveScore) {
@@ -1089,13 +1098,6 @@ const filteredLiveGames = useMemo(() => {
   const yesterdayKey = getRelativeDayKey(-1);
   const tomorrowKey = getRelativeDayKey(1);
 
-  const targetDayKey =
-    activeDay === "today"
-      ? todayKey
-      : activeDay === "yesterday"
-        ? yesterdayKey
-        : tomorrowKey;
-
   return liveGames.filter((game) => {
     const gameDayKey = getGameDayKey(game.commence_time);
     const live = isGameLive(game);
@@ -1104,7 +1106,11 @@ const filteredLiveGames = useMemo(() => {
       return gameDayKey === todayKey || live;
     }
 
-    return gameDayKey === targetDayKey;
+    if (activeDay === "yesterday") {
+      return gameDayKey === yesterdayKey;
+    }
+
+    return gameDayKey === tomorrowKey;
   });
 }, [liveGames, activeDay]);
 
