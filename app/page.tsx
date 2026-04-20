@@ -751,74 +751,126 @@ function gradePickFromScoreGame(
   }
 
   const pickRaw = String(rawPick ?? "").trim();
+  if (!pickRaw) return "PENDING";
+
   const pick = pickRaw.toLowerCase();
+  const pickNorm = normalizeName(pickRaw);
   const totalScore = awayScore + homeScore;
 
   const awayName = normalizeName(game.away_team);
   const homeName = normalizeName(game.home_team);
+  const awayLast = getLastWord(game.away_team);
+  const homeLast = getLastWord(game.home_team);
 
-  // MONEYLINE
-  if (pick.includes("ml")) {
-    const pickNorm = normalizeName(pickRaw);
-
-    if (pickNorm.includes(awayName)) {
-      return awayScore > homeScore ? "WON" : "LOST";
-    }
-
-    if (pickNorm.includes(homeName)) {
-      return homeScore > awayScore ? "WON" : "LOST";
-    }
-
-    return "PENDING";
-  }
-
-  // TOTALS
+  // =========================
+  // 1. TOTALS
+  // Soporta:
+  // Over 5.5
+  // Under 219
+  // O 5.5
+  // U 219
+  // Over (5.5)
+  // Under (219)
+  // =========================
   const totalMatch =
-    pick.match(/over\s*([0-9]+(?:\.[0-9]+)?)/i) ||
-    pick.match(/under\s*([0-9]+(?:\.[0-9]+)?)/i);
+    pick.match(/\bover\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i) ||
+    pick.match(/\bunder\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i) ||
+    pick.match(/\bo\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i) ||
+    pick.match(/\bu\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i);
 
   if (totalMatch) {
     const line = Number(totalMatch[1]);
 
     if (!Number.isFinite(line)) return "PENDING";
 
-    if (pick.includes("over")) {
+    const isOver = /\bover\b|\bo\b/i.test(pick);
+    const isUnder = /\bunder\b|\bu\b/i.test(pick);
+
+    if (isOver) {
       if (totalScore > line) return "WON";
       if (totalScore < line) return "LOST";
       return "PUSH";
     }
 
-    if (pick.includes("under")) {
+    if (isUnder) {
       if (totalScore < line) return "WON";
       if (totalScore > line) return "LOST";
       return "PUSH";
     }
   }
 
-  // SPREADS
+  // =========================
+  // 2. SPREADS
+  // Soporta:
+  // Team +1.5
+  // Team -3
+  // Team (+1.5)
+  // Team (-3)
+  // =========================
   const spreadMatch = pickRaw.match(
     /^(.*?)(?:\s*[\(\s])([+-]\d+(?:\.\d+)?)(?:\))?$/
   );
 
   if (spreadMatch) {
-    const teamPart = normalizeName(spreadMatch[1]);
+    const teamPartRaw = spreadMatch[1].trim();
+    const teamPart = normalizeName(teamPartRaw);
+    const teamLast = getLastWord(teamPartRaw);
     const line = Number(spreadMatch[2]);
 
     if (!Number.isFinite(line)) return "PENDING";
 
-    if (teamPart.includes(awayName) || awayName.includes(teamPart)) {
+    const isAwayTeam =
+      teamPart.includes(awayName) ||
+      awayName.includes(teamPart) ||
+      (teamLast && teamLast === awayLast);
+
+    const isHomeTeam =
+      teamPart.includes(homeName) ||
+      homeName.includes(teamPart) ||
+      (teamLast && teamLast === homeLast);
+
+    if (isAwayTeam) {
       const adjusted = awayScore + line;
       if (adjusted > homeScore) return "WON";
       if (adjusted < homeScore) return "LOST";
       return "PUSH";
     }
 
-    if (teamPart.includes(homeName) || homeName.includes(teamPart)) {
+    if (isHomeTeam) {
       const adjusted = homeScore + line;
       if (adjusted > awayScore) return "WON";
       if (adjusted < awayScore) return "LOST";
       return "PUSH";
     }
+  }
+
+  // =========================
+  // 3. MONEYLINE
+  // Soporta:
+  // Team ML
+  // Team
+  // solo apellido / último nombre del equipo
+  // =========================
+  const looksLikeAwayML =
+    pickNorm.includes(awayName) ||
+    awayName.includes(pickNorm) ||
+    (awayLast && pickNorm.includes(awayLast));
+
+  const looksLikeHomeML =
+    pickNorm.includes(homeName) ||
+    homeName.includes(pickNorm) ||
+    (homeLast && pickNorm.includes(homeLast));
+
+  if (looksLikeAwayML && !looksLikeHomeML) {
+    if (awayScore > homeScore) return "WON";
+    if (awayScore < homeScore) return "LOST";
+    return "PUSH";
+  }
+
+  if (looksLikeHomeML && !looksLikeAwayML) {
+    if (homeScore > awayScore) return "WON";
+    if (homeScore < awayScore) return "LOST";
+    return "PUSH";
   }
 
   return "PENDING";
