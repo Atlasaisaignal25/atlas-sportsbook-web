@@ -13,6 +13,7 @@ import { teamBranding } from "./lib/teamBranding";
 import { useRouter, useSearchParams } from "next/navigation";
 import { appendmlbTopSignalIfNotExists } from "@/app/lib/mlbTopSignalHistory";
 
+
 type Outcome = {
   name: string;
   price: number;
@@ -1418,7 +1419,7 @@ useEffect(() => {
 
   if (!mlbTopSignal) return;
 
-  appendMlbTopSignalIfNotExists({
+  appendmlbTopSignalIfNotExists({
     date: new Date().toLocaleDateString("en-CA", {
       timeZone: "America/New_York",
     }),
