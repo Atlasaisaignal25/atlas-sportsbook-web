@@ -11,7 +11,7 @@ import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
 import { useRouter, useSearchParams } from "next/navigation";
-import { appendMlbTopSignalIfNotExists } from "@/app/lib/mlbTopSignalHistory";
+import { appendmlbTopSignalIfNotExists } from "@/app/lib/mlbTopSignalHistory";
 
 type Outcome = {
   name: string;
