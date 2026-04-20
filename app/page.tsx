@@ -11,7 +11,6 @@ import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
 import { useRouter, useSearchParams } from "next/navigation";
-import { appendmlbTopSignalIfNotExists } from "@/app/lib/mlbTopSignalHistory";
 
 
 type Outcome = {
@@ -1415,33 +1414,41 @@ const eliteTopSignals = useMemo(() => {
 }, [topSignals]);
 
 useEffect(() => {
-  const mlbTopSignal = mlbTop5Data.top5?.find((pick) => pick.isTopSignal) || mlbTop5Data.top5?.[0];
+  const mlbTopSignal =
+    mlbTop5Data.top5?.find((pick) => pick.isTopSignal) ||
+    mlbTop5Data.top5?.[0];
 
   if (!mlbTopSignal) return;
 
-  appendmlbTopSignalIfNotExists({
-    date: new Date().toLocaleDateString("en-CA", {
-      timeZone: "America/New_York",
+  fetch("/api/save-top-signal/mlb", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date: new Date().toLocaleDateString("en-CA", {
+        timeZone: "America/New_York",
+      }),
+      sport: "MLB",
+      awayTeam: mlbTopSignal.awayTeam ?? "",
+      homeTeam: mlbTopSignal.homeTeam ?? "",
+      pick: mlbTopSignal.pick ?? "",
+      market:
+        String(mlbTopSignal.pick ?? "").toLowerCase().includes("over") ||
+        String(mlbTopSignal.pick ?? "").toLowerCase().includes("under")
+          ? "totals"
+          : /[+-]\d+(\.\d+)?/.test(String(mlbTopSignal.pick ?? ""))
+          ? "spread"
+          : "ml",
+      line: null,
+      odds: null,
+      result: "PENDING",
+      gradedAt: null,
+      home_score: null,
+      away_score: null,
+      isTopSignal: true,
+      startTime: mlbTopSignal.startTime ?? null,
     }),
-    sport: "MLB",
-    awayTeam: mlbTopSignal.awayTeam ?? "",
-    homeTeam: mlbTopSignal.homeTeam ?? "",
-    pick: mlbTopSignal.pick ?? "",
-    market:
-      String(mlbTopSignal.pick ?? "").toLowerCase().includes("over") ||
-      String(mlbTopSignal.pick ?? "").toLowerCase().includes("under")
-        ? "totals"
-        : /[+-]\d+(\.\d+)?/.test(String(mlbTopSignal.pick ?? ""))
-        ? "spread"
-        : "ml",
-    line: null,
-    odds: null,
-    result: "PENDING",
-    gradedAt: null,
-    home_score: null,
-    away_score: null,
-    isTopSignal: true,
-    startTime: mlbTopSignal.startTime ?? null,
   });
 }, []);
 
