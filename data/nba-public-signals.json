@@ -1,33 +1,26 @@
 {
   "sport": "NBA",
-  "date": "2026-04-19",
+  "date": "2026-04-21",
   "games": [
     {
-      "gameId": "ef6021edff80a85fe2dae5cf3530d9d4",
-      "awayTeam": "Phoenix Suns",
-      "homeTeam": "Oklahoma City Thunder",
-      "pick": "Phoenix Suns ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "00d1efd43d0790297fb68684a9171191",
+      "gameId": "d1a7a6e7b024f888e922a62b14fcf466",
       "awayTeam": "Philadelphia 76ers",
       "homeTeam": "Boston Celtics",
       "pick": "Philadelphia 76ers ML",
       "status": "PENDING"
     },
     {
-      "gameId": "e777e2f049a5c85aed96a220a2cfe924",
-      "awayTeam": "Orlando Magic",
-      "homeTeam": "Detroit Pistons",
-      "pick": "Orlando Magic ML",
+      "gameId": "d3d28b764e5099920880de59a45e82cf",
+      "awayTeam": "Houston Rockets",
+      "homeTeam": "Los Angeles Lakers",
+      "pick": "Los Angeles Lakers ML",
       "status": "PENDING"
     },
     {
-      "gameId": "04e3ad1ccbad6419ac711ff120fd5cbe",
+      "gameId": "680084e4612c197a1cf4170d82ba6f10",
       "awayTeam": "Portland Trail Blazers",
       "homeTeam": "San Antonio Spurs",
-      "pick": "Under (222)",
+      "pick": "Over (220.5)",
       "status": "PENDING"
     }
   ]

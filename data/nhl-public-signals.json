@@ -1,33 +1,33 @@
 {
   "sport": "NHL",
-  "date": "2026-04-19",
+  "date": "2026-04-21",
   "games": [
     {
-      "gameId": "56ea1b51afea8960ca60b6d48714a1a3",
+      "gameId": "1d633a4529dd3295143cce78465e6313",
+      "awayTeam": "Montréal Canadiens",
+      "homeTeam": "Tampa Bay Lightning",
+      "pick": "Over (5.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "f2408a67fccdac7c1dd7821143e730c6",
       "awayTeam": "Los Angeles Kings",
       "homeTeam": "Colorado Avalanche",
       "pick": "Over (5.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "bd7a28ff5a090949dde37ef2292ead64",
-      "awayTeam": "Utah Mammoth",
-      "homeTeam": "Vegas Golden Knights",
-      "pick": "Over (5.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "bedd26005f98ad01c4994501ba28ddf3",
-      "awayTeam": "Montréal Canadiens",
-      "homeTeam": "Tampa Bay Lightning",
-      "pick": "Montréal Canadiens (+1.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "e9eba9dd49f3a5847fe4689a6014e1c0",
+      "gameId": "dd192d18a37648709a73ed89dfbf6c26",
       "awayTeam": "Boston Bruins",
       "homeTeam": "Buffalo Sabres",
       "pick": "Boston Bruins (+1.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "2aad80ef484a176946601aba6b11c312",
+      "awayTeam": "Utah Mammoth",
+      "homeTeam": "Vegas Golden Knights",
+      "pick": "Utah Mammoth (+1.5)",
       "status": "PENDING"
     }
   ]

@@ -1,40 +1,31 @@
 {
   "sport": "NBA",
-  "date": "2026-04-19",
+  "date": "2026-04-21",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Philadelphia 76ers",
-      "homeTeam": "Boston Celtics",
-      "pick": "Under (213)",
-      "startTime": "2026-04-19T17:10:00Z",
+      "awayTeam": "Houston Rockets",
+      "homeTeam": "Los Angeles Lakers",
+      "pick": "Houston Rockets (-5.5)",
+      "startTime": "2026-04-22T02:40:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Phoenix Suns",
-      "homeTeam": "Oklahoma City Thunder",
-      "pick": "Under (215.5)",
-      "startTime": "2026-04-19T19:40:00Z",
+      "awayTeam": "Portland Trail Blazers",
+      "homeTeam": "San Antonio Spurs",
+      "pick": "Over (220.5)",
+      "startTime": "2026-04-22T00:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Orlando Magic",
-      "homeTeam": "Detroit Pistons",
-      "pick": "Under (218)",
-      "startTime": "2026-04-19T22:40:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 4,
-      "awayTeam": "Portland Trail Blazers",
-      "homeTeam": "San Antonio Spurs",
-      "pick": "Under (222)",
-      "startTime": "2026-04-20T01:10:00Z",
+      "awayTeam": "Philadelphia 76ers",
+      "homeTeam": "Boston Celtics",
+      "pick": "Under (215.5)",
+      "startTime": "2026-04-21T23:10:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }
