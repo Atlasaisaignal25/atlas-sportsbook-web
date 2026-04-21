@@ -10,26 +10,20 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { data: existing, error: findError } = await supabase
-      .from("mlb_top_signal_history")
+    const { data: existing } = await supabase
+      .from("nhl_top_signal_history")
       .select("id")
       .eq("date", body.date)
       .eq("away_team", body.awayTeam)
       .eq("home_team", body.homeTeam)
-      .eq("pick", body.pick)
       .limit(1);
-
-    if (findError) {
-      console.error("Supabase find error:", findError);
-      return NextResponse.json({ success: false, error: findError.message }, { status: 500 });
-    }
 
     if (existing && existing.length > 0) {
       return NextResponse.json({ success: true, message: "Already exists" });
     }
 
-    const { error: insertError } = await supabase
-      .from("mlb_top_signal_history")
+    const { error } = await supabase
+      .from("nhl_top_signal_history")
       .insert([
         {
           date: body.date,
@@ -49,14 +43,13 @@ export async function POST(req: Request) {
         },
       ]);
 
-    if (insertError) {
-      console.error("Supabase insert error:", insertError);
-      return NextResponse.json({ success: false, error: insertError.message }, { status: 500 });
+    if (error) {
+      console.error("NHL insert error:", error);
+      return NextResponse.json({ success: false }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: "Saved to Supabase" });
+    return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Error saving MLB top signal:", err);
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }

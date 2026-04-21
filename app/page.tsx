@@ -269,7 +269,7 @@ function formatTime(dateString: string) {
 }
 
 function getGameMinute(game: LiveScore) {
-  if (game.completed) return "Finalizado";
+  if (game.completed) return "Final";
 
   const hasScores = Array.isArray(game.scores) && game.scores.length > 0;
 
@@ -286,19 +286,21 @@ function getGameMinute(game: LiveScore) {
     (game as any)?.inning ??
     null;
 
+  // 🧠 Casos reales
   if (hasScores && clock && period) {
     return `${clock} • ${period}`;
   }
 
   if (hasScores && clock) {
-    return String(clock);
+    return `${clock}`;
   }
 
   if (hasScores && period) {
-    return String(period);
+    return `${period}`;
   }
 
-  return hasScores ? "En vivo" : "";
+  // ⚠️ fallback
+  return hasScores ? "Live" : "";
 }
 
 function getLiveSportFromKey(sportKey: string): SportTab {
@@ -1033,6 +1035,14 @@ function getSubsBadgeLabel(
 }
 
 function HomeContent() {
+
+const [mlbRecord, setMlbRecord] = useState({
+  wins: 0,
+  losses: 0,
+  pushes: 0,
+  winRate: 0,
+});
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1405,10 +1415,6 @@ const top5RecordStats = useMemo(() => {
   return buildRecordStats(subsPicks, subsScoreGames);
 }, [subsPicks, subsScoreGames]);
 
-const topSignalRecordStats = useMemo(() => {
-  return buildRecordStats(topSignalPicks, subsScoreGames);
-}, [topSignalPicks, subsScoreGames]);
-
 const eliteTopSignals = useMemo(() => {
   return topSignals;
 }, [topSignals]);
@@ -1421,6 +1427,8 @@ useEffect(() => {
     mlbTop5Data.top5[0];
 
   if (!mlbTopSignal) return;
+
+console.log("MLB TOP SIGNAL:", mlbTopSignal);
 
   fetch("/api/save-top-signal/mlb", {
     method: "POST",
@@ -1455,10 +1463,171 @@ useEffect(() => {
     .then((res) => res.json())
     .then((data) => console.log("MLB saved:", data))
     .catch((err) => console.log("MLB error:", err));
-}, [mlbTop5Data]);
+}, []);
+
+useEffect(() => {
+  const nbaTopSignal =
+    nbaTop5Data.top5?.find((pick) => pick.isTopSignal) ||
+    nbaTop5Data.top5?.[0];
+
+  if (!nbaTopSignal) return;
+
+  fetch("/api/save-top-signal/nba", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date: new Date().toLocaleDateString("en-CA", {
+        timeZone: "America/New_York",
+      }),
+      sport: "NBA",
+      awayTeam: nbaTopSignal.awayTeam ?? "",
+      homeTeam: nbaTopSignal.homeTeam ?? "",
+      pick: nbaTopSignal.pick ?? "",
+      market:
+        String(nbaTopSignal.pick ?? "").toLowerCase().includes("over") ||
+        String(nbaTopSignal.pick ?? "").toLowerCase().includes("under")
+          ? "totals"
+          : /[+-]\d+(\.\d+)?/.test(String(nbaTopSignal.pick ?? ""))
+          ? "spread"
+          : "ml",
+      line: null,
+      odds: null,
+      result: "PENDING",
+      gradedAt: null,
+      home_score: null,
+      away_score: null,
+      isTopSignal: true,
+      startTime: nbaTopSignal.startTime ?? null,
+    }),
+  });
+}, [nbaTop5Data]);
+
+useEffect(() => {
+  const nhlTopSignal =
+    nhlTop5Data.top5?.find((pick) => pick.isTopSignal) ||
+    nhlTop5Data.top5?.[0];
+
+  if (!nhlTopSignal) return;
+
+  fetch("/api/save-top-signal/nhl", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date: new Date().toLocaleDateString("en-CA", {
+        timeZone: "America/New_York",
+      }),
+      sport: "NHL",
+      awayTeam: nhlTopSignal.awayTeam ?? "",
+      homeTeam: nhlTopSignal.homeTeam ?? "",
+      pick: nhlTopSignal.pick ?? "",
+      market:
+        String(nhlTopSignal.pick ?? "").toLowerCase().includes("over") ||
+        String(nhlTopSignal.pick ?? "").toLowerCase().includes("under")
+          ? "totals"
+          : /[+-]\d+(\.\d+)?/.test(String(nhlTopSignal.pick ?? ""))
+          ? "spread"
+          : "ml",
+      line: null,
+      odds: null,
+      result: "PENDING",
+      gradedAt: null,
+      home_score: null,
+      away_score: null,
+      isTopSignal: true,
+      startTime: nhlTopSignal.startTime ?? null,
+    }),
+  });
+}, [nhlTop5Data]);
+
+useEffect(() => {
+  const soccerTopSignal =
+    soccerTop5Data.top5?.find((pick) => pick.isTopSignal) ||
+    soccerTop5Data.top5?.[0];
+
+  if (!soccerTopSignal) return;
+
+  fetch("/api/save-top-signal/soccer", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date: new Date().toLocaleDateString("en-CA", {
+        timeZone: "America/New_York",
+      }),
+      sport: "SOCCER",
+      awayTeam: soccerTopSignal.awayTeam ?? "",
+      homeTeam: soccerTopSignal.homeTeam ?? "",
+      pick: soccerTopSignal.pick ?? "",
+      market:
+        String(soccerTopSignal.pick ?? "").toLowerCase().includes("over") ||
+        String(soccerTopSignal.pick ?? "").toLowerCase().includes("under")
+          ? "totals"
+          : /[+-]\d+(\.\d+)?/.test(String(soccerTopSignal.pick ?? ""))
+          ? "spread"
+          : "ml",
+      line: null,
+      odds: null,
+      result: "PENDING",
+      gradedAt: null,
+      home_score: null,
+      away_score: null,
+      isTopSignal: true,
+      startTime: soccerTopSignal.startTime ?? null,
+    }),
+  });
+}, [soccerTop5Data]);
 
 const isTopTab = selectedSport === "TOP";
 
+useEffect(() => {
+  async function loadRecord() {
+    try {
+      let endpoint = "";
+
+      if (selectedSport === "MLB") {
+        endpoint = "/api/top-signal-record/mlb";
+      }
+
+      if (selectedSport === "NBA") {
+        endpoint = "/api/top-signal-record/nba";
+      }
+
+      if (selectedSport === "NHL") {
+        endpoint = "/api/top-signal-record/nhl";
+      }
+
+      if (selectedSport === "SOCCER") {
+        endpoint = "/api/top-signal-record/soccer";
+      }
+
+      if (!endpoint) return;
+
+      const res = await fetch(endpoint, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setMlbRecord({
+          wins: data.wins,
+          losses: data.losses,
+          pushes: data.pushes,
+          winRate: data.winRate,
+        });
+      }
+    } catch (err) {
+      console.log("Error loading record");
+    }
+  }
+
+  loadRecord();
+}, [selectedSport]);
 
 
   return (
@@ -1966,10 +2135,10 @@ const isTopTab = selectedSport === "TOP";
                   Top Signal
                 </p>
                 <p className="mt-2 text-[16px] font-bold text-white">
-                  {topSignalRecordStats.wins}-{topSignalRecordStats.losses}
+                  {mlbRecord.wins}-{mlbRecord.losses}
                 </p>
                 <p className="mt-1 text-[11px] text-white/55">
-                  Push: {topSignalRecordStats.pushes}
+                  Push: {mlbRecord.pushes}
                 </p>
               </div>
 
@@ -1993,10 +2162,10 @@ const isTopTab = selectedSport === "TOP";
                   Win Rate
                 </p>
                 <p className="mt-2 text-[16px] font-bold text-white">
-                  {topSignalRecordStats.winRate}%
+                  {mlbRecord.winRate}%
                 </p>
                 <p className="mt-1 text-[11px] text-white/55">
-                  Global
+                  Top Signal
                 </p>
               </div>
             </div>

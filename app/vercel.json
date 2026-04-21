@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/grade-mlb-top-signals",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/grade-nba-top-signals",
+      "schedule": "5 * * * *"
+    },
+    {
+      "path": "/api/cron/grade-nhl-top-signals",
+      "schedule": "10 * * * *"
+    },
+    {
+      "path": "/api/cron/grade-soccer-top-signals",
+      "schedule": "15 * * * *"
+    }
+  ]
+}
