@@ -1,33 +1,5 @@
 {
   "sport": "NBA",
-  "date": "2026-04-21",
-  "top5": [
-    {
-      "rank": 1,
-      "awayTeam": "Houston Rockets",
-      "homeTeam": "Los Angeles Lakers",
-      "pick": "Houston Rockets (-5.5)",
-      "startTime": "2026-04-22T02:40:00Z",
-      "status": "PENDING",
-      "isTopSignal": true
-    },
-    {
-      "rank": 2,
-      "awayTeam": "Portland Trail Blazers",
-      "homeTeam": "San Antonio Spurs",
-      "pick": "Over (220.5)",
-      "startTime": "2026-04-22T00:00:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 3,
-      "awayTeam": "Philadelphia 76ers",
-      "homeTeam": "Boston Celtics",
-      "pick": "Under (215.5)",
-      "startTime": "2026-04-21T23:10:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    }
-  ]
+  "date": "2026-04-22",
+  "top5": []
 }

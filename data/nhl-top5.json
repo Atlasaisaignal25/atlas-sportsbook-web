@@ -1,40 +1,31 @@
 {
   "sport": "NHL",
-  "date": "2026-04-21",
+  "date": "2026-04-22",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Montréal Canadiens",
-      "homeTeam": "Tampa Bay Lightning",
+      "awayTeam": "Pittsburgh Penguins",
+      "homeTeam": "Philadelphia Flyers",
       "pick": "Over (5.5)",
-      "startTime": "2026-04-21T23:10:00Z",
+      "startTime": "2026-04-22T23:00:19Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Los Angeles Kings",
-      "homeTeam": "Colorado Avalanche",
+      "awayTeam": "Dallas Stars",
+      "homeTeam": "Minnesota Wild",
       "pick": "Over (5.5)",
-      "startTime": "2026-04-22T02:10:00Z",
+      "startTime": "2026-04-23T01:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Boston Bruins",
-      "homeTeam": "Buffalo Sabres",
-      "pick": "Boston Bruins (+1.5)",
-      "startTime": "2026-04-21T23:40:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 4,
-      "awayTeam": "Utah Mammoth",
-      "homeTeam": "Vegas Golden Knights",
-      "pick": "Utah Mammoth (+1.5)",
-      "startTime": "2026-04-22T01:40:00Z",
+      "awayTeam": "Anaheim Ducks",
+      "homeTeam": "Edmonton Oilers",
+      "pick": "Anaheim Ducks (+1.5)",
+      "startTime": "2026-04-23T02:10:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

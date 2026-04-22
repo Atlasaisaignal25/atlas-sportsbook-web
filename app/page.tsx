@@ -1063,6 +1063,8 @@ const [liveLoading, setLiveLoading] = useState(false);
 const [activeDay, setActiveDay] = useState<"yesterday" | "today" | "tomorrow">("today");
 const [subsScoreGames, setSubsScoreGames] = useState<LiveScore[]>([]);
 const [subsScoresLoading, setSubsScoresLoading] = useState(false);
+const [topSignalHistory, setTopSignalHistory] = useState<any[]>([]);
+const [top5History, setTop5History] = useState<any[]>([]);
 
   const topSignals: TopSignalCard[] = useMemo(
   () =>
@@ -1629,6 +1631,76 @@ useEffect(() => {
   loadRecord();
 }, [selectedSport]);
 
+useEffect(() => {
+  async function loadHistory() {
+    try {
+      let endpoint = "";
+
+      if (selectedSport === "MLB") {
+        endpoint = "/api/top-signal-history/mlb";
+      }
+
+      if (selectedSport === "NHL") {
+  endpoint = "/api/top-signal-history/nhl";
+}
+
+      if (!endpoint) return;
+
+      const res = await fetch(endpoint, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setTopSignalHistory(data.history);
+      }
+    } catch (err) {
+      console.log("Error loading history");
+    }
+  }
+
+  loadHistory();
+}, [selectedSport]);
+
+useEffect(() => {
+  async function loadTop5History() {
+    try {
+      let endpoint = "";
+
+      if (viewMode === "live" && selectedSport === "NHL") {
+  endpoint = "/api/top5-history-live/nhl";
+}
+
+if (viewMode === "live" && selectedSport === "MLB") {
+  endpoint = "/api/top5-history-live/mlb";
+}
+
+      if (!endpoint) {
+        setTop5History([]);
+        return;
+      }
+
+      const res = await fetch(endpoint, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setTop5History(data.history);
+      } else {
+        setTop5History([]);
+      }
+    } catch (err) {
+      console.log("Error loading top 5 history");
+      setTop5History([]);
+    }
+  }
+
+  loadTop5History();
+}, [selectedSport, viewMode]);
+
 
   return (
   <main className="min-h-screen bg-[#050816] text-white">
@@ -2180,6 +2252,7 @@ useEffect(() => {
               const finalResult = getSubsPickResult(pick, subsScoreGames);
               const matchedScoreGame = findScoreGameForPick(pick, subsScoreGames);
               const showPending = finalResult === "PENDING";
+              const isGameFinished = pick.status === "WON" || pick.status === "LOST" || pick.status === "PUSH";
 
               return (
                 <article
@@ -2216,13 +2289,15 @@ useEffect(() => {
                   <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
                     <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
                       <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
-                        {finalResult === "WON"
-                          ? "Signal Won"
-                          : finalResult === "LOST"
-                          ? "Signal Lost"
-                          : finalResult === "PUSH"
-                          ? "Signal Push"
-                          : "Signal Detected"}
+                        {isGameFinished
+  ? finalResult === "WON"
+    ? "Signal Won"
+    : finalResult === "LOST"
+    ? "Signal Lost"
+    : finalResult === "PUSH"
+    ? "Signal Push"
+    : "Signal Detected"
+  : "Signal Detected"}
                       </p>
                     </div>
 
@@ -2282,6 +2357,99 @@ useEffect(() => {
             })}
           </div>
         )}
+
+{viewMode === "odds" && (
+  <div className="mt-6">
+    <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
+      Top Signal History
+    </p>
+
+    <div className="mt-3 space-y-2">
+      {topSignalHistory.length === 0 ? (
+        <div className="text-[12px] text-white/40">
+          No history available
+        </div>
+      ) : (
+        topSignalHistory.map((item, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-between rounded-[14px] border border-white/10 bg-white/[0.04] px-3 py-2"
+          >
+            <div>
+              <p className="text-[13px] font-medium text-white">
+                {item.away_team} vs {item.home_team}
+              </p>
+              <p className="text-[11px] text-white/50">
+                {item.pick}
+              </p>
+            </div>
+
+            <div
+              className={`text-[11px] font-semibold ${
+                item.result === "WON"
+                  ? "text-green-400"
+                  : item.result === "LOST"
+                  ? "text-red-400"
+                  : item.result === "PUSH"
+                  ? "text-yellow-400"
+                  : "text-white/40"
+              }`}
+            >
+              {item.result}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
+
+{viewMode === "live" && (
+  <div className="mt-6">
+    <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
+      Top 5 Signals History
+    </p>
+
+    <div className="mt-3 space-y-2">
+      {top5History.length === 0 ? (
+        <div className="text-[12px] text-white/40">
+          No history available
+        </div>
+      ) : (
+        top5History.map((item, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-between rounded-[14px] border border-white/10 bg-white/[0.04] px-3 py-2"
+          >
+            <div>
+              <p className="text-[13px] font-medium text-white">
+                {item.away_team} vs {item.home_team}
+              </p>
+              <p className="text-[11px] text-white/50">
+                {item.pick}
+              </p>
+            </div>
+
+            <div
+              className={`text-[11px] font-semibold ${
+                item.result === "WON"
+                  ? "text-green-400"
+                  : item.result === "LOST"
+                  ? "text-red-400"
+                  : item.result === "PUSH"
+                  ? "text-yellow-400"
+                  : "text-white/40"
+              }`}
+            >
+              {item.result}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
+
       </section>
 
       <nav className="sticky bottom-0 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
