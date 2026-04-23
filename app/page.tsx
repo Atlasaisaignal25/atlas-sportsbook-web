@@ -1596,6 +1596,11 @@ useEffect(() => {
     try {
       let endpoint = "";
 
+      setMlbRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+setNbaRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+setNhlRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+setSoccerRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+
       if (selectedSport === "MLB") {
         endpoint = "/api/top-signal-record/mlb";
       }
@@ -1656,6 +1661,8 @@ useEffect(() => {
   async function loadHistory() {
     try {
       let endpoint = "";
+
+      setTopSignalHistory([]);
 
       if (selectedSport === "MLB") {
         endpoint = "/api/top-signal-history/mlb";
@@ -2333,27 +2340,29 @@ const isGameFinished =
                   
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {showPending ? (
-                        <div
-                          className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
-                            pick.status
-                          )}`}
-                        >
-                          {String(pick.status ?? "PENDING")}
-                        </div>
-                      ) : saveResult === "WON" ? (
-                        <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-green-300">
-                          Won
-                        </div>
-                      ) : saveResult === "LOST" ? (
-                        <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-red-300">
-                          Lost
-                        </div>
-                      ) : saveResult === "PUSH" ? (
-                        <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
-                          Push
-                        </div>
-                      ) : null}
+                      {saveResult === "PENDING" && (
+  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-white/60 border-white/20">
+    Pending
+  </div>
+)}
+
+{saveResult === "WON" && (
+  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-green-400 border-green-400/30">
+    Won
+  </div>
+)}
+
+{saveResult === "LOST" && (
+  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-red-400 border-red-400/30">
+    Lost
+  </div>
+)}
+
+{saveResult === "PUSH" && (
+  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-yellow-400 border-yellow-400/30">
+    Push
+  </div>
+)}
                     </div>
 
                     <p className="mt-2 text-[11px] text-white/40">
