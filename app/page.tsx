@@ -1486,13 +1486,84 @@ useEffect(() => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      date: new Date().toLocaleDateString("en-CA", {
-        timeZone: "America/New_York",
-      }),
+      date:
+        mlbTop5Data.top5?.[0]?.startTime
+          ? new Date(mlbTop5Data.top5[0].startTime).toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            })
+          : new Date().toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            }),
       picks: mlbTop5Data.top5,
     }),
   });
 }, [mlbTop5Data]);
+
+useEffect(() => {
+  if (!nbaTop5Data.top5 || nbaTop5Data.top5.length === 0) return;
+
+  fetch("/api/save-top5/nba", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date:
+        nbaTop5Data.top5?.[0]?.startTime
+          ? new Date(nbaTop5Data.top5[0].startTime).toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            })
+          : new Date().toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            }),
+      picks: nbaTop5Data.top5,
+    }),
+  });
+}, [nbaTop5Data]);
+
+useEffect(() => {
+  if (!nhlTop5Data.top5 || nhlTop5Data.top5.length === 0) return;
+
+  fetch("/api/save-top5/nhl", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date:
+        nhlTop5Data.top5?.[0]?.startTime
+          ? new Date(nhlTop5Data.top5[0].startTime).toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            })
+          : new Date().toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            }),
+      picks: nhlTop5Data.top5,
+    }),
+  });
+}, [nhlTop5Data]);
+
+useEffect(() => {
+  if (!soccerTop5Data.top5 || soccerTop5Data.top5.length === 0) return;
+
+  fetch("/api/save-top5/soccer", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date:
+        soccerTop5Data.top5?.[0]?.startTime
+          ? new Date(soccerTop5Data.top5[0].startTime).toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            })
+          : new Date().toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            }),
+      picks: soccerTop5Data.top5,
+    }),
+  });
+}, [soccerTop5Data]);
 
 useEffect(() => {
   const nbaTopSignal =
@@ -1507,9 +1578,14 @@ useEffect(() => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      date: new Date().toLocaleDateString("en-CA", {
-        timeZone: "America/New_York",
-      }),
+      date:
+        nbaTop5Data.top5?.[0]?.startTime
+          ? new Date(nbaTop5Data.top5[0].startTime).toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            })
+          : new Date().toLocaleDateString("en-CA", {
+              timeZone: "America/New_York",
+            }),
       sport: "NBA",
       awayTeam: nbaTopSignal.awayTeam ?? "",
       homeTeam: nbaTopSignal.homeTeam ?? "",
