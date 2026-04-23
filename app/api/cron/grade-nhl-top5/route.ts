@@ -1,4 +1,4 @@
-import { NextResponse } from "@edge-runtime/primitives";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
