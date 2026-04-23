@@ -1,26 +1,12 @@
 {
   "sport": "NHL",
-  "date": "2026-04-22",
+  "date": "2026-04-23",
   "games": [
     {
-      "gameId": "f0b24d77783a06281b031dd344143437",
-      "awayTeam": "Pittsburgh Penguins",
-      "homeTeam": "Philadelphia Flyers",
+      "gameId": "51287ae15947cf3f02665904d8b8be9d",
+      "awayTeam": "Carolina Hurricanes",
+      "homeTeam": "Ottawa Senators",
       "pick": "Over (5.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "5f5b84958bdfdccd00b3c51b7c26f1a1",
-      "awayTeam": "Dallas Stars",
-      "homeTeam": "Minnesota Wild",
-      "pick": "Over (5.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "36ed21131d3e0f66cdddfaf605807019",
-      "awayTeam": "Anaheim Ducks",
-      "homeTeam": "Edmonton Oilers",
-      "pick": "Anaheim Ducks (+1.5)",
       "status": "PENDING"
     }
   ]

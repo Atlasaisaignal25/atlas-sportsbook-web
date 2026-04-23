@@ -1443,7 +1443,12 @@ console.log("MLB TOP SIGNAL:", mlbTopSignal);
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      date: new Date().toLocaleDateString("en-CA", {
+      date:
+  mlbTop5Data.top5?.[0]?.startTime
+    ? new Date(mlbTop5Data.top5[0].startTime).toLocaleDateString("en-CA", {
+        timeZone: "America/New_York",
+      })
+    : new Date().toLocaleDateString("en-CA", {
         timeZone: "America/New_York",
       }),
       sport: "MLB",
@@ -1471,6 +1476,23 @@ console.log("MLB TOP SIGNAL:", mlbTopSignal);
     .then((data) => console.log("MLB saved:", data))
     .catch((err) => console.log("MLB error:", err));
 }, []);
+
+useEffect(() => {
+  if (!mlbTop5Data.top5 || mlbTop5Data.top5.length === 0) return;
+
+  fetch("/api/save-top5/mlb", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      date: new Date().toLocaleDateString("en-CA", {
+        timeZone: "America/New_York",
+      }),
+      picks: mlbTop5Data.top5,
+    }),
+  });
+}, [mlbTop5Data]);
 
 useEffect(() => {
   const nbaTopSignal =
@@ -1672,6 +1694,14 @@ useEffect(() => {
   endpoint = "/api/top-signal-history/nhl";
 }
 
+if (selectedSport === "NBA") {
+  endpoint = "/api/top-signal-history/nba";
+}
+
+if (selectedSport === "SOCCER") {
+  endpoint = "/api/top-signal-history/soccer";
+}
+
       if (!endpoint) return;
 
       const res = await fetch(endpoint, {
@@ -1704,6 +1734,14 @@ if (viewMode === "live" && selectedSport === "MLB") {
   endpoint = "/api/top5-history-live/mlb";
 }
 
+if (viewMode === "live" && selectedSport === "NBA") {
+  endpoint = "/api/top5-history-live/nba";
+}
+
+if (viewMode === "live" && selectedSport === "SOCCER") {
+  endpoint = "/api/top5-history-live/soccer";
+}
+
       if (!endpoint) {
         setTop5History([]);
         return;
@@ -1727,7 +1765,7 @@ if (viewMode === "live" && selectedSport === "MLB") {
   }
 
   loadTop5History();
-}, [selectedSport, viewMode]);
+}, [selectedSport, viewMode, activeDay]);
 
 
   return (
@@ -2005,7 +2043,7 @@ if (viewMode === "live" && selectedSport === "MLB") {
   </div>
 </div>
 
-                            {livePickData ? (
+                            {activeDay !== "yesterday" && livePickData ? (
                               <div className="mt-2 flex justify-center">
                                 {result === "WON" ? (
                                   <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
@@ -2439,7 +2477,7 @@ const isGameFinished =
   </div>
 )}
 
-{viewMode === "live" && (
+{viewMode === "live" && activeDay === "yesterday" && (
   <div className="mt-6">
     <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
       Top 5 Signals History

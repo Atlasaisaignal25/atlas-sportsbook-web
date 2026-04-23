@@ -1,49 +1,49 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-22",
+  "date": "2026-04-23",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Los Angeles FC",
-      "homeTeam": "Colorado Rapids",
-      "pick": "Los Angeles FC (-1.5)",
-      "startTime": "2026-04-23T02:30:00Z",
+      "awayTeam": "Casa Pia",
+      "homeTeam": "Braga",
+      "pick": "Braga ML",
+      "startTime": "2026-04-23T18:00:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Birmingham City",
-      "homeTeam": "Preston North End",
-      "pick": "Birmingham City ML",
-      "startTime": "2026-04-22T18:45:00Z",
+      "awayTeam": "Rayo Vallecano",
+      "homeTeam": "Espanyol",
+      "pick": "Rayo Vallecano ML",
+      "startTime": "2026-04-23T18:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Sheffield United",
-      "homeTeam": "Blackburn Rovers",
-      "pick": "Sheffield United ML",
-      "startTime": "2026-04-22T18:45:00Z",
+      "awayTeam": "Oviedo",
+      "homeTeam": "Villarreal",
+      "pick": "Villarreal ML",
+      "startTime": "2026-04-23T19:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "Charlton Athletic",
-      "homeTeam": "Ipswich Town",
-      "pick": "Ipswich Town ML",
-      "startTime": "2026-04-22T18:45:00Z",
+      "awayTeam": "Go Ahead Eagles",
+      "homeTeam": "AZ Alkmaar",
+      "pick": "AZ Alkmaar ML",
+      "startTime": "2026-04-23T16:45:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "Columbus Crew SC",
-      "homeTeam": "LA Galaxy",
-      "pick": "Columbus Crew SC ML",
-      "startTime": "2026-04-22T23:30:00Z",
+      "awayTeam": "Levante",
+      "homeTeam": "Sevilla",
+      "pick": "Over 2.5",
+      "startTime": "2026-04-23T17:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

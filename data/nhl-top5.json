@@ -1,33 +1,15 @@
 {
   "sport": "NHL",
-  "date": "2026-04-22",
+  "date": "2026-04-23",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Pittsburgh Penguins",
-      "homeTeam": "Philadelphia Flyers",
+      "awayTeam": "Carolina Hurricanes",
+      "homeTeam": "Ottawa Senators",
       "pick": "Over (5.5)",
-      "startTime": "2026-04-22T23:00:19Z",
+      "startTime": "2026-04-23T23:40:00Z",
       "status": "PENDING",
       "isTopSignal": true
-    },
-    {
-      "rank": 2,
-      "awayTeam": "Dallas Stars",
-      "homeTeam": "Minnesota Wild",
-      "pick": "Over (5.5)",
-      "startTime": "2026-04-23T01:30:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 3,
-      "awayTeam": "Anaheim Ducks",
-      "homeTeam": "Edmonton Oilers",
-      "pick": "Anaheim Ducks (+1.5)",
-      "startTime": "2026-04-23T02:10:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
     }
   ]
 }
