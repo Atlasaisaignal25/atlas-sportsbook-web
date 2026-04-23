@@ -48,9 +48,10 @@ export async function GET(req: Request) {
         });
 
         if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Scores API failed for ${sportKey}: ${text}`);
-        }
+  const text = await res.text();
+  console.log(`Scores API failed for ${sportKey}: ${text}`);
+  return [];
+}
 
         const data = await res.json();
         return Array.isArray(data)
