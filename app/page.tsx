@@ -1044,6 +1044,10 @@ const [mlbRecord, setMlbRecord] = useState({
   winRate: 0,
 });
 
+const [nbaRecord, setNbaRecord] = useState({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+const [nhlRecord, setNhlRecord] = useState({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+const [soccerRecord, setSoccerRecord] = useState({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
