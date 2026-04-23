@@ -326,6 +326,8 @@ function getLeagueDisplayName(sportKey: string) {
     soccer_uefa_europa_league: "Europa League",
     soccer_uefa_europa_conference_league: "Conference League",
     soccer_england_championship: "Championship (Inglaterra)",
+    soccer_portugal_primeira_liga: "Primeira Liga (Portugal)",
+    soccer_netherlands_eredivisie: "Eredivisie (Países Bajos)",
   };
 
   return (
