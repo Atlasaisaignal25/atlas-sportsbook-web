@@ -325,6 +325,7 @@ function getLeagueDisplayName(sportKey: string) {
     soccer_uefa_champs_league: "Champions League",
     soccer_uefa_europa_league: "Europa League",
     soccer_uefa_europa_conference_league: "Conference League",
+    soccer_england_championship: "Championship (Inglaterra)",
   };
 
   return (
@@ -1616,13 +1617,29 @@ useEffect(() => {
       const data = await res.json();
 
       if (data.success) {
-        setMlbRecord({
-          wins: data.wins,
-          losses: data.losses,
-          pushes: data.pushes,
-          winRate: data.winRate,
-        });
-      }
+  const recordData = {
+    wins: data.wins,
+    losses: data.losses,
+    pushes: data.pushes,
+    winRate: data.winRate,
+  };
+
+  if (selectedSport === "MLB") {
+    setMlbRecord(recordData);
+  }
+
+  if (selectedSport === "NBA") {
+    setNbaRecord(recordData);
+  }
+
+  if (selectedSport === "NHL") {
+    setNhlRecord(recordData);
+  }
+
+  if (selectedSport === "SOCCER") {
+    setSoccerRecord(recordData);
+  }
+}
     } catch (err) {
       console.log("Error loading record");
     }
@@ -2250,9 +2267,14 @@ if (viewMode === "live" && selectedSport === "MLB") {
 
             {subsPicks.map((pick, idx) => {
               const finalResult = getSubsPickResult(pick, subsScoreGames);
-              const matchedScoreGame = findScoreGameForPick(pick, subsScoreGames);
-              const showPending = finalResult === "PENDING";
-              const isGameFinished = pick.status === "WON" || pick.status === "LOST" || pick.status === "PUSH";
+const saveResult =
+  pick.status === "WON" || pick.status === "LOST" || pick.status === "PUSH"
+    ? pick.status
+    : "PENDING";
+const matchedScoreGame = findScoreGameForPick(pick, subsScoreGames);
+const showPending = saveResult === "PENDING";
+const isGameFinished =
+  pick.status === "WON" || pick.status === "LOST" || pick.status === "PUSH";
 
               return (
                 <article
@@ -2290,11 +2312,11 @@ if (viewMode === "live" && selectedSport === "MLB") {
                     <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
                       <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
                         {isGameFinished
-  ? finalResult === "WON"
+  ? saveResult === "WON"
     ? "Signal Won"
-    : finalResult === "LOST"
+    : saveResult === "LOST"
     ? "Signal Lost"
-    : finalResult === "PUSH"
+    : saveResult === "PUSH"
     ? "Signal Push"
     : "Signal Detected"
   : "Signal Detected"}
@@ -2315,15 +2337,15 @@ if (viewMode === "live" && selectedSport === "MLB") {
                         >
                           {String(pick.status ?? "PENDING")}
                         </div>
-                      ) : finalResult === "WON" ? (
+                      ) : saveResult === "WON" ? (
                         <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-green-300">
                           Won
                         </div>
-                      ) : finalResult === "LOST" ? (
+                      ) : saveResult === "LOST" ? (
                         <div className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-red-300">
                           Lost
                         </div>
-                      ) : finalResult === "PUSH" ? (
+                      ) : saveResult === "PUSH" ? (
                         <div className="inline-flex items-center rounded-full border border-yellow-400/20 bg-yellow-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-yellow-300">
                           Push
                         </div>
