@@ -1,49 +1,49 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-23",
+  "date": "2026-04-24",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Casa Pia",
-      "homeTeam": "Braga",
-      "pick": "Braga ML",
-      "startTime": "2026-04-23T18:00:00Z",
+      "awayTeam": "Napoli",
+      "homeTeam": "Cremonese",
+      "pick": "Napoli (-1.5)",
+      "startTime": "2026-04-24T18:45:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Rayo Vallecano",
-      "homeTeam": "Espanyol",
-      "pick": "Rayo Vallecano ML",
-      "startTime": "2026-04-23T18:00:00Z",
+      "awayTeam": "RB Leipzig",
+      "homeTeam": "Union Berlin",
+      "pick": "RB Leipzig (-1.5)",
+      "startTime": "2026-04-24T18:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Oviedo",
-      "homeTeam": "Villarreal",
-      "pick": "Villarreal ML",
-      "startTime": "2026-04-23T19:30:00Z",
+      "awayTeam": "Real Betis",
+      "homeTeam": "Real Madrid",
+      "pick": "Real Madrid ML",
+      "startTime": "2026-04-24T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "Go Ahead Eagles",
-      "homeTeam": "AZ Alkmaar",
-      "pick": "AZ Alkmaar ML",
-      "startTime": "2026-04-23T16:45:00Z",
+      "awayTeam": "Brest",
+      "homeTeam": "RC Lens",
+      "pick": "RC Lens ML",
+      "startTime": "2026-04-24T18:45:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "Levante",
-      "homeTeam": "Sevilla",
-      "pick": "Over 2.5",
-      "startTime": "2026-04-23T17:00:00Z",
+      "awayTeam": "Leicester City",
+      "homeTeam": "Millwall",
+      "pick": "Millwall ML",
+      "startTime": "2026-04-24T19:00:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

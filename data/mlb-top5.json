@@ -1,49 +1,31 @@
 {
   "sport": "MLB",
-  "date": "2026-04-23",
+  "date": "2026-04-24",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Minnesota Twins",
-      "homeTeam": "New York Mets",
-      "pick": "Minnesota Twins",
-      "startTime": "2026-04-23T23:11:00Z",
+      "awayTeam": "Detroit Tigers",
+      "homeTeam": "Cincinnati Reds",
+      "pick": "Detroit Tigers",
+      "startTime": "2026-04-24T22:41:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "Philadelphia Phillies",
-      "homeTeam": "Chicago Cubs",
-      "pick": "Philadelphia Phillies",
-      "startTime": "2026-04-23T18:21:00Z",
+      "awayTeam": "Cleveland Guardians",
+      "homeTeam": "Toronto Blue Jays",
+      "pick": "Cleveland Guardians",
+      "startTime": "2026-04-24T23:08:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Atlanta Braves",
-      "homeTeam": "Washington Nationals",
-      "pick": "Atlanta Braves",
-      "startTime": "2026-04-23T17:06:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 4,
-      "awayTeam": "New York Yankees",
-      "homeTeam": "Boston Red Sox",
-      "pick": "New York Yankees",
-      "startTime": "2026-04-23T22:11:00Z",
-      "status": "PENDING",
-      "isTopSignal": false
-    },
-    {
-      "rank": 5,
-      "awayTeam": "San Diego Padres",
-      "homeTeam": "Colorado Rockies",
-      "pick": "San Diego Padres",
-      "startTime": "2026-04-23T19:11:00Z",
+      "awayTeam": "Boston Red Sox",
+      "homeTeam": "Baltimore Orioles",
+      "pick": "Baltimore Orioles",
+      "startTime": "2026-04-24T23:06:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }

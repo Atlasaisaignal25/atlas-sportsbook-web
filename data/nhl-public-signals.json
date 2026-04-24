@@ -1,12 +1,26 @@
 {
   "sport": "NHL",
-  "date": "2026-04-23",
+  "date": "2026-04-24",
   "games": [
     {
-      "gameId": "51287ae15947cf3f02665904d8b8be9d",
-      "awayTeam": "Carolina Hurricanes",
-      "homeTeam": "Ottawa Senators",
+      "gameId": "ae9003a3e6fcbb6dcb1aa2bb4ce6947a",
+      "awayTeam": "Tampa Bay Lightning",
+      "homeTeam": "Montréal Canadiens",
       "pick": "Over (5.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "863fdb33769ad2bb155134384e205a7a",
+      "awayTeam": "Vegas Golden Knights",
+      "homeTeam": "Utah Mammoth",
+      "pick": "Over (5.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "e2d2c01a1afa073fc70698a37554c36e",
+      "awayTeam": "Edmonton Oilers",
+      "homeTeam": "Anaheim Ducks",
+      "pick": "Anaheim Ducks (+1.5)",
       "status": "PENDING"
     }
   ]

@@ -1,39 +1,60 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-23",
+  "date": "2026-04-24",
   "games": [
     {
-      "gameId": "dc9fffe86c66b6ddfb9cbf19091ae173",
-      "awayTeam": "Casa Pia",
-      "homeTeam": "Braga",
-      "pick": "Braga ML",
+      "gameId": "20842ac2a58d66de639f359e26217e33",
+      "awayTeam": "Napoli",
+      "homeTeam": "Cremonese",
+      "pick": "Napoli (-1.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "c208f9c1d251de9006fd23a7e9cfa948",
-      "awayTeam": "Rayo Vallecano",
-      "homeTeam": "Espanyol",
-      "pick": "Rayo Vallecano ML",
+      "gameId": "d42dbc086659c7ae149cf3c53d12a17a",
+      "awayTeam": "RB Leipzig",
+      "homeTeam": "Union Berlin",
+      "pick": "RB Leipzig (-1.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "fee736ef555102544f70b322b548a2cf",
-      "awayTeam": "Oviedo",
-      "homeTeam": "Villarreal",
-      "pick": "Villarreal ML",
+      "gameId": "e8aec0c2da8f35ce251f9a1e905624b2",
+      "awayTeam": "Real Betis",
+      "homeTeam": "Real Madrid",
+      "pick": "Real Madrid ML",
       "status": "PENDING"
     },
     {
-      "gameId": "fbaf61c876c9b9f19af6bb1f0f5edaf2",
-      "awayTeam": "Go Ahead Eagles",
-      "homeTeam": "AZ Alkmaar",
-      "pick": "AZ Alkmaar ML",
+      "gameId": "3fc165f9b4531c59263d965cbfebd6b7",
+      "awayTeam": "Brest",
+      "homeTeam": "RC Lens",
+      "pick": "RC Lens ML",
       "status": "PENDING"
     },
     {
-      "gameId": "a3f979b998f70bcf99bcee41c65f90a5",
-      "awayTeam": "Levante",
-      "homeTeam": "Sevilla",
+      "gameId": "5283bb55604dc88afdee526f97fc31c8",
+      "awayTeam": "Leicester City",
+      "homeTeam": "Millwall",
+      "pick": "Millwall ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "1818cdde3073798f819e6119ae26850c",
+      "awayTeam": "Alverca",
+      "homeTeam": "Arouca",
+      "pick": "Alverca ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "825d853a344f9ff2fe2406752924b83f",
+      "awayTeam": "Puebla",
+      "homeTeam": "Querétaro",
+      "pick": "Puebla ML",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "1d779cd51003d8f01a9378594cea630e",
+      "awayTeam": "Sunderland",
+      "homeTeam": "Nottingham Forest",
       "pick": "Over 2.5",
       "status": "PENDING"
     }

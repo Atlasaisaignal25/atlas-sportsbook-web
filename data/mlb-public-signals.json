@@ -1,54 +1,26 @@
 {
   "sport": "MLB",
-  "date": "2026-04-23",
+  "date": "2026-04-24",
   "games": [
     {
-      "gameId": "1e66733b3f851159b9299af54335356a",
-      "awayTeam": "Minnesota Twins",
-      "homeTeam": "New York Mets",
-      "pick": "Minnesota Twins",
+      "gameId": "2c16b21f64ac893fc7dd8fd60f2a018c",
+      "awayTeam": "Detroit Tigers",
+      "homeTeam": "Cincinnati Reds",
+      "pick": "Detroit Tigers",
       "status": "PENDING"
     },
     {
-      "gameId": "0690cb513a9395d92f4b14ef1ff47d78",
-      "awayTeam": "Philadelphia Phillies",
-      "homeTeam": "Chicago Cubs",
-      "pick": "Philadelphia Phillies",
+      "gameId": "c5471ce2c30f59270ff07727d27ce902",
+      "awayTeam": "Cleveland Guardians",
+      "homeTeam": "Toronto Blue Jays",
+      "pick": "Cleveland Guardians",
       "status": "PENDING"
     },
     {
-      "gameId": "ce701a760fa0f743a20a0f8c455c6f67",
-      "awayTeam": "Atlanta Braves",
-      "homeTeam": "Washington Nationals",
-      "pick": "Atlanta Braves",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "ce566623c1d73c8d56830bafe9334cbb",
-      "awayTeam": "New York Yankees",
-      "homeTeam": "Boston Red Sox",
-      "pick": "New York Yankees",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "de14a27d2ad6df38427c5adcc15cb1c1",
-      "awayTeam": "San Diego Padres",
-      "homeTeam": "Colorado Rockies",
-      "pick": "San Diego Padres",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "a1b5b1f882e1c817603a505107a56d2f",
-      "awayTeam": "Chicago White Sox",
-      "homeTeam": "Arizona Diamondbacks",
-      "pick": "Under",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "eb87da969b550c21334d689f9113d312",
-      "awayTeam": "Milwaukee Brewers",
-      "homeTeam": "Detroit Tigers",
-      "pick": "Under",
+      "gameId": "932ab74f8b661c6fcaea03f907780fce",
+      "awayTeam": "Boston Red Sox",
+      "homeTeam": "Baltimore Orioles",
+      "pick": "Baltimore Orioles",
       "status": "PENDING"
     }
   ]
