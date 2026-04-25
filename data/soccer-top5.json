@@ -1,49 +1,49 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-24",
+  "date": "2026-04-25",
   "top5": [
     {
       "rank": 1,
-      "awayTeam": "Napoli",
-      "homeTeam": "Cremonese",
-      "pick": "Napoli (-1.5)",
-      "startTime": "2026-04-24T18:45:00Z",
+      "awayTeam": "Minnesota United FC",
+      "homeTeam": "Los Angeles FC",
+      "pick": "Under 2.5",
+      "startTime": "2026-04-25T20:45:00Z",
       "status": "PENDING",
       "isTopSignal": true
     },
     {
       "rank": 2,
-      "awayTeam": "RB Leipzig",
-      "homeTeam": "Union Berlin",
-      "pick": "RB Leipzig (-1.5)",
-      "startTime": "2026-04-24T18:30:00Z",
+      "awayTeam": "Inter Miami CF",
+      "homeTeam": "New England Revolution",
+      "pick": "Inter Miami CF (-1.5)",
+      "startTime": "2026-04-25T23:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 3,
-      "awayTeam": "Real Betis",
-      "homeTeam": "Real Madrid",
-      "pick": "Real Madrid ML",
-      "startTime": "2026-04-24T19:00:00Z",
+      "awayTeam": "Chicago Fire",
+      "homeTeam": "Sporting Kansas City",
+      "pick": "Chicago Fire (-1.5)",
+      "startTime": "2026-04-26T00:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 4,
-      "awayTeam": "Brest",
-      "homeTeam": "RC Lens",
-      "pick": "RC Lens ML",
-      "startTime": "2026-04-24T18:45:00Z",
+      "awayTeam": "Vancouver Whitecaps FC",
+      "homeTeam": "Colorado Rapids",
+      "pick": "Vancouver Whitecaps FC (-1.5)",
+      "startTime": "2026-04-26T02:30:00Z",
       "status": "PENDING",
       "isTopSignal": false
     },
     {
       "rank": 5,
-      "awayTeam": "Leicester City",
-      "homeTeam": "Millwall",
-      "pick": "Millwall ML",
-      "startTime": "2026-04-24T19:00:00Z",
+      "awayTeam": "América",
+      "homeTeam": "Atlas",
+      "pick": "Over 2.5",
+      "startTime": "2026-04-26T03:10:00Z",
       "status": "PENDING",
       "isTopSignal": false
     }
