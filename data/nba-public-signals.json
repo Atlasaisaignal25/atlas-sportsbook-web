@@ -1,26 +1,33 @@
 {
   "sport": "NBA",
-  "date": "2026-04-24",
+  "date": "2026-04-26",
   "games": [
     {
-      "gameId": "5000a9f1dd7ba71de7ae6ceef836aa48",
+      "gameId": "d94d967f8600a3fb8b869f32c31a7357",
+      "awayTeam": "Cleveland Cavaliers",
+      "homeTeam": "Toronto Raptors",
+      "pick": "Under (219.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "399d2e69e4408801d09e614c88779989",
       "awayTeam": "Los Angeles Lakers",
       "homeTeam": "Houston Rockets",
-      "pick": "Los Angeles Lakers ML",
+      "pick": "Under (207.5)",
       "status": "PENDING"
     },
     {
-      "gameId": "8d8ab21ae69d529ee4bd01fb8ace8276",
-      "awayTeam": "Boston Celtics",
-      "homeTeam": "Philadelphia 76ers",
-      "pick": "Philadelphia 76ers ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "af4847d63733e67ddd02f2bafac8ea6f",
+      "gameId": "0cab123e90bdf5d1d144a7e26ebc339c",
       "awayTeam": "San Antonio Spurs",
       "homeTeam": "Portland Trail Blazers",
-      "pick": "Over (220.5)",
+      "pick": "Under (218.5)",
+      "status": "PENDING"
+    },
+    {
+      "gameId": "62dc6619019d4366984883a71b283077",
+      "awayTeam": "Boston Celtics",
+      "homeTeam": "Philadelphia 76ers",
+      "pick": "Philadelphia 76ers (+7.5)",
       "status": "PENDING"
     }
   ]
