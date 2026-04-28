@@ -1,124 +1,19 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-26",
+  "date": "2026-04-28",
   "games": [
     {
-      "gameId": "5f9d3da4f9116d7f74b873d6d8c5b5b5",
-      "awayTeam": "CA Osasuna",
-      "homeTeam": "Sevilla",
-      "pick": "Over 2.5",
+      "gameId": "de3efd9a1b07c22949d3610df7bdc8e9",
+      "awayTeam": "Southampton",
+      "homeTeam": "Ipswich Town",
+      "pick": "Southampton ML",
       "status": "PENDING"
     },
     {
-      "gameId": "73356e04dfd314b55456a0aa10e29852",
-      "awayTeam": "Cruz Azul",
-      "homeTeam": "Necaxa",
-      "pick": "Cruz Azul (-1.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "b0d1e670b682b0ed37d6b0bc271efa6a",
-      "awayTeam": "Genoa",
-      "homeTeam": "Como",
-      "pick": "Over 2.5",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "889999898c80c9a8b977eaad80d7f918",
-      "awayTeam": "Oviedo",
-      "homeTeam": "Elche CF",
-      "pick": "Over 2.5",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "548f901ac0c811c39953f7e3769040cb",
-      "awayTeam": "Villarreal",
-      "homeTeam": "Celta Vigo",
-      "pick": "Under 2.5",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "6575e2a2e9cba1a58157427fe0e50ea1",
-      "awayTeam": "Le Havre",
-      "homeTeam": "Metz",
-      "pick": "Under 2.5",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "04f5d28fc24f5efdb32a1e1ebd4b491f",
-      "awayTeam": "Estoril",
-      "homeTeam": "Famalicão",
-      "pick": "Famalicão ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "eca6a542fe5b1651c8cfb58f820e744f",
-      "awayTeam": "Chelsea",
-      "homeTeam": "Leeds United",
-      "pick": "Chelsea ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "b8ca9d7eec80332d96b3ee8287c53b97",
-      "awayTeam": "Lorient",
-      "homeTeam": "Strasbourg",
-      "pick": "Lorient ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "f627305a016dee5c12f49cfbca1822ba",
-      "awayTeam": "Santa Clara",
-      "homeTeam": "Braga",
-      "pick": "Braga ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "d4b73ee62dfa8cec16c9ae3f5b054d13",
-      "awayTeam": "Santos Laguna",
-      "homeTeam": "Monterrey",
-      "pick": "Monterrey ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "ca8835d47ae84387004725728c4f07c6",
-      "awayTeam": "Paris FC",
-      "homeTeam": "Lille",
-      "pick": "Lille ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "531496bcbda76eda957cb9bb18724387",
-      "awayTeam": "LA Galaxy",
-      "homeTeam": "Real Salt Lake",
-      "pick": "LA Galaxy ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "6ebae1fd21f8e4d2994714478848fb51",
-      "awayTeam": "Rennes",
-      "homeTeam": "Nantes",
-      "pick": "Under 2.5",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "8b2db66328633438dcd0b0cb30f8f3df",
-      "awayTeam": "Torino",
-      "homeTeam": "Inter Milan",
-      "pick": "Inter Milan (-1.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "571df83aa83072dc9cda2e99eb821f0a",
-      "awayTeam": "CF Estrela",
-      "homeTeam": "FC Porto",
-      "pick": "FC Porto (-1.5)",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "a5462613d6a6b17b8f0d92b23f97e070",
-      "awayTeam": "Rayo Vallecano",
-      "homeTeam": "Real Sociedad",
-      "pick": "Draw ML",
+      "gameId": "9ee53c45ff32f7ea5b6e638b023f07d5",
+      "awayTeam": "Paris Saint Germain",
+      "homeTeam": "Bayern Munich",
+      "pick": "Paris Saint Germain ML",
       "status": "PENDING"
     }
   ]
