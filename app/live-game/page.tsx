@@ -281,22 +281,24 @@ function findPickForGame(game: OddsGame, sport: SportTab): SignalGame | null {
             ? soccerSignalsData.games
             : [];
 
+const safeSource = Array.isArray(source) ? source : [];
+
   // 1. intenta por gameId
-  const direct = source.find(
+  const direct = safeSource.find(
     (g) => String(g.gameId) === String(game.id)
   );
 
   if (direct) return direct;
 
   // 2. intenta por nombre exacto
-  const byName = source.find((g) => isSameMatch(game, g));
+  const byName = safeSource.find((g) => isSameMatch(game, g));
   if (byName) return byName;
 
   // 3. fallback agresivo (por palabras clave)
   const gameAway = normalizeName(game.away_team);
   const gameHome = normalizeName(game.home_team);
 
-  const fallback = source.find((g) => {
+  const fallback = safeSource.find((g) => {
     const signalAway = normalizeName(g.awayTeam ?? "");
     const signalHome = normalizeName(g.homeTeam ?? "");
 
@@ -528,6 +530,31 @@ useEffect(() => {
 
     return byName ?? null;
   }
+
+  if (sport === "NBA") {
+  const source = nbaSignalsData?.games ?? [];
+
+  const direct = source.find(
+    (g) => String(g.gameId) === String(game.id)
+  );
+
+  if (direct) return direct;
+
+  const byName = source.find((g) =>
+    isSameMatch(
+      {
+        away_team: g.awayTeam,
+        home_team: g.homeTeam,
+      } as any,
+      {
+        awayTeam: game.away_team,
+        homeTeam: game.home_team,
+      }
+    )
+  );
+
+  return byName ?? null;
+}
 
   return findPickForGame(game, sport);
 }, [game, sport, mlbSignalsData]);
