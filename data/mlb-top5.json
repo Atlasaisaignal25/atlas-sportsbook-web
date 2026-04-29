@@ -1,5 +1,5 @@
 {
   "sport": "MLB",
-  "date": "TEST",
-  "games": []
+  "date": "TEST_JSON_DISABLED",
+  "top5": []
 }
