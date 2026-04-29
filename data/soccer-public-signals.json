@@ -1,19 +1,12 @@
 {
   "sport": "SOCCER",
-  "date": "2026-04-28",
+  "date": "2026-04-29",
   "games": [
     {
-      "gameId": "de3efd9a1b07c22949d3610df7bdc8e9",
-      "awayTeam": "Southampton",
-      "homeTeam": "Ipswich Town",
-      "pick": "Southampton ML",
-      "status": "PENDING"
-    },
-    {
-      "gameId": "9ee53c45ff32f7ea5b6e638b023f07d5",
-      "awayTeam": "Paris Saint Germain",
-      "homeTeam": "Bayern Munich",
-      "pick": "Paris Saint Germain ML",
+      "gameId": "aec5613e75cb9d2ebfcf51382511209e",
+      "awayTeam": "Atlético Madrid",
+      "homeTeam": "Arsenal",
+      "pick": "Over 2.5",
       "status": "PENDING"
     }
   ]
