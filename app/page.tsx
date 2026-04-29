@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import mlbSignals from "@/data/mlb-public-signals.json";
+// import mlbSignals from "@/data/mlb-public-signals.json";
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
 import soccerSignals from "@/data/soccer-public-signals.json";
@@ -11,6 +11,7 @@ import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
 import { useRouter, useSearchParams } from "next/navigation";
+import { getMlbPublicSignals } from "@/app/lib/supabase/mlbLiveSignals";
 
 
 type Outcome = {
@@ -84,7 +85,6 @@ type UserAccess = {
   sports: SportTab[];
 };
 
-const mlbSignalsData = mlbSignals as { games: SignalGame[] };
 const nbaSignalsData = nbaSignals as { games: SignalGame[] };
 const nhlSignalsData = nhlSignals as { games: SignalGame[] };
 const soccerSignalsData = soccerSignals as { games: SignalGame[] };
@@ -446,13 +446,17 @@ function isSameMatch(
   return gameAway === signalAway && gameHome === signalHome;
 }
 
-function findPick(game: OddsGame, sport: string): SignalGame | null {
+function findPick(
+  game: OddsGame,
+  sport: string,
+  mlbSignalsDataParam: { games: SignalGame[] }
+): SignalGame | null {
   if (sport === "MLB") {
-    const direct = mlbSignalsData.games.find(
+    const direct = mlbSignalsDataParam.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
     const baseMatch =
-      direct || mlbSignalsData.games.find((g) => isSameMatch(game, g)) || null;
+      direct || mlbSignalsDataParam.games.find((g) => isSameMatch(game, g)) || null;
     if (!baseMatch) return null;
 
     const top5Match =
@@ -526,10 +530,14 @@ function findPick(game: OddsGame, sport: string): SignalGame | null {
   return null;
 }
 
-function findLivePick(game: LiveScore, sport: SportTab): SignalGame | null {
+function findLivePick(
+  game: LiveScore,
+  sport: SportTab,
+  mlbSignalsDataParam: { games: SignalGame[] }
+): SignalGame | null {
   const signalSource =
     sport === "MLB"
-      ? mlbSignalsData.games
+      ? mlbSignalsDataParam.games
       : sport === "NBA"
         ? nbaSignalsData.games
         : sport === "NHL"
@@ -1072,6 +1080,21 @@ const [subsScoreGames, setSubsScoreGames] = useState<LiveScore[]>([]);
 const [subsScoresLoading, setSubsScoresLoading] = useState(false);
 const [topSignalHistory, setTopSignalHistory] = useState<any[]>([]);
 const [top5History, setTop5History] = useState<any[]>([]);
+const [mlbSignalsData, setMlbSignalsData] = useState<{ games: SignalGame[] }>({
+  games: [],
+});
+
+useEffect(() => {
+  async function loadMlbSignals() {
+    const data = await getMlbPublicSignals();
+
+    setMlbSignalsData({
+      games: data,
+    });
+  }
+
+  loadMlbSignals();
+}, []);
 
   const topSignals: TopSignalCard[] = useMemo(
   () =>
@@ -1995,7 +2018,7 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
                     <div>
                       {group.games.map((game, idx) => {
                         const oddsGame = findOddsGameForLive(game, liveOddsGames);
-                        const livePickData = findLivePick(game, group.sport);
+                        const livePickData = findLivePick(game, group.sport, mlbSignalsData)
                         const isTop5 = (() => {
                           const top5 = getTop5BySport(group.sport);
                           return top5.some((p) => {
