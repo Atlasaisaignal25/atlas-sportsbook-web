@@ -5,13 +5,16 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
 import soccerSignals from "@/data/soccer-public-signals.json";
-import mlbTop5 from "@/data/mlb-top5.json";
+//import mlbTop5 from "@/data/mlb-top5.json";
 import nbaTop5 from "@/data/nba-top5.json";
 import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getMlbPublicSignals } from "@/app/lib/supabase/mlbLiveSignals";
+import {
+  getMlbPublicSignals,
+  getMlbTop5Live,
+} from "@/app/lib/supabase/mlbLiveSignals";
 
 
 type Outcome = {
@@ -89,7 +92,6 @@ const nbaSignalsData = nbaSignals as { games: SignalGame[] };
 const nhlSignalsData = nhlSignals as { games: SignalGame[] };
 const soccerSignalsData = soccerSignals as { games: SignalGame[] };
 
-const mlbTop5Data = mlbTop5 as { top5: Top5Entry[] };
 const nbaTop5Data = nbaTop5 as { top5: Top5Entry[] };
 const nhlTop5Data = nhlTop5 as { top5: Top5Entry[] };
 const soccerTop5Data = soccerTop5 as { top5: Top5Entry[] };
@@ -455,18 +457,20 @@ function findPick(
     const direct = mlbSignalsDataParam.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
+
     const baseMatch =
-      direct || mlbSignalsDataParam.games.find((g) => isSameMatch(game, g)) || null;
+      direct ||
+      mlbSignalsDataParam.games.find((g) => isSameMatch(game, g)) ||
+      null;
+
     if (!baseMatch) return null;
 
-    const top5Match =
-      mlbTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
-
+    // 🔴 IMPORTANTE: ya NO usamos top5 aquí para evitar errores
     return {
       ...baseMatch,
-      isTop5: !!top5Match,
-      isTopSignal: !!top5Match?.isTopSignal,
-      topRank: top5Match?.rank ?? null,
+      isTop5: false,
+      isTopSignal: false,
+      topRank: null,
     };
   }
 
@@ -474,18 +478,19 @@ function findPick(
     const direct = nbaSignalsData.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
-    const baseMatch =
-      direct || nbaSignalsData.games.find((g) => isSameMatch(game, g)) || null;
-    if (!baseMatch) return null;
 
-    const top5Match =
-      nbaTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
+    const baseMatch =
+      direct ||
+      nbaSignalsData.games.find((g) => isSameMatch(game, g)) ||
+      null;
+
+    if (!baseMatch) return null;
 
     return {
       ...baseMatch,
-      isTop5: !!top5Match,
-      isTopSignal: !!top5Match?.isTopSignal,
-      topRank: top5Match?.rank ?? null,
+      isTop5: false,
+      isTopSignal: false,
+      topRank: null,
     };
   }
 
@@ -493,18 +498,19 @@ function findPick(
     const direct = nhlSignalsData.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
-    const baseMatch =
-      direct || nhlSignalsData.games.find((g) => isSameMatch(game, g)) || null;
-    if (!baseMatch) return null;
 
-    const top5Match =
-      nhlTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
+    const baseMatch =
+      direct ||
+      nhlSignalsData.games.find((g) => isSameMatch(game, g)) ||
+      null;
+
+    if (!baseMatch) return null;
 
     return {
       ...baseMatch,
-      isTop5: !!top5Match,
-      isTopSignal: !!top5Match?.isTopSignal,
-      topRank: top5Match?.rank ?? null,
+      isTop5: false,
+      isTopSignal: false,
+      topRank: null,
     };
   }
 
@@ -512,18 +518,19 @@ function findPick(
     const direct = soccerSignalsData.games.find(
       (g) => String(g.gameId) === String(game.id)
     );
-    const baseMatch =
-      direct || soccerSignalsData.games.find((g) => isSameMatch(game, g)) || null;
-    if (!baseMatch) return null;
 
-    const top5Match =
-      soccerTop5Data.top5.find((g) => isSameMatch(game, g)) || null;
+    const baseMatch =
+      direct ||
+      soccerSignalsData.games.find((g) => isSameMatch(game, g)) ||
+      null;
+
+    if (!baseMatch) return null;
 
     return {
       ...baseMatch,
-      isTop5: !!top5Match,
-      isTopSignal: !!top5Match?.isTopSignal,
-      topRank: top5Match?.rank ?? null,
+      isTop5: false,
+      isTopSignal: false,
+      topRank: null,
     };
   }
 
@@ -946,23 +953,33 @@ function getStatusStyles(status?: string) {
   return "bg-white/10 text-white/60 border-white/15";
 }
 
-function getTop5BySport(sport: SportTab): Top5Entry[] {
-  if (sport === "MLB") return mlbTop5Data.top5 ?? [];
+function getTop5BySport(
+  sport: SportTab,
+  mlbTop5DataParam: { top5: Top5Entry[] }
+): Top5Entry[] {
+  if (sport === "MLB") return mlbTop5DataParam.top5 ?? [];
   if (sport === "NBA") return nbaTop5Data.top5 ?? [];
   if (sport === "NHL") return nhlTop5Data.top5 ?? [];
   if (sport === "SOCCER") return soccerTop5Data.top5 ?? [];
   return [];
 }
 
-function getTopSignalBySport(sport: SportTab): Top5Entry | null {
-  const top5 = getTop5BySport(sport);
+function getTopSignalBySport(
+  sport: SportTab,
+  mlbTop5DataParam: { top5: Top5Entry[] }
+): Top5Entry | null {
+  const top5 = getTop5BySport(sport, mlbTop5DataParam);
   return top5.find((pick) => pick.isTopSignal) || top5[0] || null;
 }
 
-function getSubPicksForUser(userAccess: UserAccess, selectedSport: SportTab) {
+function getSubPicksForUser(
+  userAccess: UserAccess,
+  selectedSport: SportTab,
+  mlbTop5DataParam: { top5: Top5Entry[] }
+) {
   if (!hasSportAccess(userAccess, selectedSport)) return [];
 
-  const top5 = getTop5BySport(selectedSport);
+  const top5 = getTop5BySport(selectedSport, mlbTop5DataParam);
 
   if (userAccess.plan === "exclusive") {
     return top5.map((pick) => ({
@@ -971,16 +988,11 @@ function getSubPicksForUser(userAccess: UserAccess, selectedSport: SportTab) {
     }));
   }
 
-  if (userAccess.plan === "premium") {
-    return top5.map((pick) => ({
-      ...pick,
-      label: pick.isTopSignal
-        ? `Top Signal #${pick.rank ?? 1}`
-        : `Top 5 #${pick.rank ?? ""}`,
-    }));
-  }
-
-  if (userAccess.plan === "elite" || userAccess.plan === "admin") {
+  if (
+    userAccess.plan === "premium" ||
+    userAccess.plan === "elite" ||
+    userAccess.plan === "admin"
+  ) {
     return top5.map((pick) => ({
       ...pick,
       label: pick.isTopSignal
@@ -1083,6 +1095,9 @@ const [top5History, setTop5History] = useState<any[]>([]);
 const [mlbSignalsData, setMlbSignalsData] = useState<{ games: SignalGame[] }>({
   games: [],
 });
+const [mlbTop5Data, setMlbTop5Data] = useState<{ top5: Top5Entry[] }>({
+  top5: [],
+});
 
 useEffect(() => {
   async function loadMlbSignals() {
@@ -1094,6 +1109,18 @@ useEffect(() => {
   }
 
   loadMlbSignals();
+}, []);
+
+useEffect(() => {
+  async function loadMlbTop5() {
+    const data = await getMlbTop5Live();
+
+    setMlbTop5Data({
+      top5: data,
+    });
+  }
+
+  loadMlbTop5();
 }, []);
 
   const topSignals: TopSignalCard[] = useMemo(
@@ -1436,7 +1463,7 @@ useEffect(() => {
 }, [viewMode, selectedSport]);
 
 const subsPicks = useMemo(() => {
-  return getSubPicksForUser(userAccess, selectedSport);
+  return getSubPicksForUser(userAccess, selectedSport, mlbTop5Data)
 }, [userAccess, selectedSport]);
 
 const topSignalPicks = useMemo(() => {
@@ -2020,7 +2047,7 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
                         const oddsGame = findOddsGameForLive(game, liveOddsGames);
                         const livePickData = findLivePick(game, group.sport, mlbSignalsData)
                         const isTop5 = (() => {
-                          const top5 = getTop5BySport(group.sport);
+                          const top5 = getTop5BySport(group.sport, mlbTop5Data);
                           return top5.some((p) => {
                             const away = normalizeName(p.awayTeam ?? "");
                             const home = normalizeName(p.homeTeam ?? "");
