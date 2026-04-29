@@ -11,10 +11,9 @@ import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
 import { teamBranding } from "./lib/teamBranding";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  getMlbPublicSignals,
-  getMlbTop5Live,
-} from "@/app/lib/supabase/mlbLiveSignals";
+import {getMlbPublicSignals,getMlbTop5Live,} from "@/app/lib/supabase/mlbLiveSignals";
+import { getNbaPublicSignals, getNbaTop5Live } from "@/app/lib/supabase/nbaLiveSignals";
+
 
 
 type Outcome = {
@@ -1092,10 +1091,18 @@ const [subsScoreGames, setSubsScoreGames] = useState<LiveScore[]>([]);
 const [subsScoresLoading, setSubsScoresLoading] = useState(false);
 const [topSignalHistory, setTopSignalHistory] = useState<any[]>([]);
 const [top5History, setTop5History] = useState<any[]>([]);
-const [mlbSignalsData, setMlbSignalsData] = useState<{ games: SignalGame[] }>({
+const [mlbSignalsData, setMlbSignalsData] = useState<{ games: SignalGame[] }>({games: [],
+});
+const [mlbTop5Data, setMlbTop5Data] = useState<{ top5: Top5Entry[] }>({top5: [],
+});
+const [nbaSignalsData, setNbaSignalsData] = useState<{
+  games: SignalGame[];
+}>({
   games: [],
 });
-const [mlbTop5Data, setMlbTop5Data] = useState<{ top5: Top5Entry[] }>({
+const [nbaTop5Data, setNbaTop5Data] = useState<{
+  top5: Top5Entry[];
+}>({
   top5: [],
 });
 
@@ -1121,6 +1128,36 @@ useEffect(() => {
   }
 
   loadMlbTop5();
+}, []);
+
+useEffect(() => {
+  async function loadNbaSignals() {
+    const data = await getNbaPublicSignals();
+
+    setNbaSignalsData({
+  games: (data || []).map((g: any) => ({
+    gameId: g.game_id,
+    awayTeam: g.away_team,
+    homeTeam: g.home_team,
+    pick: g.pick,
+    status: g.status,
+  })),
+});
+  }
+
+  loadNbaSignals();
+}, []);
+
+useEffect(() => {
+  async function loadNbaTop5() {
+    const data = await getNbaTop5Live();
+
+    setNbaTop5Data({
+      top5: data,
+    });
+  }
+
+  loadNbaTop5();
 }, []);
 
   const topSignals: TopSignalCard[] = useMemo(

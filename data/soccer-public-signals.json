@@ -1,13 +1,1 @@
-{
-  "sport": "SOCCER",
-  "date": "2026-04-29",
-  "games": [
-    {
-      "gameId": "aec5613e75cb9d2ebfcf51382511209e",
-      "awayTeam": "Atlético Madrid",
-      "homeTeam": "Arsenal",
-      "pick": "Over 2.5",
-      "status": "PENDING"
-    }
-  ]
-}
+{}
