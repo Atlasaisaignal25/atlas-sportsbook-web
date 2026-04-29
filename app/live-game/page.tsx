@@ -379,14 +379,36 @@ useEffect(() => {
     }
 
     setMlbSignalsData({
-      games: (data ?? []).map((row: any) => ({
-        gameId: row.game_id,
-        awayTeam: row.away_team,
-        homeTeam: row.home_team,
-        pick: row.pick,
-        status: row.status,
-      })),
-    });
+  games: (data ?? []).map((row: any) => {
+    const market = String(row.market ?? "").toLowerCase();
+    const pick = String(row.pick ?? "");
+    const line = row.line;
+
+    let formattedPick = pick;
+
+    if (market === "spreads" && line !== null && line !== undefined) {
+      const numberLine = Number(line);
+      const lineText =
+        Number.isFinite(numberLine) && numberLine > 0
+          ? `+${numberLine}`
+          : `${line}`;
+
+      formattedPick = `${pick} (${lineText})`;
+    }
+
+    if (market === "totals" && line !== null && line !== undefined) {
+      formattedPick = `${pick} ${line}`;
+    }
+
+    return {
+      gameId: row.game_id,
+      awayTeam: row.away_team,
+      homeTeam: row.home_team,
+      pick: formattedPick,
+      status: row.status,
+    };
+  }),
+});
   }
 
   if (sport === "MLB") {
