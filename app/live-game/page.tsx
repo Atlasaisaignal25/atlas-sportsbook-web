@@ -2,11 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import mlbSignals from "@/data/mlb-public-signals.json";
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
 import soccerSignals from "@/data/soccer-public-signals.json";
 import { teamBranding } from "@/app/lib/teamBranding";
+import { supabase } from "@/app/lib/supabase/client";
 
 type SportTab = "TOP" | "NHL" | "NBA" | "MLB" | "NFL" | "SOCCER";
 
@@ -43,7 +43,6 @@ type SignalGame = {
   status?: string;
 };
 
-const mlbSignalsData = mlbSignals as { games: SignalGame[] };
 const nbaSignalsData = nbaSignals as { games: SignalGame[] };
 const nhlSignalsData = nhlSignals as { games: SignalGame[] };
 const soccerSignalsData = soccerSignals as { games: SignalGame[] };
@@ -273,7 +272,7 @@ function formatDisplayedPick(rawPick: string, sport: string) {
 function findPickForGame(game: OddsGame, sport: SportTab): SignalGame | null {
   const source =
     sport === "MLB"
-      ? mlbSignalsData.games
+      ? []
       : sport === "NBA"
         ? nbaSignalsData.games
         : sport === "NHL"
@@ -357,6 +356,43 @@ const returnDay = searchParams.get("returnDay") || "today";
   const [game, setGame] = useState<OddsGame | null>(null);
   const [loading, setLoading] = useState(true);
   const [userPlan] = useState<"free" | "regular" | "premium">("premium");
+  const [mlbSignalsData, setMlbSignalsData] = useState<{ games: SignalGame[] }>({
+  games: [],
+});
+
+useEffect(() => {
+  async function loadMlbSignals() {
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/New_York",
+    });
+
+    const { data, error } = await supabase
+      .from("mlb_public_signals")
+      .select("*")
+      .eq("sport", "MLB")
+      .eq("date", today);
+
+    if (error) {
+      console.error("MLB public signals error:", error);
+      setMlbSignalsData({ games: [] });
+      return;
+    }
+
+    setMlbSignalsData({
+      games: (data ?? []).map((row: any) => ({
+        gameId: row.game_id,
+        awayTeam: row.away_team,
+        homeTeam: row.home_team,
+        pick: row.pick,
+        status: row.status,
+      })),
+    });
+  }
+
+  if (sport === "MLB") {
+    loadMlbSignals();
+  }
+}, [sport]);
 
   useEffect(() => {
   async function loadGame() {
@@ -457,9 +493,22 @@ const returnDay = searchParams.get("returnDay") || "today";
 }, [sport, gameId, awayTeamParam, homeTeamParam, commenceTimeParam]);
 
   const pickData = useMemo(() => {
-    if (!game) return null;
-    return findPickForGame(game, sport);
-  }, [game, sport]);
+  if (!game) return null;
+
+  if (sport === "MLB") {
+    const direct = mlbSignalsData.games.find(
+      (g) => String(g.gameId) === String(game.id)
+    );
+
+    if (direct) return direct;
+
+    const byName = mlbSignalsData.games.find((g) => isSameMatch(game, g));
+
+    return byName ?? null;
+  }
+
+  return findPickForGame(game, sport);
+}, [game, sport, mlbSignalsData]);
 
   if (loading) {
     return (
