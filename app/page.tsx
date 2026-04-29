@@ -542,15 +542,15 @@ function findLivePick(
   mlbSignalsDataParam: { games: SignalGame[] }
 ): SignalGame | null {
   const signalSource =
-    sport === "MLB"
-      ? mlbSignalsDataParam.games
-      : sport === "NBA"
-        ? nbaSignalsData.games
-        : sport === "NHL"
-          ? nhlSignalsData.games
-          : sport === "SOCCER"
-            ? soccerSignalsData.games
-            : [];
+  sport === "MLB"
+    ? mlbSignalsDataParam?.games ?? []
+    : sport === "NBA"
+    ? nbaSignalsData?.games ?? []
+    : sport === "NHL"
+    ? nhlSignalsData?.games ?? []
+    : sport === "SOCCER"
+    ? soccerSignalsData?.games ?? []
+    : [];
 
   const liveAway = normalizeName(game.away_team);
   const liveHome = normalizeName(game.home_team);
