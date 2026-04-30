@@ -6,34 +6,34 @@ function todayMiamiDate() {
   });
 }
 
-export async function getNbaPublicSignals() {
+export async function getSoccerPublicSignals() {
   const today = todayMiamiDate();
 
   const { data, error } = await supabase
-    .from("nba_public_signals")
+    .from("soccer_public_signals")
     .select("*")
     .eq("date", today)
     .order("start_time", { ascending: true });
 
   if (error) {
-    console.log("NBA public signals error:", error);
+    console.log("Soccer public signals error:", error);
     return [];
   }
 
   return data ?? [];
 }
 
-export async function getNbaTop5Live() {
+export async function getSoccerTop5Live() {
   const today = todayMiamiDate();
 
   const { data, error } = await supabase
-    .from("nba_top5_live")
+    .from("soccer_top5_live")
     .select("*")
     .eq("date", today)
     .order("rank", { ascending: true });
 
   if (error) {
-    console.log("NBA top5 live error:", error);
+    console.log("Soccer top5 live error:", error);
     return [];
   }
 

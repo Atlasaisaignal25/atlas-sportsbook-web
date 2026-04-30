@@ -361,6 +361,17 @@ const returnDay = searchParams.get("returnDay") || "today";
   const [mlbSignalsData, setMlbSignalsData] = useState<{ games: SignalGame[] }>({
   games: [],
 });
+const [nbaSignalsData, setNbaSignalsData] = useState<{ games: SignalGame[] }>({
+  games: [],
+});
+
+const [nhlSignalsData, setNhlSignalsData] = useState<{ games: SignalGame[] }>({
+  games: [],
+});
+
+const [soccerSignalsLiveData, setSoccerSignalsLiveData] = useState<{ games: SignalGame[] }>({
+  games: [],
+});
 
 useEffect(() => {
   async function loadMlbSignals() {
@@ -415,6 +426,105 @@ useEffect(() => {
 
   if (sport === "MLB") {
     loadMlbSignals();
+  }
+}, [sport]);
+
+useEffect(() => {
+  async function loadNbaSignals() {
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/New_York",
+    });
+
+    const { data, error } = await supabase
+      .from("nba_public_signals")
+      .select("*")
+      .eq("date", today);
+
+    if (error) {
+      console.error("NBA public signals error:", error);
+      setNbaSignalsData({ games: [] });
+      return;
+    }
+
+    setNbaSignalsData({
+      games: (data ?? []).map((row: any) => ({
+        gameId: row.game_id,
+        awayTeam: row.away_team,
+        homeTeam: row.home_team,
+        pick: row.pick,
+        status: row.status,
+      })),
+    });
+  }
+
+  if (sport === "NBA") {
+    loadNbaSignals();
+  }
+}, [sport]);
+
+useEffect(() => {
+  async function loadNhlSignals() {
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/New_York",
+    });
+
+    const { data, error } = await supabase
+      .from("nhl_public_signals")
+.select("*")
+.eq("date", today)
+
+    if (error) {
+      console.error("NHL public signals error:", error);
+      setNhlSignalsData({ games: [] });
+      return;
+    }
+
+    setNhlSignalsData({
+      games: (data ?? []).map((row: any) => ({
+        gameId: row.game_id,
+        awayTeam: row.away_team,
+        homeTeam: row.home_team,
+        pick: row.pick,
+        status: row.status,
+      })),
+    });
+  }
+
+  if (sport === "NHL") {
+    loadNhlSignals();
+  }
+}, [sport]);
+
+useEffect(() => {
+  async function loadSoccerSignals() {
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/New_York",
+    });
+
+    const { data, error } = await supabase
+      .from("soccer_public_signals")
+      .select("*")
+      .eq("date", today);
+
+    if (error) {
+      console.error("Soccer public signals error:", error);
+      setSoccerSignalsLiveData({ games: [] });
+      return;
+    }
+
+    setSoccerSignalsLiveData({
+      games: (data ?? []).map((row: any) => ({
+        gameId: row.game_id,
+        awayTeam: row.away_team,
+        homeTeam: row.home_team,
+        pick: row.pick,
+        status: row.status,
+      })),
+    });
+  }
+
+  if (sport === "SOCCER") {
+    loadSoccerSignals();
   }
 }, [sport]);
 
@@ -520,19 +630,49 @@ useEffect(() => {
   if (!game) return null;
 
   if (sport === "MLB") {
-    const direct = mlbSignalsData.games.find(
+    const source = mlbSignalsData.games ?? [];
+
+    const direct = source.find(
       (g) => String(g.gameId) === String(game.id)
     );
 
     if (direct) return direct;
 
-    const byName = mlbSignalsData.games.find((g) => isSameMatch(game, g));
+    const byName = source.find((g) => isSameMatch(game, g));
 
     return byName ?? null;
   }
 
   if (sport === "NBA") {
-  const source = nbaSignalsData?.games ?? [];
+    const source = nbaSignalsData.games ?? [];
+
+    const direct = source.find(
+      (g) => String(g.gameId) === String(game.id)
+    );
+
+    if (direct) return direct;
+
+    const byName = source.find((g) => isSameMatch(game, g));
+
+    return byName ?? null;
+  }
+
+  if (sport === "NHL") {
+    const source = nhlSignalsData.games ?? [];
+
+    const direct = source.find(
+      (g) => String(g.gameId) === String(game.id)
+    );
+
+    if (direct) return direct;
+
+    const byName = source.find((g) => isSameMatch(game, g));
+
+    return byName ?? null;
+  }
+
+  if (sport === "SOCCER") {
+  const source = soccerSignalsLiveData.games ?? [];
 
   const direct = source.find(
     (g) => String(g.gameId) === String(game.id)
@@ -540,24 +680,14 @@ useEffect(() => {
 
   if (direct) return direct;
 
-  const byName = source.find((g) =>
-    isSameMatch(
-      {
-        away_team: g.awayTeam,
-        home_team: g.homeTeam,
-      } as any,
-      {
-        awayTeam: game.away_team,
-        homeTeam: game.home_team,
-      }
-    )
-  );
+  const byName = source.find((g) => isSameMatch(game, g));
 
   return byName ?? null;
 }
 
-  return findPickForGame(game, sport);
-}, [game, sport, mlbSignalsData]);
+return findPickForGame(game, sport);
+
+}, [game, sport, mlbSignalsData, nbaSignalsData, nhlSignalsData, soccerSignalsLiveData]);
 
   if (loading) {
     return (

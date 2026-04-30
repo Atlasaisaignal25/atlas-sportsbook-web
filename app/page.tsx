@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
 import soccerSignals from "@/data/soccer-public-signals.json";
-//import mlbTop5 from "@/data/mlb-top5.json";
+import mlbTop5 from "@/data/mlb-top5.json";
 import nbaTop5 from "@/data/nba-top5.json";
 import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
@@ -13,6 +13,9 @@ import { teamBranding } from "./lib/teamBranding";
 import { useRouter, useSearchParams } from "next/navigation";
 import {getMlbPublicSignals,getMlbTop5Live,} from "@/app/lib/supabase/mlbLiveSignals";
 import { getNbaPublicSignals, getNbaTop5Live } from "@/app/lib/supabase/nbaLiveSignals";
+import { getNhlPublicSignals, getNhlTop5Live } from "@/app/lib/supabase/nhlLiveSignals";
+import {getSoccerPublicSignals,getSoccerTop5Live,} from "@/app/lib/supabase/soccerLiveSignals";
+
 
 
 
@@ -539,76 +542,28 @@ function findPick(
 function findLivePick(
   game: LiveScore,
   sport: SportTab,
-  mlbSignalsDataParam: { games: SignalGame[] }
+  signalsDataParam: { games: SignalGame[] }
 ): SignalGame | null {
-  const signalSource =
-  sport === "MLB"
-    ? mlbSignalsDataParam?.games ?? []
-    : sport === "NBA"
-    ? nbaSignalsData?.games ?? []
-    : sport === "NHL"
-    ? nhlSignalsData?.games ?? []
-    : sport === "SOCCER"
-    ? soccerSignalsData?.games ?? []
-    : [];
+  const signalSource = signalsDataParam?.games ?? [];
 
-  const liveAway = normalizeName(game.away_team);
-  const liveHome = normalizeName(game.home_team);
+  const direct = signalSource.find(
+    (g) => String(g.gameId) === String(game.id)
+  );
 
-  const normalizeSignal = (g: SignalGame) => ({
-    signalAway: normalizeName(g.awayTeam ?? ""),
-    signalHome: normalizeName(g.homeTeam ?? ""),
-  });
+  if (direct) return direct;
 
-  // 1. exacto normal
-  const exactNormal =
+  const liveAway = normalizeName(game.away_team ?? "");
+  const liveHome = normalizeName(game.home_team ?? "");
+
+  const byName =
     signalSource.find((g) => {
-      const { signalAway, signalHome } = normalizeSignal(g);
+      const signalAway = normalizeName(g.awayTeam ?? "");
+      const signalHome = normalizeName(g.homeTeam ?? "");
+
       return liveAway === signalAway && liveHome === signalHome;
-    }) || null;
+    }) ?? null;
 
-  if (exactNormal) return exactNormal;
-
-  // 2. exacto invertido
-  const exactReversed =
-    signalSource.find((g) => {
-      const { signalAway, signalHome } = normalizeSignal(g);
-      return liveAway === signalHome && liveHome === signalAway;
-    }) || null;
-
-  if (exactReversed) return exactReversed;
-
-  // 3. flexible normal
-  const flexibleNormal =
-    signalSource.find((g) => {
-      const { signalAway, signalHome } = normalizeSignal(g);
-
-      const awayMatch =
-        liveAway.includes(signalAway) || signalAway.includes(liveAway);
-
-      const homeMatch =
-        liveHome.includes(signalHome) || signalHome.includes(liveHome);
-
-      return awayMatch && homeMatch;
-    }) || null;
-
-  if (flexibleNormal) return flexibleNormal;
-
-  // 4. flexible invertido
-  const flexibleReversed =
-    signalSource.find((g) => {
-      const { signalAway, signalHome } = normalizeSignal(g);
-
-      const awayMatch =
-        liveAway.includes(signalHome) || signalHome.includes(liveAway);
-
-      const homeMatch =
-        liveHome.includes(signalAway) || signalAway.includes(liveHome);
-
-      return awayMatch && homeMatch;
-    }) || null;
-
-  return flexibleReversed;
+  return byName;
 }
 
 function getLivePickResult(game: LiveScore, pickData: SignalGame | null) {
@@ -954,31 +909,36 @@ function getStatusStyles(status?: string) {
 
 function getTop5BySport(
   sport: SportTab,
-  mlbTop5DataParam: { top5: Top5Entry[] }
+  mlbTop5DataParam: { top5: Top5Entry[] },
+  nbaTop5DataParam: { top5: Top5Entry[] },
+  nhlTop5DataParam: { top5: Top5Entry[] },
+  soccerTop5DataParam: { top5: Top5Entry[] }
 ): Top5Entry[] {
   if (sport === "MLB") return mlbTop5DataParam.top5 ?? [];
-  if (sport === "NBA") return nbaTop5Data.top5 ?? [];
-  if (sport === "NHL") return nhlTop5Data.top5 ?? [];
-  if (sport === "SOCCER") return soccerTop5Data.top5 ?? [];
-  return [];
-}
+  if (sport === "NBA") return nbaTop5DataParam.top5 ?? [];
+  if (sport === "NHL") return nhlTop5DataParam.top5 ?? [];
+  if (sport === "SOCCER") return soccerTop5DataParam.top5 ?? [];
 
-function getTopSignalBySport(
-  sport: SportTab,
-  mlbTop5DataParam: { top5: Top5Entry[] }
-): Top5Entry | null {
-  const top5 = getTop5BySport(sport, mlbTop5DataParam);
-  return top5.find((pick) => pick.isTopSignal) || top5[0] || null;
+  return [];
 }
 
 function getSubPicksForUser(
   userAccess: UserAccess,
   selectedSport: SportTab,
-  mlbTop5DataParam: { top5: Top5Entry[] }
+  mlbTop5DataParam: { top5: Top5Entry[] },
+  nbaTop5DataParam: { top5: Top5Entry[] },
+  nhlTop5DataParam: { top5: Top5Entry[] },
+  soccerTop5DataParam: { top5: Top5Entry[] }
 ) {
   if (!hasSportAccess(userAccess, selectedSport)) return [];
 
-  const top5 = getTop5BySport(selectedSport, mlbTop5DataParam);
+  const top5 = getTop5BySport(
+    selectedSport,
+    mlbTop5DataParam,
+    nbaTop5DataParam,
+    nhlTop5DataParam,
+    soccerTop5DataParam
+  );
 
   if (userAccess.plan === "exclusive") {
     return top5.map((pick) => ({
@@ -1105,6 +1065,25 @@ const [nbaTop5Data, setNbaTop5Data] = useState<{
 }>({
   top5: [],
 });
+const [nhlSignalsData, setNhlSignalsData] = useState<{ games: SignalGame[] }>({
+  games: [],
+});
+
+const [nhlTop5Data, setNhlTop5Data] = useState<{
+  top5: Top5Entry[];
+}>({
+  top5: [],
+});
+
+const [soccerSignalsLiveData, setSoccerSignalsLiveData] = useState<{ games: SignalGame[] }>({
+  games: [],
+});
+
+const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
+  top5: Top5Entry[];
+}>({
+  top5: [],
+});
 
   useEffect(() => {
   async function loadMlbSignals() {
@@ -1192,6 +1171,104 @@ useEffect(() => {
   loadNbaTop5();
 }, []);
 
+useEffect(() => {
+  async function loadNhlSignals() {
+    const data = await getNhlPublicSignals();
+
+    setNhlSignalsData({
+      games: (data || []).map((g: any) => ({
+        gameId: g.game_id,
+        awayTeam: g.away_team,
+        homeTeam: g.home_team,
+        pick: g.pick,
+        market: g.market,
+        line: g.line,
+        odds: g.odds,
+        status: g.status,
+        startTime: g.start_time,
+      })),
+    });
+  }
+
+  loadNhlSignals();
+}, []);
+
+useEffect(() => {
+  async function loadNhlTop5() {
+    const data = await getNhlTop5Live();
+
+    setNhlTop5Data({
+      top5: (data || []).map((g: any) => ({
+        gameId: g.game_id,
+        awayTeam: g.away_team,
+        homeTeam: g.home_team,
+        pick: g.pick,
+        market: g.market,
+        line: g.line,
+        odds: g.odds,
+        status: g.status,
+        rank: g.rank,
+        isTopSignal: g.is_top_signal,
+        confidence: g.confidence,
+        internalScore: g.internal_score,
+        edge: g.edge,
+        startTime: g.start_time,
+      })),
+    });
+  }
+
+  loadNhlTop5();
+}, []);
+
+useEffect(() => {
+  async function loadSoccerSignals() {
+    const data = await getSoccerPublicSignals();
+
+    setSoccerSignalsLiveData({
+      games: (data || []).map((g: any) => ({
+        gameId: g.game_id,
+        awayTeam: g.away_team,
+        homeTeam: g.home_team,
+        pick: g.pick,
+        market: g.market,
+        line: g.line,
+        odds: g.odds,
+        status: g.status,
+        startTime: g.start_time,
+      })),
+    });
+  }
+
+  loadSoccerSignals();
+}, []);
+
+useEffect(() => {
+  async function loadSoccerTop5() {
+    const data = await getSoccerTop5Live();
+
+    setSoccerTop5LiveData({
+      top5: (data || []).map((g: any) => ({
+        gameId: g.game_id,
+        awayTeam: g.away_team,
+        homeTeam: g.home_team,
+        pick: g.pick,
+        market: g.market,
+        line: g.line,
+        odds: g.odds,
+        status: g.status,
+        rank: g.rank,
+        isTopSignal: g.is_top_signal,
+        confidence: g.confidence,
+        internalScore: g.internal_score,
+        edge: g.edge,
+        startTime: g.start_time,
+      })),
+    });
+  }
+
+  loadSoccerTop5();
+}, []);
+
   const topSignals: TopSignalCard[] = useMemo(
   () =>
     [
@@ -1208,7 +1285,7 @@ useEffect(() => {
         ? { ...(soccerTop5Data.top5[0] as Top5Entry), sport: "SOCCER" as const }
         : null,
     ].filter((pick): pick is TopSignalCard => Boolean(pick)),
-  []
+  [mlbTop5Data, nbaTop5Data, nhlTop5Data]
 );
 
 const groupedLiveGames = useMemo(() => {
@@ -1532,8 +1609,22 @@ useEffect(() => {
 }, [viewMode, selectedSport]);
 
 const subsPicks = useMemo(() => {
-  return getSubPicksForUser(userAccess, selectedSport, mlbTop5Data)
-}, [userAccess, selectedSport]);
+  return getSubPicksForUser(
+    userAccess,
+    selectedSport,
+    mlbTop5Data,
+    nbaTop5Data,
+    nhlTop5Data,
+    soccerTop5LiveData
+  );
+}, [
+  userAccess,
+  selectedSport,
+  mlbTop5Data,
+  nbaTop5Data,
+  nhlTop5Data,
+  soccerTop5LiveData,
+]);
 
 const topSignalPicks = useMemo(() => {
   return subsPicks.filter((pick) => pick.isTopSignal);
@@ -2114,9 +2205,24 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
                     <div>
                       {group.games.map((game, idx) => {
                         const oddsGame = findOddsGameForLive(game, liveOddsGames);
-                        const livePickData = findLivePick(game, group.sport, mlbSignalsData)
+                        const livePickData =
+  group.sport === "MLB"
+    ? findLivePick(game, group.sport, mlbSignalsData)
+    : group.sport === "NBA"
+    ? findLivePick(game, group.sport, nbaSignalsData)
+    : group.sport === "NHL"
+    ? findLivePick(game, group.sport, nhlSignalsData)
+    : group.sport === "SOCCER"
+    ? findLivePick(game, group.sport, soccerSignalsLiveData)
+    : null;
                         const isTop5 = (() => {
-                          const top5 = getTop5BySport(group.sport, mlbTop5Data);
+                          const top5 = getTop5BySport(
+  group.sport,
+  mlbTop5Data,
+  nbaTop5Data,
+  nhlTop5Data,
+  soccerTop5LiveData
+);
                           return top5.some((p) => {
                             const away = normalizeName(p.awayTeam ?? "");
                             const home = normalizeName(p.homeTeam ?? "");
