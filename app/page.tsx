@@ -2158,17 +2158,17 @@ const eliteTopSignals = useMemo(() => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-center justify-between">
-  <div className="flex items-center gap-2">
-    <img
-      src="/atlas-logo.png"
-      alt="Atlas Signals"
-      className="h-7 w-7 object-contain"
-    />
+  <div className="flex items-center gap-3">
+  <img
+    src="/atlas-logo.png"
+    alt="Atlas Signals"
+    className="h-8 w-8 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+  />
 
-    <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-400/90">
-      Atlas Signals
-    </p>
-  </div>
+  <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400/90">
+    Atlas Signals
+  </p>
+</div>
 </div>
             <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight">
               Games
