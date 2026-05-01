@@ -1086,11 +1086,29 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
 });
 
   useEffect(() => {
-  async function loadMlbSignals() {
-    const data = await getMlbPublicSignals();
+  async function loadAllSupabaseSignals() {
+    const [
+      mlbPublic,
+      mlbTop5,
+      nbaPublic,
+      nbaTop5,
+      nhlPublic,
+      nhlTop5,
+      soccerPublic,
+      soccerTop5,
+    ] = await Promise.all([
+      getMlbPublicSignals(),
+      getMlbTop5Live(),
+      getNbaPublicSignals(),
+      getNbaTop5Live(),
+      getNhlPublicSignals(),
+      getNhlTop5Live(),
+      getSoccerPublicSignals(),
+      getSoccerTop5Live(),
+    ]);
 
     setMlbSignalsData({
-      games: (data || []).map((g: any) => ({
+      games: (mlbPublic || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
@@ -1099,34 +1117,31 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
         line: g.line,
         odds: g.odds,
         status: g.status,
+        startTime: g.start_time,
       })),
     });
-  }
-
-  loadMlbSignals();
-}, []);
-
-
-useEffect(() => {
-  async function loadMlbTop5() {
-    const data = await getMlbTop5Live();
 
     setMlbTop5Data({
-      top5: data,
+      top5: (mlbTop5 || []).map((g: any) => ({
+        gameId: g.game_id,
+        awayTeam: g.away_team,
+        homeTeam: g.home_team,
+        pick: g.pick,
+        market: g.market,
+        line: g.line,
+        odds: g.odds,
+        status: g.status,
+        rank: g.rank,
+        isTopSignal: g.is_top_signal,
+        confidence: g.confidence,
+        internalScore: g.internal_score,
+        edge: g.edge,
+        startTime: g.start_time,
+      })),
     });
-  }
-
-  loadMlbTop5();
-}, []);
-
-useEffect(() => {
-  async function loadNbaSignals() {
-    const data = await getNbaPublicSignals();
-
-    console.log("NBA SUPABASE PUBLIC SIGNALS:", data);
 
     setNbaSignalsData({
-      games: (data || []).map((g: any) => ({
+      games: (nbaPublic || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
@@ -1135,21 +1150,12 @@ useEffect(() => {
         line: g.line,
         odds: g.odds,
         status: g.status,
+        startTime: g.start_time,
       })),
     });
-  }
-
-  loadNbaSignals();
-}, []);
-
-useEffect(() => {
-  async function loadNbaTop5() {
-    const data = await getNbaTop5Live();
-
-    console.log("NBA SUPABASE TOP5:", data);
 
     setNbaTop5Data({
-      top5: (data || []).map((g: any) => ({
+      top5: (nbaTop5 || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
@@ -1166,17 +1172,9 @@ useEffect(() => {
         startTime: g.start_time,
       })),
     });
-  }
-
-  loadNbaTop5();
-}, []);
-
-useEffect(() => {
-  async function loadNhlSignals() {
-    const data = await getNhlPublicSignals();
 
     setNhlSignalsData({
-      games: (data || []).map((g: any) => ({
+      games: (nhlPublic || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
@@ -1188,17 +1186,9 @@ useEffect(() => {
         startTime: g.start_time,
       })),
     });
-  }
-
-  loadNhlSignals();
-}, []);
-
-useEffect(() => {
-  async function loadNhlTop5() {
-    const data = await getNhlTop5Live();
 
     setNhlTop5Data({
-      top5: (data || []).map((g: any) => ({
+      top5: (nhlTop5 || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
@@ -1215,17 +1205,9 @@ useEffect(() => {
         startTime: g.start_time,
       })),
     });
-  }
-
-  loadNhlTop5();
-}, []);
-
-useEffect(() => {
-  async function loadSoccerSignals() {
-    const data = await getSoccerPublicSignals();
 
     setSoccerSignalsLiveData({
-      games: (data || []).map((g: any) => ({
+      games: (soccerPublic || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
@@ -1237,17 +1219,9 @@ useEffect(() => {
         startTime: g.start_time,
       })),
     });
-  }
-
-  loadSoccerSignals();
-}, []);
-
-useEffect(() => {
-  async function loadSoccerTop5() {
-    const data = await getSoccerTop5Live();
 
     setSoccerTop5LiveData({
-      top5: (data || []).map((g: any) => ({
+      top5: (soccerTop5 || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
@@ -1266,7 +1240,13 @@ useEffect(() => {
     });
   }
 
-  loadSoccerTop5();
+  loadAllSupabaseSignals();
+
+  const interval = setInterval(() => {
+    loadAllSupabaseSignals();
+  }, 30000);
+
+  return () => clearInterval(interval);
 }, []);
 
   const topSignals: TopSignalCard[] = useMemo(
