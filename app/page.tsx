@@ -276,35 +276,88 @@ function getGameMinute(game: LiveScore) {
   if (game.completed) return "Final";
 
   const hasScores = Array.isArray(game.scores) && game.scores.length > 0;
+  if (!hasScores) return "";
+
+  const sportKey = String(game.sport_key ?? "").toLowerCase();
 
   const clock =
     (game as any)?.clock ??
     (game as any)?.time_remaining ??
     (game as any)?.timer ??
+    (game as any)?.display_clock ??
     null;
 
   const period =
     (game as any)?.period ??
     (game as any)?.current_period ??
     (game as any)?.quarter ??
-    (game as any)?.inning ??
     null;
 
-  // 🧠 Casos reales
-  if (hasScores && clock && period) {
-    return `${clock} • ${period}`;
+  const inning =
+    (game as any)?.inning ??
+    (game as any)?.current_inning ??
+    (game as any)?.inning_number ??
+    null;
+
+  const inningHalf =
+    (game as any)?.inning_half ??
+    (game as any)?.half_inning ??
+    (game as any)?.inning_state ??
+    null;
+
+  const minute =
+    (game as any)?.minute ??
+    (game as any)?.match_minute ??
+    (game as any)?.elapsed ??
+    null;
+
+  const status =
+    (game as any)?.status ??
+    (game as any)?.game_status ??
+    (game as any)?.status_detail ??
+    null;
+
+  if (sportKey.includes("baseball")) {
+    if (inning && inningHalf) {
+      const half = String(inningHalf).toLowerCase().includes("top")
+        ? "Top"
+        : String(inningHalf).toLowerCase().includes("bottom")
+        ? "Bot"
+        : String(inningHalf);
+
+      return `${half} ${inning}`;
+    }
+
+    if (inning) return `Inning ${inning}`;
+    if (status) return String(status);
+    return "Live";
   }
 
-  if (hasScores && clock) {
-    return `${clock}`;
+  if (sportKey.includes("soccer")) {
+    if (minute) return `${minute}'`;
+    if (status) return String(status);
+    return "Live";
   }
 
-  if (hasScores && period) {
-    return `${period}`;
+  if (sportKey.includes("basketball")) {
+    if (clock && period) return `${clock} • Q${period}`;
+    if (period) return `Q${period}`;
+    if (clock) return String(clock);
+    return "Live";
   }
 
-  // ⚠️ fallback
-  return hasScores ? "Live" : "";
+  if (sportKey.includes("icehockey")) {
+    if (clock && period) return `${clock} • P${period}`;
+    if (period) return `P${period}`;
+    if (clock) return String(clock);
+    return "Live";
+  }
+
+  if (clock && period) return `${clock} • ${period}`;
+  if (clock) return String(clock);
+  if (period) return String(period);
+
+  return "Live";
 }
 
 function getLiveSportFromKey(sportKey: string): SportTab {
@@ -877,6 +930,23 @@ function buildRecordStats(
   const wins = graded.filter((r) => r === "WON").length;
   const losses = graded.filter((r) => r === "LOST").length;
   const pushes = graded.filter((r) => r === "PUSH").length;
+  const decided = wins + losses;
+  const winRate = decided > 0 ? Math.round((wins / decided) * 100) : 0;
+
+  return {
+    wins,
+    losses,
+    pushes,
+    decided,
+    winRate,
+  };
+}
+
+function buildHistoryRecordStats(history: any[]) {
+  const wins = history.filter((item) => item.result === "WON").length;
+  const losses = history.filter((item) => item.result === "LOST").length;
+  const pushes = history.filter((item) => item.result === "PUSH").length;
+
   const decided = wins + losses;
   const winRate = decided > 0 ? Math.round((wins / decided) * 100) : 0;
 
@@ -1477,6 +1547,45 @@ useEffect(() => {
 }, [selectedSport, viewMode]);
 
 useEffect(() => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let cancelled = false;
+
+  function hasLiveGames(games: LiveScore[]) {
+    return games.some(
+      (game) =>
+        !game.completed &&
+        Array.isArray(game.scores) &&
+        game.scores.length > 0
+    );
+  }
+
+  function hasUpcomingGames(games: LiveScore[]) {
+    const now = Date.now();
+
+    return games.some((game) => {
+      const start = new Date(game.commence_time).getTime();
+      const diffMinutes = (start - now) / (1000 * 60);
+
+      return diffMinutes >= 0 && diffMinutes <= 120;
+    });
+  }
+
+  function getRefreshDelay(games: LiveScore[]) {
+    if (document.visibilityState === "hidden") {
+      return 120000; // background: 2 min
+    }
+
+    if (hasLiveGames(games)) {
+      return 15000; // live games: 15 sec
+    }
+
+    if (hasUpcomingGames(games)) {
+      return 30000; // games within 2h: 30 sec
+    }
+
+    return 180000; // quiet period: 3 min
+  }
+
   async function loadLiveGames() {
     if (viewMode !== "live") return;
 
@@ -1484,20 +1593,23 @@ useEffect(() => {
       setLiveLoading(true);
 
       if (selectedSport === "TOP" || selectedSport === "NFL") {
-        console.log("LIVE DEBUG blocked sport:", selectedSport);
         setLiveGames([]);
         setLiveOddsGames([]);
-        setLiveLoading(false);
         return;
       }
 
-     const scoresRes = await fetch(`/api/scores?sport=${selectedSport}`, {
-  cache: "no-store",
-});
+      const scoresRes = await fetch(`/api/scores?sport=${selectedSport}`, {
+        cache: "no-store",
+      });
 
-const scoresData = await scoresRes.json();
+      const scoresData = await scoresRes.json();
+      const nextLiveGames = Array.isArray(scoresData)
+        ? (scoresData as LiveScore[])
+        : [];
 
-setLiveGames(Array.isArray(scoresData) ? scoresData : []);
+      if (cancelled) return;
+
+      setLiveGames(nextLiveGames);
 
       if (selectedSport === "SOCCER") {
         const soccerLeagues = [
@@ -1521,6 +1633,7 @@ setLiveGames(Array.isArray(scoresData) ? scoresData : []);
               const res = await fetch(`/api/odds?sport=${league}`, {
                 cache: "no-store",
               });
+
               const data = await res.json();
               return Array.isArray(data) ? (data as OddsGame[]) : [];
             } catch {
@@ -1529,94 +1642,71 @@ setLiveGames(Array.isArray(scoresData) ? scoresData : []);
           })
         );
 
-        setLiveOddsGames(oddsResponses.flat());
-        return;
+        if (!cancelled) {
+          setLiveOddsGames(oddsResponses.flat());
+        }
+      } else {
+        const sportMap: Record<"NHL" | "NBA" | "MLB", string> = {
+          NHL: "icehockey_nhl",
+          NBA: "basketball_nba",
+          MLB: "baseball_mlb",
+        };
+
+        const apiSport = sportMap[selectedSport as "NHL" | "NBA" | "MLB"];
+
+        const oddsRes = await fetch(`/api/odds?sport=${apiSport}`, {
+          cache: "no-store",
+        });
+
+        const oddsData = await oddsRes.json();
+
+        if (!cancelled) {
+          setLiveOddsGames(
+            Array.isArray(oddsData) ? (oddsData as OddsGame[]) : []
+          );
+        }
       }
 
-      const sportMap: Record<"NHL" | "NBA" | "MLB", string> = {
-        NHL: "icehockey_nhl",
-        NBA: "basketball_nba",
-        MLB: "baseball_mlb",
-      };
+      const delay = getRefreshDelay(nextLiveGames);
 
-      const apiSport = sportMap[selectedSport as "NHL" | "NBA" | "MLB"];
-
-      const oddsRes = await fetch(`/api/odds?sport=${apiSport}`, {
-        cache: "no-store",
-      });
-
-      const oddsData = await oddsRes.json();
-      setLiveOddsGames(Array.isArray(oddsData) ? (oddsData as OddsGame[]) : []);
+      if (!cancelled) {
+        timeoutId = setTimeout(loadLiveGames, delay);
+      }
     } catch (error) {
-      setLiveGames([]);
-      setLiveOddsGames([]);
+      if (!cancelled) {
+        setLiveGames([]);
+        setLiveOddsGames([]);
+        timeoutId = setTimeout(loadLiveGames, 60000);
+      }
     } finally {
-      setLiveLoading(false);
+      if (!cancelled) {
+        setLiveLoading(false);
+      }
+    }
+  }
+
+  function handleVisibilityChange() {
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (document.visibilityState === "visible") {
+      loadLiveGames();
+    } else {
+      timeoutId = setTimeout(loadLiveGames, 120000);
     }
   }
 
   loadLiveGames();
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    cancelled = true;
+
+    if (timeoutId) clearTimeout(timeoutId);
+
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
 }, [viewMode, selectedSport]);
-
-useEffect(() => {
-  async function loadSubsScores() {
-    if (viewMode !== "odds") return;
-
-    try {
-      setSubsScoresLoading(true);
-
-      if (selectedSport === "TOP" || selectedSport === "NFL") {
-        setSubsScoreGames([]);
-        return;
-      }
-
-      const sportForScores = selectedSport;
-
-      const res = await fetch(`/api/scores?sport=${sportForScores}`, {
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-      setSubsScoreGames(Array.isArray(data) ? data : []);
-    } catch (error) {
-      setSubsScoreGames([]);
-    } finally {
-      setSubsScoresLoading(false);
-    }
-  }
-
-  loadSubsScores();
-}, [viewMode, selectedSport]);
-
-const subsPicks = useMemo(() => {
-  return getSubPicksForUser(
-    userAccess,
-    selectedSport,
-    mlbTop5Data,
-    nbaTop5Data,
-    nhlTop5Data,
-    soccerTop5LiveData
-  );
-}, [
-  userAccess,
-  selectedSport,
-  mlbTop5Data,
-  nbaTop5Data,
-  nhlTop5Data,
-  soccerTop5LiveData,
-]);
-
-const topSignalPicks = useMemo(() => {
-  return subsPicks.filter((pick) => pick.isTopSignal);
-}, [subsPicks]);
-
-const top5RecordStats = useMemo(() => {
-  return buildRecordStats(subsPicks, subsScoreGames);
-}, [subsPicks, subsScoreGames]);
-
-const eliteTopSignals = useMemo(() => {
-  return topSignals;
-}, [topSignals]);
 
 useEffect(() => {
   if (!mlbTop5Data.top5 || mlbTop5Data.top5.length === 0) return;
@@ -1994,19 +2084,19 @@ useEffect(() => {
     try {
       let endpoint = "";
 
-      if (viewMode === "live" && selectedSport === "NHL") {
+      if (selectedSport === "NHL") {
   endpoint = "/api/top5-history-live/nhl";
 }
 
-if (viewMode === "live" && selectedSport === "MLB") {
+if (selectedSport === "MLB") {
   endpoint = "/api/top5-history-live/mlb";
 }
 
-if (viewMode === "live" && selectedSport === "NBA") {
+if (selectedSport === "NBA") {
   endpoint = "/api/top5-history-live/nba";
 }
 
-if (viewMode === "live" && selectedSport === "SOCCER") {
+if (selectedSport === "SOCCER") {
   endpoint = "/api/top5-history-live/soccer";
 }
 
@@ -2035,6 +2125,31 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
   loadTop5History();
 }, [selectedSport, viewMode, activeDay]);
 
+const subsPicks = useMemo(() => {
+  return getSubPicksForUser(
+    userAccess,
+    selectedSport,
+    mlbTop5Data,
+    nbaTop5Data,
+    nhlTop5Data,
+    soccerTop5LiveData
+  );
+}, [
+  userAccess,
+  selectedSport,
+  mlbTop5Data,
+  nbaTop5Data,
+  nhlTop5Data,
+  soccerTop5LiveData,
+]);
+
+const top5RecordStats = useMemo(() => {
+  return buildHistoryRecordStats(top5History);
+}, [top5History]);
+
+const eliteTopSignals = useMemo(() => {
+  return topSignals ?? [];
+}, [topSignals]);
 
   return (
   <main className="min-h-screen bg-[#050816] text-white">
@@ -2042,9 +2157,19 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
       <header className="sticky top-0 z-20 border-b border-white/5 bg-[#050816]/95 px-4 pb-3 pt-5 backdrop-blur">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-400/90">
-              Atlas Signals
-            </p>
+            <div className="flex items-center justify-between">
+  <div className="flex items-center gap-2">
+    <img
+      src="/atlas-logo.png"
+      alt="Atlas Signals"
+      className="h-7 w-7 object-contain"
+    />
+
+    <p className="text-[11px] uppercase tracking-[0.32em] text-cyan-400/90">
+      Atlas Signals
+    </p>
+  </div>
+</div>
             <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight">
               Games
             </h1>
@@ -2185,7 +2310,8 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
                     <div>
                       {group.games.map((game, idx) => {
                         const oddsGame = findOddsGameForLive(game, liveOddsGames);
-                        const livePickData =
+
+const livePickData =
   group.sport === "MLB"
     ? findLivePick(game, group.sport, mlbSignalsData)
     : group.sport === "NBA"
@@ -2195,28 +2321,32 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
     : group.sport === "SOCCER"
     ? findLivePick(game, group.sport, soccerSignalsLiveData)
     : null;
-                        const isTop5 = (() => {
-                          const top5 = getTop5BySport(
+
+const result = getLivePickResult(game, livePickData);
+
+const top5 = getTop5BySport(
   group.sport,
   mlbTop5Data,
   nbaTop5Data,
   nhlTop5Data,
   soccerTop5LiveData
 );
-                          return top5.some((p) => {
-                            const away = normalizeName(p.awayTeam ?? "");
-                            const home = normalizeName(p.homeTeam ?? "");
 
-                            const liveAway = normalizeName(game.away_team);
-                            const liveHome = normalizeName(game.home_team);
+const isTop5 =
+  !!livePickData &&
+  top5.some((p) => {
+    const sameGame =
+      String((p as any).gameId) === String(livePickData.gameId) ||
+      (
+        normalizeName(p.awayTeam ?? "") === normalizeName(livePickData.awayTeam ?? "") &&
+        normalizeName(p.homeTeam ?? "") === normalizeName(livePickData.homeTeam ?? "")
+      );
 
-                            return (
-                              (away === liveAway && home === liveHome) ||
-                              (away === liveHome && home === liveAway)
-                            );
-                          });
-                        })();
-                        const result = getLivePickResult(game, livePickData);
+    const samePick =
+      normalizeName(p.pick ?? "") === normalizeName(livePickData.pick ?? "");
+
+    return sameGame && samePick;
+  });
 
                         const awayScore =
                           game.scores?.find((s) => s.name === game.away_team)
@@ -2326,7 +2456,7 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
   </div>
 </div>
 
-                            {activeDay !== "yesterday" && livePickData ? (
+                            {livePickData ? (
                               <div className="mt-2 flex justify-center">
                                 {result === "WON" ? (
                                   <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
@@ -2419,9 +2549,29 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
                     </div>
 
                     <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-                      <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                        Signal Detected
-                      </div>
+                      
+
+<div
+  className={`mb-3 inline-flex rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em]
+    ${
+      pick.status === "WON"
+        ? "bg-green-500/15 text-green-300 border border-green-400/30"
+        : pick.status === "LOST"
+        ? "bg-red-500/15 text-red-300 border border-red-400/30"
+        : pick.status === "PUSH"
+        ? "bg-yellow-500/15 text-yellow-300 border border-yellow-400/30"
+        : "bg-cyan-400/10 text-cyan-300 border border-cyan-400/25"
+    }
+  `}
+>
+  {pick.status === "WON"
+    ? "Signal Won"
+    : pick.status === "LOST"
+    ? "Signal Lost"
+    : pick.status === "PUSH"
+    ? "Signal Push"
+    : "Signal Detected"}
+</div>
 
                       <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
                         {formatDisplayedPick(pick.pick, pick.sport)}
@@ -2545,174 +2695,156 @@ if (viewMode === "live" && selectedSport === "SOCCER") {
             </button>
           </div>
         ) : subsPicks.length === 0 ? (
-          <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-            No subscription picks available for {selectedSport}.
+  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+    No subscription picks available for {selectedSport}.
+  </div>
+) : (
+  <div className="space-y-3">
+    <div className="grid grid-cols-3 gap-2">
+      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+          Top Signal
+        </p>
+        <p className="mt-2 text-[16px] font-bold text-white">
+          {mlbRecord.wins}-{mlbRecord.losses}
+        </p>
+        <p className="mt-1 text-[11px] text-white/55">
+          Push: {mlbRecord.pushes}
+        </p>
+      </div>
+
+      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+          Top 5
+        </p>
+        <p className="mt-2 text-[16px] font-bold text-white">
+          {top5RecordStats.wins}-{top5RecordStats.losses}
+        </p>
+        <p className="mt-1 text-[11px] text-white/55">
+          Push: {top5RecordStats.pushes}
+        </p>
+        <p className="mt-1 text-[11px] text-white/55">
+          Today
+        </p>
+      </div>
+
+      <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
+          Win Rate
+        </p>
+        <p className="mt-2 text-[16px] font-bold text-white">
+          {mlbRecord.winRate}%
+        </p>
+        <p className="mt-1 text-[11px] text-white/55">
+          Top Signal
+        </p>
+      </div>
+    </div>
+
+    {subsScoresLoading ? (
+      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
+        Loading results...
+      </div>
+    ) : null}
+
+    {subsPicks.map((pick, idx) => {
+      const finalResult = getSubsPickResult(pick, subsScoreGames);
+
+      const resultLabel =
+        finalResult === "WON"
+          ? "Signal Won"
+          : finalResult === "LOST"
+          ? "Signal Lost"
+          : finalResult === "PUSH"
+          ? "Signal Push"
+          : "Signal Detected";
+
+      const resultClass =
+        finalResult === "WON"
+          ? "bg-green-500/15 text-green-300 border-green-400/30"
+          : finalResult === "LOST"
+          ? "bg-red-500/15 text-red-300 border-red-400/30"
+          : finalResult === "PUSH"
+          ? "bg-yellow-500/15 text-yellow-300 border-yellow-400/30"
+          : "bg-cyan-400/10 text-cyan-300 border-cyan-400/25";
+
+      return (
+        <article
+          key={`subs-pick-${selectedSport}-${idx}`}
+          className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
+        >
+          <div className="mb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
+              {selectedSport}
+            </p>
+
+            {pick.startTime && (
+              <p className="mt-2 text-[13px] font-medium text-white/55">
+                {formatTime(pick.startTime)}
+              </p>
+            )}
           </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-                  Top Signal
-                </p>
-                <p className="mt-2 text-[16px] font-bold text-white">
-                  {mlbRecord.wins}-{mlbRecord.losses}
-                </p>
-                <p className="mt-1 text-[11px] text-white/55">
-                  Push: {mlbRecord.pushes}
-                </p>
-              </div>
 
-              <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-                  Top 5
-                </p>
-                <p className="mt-2 text-[16px] font-bold text-white">
-                  {top5RecordStats.wins}-{top5RecordStats.losses}
-                </p>
-                <p className="mt-1 text-[11px] text-white/55">
-                  Push: {top5RecordStats.pushes}
-                </p>
-                <p className="mt-1 text-[11px] text-white/55">
-                  Today
-                </p>
-              </div>
-
-              <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-                  Win Rate
-                </p>
-                <p className="mt-2 text-[16px] font-bold text-white">
-                  {mlbRecord.winRate}%
-                </p>
-                <p className="mt-1 text-[11px] text-white/55">
-                  Top Signal
-                </p>
-              </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
+              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                {getDisplayAbbr(pick.awayTeam ?? "")}
+              </p>
             </div>
 
-            {subsScoresLoading ? (
-              <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-                Loading results...
-              </div>
-            ) : null}
-
-            {subsPicks.map((pick, idx) => {
-              const finalResult = getSubsPickResult(pick, subsScoreGames);
-const saveResult =
-  pick.status === "WON" || pick.status === "LOST" || pick.status === "PUSH"
-    ? pick.status
-    : "PENDING";
-const matchedScoreGame = findScoreGameForPick(pick, subsScoreGames);
-const showPending = saveResult === "PENDING";
-const isGameFinished =
-  pick.status === "WON" || pick.status === "LOST" || pick.status === "PUSH";
-
-              return (
-                <article
-                  key={`subs-pick-${selectedSport}-${idx}`}
-                  className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
-                >
-                  <div className="mb-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
-                      {selectedSport}
-                    </p>
-                    {pick.startTime && (
-                      <p className="mt-2 text-[13px] font-medium text-white/55">
-                        {formatTime(pick.startTime)}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
-                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                        {getDisplayAbbr(pick.awayTeam ?? "")}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
-                      <p className="truncate text-[16px] font-semibold tracking-tight text-white">
-                        {getDisplayAbbr(pick.homeTeam ?? "")}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
-                    <div className="mb-3 inline-flex rounded-full bg-cyan-300/12 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
-                      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cyan-300">
-                        {isGameFinished
-  ? saveResult === "WON"
-    ? "Signal Won"
-    : saveResult === "LOST"
-    ? "Signal Lost"
-    : saveResult === "PUSH"
-    ? "Signal Push"
-    : "Signal Detected"
-  : "Signal Detected"}
-                      </p>
-                    </div>
-
-                    <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
-                      {formatDisplayedPick(pick.pick, selectedSport)}
-                    </p>
-                  
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {saveResult === "PENDING" && (
-  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-white/60 border-white/20">
-    Pending
-  </div>
-)}
-
-{saveResult === "WON" && (
-  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-green-400 border-green-400/30">
-    Won
-  </div>
-)}
-
-{saveResult === "LOST" && (
-  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-red-400 border-red-400/30">
-    Lost
-  </div>
-)}
-
-{saveResult === "PUSH" && (
-  <div className="inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold text-yellow-400 border-yellow-400/30">
-    Push
-  </div>
-)}
-                    </div>
-
-                    <p className="mt-2 text-[11px] text-white/40">
-                      {pick.status === "CONFIRMED" && "Validated by system"}
-                      {pick.status === "REMOVED" && "Signal removed due to market shift"}
-                      {pick.status === "DOWNGRADED" &&
-                        "Confidence reduced before game time"}
-                      {!pick.status && "Monitoring market conditions"}
-                    </p>
-                  </div>
-
-                  
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
-                        String(pick.label).includes("Top Signal")
-                          ? "bg-purple-500/18 text-purple-300"
-                          : "bg-yellow-500/18 text-yellow-300"
-                      }`}
-                    >
-                      {pick.label}
-                    </span>
-                  </div>
-                </article>
-              );
-            })}
+            <div className="flex items-center gap-3">
+              <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
+              <p className="truncate text-[16px] font-semibold tracking-tight text-white">
+                {getDisplayAbbr(pick.homeTeam ?? "")}
+              </p>
+            </div>
           </div>
-        )}
+
+          <div className="mt-5 rounded-[20px] border border-cyan-400/25 bg-cyan-400/10 p-4">
+            <div
+              className={`mb-3 inline-flex rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${resultClass}`}
+            >
+              {resultLabel}
+            </div>
+
+            <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
+              {formatDisplayedPick(pick.pick, selectedSport)}
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <div
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${getStatusStyles(
+                  pick.status
+                )}`}
+              >
+                {String(pick.status ?? "PENDING")}
+              </div>
+
+              <span
+                className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                  String(pick.label).includes("Top Signal")
+                    ? "bg-purple-500/18 text-purple-300"
+                    : "bg-yellow-500/18 text-yellow-300"
+                }`}
+              >
+                {pick.label}
+              </span>
+            </div>
+
+            <p className="mt-2 text-[11px] text-white/40">
+              {pick.status === "CONFIRMED" && "Validated by system"}
+              {pick.status === "REMOVED" && "Signal removed due to market shift"}
+              {pick.status === "DOWNGRADED" &&
+                "Confidence reduced before game time"}
+              {!pick.status && "Monitoring market conditions"}
+            </p>
+          </div>
+        </article>
+      );
+    })}
+  </div>
+)}
 
 {viewMode === "odds" && (
   <div className="mt-6">
