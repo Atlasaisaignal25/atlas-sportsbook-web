@@ -608,20 +608,44 @@ function findLivePick(
   const liveAway = normalizeName(game.away_team ?? "");
   const liveHome = normalizeName(game.home_team ?? "");
 
-  const byName =
-    signalSource.find((g) => {
-      const signalAway = normalizeName(g.awayTeam ?? "");
-      const signalHome = normalizeName(g.homeTeam ?? "");
+  const byExactName = signalSource.find((g) => {
+    const signalAway = normalizeName(g.awayTeam ?? "");
+    const signalHome = normalizeName(g.homeTeam ?? "");
 
-      return liveAway === signalAway && liveHome === signalHome;
-    }) ?? null;
+    return liveAway === signalAway && liveHome === signalHome;
+  });
 
-  return byName;
+  if (byExactName) return byExactName;
+
+  const byFlexibleName = signalSource.find((g) => {
+    const signalAway = normalizeName(g.awayTeam ?? "");
+    const signalHome = normalizeName(g.homeTeam ?? "");
+
+    const sameAway =
+      liveAway.includes(signalAway) ||
+      signalAway.includes(liveAway);
+
+    const sameHome =
+      liveHome.includes(signalHome) ||
+      signalHome.includes(liveHome);
+
+    return sameAway && sameHome;
+  });
+
+  if (byFlexibleName) return byFlexibleName;
+
+  const byReversedName = signalSource.find((g) => {
+    const signalAway = normalizeName(g.awayTeam ?? "");
+    const signalHome = normalizeName(g.homeTeam ?? "");
+
+    return liveAway === signalHome && liveHome === signalAway;
+  });
+
+  return byReversedName ?? null;
 }
 
 function getLivePickResult(game: LiveScore, pickData: SignalGame | null) {
   if (!pickData) return null;
-
   if (!game.completed) return "PENDING";
 
   const awayScore = Number(
@@ -632,79 +656,110 @@ function getLivePickResult(game: LiveScore, pickData: SignalGame | null) {
     game.scores?.find((s) => s.name === game.home_team)?.score ?? NaN
   );
 
-  console.log("LIVE GAME DEBUG", game);
-
   if (!Number.isFinite(awayScore) || !Number.isFinite(homeScore)) {
     return "PENDING";
   }
 
   const pickRaw = String(pickData.pick ?? "").trim();
+  if (!pickRaw) return "PENDING";
+
   const pick = pickRaw.toLowerCase();
+  const pickNorm = normalizeName(pickRaw);
+
   const totalScore = awayScore + homeScore;
 
   const awayName = normalizeName(game.away_team);
   const homeName = normalizeName(game.home_team);
 
-  // MONEYLINE
-  if (pick.includes("ml")) {
-    const pickNorm = normalizeName(pickRaw);
+  const awayLast = getLastWord(game.away_team);
+  const homeLast = getLastWord(game.home_team);
 
-    if (pickNorm.includes(awayName)) {
-      return awayScore > homeScore ? "WON" : "LOST";
-    }
-
-    if (pickNorm.includes(homeName)) {
-      return homeScore > awayScore ? "WON" : "LOST";
-    }
-
-    return "PENDING";
-  }
-
-  // TOTALS
+  // TOTALS: Over 8.5 / Under 6 / O 8.5 / U 6
   const totalMatch =
-    pick.match(/over\s*([0-9]+(?:\.[0-9]+)?)/i) ||
-    pick.match(/under\s*([0-9]+(?:\.[0-9]+)?)/i);
+    pick.match(/\bover\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i) ||
+    pick.match(/\bunder\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i) ||
+    pick.match(/\bo\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i) ||
+    pick.match(/\bu\b\s*\(?\s*([0-9]+(?:\.[0-9]+)?)\s*\)?/i);
 
   if (totalMatch) {
     const line = Number(totalMatch[1]);
-
     if (!Number.isFinite(line)) return "PENDING";
 
-    if (pick.includes("over")) {
+    const isOver = /\bover\b|\bo\b/i.test(pick);
+    const isUnder = /\bunder\b|\bu\b/i.test(pick);
+
+    if (isOver) {
       if (totalScore > line) return "WON";
       if (totalScore < line) return "LOST";
       return "PUSH";
     }
 
-    if (pick.includes("under")) {
+    if (isUnder) {
       if (totalScore < line) return "WON";
       if (totalScore > line) return "LOST";
       return "PUSH";
     }
   }
 
-  // SPREADS
-  const spreadMatch = pickRaw.match(/^(.*?)(?:\s*[\(\s])([+-]\d+(?:\.\d+)?)(?:\))?$/);
+  // SPREADS: Team +1.5 / Team (-1.5)
+  const spreadMatch = pickRaw.match(
+    /^(.*?)(?:\s*[\(\s])([+-]\d+(?:\.\d+)?)(?:\))?$/
+  );
 
   if (spreadMatch) {
-    const teamPart = normalizeName(spreadMatch[1]);
+    const teamPartRaw = spreadMatch[1].trim();
+    const teamPart = normalizeName(teamPartRaw);
+    const teamLast = getLastWord(teamPartRaw);
     const line = Number(spreadMatch[2]);
 
     if (!Number.isFinite(line)) return "PENDING";
 
-    if (teamPart.includes(awayName) || awayName.includes(teamPart)) {
+    const isAwayTeam =
+      teamPart.includes(awayName) ||
+      awayName.includes(teamPart) ||
+      (teamLast && teamLast === awayLast);
+
+    const isHomeTeam =
+      teamPart.includes(homeName) ||
+      homeName.includes(teamPart) ||
+      (teamLast && teamLast === homeLast);
+
+    if (isAwayTeam) {
       const adjusted = awayScore + line;
       if (adjusted > homeScore) return "WON";
       if (adjusted < homeScore) return "LOST";
       return "PUSH";
     }
 
-    if (teamPart.includes(homeName) || homeName.includes(teamPart)) {
+    if (isHomeTeam) {
       const adjusted = homeScore + line;
       if (adjusted > awayScore) return "WON";
       if (adjusted < awayScore) return "LOST";
       return "PUSH";
     }
+  }
+
+  // MONEYLINE: Team ML / Team solo / último nombre
+  const looksLikeAwayML =
+    pickNorm.includes(awayName) ||
+    awayName.includes(pickNorm) ||
+    (awayLast && pickNorm.includes(awayLast));
+
+  const looksLikeHomeML =
+    pickNorm.includes(homeName) ||
+    homeName.includes(pickNorm) ||
+    (homeLast && pickNorm.includes(homeLast));
+
+  if (looksLikeAwayML && !looksLikeHomeML) {
+    if (awayScore > homeScore) return "WON";
+    if (awayScore < homeScore) return "LOST";
+    return "PUSH";
+  }
+
+  if (looksLikeHomeML && !looksLikeAwayML) {
+    if (homeScore > awayScore) return "WON";
+    if (homeScore < awayScore) return "LOST";
+    return "PUSH";
   }
 
   return "PENDING";
@@ -1024,9 +1079,10 @@ function getSubPicksForUser(
   ) {
     return top5.map((pick) => ({
       ...pick,
-      label: pick.isTopSignal
-        ? `Top Signal #${pick.rank ?? 1}`
-        : `Top 5 #${pick.rank ?? ""}`,
+      label:
+  pick.isTopSignal === true || pick.rank === 1
+    ? `Top Signal #${pick.rank ?? 1}`
+    : `Top 5 #${pick.rank ?? ""}`,
     }));
   }
 
@@ -1192,23 +1248,23 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
     });
 
     setMlbTop5Data({
-      top5: (mlbTop5 || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        rank: g.rank,
-        isTopSignal: g.is_top_signal,
-        confidence: g.confidence,
-        internalScore: g.internal_score,
-        edge: g.edge,
-        startTime: g.start_time,
-      })),
-    });
+  top5: (mlbTop5 || []).map((g: any) => ({
+    gameId: g.gameId ?? g.game_id,
+    awayTeam: g.awayTeam ?? g.away_team,
+    homeTeam: g.homeTeam ?? g.home_team,
+    pick: g.pick,
+    market: g.market,
+    line: g.line,
+    odds: g.odds,
+    status: g.status,
+    rank: g.rank,
+    isTopSignal: g.isTopSignal ?? g.is_top_signal ?? g.rank === 1,
+    confidence: g.confidence,
+    internalScore: g.internalScore ?? g.internal_score,
+    edge: g.edge,
+    startTime: g.startTime ?? g.start_time,
+  })),
+});
 
     setNbaSignalsData({
       games: (nbaPublic || []).map((g: any) => ({
