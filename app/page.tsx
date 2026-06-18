@@ -172,24 +172,26 @@ function TeamBadge({
 
 function AtlasSplashScreen({ entered }: { entered: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050816] pb-16 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050816] text-white">
       <div
         className={`flex flex-col items-center transition-all duration-700 ease-out ${
-          entered ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-95 opacity-0"
+          entered
+            ? "-translate-y-[6vh] scale-100 opacity-100"
+            : "translate-y-[calc(-6vh+12px)] scale-95 opacity-0"
         }`}
       >
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-400/10 shadow-[0_0_18px_rgba(34,211,238,0.14)]">
+        <div className="flex h-[92px] w-[92px] items-center justify-center rounded-full border border-cyan-300/10 bg-cyan-400/[0.04] shadow-[0_0_24px_rgba(34,211,238,0.10)]">
           <img
             src="/icon.png"
             alt="Atlas Signals"
-            className="h-11 w-11 object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.28)]"
+            className="h-[68px] w-[68px] object-contain drop-shadow-[0_0_6px_rgba(34,211,238,0.18)]"
           />
         </div>
 
-        <p className="mt-7 text-[18px] font-bold uppercase tracking-[0.28em] text-cyan-200">
+        <p className="mt-7 text-[30px] font-bold uppercase tracking-[0.22em] text-cyan-200">
           ATLAS SIGNALS
         </p>
-        <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/55">
+        <p className="mt-3 text-[12px] font-semibold uppercase tracking-[0.32em] text-white/65">
           SPORT INTELLIGENCE SYSTEM
         </p>
       </div>
