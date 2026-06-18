@@ -5,16 +5,32 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/grade-mlb-top5",
+      "schedule": "2 * * * *"
+    },
+    {
       "path": "/api/cron/grade-nba-top-signals",
       "schedule": "5 * * * *"
+    },
+    {
+      "path": "/api/cron/grade-nba-top5",
+      "schedule": "7 * * * *"
     },
     {
       "path": "/api/cron/grade-nhl-top-signals",
       "schedule": "10 * * * *"
     },
     {
+      "path": "/api/cron/grade-nhl-top5",
+      "schedule": "12 * * * *"
+    },
+    {
       "path": "/api/cron/grade-soccer-top-signals",
       "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/grade-soccer-top5",
+      "schedule": "17 * * * *"
     }
   ]
 }

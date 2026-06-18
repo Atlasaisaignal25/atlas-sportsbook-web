@@ -13,6 +13,7 @@ const sportGroups = {
   "soccer_portugal_primeira_liga",
   "soccer_netherlands_eredivisie",
   "soccer_england_championship",
+  "soccer_fifa_world_cup",
   "soccer_usa_mls",
   "soccer_mexico_ligamx",
   "soccer_uefa_champs_league",

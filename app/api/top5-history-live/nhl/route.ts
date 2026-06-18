@@ -6,28 +6,15 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-function getYesterdayInET() {
-  const now = new Date();
-  const etNow = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/New_York" })
-  );
-
-  etNow.setDate(etNow.getDate() - 1);
-
-  return etNow.toLocaleDateString("en-CA", {
-    timeZone: "America/New_York",
-  });
-}
-
 export async function GET() {
   try {
-    const yesterday = getYesterdayInET();
-
     const { data, error } = await supabase
       .from("nhl_top5_history")
       .select("*")
-      .eq("date", yesterday)
-      .order("created_at", { ascending: true });
+      .order("date", { ascending: false })
+      .order("rank", { ascending: true })
+      .order("created_at", { ascending: false })
+      .limit(100);
 
     if (error) {
       return NextResponse.json(
@@ -38,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      history: data ?? [],
+      history: dedupeTop5History(data ?? []),
     });
   } catch (error) {
     return NextResponse.json(
@@ -46,4 +33,15 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+function dedupeTop5History(rows: any[]) {
+  const seen = new Set<string>();
+
+  return rows.filter((row) => {
+    const key = `${row.date}-${row.rank}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

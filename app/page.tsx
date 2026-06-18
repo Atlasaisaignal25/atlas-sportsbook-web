@@ -106,6 +106,64 @@ const soccerTop5Data = soccerTop5 as { top5: Top5Entry[] };
 const sportsTabs = ["TOP", "NHL", "NBA", "MLB", "NFL", "SOCCER"] as const;
 type SportTab = (typeof sportsTabs)[number];
 
+function getTeamLogoKey(value: string) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const internationalSoccerTeams = [
+  { abbr: "USA", file: "worldcup-us.svg", aliases: ["USA", "United States", "United States of America", "USMNT"] },
+  { abbr: "MEX", file: "worldcup-mx.svg", aliases: ["Mexico", "México"] },
+  { abbr: "CAN", file: "worldcup-ca.svg", aliases: ["Canada"] },
+  { abbr: "BRA", file: "worldcup-br.svg", aliases: ["Brazil", "Brasil"] },
+  { abbr: "ARG", file: "worldcup-ar.svg", aliases: ["Argentina"] },
+  { abbr: "ENG", file: "worldcup-eng.svg", aliases: ["England"] },
+  { abbr: "FRA", file: "worldcup-fr.svg", aliases: ["France"] },
+  { abbr: "GER", file: "worldcup-de.svg", aliases: ["Germany", "Deutschland"] },
+  { abbr: "ESP", file: "worldcup-es.svg", aliases: ["Spain", "España"] },
+  { abbr: "POR", file: "worldcup-pt.svg", aliases: ["Portugal"] },
+  { abbr: "NED", file: "worldcup-nl.svg", aliases: ["Netherlands", "Holland"] },
+  { abbr: "JPN", file: "worldcup-jp.svg", aliases: ["Japan"] },
+  { abbr: "MAR", file: "worldcup-ma.svg", aliases: ["Morocco"] },
+  { abbr: "URU", file: "worldcup-uy.svg", aliases: ["Uruguay"] },
+  { abbr: "BEL", file: "worldcup-be.svg", aliases: ["Belgium"] },
+  { abbr: "CRO", file: "worldcup-hr.svg", aliases: ["Croatia"] },
+  { abbr: "COL", file: "worldcup-co.svg", aliases: ["Colombia"] },
+  { abbr: "ITA", file: "worldcup-it.svg", aliases: ["Italy", "Italia"] },
+  { abbr: "SUI", file: "worldcup-ch.svg", aliases: ["Switzerland", "Swiss"] },
+  { abbr: "DEN", file: "worldcup-dk.svg", aliases: ["Denmark"] },
+  { abbr: "POL", file: "worldcup-pl.svg", aliases: ["Poland"] },
+  { abbr: "SEN", file: "worldcup-sn.svg", aliases: ["Senegal"] },
+  { abbr: "NGA", file: "worldcup-ng.svg", aliases: ["Nigeria"] },
+  { abbr: "KOR", file: "worldcup-kr.svg", aliases: ["South Korea", "Korea Republic", "Republic of Korea"] },
+  { abbr: "AUS", file: "worldcup-au.svg", aliases: ["Australia"] },
+  { abbr: "ECU", file: "worldcup-ec.svg", aliases: ["Ecuador"] },
+  { abbr: "CHI", file: "worldcup-cl.svg", aliases: ["Chile"] },
+  { abbr: "CRC", file: "worldcup-cr.svg", aliases: ["Costa Rica"] },
+  { abbr: "PAN", file: "worldcup-pa.svg", aliases: ["Panama", "Panamá"] },
+  { abbr: "QAT", file: "worldcup-qa.svg", aliases: ["Qatar"] },
+  { abbr: "KSA", file: "worldcup-sa.svg", aliases: ["Saudi Arabia"] },
+] as const;
+
+const internationalSoccerLogoMap = Object.fromEntries(
+  internationalSoccerTeams.flatMap((team) =>
+    team.aliases.map((alias) => [
+      getTeamLogoKey(alias),
+      `/team-logos/soccer/${team.file}`,
+    ])
+  )
+) as Record<string, string>;
+
+const internationalSoccerAbbrMap = Object.fromEntries(
+  internationalSoccerTeams.flatMap((team) =>
+    team.aliases.map((alias) => [getTeamLogoKey(alias), team.abbr])
+  )
+) as Record<string, string>;
+
 function getTeamData(teamName: string) {
   return teamBranding[teamName] ?? null;
 }
@@ -115,13 +173,15 @@ function getDisplayName(teamName: string) {
 }
 
 function getDisplayAbbr(teamName: string) {
-  return getTeamData(teamName)?.abbr ?? teamName.slice(0, 3).toUpperCase();
+  return (
+    getTeamData(teamName)?.abbr ??
+    internationalSoccerAbbrMap[getTeamLogoKey(teamName)] ??
+    teamName.slice(0, 3).toUpperCase()
+  );
 }
 
 function getLogo(teamName: string, sport: SportTab) {
-  const cleanName = String(teamName)
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+  const cleanName = getTeamLogoKey(teamName);
 
   if (sport === "NBA") {
     return `/team-logos/nba/${cleanName}.png`;
@@ -136,6 +196,10 @@ function getLogo(teamName: string, sport: SportTab) {
   }
 
   if (sport === "SOCCER") {
+    const internationalLogo = internationalSoccerLogoMap[cleanName];
+
+    if (internationalLogo) return internationalLogo;
+
     return `/team-logos/soccer/${cleanName}.png`;
   }
 
@@ -150,14 +214,20 @@ function TeamBadge({
   sport: SportTab;
 }) {
   const logo = getLogo(teamName, sport);
+  const [logoFailed, setLogoFailed] = useState(false);
 
-  if (logo) {
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [logo]);
+
+  if (logo && !logoFailed) {
     return (
       <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/8 p-1">
         <img
           src={logo}
           alt={teamName}
           className="h-full w-full object-contain"
+          onError={() => setLogoFailed(true)}
         />
       </div>
     );
@@ -419,6 +489,7 @@ function getLeagueDisplayName(sportKey: string) {
     soccer_england_championship: "Championship (Inglaterra)",
     soccer_portugal_primeira_liga: "Primeira Liga (Portugal)",
     soccer_netherlands_eredivisie: "Eredivisie (Países Bajos)",
+    soccer_fifa_world_cup: "FIFA World Cup",
   };
 
   return (
@@ -1653,6 +1724,7 @@ useEffect(() => {
           "soccer_uefa_champs_league",
           "soccer_uefa_europa_league",
           "soccer_uefa_europa_conference_league",
+          "soccer_fifa_world_cup",
           "soccer_usa_mls",
           "soccer_mexico_ligamx",
           "soccer_fa_cup",

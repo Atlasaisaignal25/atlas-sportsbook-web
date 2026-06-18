@@ -44,8 +44,7 @@ export async function POST(req: Request) {
         .from("nhl_top5_history")
         .select("id")
         .eq("date", row.date)
-        .eq("away_team", row.away_team)
-        .eq("home_team", row.home_team)
+        .eq("rank", row.rank)
         .limit(1);
 
       if (!existing || existing.length === 0) {
