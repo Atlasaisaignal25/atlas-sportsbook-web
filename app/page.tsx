@@ -172,17 +172,17 @@ function TeamBadge({
 
 function AtlasSplashScreen({ entered }: { entered: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050816] text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050816] pb-16 text-white">
       <div
         className={`flex flex-col items-center transition-all duration-700 ease-out ${
           entered ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-95 opacity-0"
         }`}
       >
-        <div className="flex h-24 w-24 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-400/10 shadow-[0_0_42px_rgba(34,211,238,0.24)]">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-400/10 shadow-[0_0_18px_rgba(34,211,238,0.14)]">
           <img
             src="/icon.png"
             alt="Atlas Signals"
-            className="h-16 w-16 object-contain drop-shadow-[0_0_18px_rgba(34,211,238,0.45)]"
+            className="h-11 w-11 object-contain drop-shadow-[0_0_8px_rgba(34,211,238,0.28)]"
           />
         </div>
 
