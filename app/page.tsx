@@ -90,6 +90,11 @@ type UserAccess = {
   sports: SportTab[];
 };
 
+type AuthSessionState = {
+  authenticated: boolean;
+  email: string | null;
+};
+
 const nbaSignalsData = nbaSignals as { games: SignalGame[] };
 const nhlSignalsData = nhlSignals as { games: SignalGame[] };
 const soccerSignalsData = soccerSignals as { games: SignalGame[] };
@@ -161,6 +166,33 @@ function TeamBadge({
   return (
     <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/8 text-[10px] font-bold text-white/70">
       {getDisplayAbbr(teamName)}
+    </div>
+  );
+}
+
+function AtlasSplashScreen({ entered }: { entered: boolean }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#050816] text-white">
+      <div
+        className={`flex flex-col items-center transition-all duration-700 ease-out ${
+          entered ? "translate-y-0 scale-100 opacity-100" : "translate-y-3 scale-95 opacity-0"
+        }`}
+      >
+        <div className="flex h-24 w-24 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-400/10 shadow-[0_0_42px_rgba(34,211,238,0.24)]">
+          <img
+            src="/icon.png"
+            alt="Atlas Signals"
+            className="h-16 w-16 object-contain drop-shadow-[0_0_18px_rgba(34,211,238,0.45)]"
+          />
+        </div>
+
+        <p className="mt-7 text-[18px] font-bold uppercase tracking-[0.28em] text-cyan-200">
+          ATLAS SIGNALS
+        </p>
+        <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/55">
+          SPORT INTELLIGENCE SYSTEM
+        </p>
+      </div>
     </div>
   );
 }
@@ -1162,12 +1194,94 @@ const [soccerRecord, setSoccerRecord] = useState({ wins: 0, losses: 0, pushes: 0
   const [games, setGames] = useState<OddsGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [liveOddsGames, setLiveOddsGames] = useState<OddsGame[]>([]);
+const [showSplash, setShowSplash] = useState(true);
+const [splashEntered, setSplashEntered] = useState(false);
 
-const [userAccess] = useState<UserAccess>({
-  plan: "admin",
-  sports: ["MLB", "NBA", "NHL", "SOCCER"],
+const [userAccess, setUserAccess] = useState<UserAccess>({
+  plan: "free",
+  sports: [],
 });
-console.log("USER PLAN:", userAccess.plan);
+const [authSession, setAuthSession] = useState<AuthSessionState>({
+  authenticated: false,
+  email: null,
+});
+const [authBusy, setAuthBusy] = useState(false);
+
+useEffect(() => {
+  const frameId = requestAnimationFrame(() => {
+    setSplashEntered(true);
+  });
+
+  const timeoutId = setTimeout(() => {
+    setShowSplash(false);
+  }, 1500);
+
+  return () => {
+    cancelAnimationFrame(frameId);
+    clearTimeout(timeoutId);
+  };
+}, []);
+
+useEffect(() => {
+  let mounted = true;
+
+  async function loadUserAccess() {
+    try {
+      const res = await fetch("/api/auth/session", {
+        cache: "no-store",
+      });
+      const data = await res.json();
+
+      if (!mounted) return;
+
+      setUserAccess({
+        plan: data.plan === "admin" ? "admin" : "free",
+        sports: Array.isArray(data.sports) ? data.sports : [],
+      });
+      setAuthSession({
+        authenticated: Boolean(data.authenticated),
+        email: typeof data.email === "string" ? data.email : null,
+      });
+    } catch {
+      if (!mounted) return;
+
+      setUserAccess({
+        plan: "free",
+        sports: [],
+      });
+      setAuthSession({
+        authenticated: false,
+        email: null,
+      });
+    }
+  }
+
+  loadUserAccess();
+
+  return () => {
+    mounted = false;
+  };
+}, []);
+
+async function handleLogout() {
+  setAuthBusy(true);
+
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+    });
+  } finally {
+    setUserAccess({
+      plan: "free",
+      sports: [],
+    });
+    setAuthSession({
+      authenticated: false,
+      email: null,
+    });
+    setAuthBusy(false);
+  }
+}
 
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
@@ -2209,6 +2323,7 @@ const eliteTopSignals = useMemo(() => {
 
   return (
   <main className="min-h-screen bg-[#050816] text-white">
+    {showSplash ? <AtlasSplashScreen entered={splashEntered} /> : null}
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
       <header className="sticky top-0 z-20 border-b border-white/5 bg-[#050816]/95 px-4 pb-3 pt-5 backdrop-blur">
         <div className="mb-4 flex items-center justify-between">
@@ -2216,7 +2331,7 @@ const eliteTopSignals = useMemo(() => {
             <div className="flex items-center justify-between">
   <div className="flex items-center gap-3">
   <img
-    src="/atlas-logo.png"
+    src="/icon.png"
     alt="Atlas Signals"
     className="h-8 w-8 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
   />
@@ -2270,6 +2385,39 @@ const eliteTopSignals = useMemo(() => {
               {sport}
             </button>
           ))}
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.06] px-3 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-semibold text-white/85">
+              {authSession.authenticated
+                ? authSession.email ?? "Signed in"
+                : "Guest · FREE"}
+            </p>
+            {authSession.authenticated ? (
+              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                {userAccess.plan}
+              </p>
+            ) : null}
+          </div>
+
+          {!authSession.authenticated ? (
+            <a
+              href="/login"
+              className="shrink-0 rounded-full bg-cyan-400 px-4 py-1.5 text-[12px] font-bold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.22)] transition-colors hover:bg-cyan-300"
+            >
+              Sign in
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={authBusy}
+              className="shrink-0 rounded-full border border-white/15 px-3 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {authBusy ? "Signing out" : "Logout"}
+            </button>
+          )}
         </div>
       </header>
 

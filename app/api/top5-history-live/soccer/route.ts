@@ -23,7 +23,7 @@ export async function GET() {
     const yesterday = getYesterdayET();
 
     const { data, error } = await supabase
-      .from("soccer_top_signal_history")
+      .from("soccer_top5_history")
       .select("*")
       .eq("date", yesterday)
       .in("result", ["WON", "LOST", "PUSH"])

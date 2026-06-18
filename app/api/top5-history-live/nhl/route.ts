@@ -24,7 +24,7 @@ export async function GET() {
     const yesterday = getYesterdayInET();
 
     const { data, error } = await supabase
-      .from("nhl_top_signal_history")
+      .from("nhl_top5_history")
       .select("*")
       .eq("date", yesterday)
       .order("created_at", { ascending: true });
