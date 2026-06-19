@@ -1,5 +1,5 @@
 import { buildRecordResponse } from "../../recordUtils";
 
 export async function GET() {
-  return buildRecordResponse("nba_top_signal_history");
+  return buildRecordResponse("nhl_top5_history");
 }

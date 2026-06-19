@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "crypto";
 
 type Sport = "MLB" | "NBA" | "NHL" | "SOCCER";
 type GradeResult = "WON" | "LOST" | "PUSH" | "PENDING";
@@ -258,7 +259,9 @@ export async function snapshotTopSignal(params: {
   const { error: insertError } = await supabase.from(params.historyTable).insert([
     {
       date,
+      id: randomUUID(),
       sport: params.sport,
+      game_id: topSignal.game_id ?? null,
       away_team: topSignal.away_team ?? "",
       home_team: topSignal.home_team ?? "",
       pick: topSignal.pick ?? "",

@@ -90,6 +90,16 @@ type UserAccess = {
   sports: SportTab[];
 };
 
+type RecordStats = {
+  wins: number;
+  losses: number;
+  pushes: number;
+  pending: number;
+  decided: number;
+  total: number;
+  winRate: number;
+};
+
 type AuthSessionState = {
   authenticated: boolean;
   email: string | null;
@@ -105,6 +115,50 @@ const soccerTop5Data = soccerTop5 as { top5: Top5Entry[] };
 
 const sportsTabs = ["TOP", "NHL", "NBA", "MLB", "NFL", "SOCCER"] as const;
 type SportTab = (typeof sportsTabs)[number];
+
+const emptyRecordStats = (): RecordStats => ({
+  wins: 0,
+  losses: 0,
+  pushes: 0,
+  pending: 0,
+  decided: 0,
+  total: 0,
+  winRate: 0,
+});
+
+function toRecordStats(data: any): RecordStats {
+  return {
+    wins: Number(data?.wins ?? 0),
+    losses: Number(data?.losses ?? 0),
+    pushes: Number(data?.pushes ?? 0),
+    pending: Number(data?.pending ?? 0),
+    decided: Number(data?.decided ?? 0),
+    total: Number(data?.total ?? 0),
+    winRate: Number(data?.winRate ?? 0),
+  };
+}
+
+function getRecordEndpoint(
+  selectedSport: SportTab,
+  recordType: "top-signal" | "top5"
+) {
+  if (selectedSport === "MLB") return `/api/${recordType}-record/mlb`;
+  if (selectedSport === "NBA") return `/api/${recordType}-record/nba`;
+  if (selectedSport === "NHL") return `/api/${recordType}-record/nhl`;
+  if (selectedSport === "SOCCER") return `/api/${recordType}-record/soccer`;
+
+  return "";
+}
+
+function isUserPlan(value: unknown): value is UserPlan {
+  return (
+    value === "free" ||
+    value === "exclusive" ||
+    value === "premium" ||
+    value === "elite" ||
+    value === "admin"
+  );
+}
 
 function getTeamLogoKey(value: string) {
   return String(value ?? "")
@@ -1200,7 +1254,19 @@ function hasSportAccess(userAccess: UserAccess, sport: SportTab) {
 }
 
 function canViewTopTab(userAccess: UserAccess) {
-  return userAccess.plan === "elite" || userAccess.plan === "admin";
+  return (
+    userAccess.plan === "premium" ||
+    userAccess.plan === "elite" ||
+    userAccess.plan === "admin"
+  );
+}
+
+function canViewStatsAndHistory(userAccess: UserAccess) {
+  return (
+    userAccess.plan === "premium" ||
+    userAccess.plan === "elite" ||
+    userAccess.plan === "admin"
+  );
 }
 
 function canViewPickInSubs(
@@ -1234,7 +1300,11 @@ function getSubsBadgeLabel(
     return "Top 5";
   }
 
-  if (userAccess.plan === "premium") {
+  if (
+    userAccess.plan === "premium" ||
+    userAccess.plan === "elite" ||
+    userAccess.plan === "admin"
+  ) {
     if (pickData.isTopSignal) {
       return `Top Signal #${pickData.topRank ?? 1}`;
     }
@@ -1249,16 +1319,11 @@ function getSubsBadgeLabel(
 
 function HomeContent() {
 
-const [mlbRecord, setMlbRecord] = useState({
-  wins: 0,
-  losses: 0,
-  pushes: 0,
-  winRate: 0,
-});
-
-const [nbaRecord, setNbaRecord] = useState({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
-const [nhlRecord, setNhlRecord] = useState({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
-const [soccerRecord, setSoccerRecord] = useState({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
+const [mlbRecord, setMlbRecord] = useState<RecordStats>(emptyRecordStats);
+const [nbaRecord, setNbaRecord] = useState<RecordStats>(emptyRecordStats);
+const [nhlRecord, setNhlRecord] = useState<RecordStats>(emptyRecordStats);
+const [soccerRecord, setSoccerRecord] = useState<RecordStats>(emptyRecordStats);
+const [top5RecordStats, setTop5RecordStats] = useState<RecordStats>(emptyRecordStats);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1279,6 +1344,8 @@ const [authSession, setAuthSession] = useState<AuthSessionState>({
   email: null,
 });
 const [authBusy, setAuthBusy] = useState(false);
+const [checkoutPlan, setCheckoutPlan] = useState<"exclusive" | "premium" | "elite" | null>(null);
+const [billingBusy, setBillingBusy] = useState(false);
 
 useEffect(() => {
   const frameId = requestAnimationFrame(() => {
@@ -1307,8 +1374,10 @@ useEffect(() => {
 
       if (!mounted) return;
 
+      const nextPlan = isUserPlan(data.plan) ? data.plan : "free";
+
       setUserAccess({
-        plan: data.plan === "admin" ? "admin" : "free",
+        plan: nextPlan,
         sports: Array.isArray(data.sports) ? data.sports : [],
       });
       setAuthSession({
@@ -1335,6 +1404,64 @@ useEffect(() => {
     mounted = false;
   };
 }, []);
+
+async function handleSubscribe(plan: "exclusive" | "premium" | "elite") {
+  if (!authSession.authenticated) {
+    router.push("/login");
+    return;
+  }
+
+  try {
+    setCheckoutPlan(plan);
+
+    const res = await fetch("/api/stripe/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ plan }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.url) {
+      throw new Error(data?.error ?? "Unable to start checkout");
+    }
+
+    window.location.href = data.url;
+  } catch (error) {
+    console.log("Checkout error", error);
+  } finally {
+    setCheckoutPlan(null);
+  }
+}
+
+async function handleManageBilling() {
+  if (!authSession.authenticated) {
+    router.push("/login");
+    return;
+  }
+
+  try {
+    setBillingBusy(true);
+
+    const res = await fetch("/api/stripe/create-portal-session", {
+      method: "POST",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.url) {
+      throw new Error(data?.error ?? "Unable to open billing portal");
+    }
+
+    window.location.href = data.url;
+  } catch (error) {
+    console.log("Billing portal error", error);
+  } finally {
+    setBillingBusy(false);
+  }
+}
 
 async function handleLogout() {
   setAuthBusy(true);
@@ -2218,28 +2345,12 @@ const isTopTab = selectedSport === "TOP";
 useEffect(() => {
   async function loadRecord() {
     try {
-      let endpoint = "";
+      const endpoint = getRecordEndpoint(selectedSport, "top-signal");
 
-      setMlbRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
-setNbaRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
-setNhlRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
-setSoccerRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
-
-      if (selectedSport === "MLB") {
-        endpoint = "/api/top-signal-record/mlb";
-      }
-
-      if (selectedSport === "NBA") {
-        endpoint = "/api/top-signal-record/nba";
-      }
-
-      if (selectedSport === "NHL") {
-        endpoint = "/api/top-signal-record/nhl";
-      }
-
-      if (selectedSport === "SOCCER") {
-        endpoint = "/api/top-signal-record/soccer";
-      }
+      setMlbRecord(emptyRecordStats());
+setNbaRecord(emptyRecordStats());
+setNhlRecord(emptyRecordStats());
+setSoccerRecord(emptyRecordStats());
 
       if (!endpoint) return;
 
@@ -2250,12 +2361,7 @@ setSoccerRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
       const data = await res.json();
 
       if (data.success) {
-  const recordData = {
-    wins: data.wins,
-    losses: data.losses,
-    pushes: data.pushes,
-    winRate: data.winRate,
-  };
+  const recordData = toRecordStats(data);
 
   if (selectedSport === "MLB") {
     setMlbRecord(recordData);
@@ -2279,6 +2385,32 @@ setSoccerRecord({ wins: 0, losses: 0, pushes: 0, winRate: 0 });
   }
 
   loadRecord();
+}, [selectedSport]);
+
+useEffect(() => {
+  async function loadTop5Record() {
+    try {
+      const endpoint = getRecordEndpoint(selectedSport, "top5");
+
+      setTop5RecordStats(emptyRecordStats());
+
+      if (!endpoint) return;
+
+      const res = await fetch(endpoint, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setTop5RecordStats(toRecordStats(data));
+      }
+    } catch (err) {
+      console.log("Error loading top 5 record");
+    }
+  }
+
+  loadTop5Record();
 }, [selectedSport]);
 
 useEffect(() => {
@@ -2387,13 +2519,25 @@ const subsPicks = useMemo(() => {
   soccerTop5LiveData,
 ]);
 
-const top5RecordStats = useMemo(() => {
-  return buildHistoryRecordStats(top5History);
-}, [top5History]);
+const selectedTopSignalRecord =
+  selectedSport === "MLB"
+    ? mlbRecord
+    : selectedSport === "NBA"
+    ? nbaRecord
+    : selectedSport === "NHL"
+    ? nhlRecord
+    : selectedSport === "SOCCER"
+    ? soccerRecord
+    : emptyRecordStats();
 
 const eliteTopSignals = useMemo(() => {
   return topSignals ?? [];
 }, [topSignals]);
+
+const hasPaidSubscription =
+  authSession.authenticated &&
+  userAccess.plan !== "free" &&
+  userAccess.plan !== "admin";
 
   return (
   <main className="min-h-screen bg-[#050816] text-white">
@@ -2626,6 +2770,9 @@ const isTop5 =
     return sameGame && samePick;
   });
 
+const canShowLiveSignal =
+  !!livePickData && !(userAccess.plan === "free" && isTop5);
+
                         const awayScore =
                           game.scores?.find((s) => s.name === game.away_team)
                             ?.score ?? "-";
@@ -2734,7 +2881,7 @@ const isTop5 =
   </div>
 </div>
 
-                            {livePickData ? (
+                            {canShowLiveSignal ? (
                               <div className="mt-2 flex justify-center">
                                 {result === "WON" ? (
                                   <div className="inline-flex items-center rounded-full border border-green-400/20 bg-green-500/15 px-2.5 py-1">
@@ -2886,13 +3033,13 @@ const isTop5 =
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-white/70">
-                The TOP section is reserved for Elite subscribers and includes the strongest
-                signal detected in each available sport for the day.
+                The TOP section is reserved for Premium and Elite subscribers and includes
+                the strongest signal detected in each available sport for the day.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-                  Elite only
+                  Premium / Elite
                 </span>
                 <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
                   Top signal by sport
@@ -2909,8 +3056,17 @@ const isTop5 =
                 <p>• Soccer Top Signal</p>
               </div>
 
-              <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
-                Unlock TOP Access
+              <button
+                type="button"
+                onClick={
+                  hasPaidSubscription
+                    ? handleManageBilling
+                    : () => handleSubscribe("premium")
+                }
+                disabled={checkoutPlan !== null || billingBusy}
+                className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {hasPaidSubscription ? "Manage Billing" : "Subscribe"}
               </button>
             </div>
           )
@@ -2968,9 +3124,43 @@ const isTop5 =
               <p>• Unlock stronger premium validation</p>
             </div>
 
-            <button className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all">
-              Subscribe to {selectedSport}
-            </button>
+            {hasPaidSubscription ? (
+              <button
+                type="button"
+                onClick={handleManageBilling}
+                disabled={billingBusy}
+                className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {billingBusy ? "Opening Billing" : "Manage Billing"}
+              </button>
+            ) : (
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleSubscribe("exclusive")}
+                disabled={checkoutPlan !== null}
+                className="rounded-[14px] border border-cyan-400/25 bg-cyan-400/10 px-2 py-3 text-[11px] font-bold text-cyan-200 transition-all disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Exclusive $29.99
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubscribe("premium")}
+                disabled={checkoutPlan !== null}
+                className="rounded-[14px] border border-white/15 bg-white/10 px-2 py-3 text-[11px] font-bold text-white transition-all disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Premium $59.99
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubscribe("elite")}
+                disabled={checkoutPlan !== null}
+                className="rounded-[14px] bg-cyan-500 px-2 py-3 text-[11px] font-bold text-black transition-all disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Elite $99.99
+              </button>
+            </div>
+            )}
           </div>
         ) : subsPicks.length === 0 ? (
   <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
@@ -2978,16 +3168,17 @@ const isTop5 =
   </div>
 ) : (
   <div className="space-y-3">
+    {canViewStatsAndHistory(userAccess) ? (
     <div className="grid grid-cols-3 gap-2">
       <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
           Top Signal
         </p>
         <p className="mt-2 text-[16px] font-bold text-white">
-          {mlbRecord.wins}-{mlbRecord.losses}
+          {selectedTopSignalRecord.wins}-{selectedTopSignalRecord.losses}
         </p>
         <p className="mt-1 text-[11px] text-white/55">
-          Push: {mlbRecord.pushes}
+          Push: {selectedTopSignalRecord.pushes}
         </p>
       </div>
 
@@ -3002,7 +3193,7 @@ const isTop5 =
           Push: {top5RecordStats.pushes}
         </p>
         <p className="mt-1 text-[11px] text-white/55">
-          Today
+          Decided: {top5RecordStats.decided}
         </p>
       </div>
 
@@ -3011,13 +3202,14 @@ const isTop5 =
           Win Rate
         </p>
         <p className="mt-2 text-[16px] font-bold text-white">
-          {mlbRecord.winRate}%
+          {selectedTopSignalRecord.winRate}%
         </p>
         <p className="mt-1 text-[11px] text-white/55">
           Top Signal
         </p>
       </div>
     </div>
+    ) : null}
 
     {subsScoresLoading ? (
       <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
@@ -3124,7 +3316,7 @@ const isTop5 =
   </div>
 )}
 
-{viewMode === "odds" && (
+{viewMode === "odds" && canViewStatsAndHistory(userAccess) && (
   <div className="mt-6">
     <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
       Top Signal History
@@ -3170,7 +3362,7 @@ const isTop5 =
   </div>
 )}
 
-{viewMode === "live" && activeDay === "yesterday" && (
+{viewMode === "live" && activeDay === "yesterday" && canViewStatsAndHistory(userAccess) && (
   <div className="mt-6">
     <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
       Top 5 Signals History
