@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 // import mlbSignals from "@/data/mlb-public-signals.json";
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
@@ -182,6 +182,19 @@ type AuthSessionState = {
   authenticated: boolean;
   email: string | null;
 };
+
+type AuthSessionResponse = {
+  authenticated?: unknown;
+  email?: unknown;
+  plan?: unknown;
+  sports?: unknown;
+  unlocks?: {
+    topPlay?: unknown;
+    topSignals?: unknown;
+  } | null;
+};
+
+type JoinAuthMode = "signin" | "signup";
 
 type SignalsJourneyMessage = {
   tone: "success" | "info" | "error";
@@ -3566,6 +3579,10 @@ const [authSession, setAuthSession] = useState<AuthSessionState>({
 });
 const [authLoaded, setAuthLoaded] = useState(false);
 const [authBusy, setAuthBusy] = useState(false);
+const [joinAuthMode, setJoinAuthMode] = useState<JoinAuthMode>("signup");
+const [joinEmail, setJoinEmail] = useState("");
+const [joinPassword, setJoinPassword] = useState("");
+const [joinAuthMessage, setJoinAuthMessage] = useState<SignalsJourneyMessage | null>(null);
 const [checkoutPlan, setCheckoutPlan] = useState<CheckoutProduct | null>(null);
 const [selectedPackSport, setSelectedPackSport] = useState<CheckoutSport>("MLB");
 const [billingBusy, setBillingBusy] = useState(false);
@@ -3712,6 +3729,41 @@ useEffect(() => {
   router.replace("/?board=1&section=signals&view=live&sport=TOP");
 }, [searchParams, router]);
 
+function applyAuthSessionData(data: AuthSessionResponse) {
+  const nextPlan = isUserPlan(data.plan) ? data.plan : "free";
+
+  setUserAccess({
+    plan: nextPlan,
+    sports: Array.isArray(data.sports) ? data.sports : [],
+    unlocks: {
+      topPlay: Boolean(data.unlocks?.topPlay),
+      topSignals: Array.isArray(data.unlocks?.topSignals)
+        ? data.unlocks.topSignals.filter((sport: unknown): sport is SportTab =>
+            sportsTabs.includes(sport as SportTab)
+          )
+        : [],
+    },
+  });
+  setAuthSession({
+    authenticated: Boolean(data.authenticated),
+    email: typeof data.email === "string" ? data.email : null,
+  });
+}
+
+async function refreshAuthSession() {
+  const res = await fetch("/api/auth/session", {
+    cache: "no-store",
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data?.error ?? "Unable to load account.");
+  }
+
+  applyAuthSessionData(data);
+  return Boolean(data.authenticated);
+}
+
 useEffect(() => {
   let mounted = true;
 
@@ -3724,24 +3776,7 @@ useEffect(() => {
 
       if (!mounted) return;
 
-      const nextPlan = isUserPlan(data.plan) ? data.plan : "free";
-
-      setUserAccess({
-        plan: nextPlan,
-        sports: Array.isArray(data.sports) ? data.sports : [],
-        unlocks: {
-          topPlay: Boolean(data.unlocks?.topPlay),
-          topSignals: Array.isArray(data.unlocks?.topSignals)
-            ? data.unlocks.topSignals.filter((sport: unknown): sport is SportTab =>
-                sportsTabs.includes(sport as SportTab)
-              )
-            : [],
-        },
-      });
-      setAuthSession({
-        authenticated: Boolean(data.authenticated),
-        email: typeof data.email === "string" ? data.email : null,
-      });
+      applyAuthSessionData(data);
       setAuthLoaded(true);
     } catch {
       if (!mounted) return;
@@ -4002,7 +4037,13 @@ useEffect(() => {
 
 async function handleManageBilling() {
   if (!authSession.authenticated) {
-    router.push("/login");
+    setAppSection("more");
+    setJoinAuthMode("signin");
+    setJoinAuthMessage({
+      tone: "info",
+      title: "Sign in to manage billing.",
+      body: "Use your Atlas account email and password.",
+    });
     return;
   }
 
@@ -4025,6 +4066,71 @@ async function handleManageBilling() {
   } finally {
     setBillingBusy(false);
   }
+}
+
+async function handleInlineAuthSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+  setAuthBusy(true);
+  setJoinAuthMessage(null);
+
+  try {
+    const res = await fetch("/api/auth/password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mode: joinAuthMode,
+        email: joinEmail,
+        password: joinPassword,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok || data?.success === false) {
+      throw new Error(data?.error ?? "Unable to complete account access.");
+    }
+
+    if (data.authenticated) {
+      await refreshAuthSession();
+      setJoinPassword("");
+      setJoinAuthMessage({
+        tone: "success",
+        title: joinAuthMode === "signin" ? "Signed in." : "Account ready.",
+        body: "You can choose a plan below without leaving Atlas Signals.",
+      });
+      return;
+    }
+
+    setJoinPassword("");
+    setJoinAuthMessage({
+      tone: "info",
+      title: "Confirm your email.",
+      body: "We sent a confirmation link. After confirmation, return here and sign in to choose your pack.",
+    });
+  } catch (error) {
+    setJoinAuthMessage({
+      tone: "error",
+      title: "Account access failed.",
+      body: error instanceof Error ? error.message : "Try again in a moment.",
+    });
+  } finally {
+    setAuthBusy(false);
+  }
+}
+
+function handleJoinPlanChoose(plan: PackPlan["plan"]) {
+  if (!authSession.authenticated) {
+    setJoinAuthMode("signup");
+    setJoinAuthMessage({
+      tone: "info",
+      title: "Create your account first.",
+      body: `Sign up here, then choose ${plan.toUpperCase()} without leaving Atlas Signals.`,
+    });
+    return;
+  }
+
+  void handleSubscribe(plan, selectedPackSport);
 }
 
 async function handleLogout() {
@@ -7780,26 +7886,48 @@ const subscriptionPlansBoard = (
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/45">
-                Account
-              </p>
-              <p className="mt-2 truncate text-[18px] font-black text-white">
-                {authSession.authenticated ? authSession.email : "Guest"}
-              </p>
-              <p className="mt-1 text-[12px] font-bold uppercase tracking-[0.16em] text-cyan-300">
-                {userAccess.plan}
-              </p>
+            <section className="rounded-[24px] border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(255,255,255,0.04)_48%)] p-4 shadow-[0_0_26px_rgba(34,211,238,0.08)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                    Join Atlas
+                  </p>
+                  <h2 className="mt-1.5 text-[24px] font-black tracking-tight text-white">
+                    Sign in / Sign up
+                  </h2>
+                  <p className="mt-1 text-[12px] leading-5 text-white/58">
+                    Create your account here, then choose your Atlas Signals pack below.
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.10em] text-cyan-200">
+                  {authSession.authenticated ? userAccess.plan : "Account"}
+                </span>
+              </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {!authSession.authenticated ? (
-                  <a
-                    href="/login"
-                    className="rounded-[16px] bg-cyan-500 px-4 py-3 text-center text-[13px] font-black text-black"
-                  >
-                    Sign in
-                  </a>
-                ) : (
+              {joinAuthMessage ? (
+                <div
+                  className={`mt-3 rounded-[16px] border px-3 py-2 text-[12px] leading-4 ${
+                    joinAuthMessage.tone === "error"
+                      ? "border-red-400/25 bg-red-500/10 text-red-100"
+                      : joinAuthMessage.tone === "success"
+                      ? "border-lime-300/25 bg-lime-400/10 text-lime-100"
+                      : "border-cyan-300/25 bg-cyan-400/10 text-cyan-100"
+                  }`}
+                >
+                  <p className="font-black">{joinAuthMessage.title}</p>
+                  {joinAuthMessage.body ? <p className="mt-0.5 text-white/68">{joinAuthMessage.body}</p> : null}
+                </div>
+              ) : null}
+
+              {authSession.authenticated ? (
+                <div className="mt-4 rounded-[18px] border border-white/10 bg-black/22 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/42">
+                    Signed in
+                  </p>
+                  <p className="mt-1 truncate text-[16px] font-black text-white">
+                    {authSession.email}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -7808,25 +7936,126 @@ const subscriptionPlansBoard = (
                   >
                     Logout
                   </button>
-                )}
+                    <button
+                      type="button"
+                      onClick={
+                        hasPaidSubscription
+                          ? handleManageBilling
+                          : () => {
+                              setAppSection("more");
+                              setJoinAuthMessage({
+                                tone: "info",
+                                title: "Choose your pack below.",
+                                body: "Select Exclusive, Premium or Elite to continue to secure checkout.",
+                              });
+                            }
+                      }
+                      disabled={billingBusy}
+                      className="rounded-[16px] border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-3 text-[13px] font-bold text-cyan-200 disabled:opacity-60"
+                    >
+                      {hasPaidSubscription ? "Billing" : "Plans"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleInlineAuthSubmit} className="mt-4">
+                  <div className="grid grid-cols-2 gap-1 rounded-[16px] border border-white/10 bg-black/24 p-1">
+                    {(["signup", "signin"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setJoinAuthMode(mode);
+                          setJoinAuthMessage(null);
+                        }}
+                        className={`rounded-[12px] px-3 py-2 text-[12px] font-black uppercase tracking-[0.10em] transition-all ${
+                          joinAuthMode === mode
+                            ? "bg-cyan-300 text-black"
+                            : "text-white/56"
+                        }`}
+                      >
+                        {mode === "signup" ? "Sign Up" : "Sign In"}
+                      </button>
+                    ))}
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={
-                    hasPaidSubscription
-                      ? handleManageBilling
-                      : () => {
-                          setAppSection("signals");
-                          setViewMode("odds");
-                        }
-                  }
-                  disabled={billingBusy}
-                  className="rounded-[16px] border border-cyan-400/25 bg-cyan-400/[0.08] px-4 py-3 text-[13px] font-bold text-cyan-200 disabled:opacity-60"
-                >
-                  {hasPaidSubscription ? "Billing" : "Plans"}
-                </button>
+                  <label className="mt-3 block text-[11px] font-bold uppercase tracking-[0.12em] text-white/48">
+                    Email
+                    <input
+                      value={joinEmail}
+                      onChange={(event) => setJoinEmail(event.target.value)}
+                      type="email"
+                      autoComplete="email"
+                      required
+                      className="mt-1.5 w-full rounded-[14px] border border-white/10 bg-black/35 px-3 py-3 text-[14px] normal-case tracking-normal text-white outline-none transition-colors focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <label className="mt-3 block text-[11px] font-bold uppercase tracking-[0.12em] text-white/48">
+                    Password
+                    <input
+                      value={joinPassword}
+                      onChange={(event) => setJoinPassword(event.target.value)}
+                      type="password"
+                      autoComplete={joinAuthMode === "signup" ? "new-password" : "current-password"}
+                      required
+                      minLength={6}
+                      className="mt-1.5 w-full rounded-[14px] border border-white/10 bg-black/35 px-3 py-3 text-[14px] normal-case tracking-normal text-white outline-none transition-colors focus:border-cyan-300"
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={authBusy}
+                    className="mt-4 w-full rounded-[16px] bg-cyan-300 px-4 py-3 text-[13px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {authBusy
+                      ? "Working..."
+                      : joinAuthMode === "signup"
+                      ? "Create Account"
+                      : "Sign In"}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                    Atlas Packs
+                  </p>
+                  <h2 className="mt-1 text-[21px] font-black tracking-tight text-white">
+                    Choose your membership
+                  </h2>
+                </div>
+                <p className="text-right text-[9px] font-bold leading-3 text-white/42">
+                  Top Signal and Top Play stay separate.
+                </p>
               </div>
-            </div>
+
+              <div className="mt-3">
+                <PackSportSelector
+                  value={selectedPackSport}
+                  onChange={setSelectedPackSport}
+                  sports={activeSubscriptionSports}
+                />
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {subscriptionPackPlans.map((pack) => (
+                  <PackCard
+                    key={`join-pack-${pack.plan}`}
+                    pack={pack}
+                    onChoose={handleJoinPlanChoose}
+                    disabled={checkoutPlan !== null}
+                    compact
+                  />
+                ))}
+              </div>
+
+              <StripeTrustBar />
+            </section>
 
             <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
               <div className="flex items-start justify-between gap-3">
