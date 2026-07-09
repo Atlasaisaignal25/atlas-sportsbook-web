@@ -1,5 +1,6 @@
 import type { AtlasEvent, AtlasSource, AtlasTimelineItem } from "@/types/atlasEvent";
 import { calculateEventConfidence } from "./eventConfidence";
+import { calculateAtlasImpactScore } from "./impactScore";
 import { getOtherMarkets, getPrimaryMarket } from "./primaryMarket";
 import { relativeTimestamp } from "./relativeTimestamp";
 
@@ -31,7 +32,22 @@ function titleSimilarity(a: string, b: string) {
 }
 
 function sameEvent(a: AtlasEvent, b: AtlasEvent) {
-  if (a.sport !== b.sport || a.category !== b.category) return false;
+  if (a.sport !== b.sport) return false;
+
+  const aIsMarket = a.category === "MARKET" || Boolean(a.marketMovement);
+  const bIsMarket = b.category === "MARKET" || Boolean(b.marketMovement);
+
+  if (aIsMarket !== bIsMarket) {
+    const sharedTeam =
+      (a.team && b.team && normalizeText(a.team) === normalizeText(b.team)) ||
+      (a.team && normalizeText(b.title).includes(normalizeText(a.team))) ||
+      (b.team && normalizeText(a.title).includes(normalizeText(b.team)));
+    const timeDistance = Math.abs(new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime());
+
+    return Boolean(sharedTeam) && Number.isFinite(timeDistance) && timeDistance <= 24 * 60 * 60 * 1000;
+  }
+
+  if (a.category !== b.category) return false;
 
   if (a.player && b.player && normalizeText(a.player) === normalizeText(b.player)) return true;
   if (a.team && b.team && normalizeText(a.team) === normalizeText(b.team)) {
@@ -103,18 +119,34 @@ export function mergeEvents(events: AtlasEvent[], options: { now?: Date } = {}) 
     const markets = [...new Set(group.flatMap((event) => event.markets))];
     const primaryMarket = getPrimaryMarket(primary.category, markets);
     const secondaryMarkets = getOtherMarkets(primaryMarket, markets);
+    const marketMovement = group.find((event) => event.marketMovement)?.marketMovement;
     const confidence = calculateEventConfidence({
       sources,
       providerCount,
       firstDetected,
       lastUpdated,
       articleAgreement: sources.length,
+      marketMovement,
       now: options.now,
     });
+    const mergedImpact = strongestImpact(group);
+    const atlasImpactScore = Math.min(
+      100,
+      Math.max(
+        ...group.map((event) => event.atlasImpactScore),
+        calculateAtlasImpactScore({
+          category: primary.category,
+          impact: mergedImpact,
+          sourceCount: sources.length,
+          topPublisherReliability: sources[0]?.reliability,
+        }) + (providerCount > 1 ? 4 : 0),
+      ),
+    );
 
     return {
       ...primary,
-      impact: strongestImpact(group),
+      impact: mergedImpact,
+      atlasImpactScore,
       sources,
       timeline,
       firstDetected,
@@ -132,6 +164,7 @@ export function mergeEvents(events: AtlasEvent[], options: { now?: Date } = {}) 
       sourceCount: Math.max(sources.length, 1),
       publisherReliability: sources[0]?.reliability ?? primary.publisherReliability,
       isResolved: group.every((event) => event.isResolved),
+      marketMovement,
     } satisfies AtlasEvent;
   });
 }

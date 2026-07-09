@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { atlasPulseMock } from "@/app/data/atlasPulseMock";
 import { createAtlasEventsFromPulseItems } from "@/lib/market-impact/eventEngine";
+import { mergeEvents } from "@/lib/market-impact/mergeEvents";
 import { getGNewsAtlasEvents } from "@/lib/market-impact/providers/gnewsProvider";
+import { getRecentOddsMovementEvents } from "@/lib/market-impact/providers/oddsProvider";
 import type { AtlasEvent } from "@/types/atlasEvent";
 import type { PulseImpact, PulseSport } from "@/types/marketImpact";
 
@@ -54,13 +56,27 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await getGNewsAtlasEvents({
-      apiKey,
-      sport,
-      impact,
-      limit,
-    });
-    const items: AtlasEvent[] = result.events;
+    const [gnewsResult, oddsResult] = await Promise.allSettled([
+      getGNewsAtlasEvents({
+        apiKey,
+        sport,
+        impact,
+        limit,
+      }),
+      getRecentOddsMovementEvents(),
+    ]);
+
+    if (gnewsResult.status === "rejected") {
+      throw gnewsResult.reason;
+    }
+
+    const result = gnewsResult.value;
+    const oddsEvents = oddsResult.status === "fulfilled" ? oddsResult.value : [];
+    const merged = mergeEvents([...result.events, ...oddsEvents])
+      .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+      .filter((item) => !impact || item.impact === impact)
+      .slice(0, limit);
+    const items: AtlasEvent[] = merged;
 
     if (items.length === 0) {
       const fallbackItems = getFallbackItems(sport, impact, limit);
@@ -78,7 +94,11 @@ export async function GET(request: Request) {
       source: "gnews",
       items,
       events: items,
-      meta: result.meta,
+      meta: {
+        ...result.meta,
+        oddsEvents: oddsEvents.length,
+        oddsProviderStatus: oddsResult.status === "fulfilled" ? "ok" : "unavailable",
+      },
     });
   } catch {
     const items = getFallbackItems(sport, impact, limit);

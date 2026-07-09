@@ -6303,6 +6303,14 @@ function getAtlasImpactScoreClasses(score?: number) {
   return "border-cyan-300/45 bg-cyan-300/10 text-cyan-200";
 }
 
+function formatMarketMovementValue(point?: number, price?: number) {
+  if (point !== undefined && Number.isFinite(point)) {
+    return Number.isInteger(point) ? point.toFixed(0) : `${point}`;
+  }
+
+  return formatAmericanOdds(price ?? null);
+}
+
 const homeMembershipPlans = [
   {
     plan: "exclusive" as const,
@@ -8371,6 +8379,55 @@ const subscriptionPlansBoard = (
                           </span>
                         ))}
                       </div>
+
+                      {item.marketMovement ? (
+                        <div className="mt-3 rounded-[14px] border border-cyan-300/14 bg-black/22 p-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-cyan-300">
+                                Market Movement
+                              </p>
+                              <p className="mt-1 text-[12px] font-black text-white">
+                                {item.marketMovement.marketLabel}
+                              </p>
+                            </div>
+                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/62">
+                              {item.marketMovement.status}
+                            </span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-3 gap-2 text-[10px] font-bold text-white/58">
+                            <div>
+                              <p className="text-white/34">Move</p>
+                              <p className="mt-0.5 text-[12px] text-white">
+                                {formatMarketMovementValue(
+                                  item.marketMovement.previousPoint,
+                                  item.marketMovement.previousPrice,
+                                )}{" "}
+                                →{" "}
+                                {formatMarketMovementValue(
+                                  item.marketMovement.currentPoint,
+                                  item.marketMovement.currentPrice,
+                                )}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-white/34">Books</p>
+                              <p className="mt-0.5 text-[12px] text-white">
+                                {item.marketMovement.sportsbookCount}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-white/34">Consensus</p>
+                              <p className="mt-0.5 text-[12px] text-white">
+                                {Math.round(item.marketMovement.consensusPercent * 100)}%
+                              </p>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[10px] font-semibold text-white/42">
+                            {item.marketMovement.elapsedMinutes} min · Possible market reaction detected
+                          </p>
+                        </div>
+                      ) : null}
 
                       <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-2.5">
                         <div className="min-w-0">

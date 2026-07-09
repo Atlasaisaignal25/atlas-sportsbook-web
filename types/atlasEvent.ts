@@ -5,6 +5,7 @@ import type {
   PulseMarket,
   PulseSport,
 } from "./marketImpact";
+import type { MovementStatus, OddsMarketKey } from "./oddsMovement";
 
 export type AtlasProvider = "GNews" | "SportsDataIO" | "OddsAPI" | "Weather" | "Atlas";
 
@@ -52,4 +53,24 @@ export type AtlasEvent = {
   sourceCount: number;
   publisherReliability?: number;
   groupedEventKey?: string;
+  marketMovement?: AtlasMarketMovement;
+};
+
+export type AtlasMarketMovement = {
+  marketKey: OddsMarketKey;
+  marketLabel: "Moneyline" | "Run Line" | "Total";
+  outcomeName: string;
+  previousPoint?: number;
+  currentPoint?: number;
+  previousPrice?: number;
+  currentPrice?: number;
+  pointDelta?: number;
+  impliedProbabilityDelta?: number;
+  sportsbookCount: number;
+  monitoredSportsbookCount: number;
+  consensusPercent: number;
+  movementStartedAt: string;
+  detectedAt: string;
+  elapsedMinutes: number;
+  status: MovementStatus;
 };
