@@ -16,7 +16,7 @@ import { getNbaPublicSignals, getNbaTop5Live } from "@/app/lib/supabase/nbaLiveS
 import { getNhlPublicSignals, getNhlTop5Live } from "@/app/lib/supabase/nhlLiveSignals";
 import {getSoccerPublicSignals,getSoccerTop5Live,} from "@/app/lib/supabase/soccerLiveSignals";
 import { atlasPulseMock } from "@/app/data/atlasPulseMock";
-import type { AtlasPulseItem, PulseImpact, PulseSport } from "@/types/marketImpact";
+import type { AtlasPulseItem, AtlasPulseSource, PulseImpact, PulseSport } from "@/types/marketImpact";
 import {
   SignalsHomePage,
   type PrecisionNotifyResult,
@@ -4188,6 +4188,10 @@ const [pulseMlbItems, setPulseMlbItems] = useState<AtlasPulseItem[]>(
   atlasPulseMock.filter((item) => item.sport === "MLB")
 );
 const [pulseLoading, setPulseLoading] = useState(false);
+const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
+  title: string;
+  sources: AtlasPulseSource[];
+} | null>(null);
 const [followedSports, setFollowedSports] = useState<SportTab[]>([]);
 const [followedTeams, setFollowedTeams] = useState<string[]>([]);
 const [challengeSnapshot, setChallengeSnapshot] = useState<ChallengeSnapshot>({
@@ -6283,6 +6287,20 @@ function getPulseImpactClasses(impact: PulseImpact) {
   };
 }
 
+function getAtlasImpactScoreClasses(score?: number) {
+  const value = score ?? 0;
+
+  if (value >= 90) {
+    return "border-red-300/50 bg-red-400/10 text-red-200";
+  }
+
+  if (value >= 75) {
+    return "border-amber-300/50 bg-amber-300/10 text-amber-200";
+  }
+
+  return "border-cyan-300/45 bg-cyan-300/10 text-cyan-200";
+}
+
 const homeMembershipPlans = [
   {
     plan: "exclusive" as const,
@@ -8254,6 +8272,11 @@ const subscriptionPlansBoard = (
                 {filteredPulseItems.map((item) => {
                   const impactStyles = getPulseImpactClasses(item.impact);
                   const affected = item.player ?? item.team ?? item.sport;
+                  const sourceCount = item.sourceCount ?? item.sources?.length ?? 1;
+                  const sources = item.sources ?? [];
+                  const score = item.atlasImpactScore ?? 0;
+                  const scoreClasses = getAtlasImpactScoreClasses(score);
+                  const scoreProgress = Math.max(0, Math.min(100, score));
 
                   return (
                     <article
@@ -8265,6 +8288,10 @@ const subscriptionPlansBoard = (
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-200">
                               {item.sport}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.06em] ${scoreClasses}`}>
+                              <span>Atlas Impact</span>
+                              <span className="text-[11px]">{score}</span>
                             </span>
                             <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${impactStyles.badge}`}>
                               {item.impact}
@@ -8280,15 +8307,41 @@ const subscriptionPlansBoard = (
                             {affected}
                           </p>
                         </div>
-                        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${impactStyles.dot}`} />
+                        <span
+                          className={`mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border p-[2px] text-[12px] font-black ${scoreClasses}`}
+                          style={{
+                            background: `conic-gradient(currentColor ${scoreProgress * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
+                          }}
+                          aria-label={`Atlas Impact ${score}`}
+                        >
+                          <span className="grid h-full w-full place-items-center rounded-full bg-[#07111f]">
+                            {score}
+                          </span>
+                        </span>
                       </div>
 
                       <p className="mt-2 text-[12px] font-semibold leading-5 text-white/66">
                         {item.summary}
                       </p>
 
+                      {item.whyItMatters ? (
+                        <div className="mt-3 rounded-[14px] border border-cyan-300/12 bg-cyan-300/[0.045] p-2.5">
+                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-cyan-300">
+                            Why It Matters
+                          </p>
+                          <p className="mt-1 text-[11px] font-semibold leading-4 text-white/62">
+                            {item.whyItMatters}
+                          </p>
+                        </div>
+                      ) : null}
+
                       <div className="mt-3 flex flex-wrap gap-1.5">
-                        {item.markets.map((market) => (
+                        {item.primaryMarket ? (
+                          <span className="rounded-full border border-cyan-300/45 bg-cyan-300/12 px-2 py-1 text-[9px] font-black uppercase tracking-[0.04em] text-cyan-200">
+                            Primary: {item.primaryMarket}
+                          </span>
+                        ) : null}
+                        {(item.otherMarkets ?? item.markets).map((market) => (
                           <span
                             key={`${item.id}-${market}`}
                             className="rounded-full border border-white/10 bg-black/22 px-2 py-1 text-[9px] font-black uppercase tracking-[0.04em] text-white/58"
@@ -8301,13 +8354,26 @@ const subscriptionPlansBoard = (
                       <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-2.5">
                         <div className="min-w-0">
                           <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-white/42">
-                            {item.source}
+                            {sourceCount > 1 ? `${sourceCount} Sources` : item.source}
                           </p>
                           <p className="mt-0.5 text-[10px] font-semibold text-white/42">
                             {item.timestampLabel}
                           </p>
                         </div>
-                        {item.sourceUrl ? (
+                        {sourceCount > 1 && sources.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPulseSourcesSheet({
+                                title: item.title,
+                                sources,
+                              })
+                            }
+                            className="shrink-0 rounded-full border border-cyan-300/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200"
+                          >
+                            Read Sources
+                          </button>
+                        ) : item.sourceUrl ? (
                           <a
                             href={item.sourceUrl}
                             target="_blank"
@@ -9247,6 +9313,56 @@ const subscriptionPlansBoard = (
                 {selectedSignalInsight.riskNote}
               </p>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {pulseSourcesSheet ? (
+        <div className="fixed inset-0 z-40 flex items-end bg-black/70 px-4 pb-4 backdrop-blur-sm">
+          <div className="mx-auto w-full max-w-md rounded-[26px] border border-cyan-400/25 bg-[#07111f] p-4 shadow-[0_0_34px_rgba(34,211,238,0.16)]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                  Sources
+                </p>
+                <h2 className="mt-2 line-clamp-2 text-[17px] font-black leading-tight text-white">
+                  {pulseSourcesSheet.title}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPulseSourcesSheet(null)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-[18px] font-bold text-white/70"
+                aria-label="Close sources"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {pulseSourcesSheet.sources.map((source) => (
+                <a
+                  key={`${source.name}-${source.url}`}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-white/[0.045] px-3 py-2.5"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[13px] font-black text-white">
+                      {source.name}
+                    </span>
+                    <span className="mt-0.5 block text-[10px] font-semibold text-white/42">
+                      Reliability {source.reliability}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full border border-cyan-300/25 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-200">
+                    Read
+                  </span>
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       ) : null}

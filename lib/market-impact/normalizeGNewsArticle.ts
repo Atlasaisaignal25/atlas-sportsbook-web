@@ -1,7 +1,11 @@
 import { createHash } from "crypto";
 import type { AtlasPulseItem } from "@/types/marketImpact";
 import { classifyMarketImpact } from "./classifyArticle";
+import { calculateAtlasImpactScore } from "./impactScore";
+import { getOtherMarkets, getPrimaryMarket } from "./primaryMarket";
 import { relativeTimestamp } from "./relativeTimestamp";
+import { scorePublisher } from "./sourceQuality";
+import { buildWhyItMatters } from "./whyItMatters";
 
 export type GNewsArticle = {
   title?: string;
@@ -82,6 +86,8 @@ export function normalizeGNewsArticle(
 
   const classification = classifyMarketImpact({ title, description });
   if (classification.relevanceScore < MIN_RELEVANCE_SCORE) return null;
+  const reliability = scorePublisher(source);
+  const primaryMarket = getPrimaryMarket(classification.category, classification.markets);
 
   return {
     id: stableArticleId(url, publishedAt),
@@ -97,5 +103,27 @@ export function normalizeGNewsArticle(
     timestampLabel: relativeTimestamp(publishedAt, now),
     imageUrl: article.image?.trim() || undefined,
     isLiveData: true,
+    sources: [
+      {
+        name: source,
+        url,
+        publishedAt,
+        reliability,
+      },
+    ],
+    sourceCount: 1,
+    whyItMatters: buildWhyItMatters({
+      category: classification.category,
+      markets: classification.markets,
+    }),
+    primaryMarket,
+    otherMarkets: getOtherMarkets(primaryMarket, classification.markets),
+    atlasImpactScore: calculateAtlasImpactScore({
+      category: classification.category,
+      impact: classification.impact,
+      sourceCount: 1,
+      topPublisherReliability: reliability,
+    }),
+    publisherReliability: reliability,
   };
 }

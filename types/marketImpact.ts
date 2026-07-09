@@ -47,4 +47,19 @@ export type AtlasPulseItem = {
   team?: string;
   player?: string;
   isLiveData: boolean;
+  sources?: AtlasPulseSource[];
+  sourceCount?: number;
+  whyItMatters?: string;
+  primaryMarket?: PulseMarket;
+  otherMarkets?: PulseMarket[];
+  atlasImpactScore?: number;
+  publisherReliability?: number;
+  groupedEventKey?: string;
+};
+
+export type AtlasPulseSource = {
+  name: string;
+  url: string;
+  publishedAt: string;
+  reliability: number;
 };

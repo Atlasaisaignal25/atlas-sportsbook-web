@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { atlasPulseMock } from "@/app/data/atlasPulseMock";
+import { groupArticles } from "@/lib/market-impact/groupArticles";
 import { normalizeGNewsArticle, type GNewsArticle } from "@/lib/market-impact/normalizeGNewsArticle";
 import type { AtlasPulseItem, PulseImpact, PulseSport } from "@/types/marketImpact";
 
@@ -104,7 +105,9 @@ export async function GET(request: Request) {
         .filter((item) => !impact || item.impact === impact),
     );
 
-    const items = sortNewestFirst(normalized).slice(0, limit);
+    const grouped = groupArticles(sortNewestFirst(normalized));
+    const items = sortNewestFirst(grouped).slice(0, limit);
+    const duplicateArticlesMerged = Math.max(normalized.length - grouped.length, 0);
 
     if (items.length === 0) {
       return NextResponse.json({
@@ -118,6 +121,11 @@ export async function GET(request: Request) {
       ok: true,
       source: "gnews",
       items,
+      meta: {
+        rawRelevantArticles: normalized.length,
+        groupedEvents: grouped.length,
+        duplicateArticlesMerged,
+      },
     });
   } catch {
     return NextResponse.json({

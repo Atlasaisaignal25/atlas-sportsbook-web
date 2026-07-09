@@ -1,8 +1,42 @@
 import type { AtlasPulseItem } from "@/types/marketImpact";
+import { calculateAtlasImpactScore } from "@/lib/market-impact/impactScore";
+import { getOtherMarkets, getPrimaryMarket } from "@/lib/market-impact/primaryMarket";
+import { scorePublisher } from "@/lib/market-impact/sourceQuality";
+import { buildWhyItMatters } from "@/lib/market-impact/whyItMatters";
 
 const fallbackPublishedAt = new Date().toISOString();
 
-export const atlasPulseMock: AtlasPulseItem[] = [
+function enrichMockItem(item: AtlasPulseItem): AtlasPulseItem {
+  const publisherReliability = scorePublisher(item.source);
+  const primaryMarket = getPrimaryMarket(item.category, item.markets);
+
+  return {
+    ...item,
+    sourceCount: 1,
+    sources: item.sourceUrl
+      ? [
+          {
+            name: item.source,
+            url: item.sourceUrl,
+            publishedAt: item.publishedAt,
+            reliability: publisherReliability,
+          },
+        ]
+      : [],
+    whyItMatters: buildWhyItMatters({ category: item.category, markets: item.markets }),
+    primaryMarket,
+    otherMarkets: getOtherMarkets(primaryMarket, item.markets),
+    atlasImpactScore: calculateAtlasImpactScore({
+      category: item.category,
+      impact: item.impact,
+      sourceCount: 1,
+      topPublisherReliability: publisherReliability,
+    }),
+    publisherReliability,
+  };
+}
+
+const atlasPulseBaseItems: AtlasPulseItem[] = [
   {
     id: "mlb-pitcher-change",
     sport: "MLB",
@@ -79,3 +113,5 @@ export const atlasPulseMock: AtlasPulseItem[] = [
     isLiveData: false,
   },
 ];
+
+export const atlasPulseMock: AtlasPulseItem[] = atlasPulseBaseItems.map(enrichMockItem);
