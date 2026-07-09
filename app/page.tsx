@@ -6532,16 +6532,26 @@ const subscriptionPlansBoard = (
       <main className="min-h-screen bg-[#020715] text-white">
         <div className="mx-auto min-h-screen w-full max-w-md bg-[#020715]">
           <div className="relative min-h-screen overflow-hidden">
-            <img
-              src="/join-atlas-frame.jpeg"
-              alt="Join Atlas Signals"
-              className="absolute inset-x-0 top-0 h-screen w-full object-cover object-top"
-            />
+            <div className="pointer-events-none fixed inset-x-0 top-0 z-0 mx-auto h-screen w-full max-w-md overflow-hidden">
+              <img
+                src="/join-atlas-frame.jpeg"
+                alt="Join Atlas Signals"
+                className="h-full w-full object-cover object-top"
+              />
+            </div>
+            <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto h-[19vh] w-full max-w-md overflow-hidden">
+              <img
+                src="/join-atlas-frame.jpeg"
+                alt=""
+                aria-hidden="true"
+                className="h-screen w-full object-cover object-top"
+              />
+            </div>
             <button
               type="button"
               onClick={() => navigateAppState({ section: "signals", view: "live", sport: "TOP" })}
               aria-label="Back to signals"
-              className="absolute left-[3.2%] top-[5.2%] z-10 h-12 w-12 rounded-full"
+              className="fixed left-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 h-12 w-12 rounded-full"
             />
 
             <div className="relative z-10 space-y-4 px-4 pb-8 pt-[19vh]">
