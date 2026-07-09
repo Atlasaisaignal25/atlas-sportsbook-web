@@ -6456,6 +6456,78 @@ const subscriptionPlansBoard = (
       );
     }
 
+    function JoinUiIcon({
+      type,
+      className = "",
+    }: {
+      type: "signin" | "signup" | "lock" | "check" | "shield" | "updates" | "trophy";
+      className?: string;
+    }) {
+      if (type === "signin") {
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+            <path d="M10 7V5.8c0-.9.7-1.6 1.6-1.6h6.1c.9 0 1.6.7 1.6 1.6v12.4c0 .9-.7 1.6-1.6 1.6h-6.1c-.9 0-1.6-.7-1.6-1.6V17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            <path d="M3.8 12h10.4m-3.4-3.6 3.6 3.6-3.6 3.6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        );
+      }
+
+      if (type === "signup") {
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+            <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="2" />
+            <path d="M3.8 19.2c.8-3 2.6-4.5 5.2-4.5 2.1 0 3.7 1 4.6 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M17.5 8.5v6M14.5 11.5h6" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+          </svg>
+        );
+      }
+
+      if (type === "lock") {
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+            <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
+            <path d="M8 10V7.7a4 4 0 0 1 8 0V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M12 14v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        );
+      }
+
+      if (type === "check") {
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+            <path d="m8 12.2 2.4 2.4L16.2 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        );
+      }
+
+      if (type === "shield") {
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+            <path d="M12 3.5 19 6v5.2c0 4.4-2.7 7.5-7 9.3-4.3-1.8-7-4.9-7-9.3V6l7-2.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            <path d="m8.8 12 2 2 4.5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        );
+      }
+
+      if (type === "updates") {
+        return (
+          <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M8 12h1.5l1.2-3.2 2.2 6.4 1.3-3.2H16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M7.2 6.8 5.6 5.2M16.8 6.8l1.6-1.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        );
+      }
+
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+          <path d="M7 5h10v3a5 5 0 0 1-10 0V5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M7 7H4.5c0 4 2 6 5 6.5M17 7h2.5c0 4-2 6-5 6.5M12 13v4M8.5 20h7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      );
+    }
+
     return (
       <main className="min-h-screen bg-[#020715] text-white">
         <div className="mx-auto min-h-screen w-full max-w-md bg-[#020715]">
@@ -6463,7 +6535,7 @@ const subscriptionPlansBoard = (
             <img
               src="/join-atlas-frame.jpeg"
               alt="Join Atlas Signals"
-              className="absolute inset-0 h-full w-full object-cover object-top"
+              className="absolute inset-x-0 top-0 h-screen w-full object-cover object-top"
             />
             <button
               type="button"
@@ -6471,14 +6543,13 @@ const subscriptionPlansBoard = (
               aria-label="Back to signals"
               className="absolute left-[3.5%] top-[4.8%] z-10 h-11 w-11 rounded-full"
             />
-          </div>
 
-          <div className="space-y-6 px-4 pb-8 pt-6">
-            <section className="rounded-[20px] border border-cyan-300/18 bg-[#07111d]/88 p-4 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
-              <div className="grid grid-cols-[1fr_42px_1fr] items-center gap-2">
+            <div className="relative z-10 space-y-5 px-4 pb-8 pt-[34vh]">
+            <section className="rounded-[18px] border border-cyan-300/18 bg-[#07111d]/90 p-3 shadow-[0_0_24px_rgba(34,211,238,0.08)] backdrop-blur-md">
+              <div className="grid grid-cols-[1fr_34px_1fr] items-center gap-2">
                 <div className="text-center">
-                  <h2 className="text-[17px] font-black text-white">Welcome Back</h2>
-                  <p className="mt-2 text-[12px] font-semibold text-white/54">Sign in to continue</p>
+                  <h2 className="text-[14px] font-black text-white">Welcome Back</h2>
+                  <p className="mt-1 text-[10px] font-semibold text-white/54">Sign in to continue</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -6486,22 +6557,22 @@ const subscriptionPlansBoard = (
                       setJoinAuthOpen(true);
                       setJoinAuthMessage(null);
                     }}
-                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-cyan-300 text-[13px] font-black uppercase tracking-[0.10em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]"
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-[11px] bg-cyan-300 text-[12px] font-black uppercase tracking-[0.10em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]"
                   >
-                    <span className="text-[22px] leading-none">↪</span>
+                    <JoinUiIcon type="signin" className="h-5 w-5" />
                     Sign In
                   </button>
                 </div>
 
                 <div className="flex h-full flex-col items-center justify-center">
-                  <span className="h-10 w-px bg-white/10" />
-                  <span className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-[#080d19] text-[11px] font-black text-white/78">OR</span>
-                  <span className="h-10 w-px bg-white/10" />
+                  <span className="h-8 w-px bg-white/10" />
+                  <span className="grid h-8 w-8 place-items-center rounded-full border border-white/12 bg-[#080d19] text-[10px] font-black text-white/78">OR</span>
+                  <span className="h-8 w-px bg-white/10" />
                 </div>
 
                 <div className="text-center">
-                  <h2 className="text-[17px] font-black text-white">New Here?</h2>
-                  <p className="mt-2 text-[12px] font-semibold text-white/54">Create an account to get started</p>
+                  <h2 className="text-[14px] font-black text-white">New Here?</h2>
+                  <p className="mt-1 text-[10px] font-semibold text-white/54">Create an account to get started</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -6509,9 +6580,9 @@ const subscriptionPlansBoard = (
                       setJoinAuthOpen(true);
                       setJoinAuthMessage(null);
                     }}
-                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] border border-cyan-300/65 bg-transparent text-[13px] font-black uppercase tracking-[0.10em] text-cyan-300"
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-[11px] border border-cyan-300/65 bg-transparent text-[12px] font-black uppercase tracking-[0.10em] text-cyan-300"
                   >
-                    <span className="text-[22px] leading-none">♙</span>
+                    <JoinUiIcon type="signup" className="h-5 w-5" />
                     Sign Up
                   </button>
                 </div>
@@ -6581,14 +6652,14 @@ const subscriptionPlansBoard = (
                 </form>
               ) : null}
 
-              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3 text-center">
+              <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/10 pt-2.5 text-center">
                 {[
-                  ["▣", "Secure & Encrypted"],
-                  ["○", "Cancel Anytime"],
-                  ["♢", "Trusted by Winners"],
+                  ["lock", "Secure & Encrypted"],
+                  ["check", "Cancel Anytime"],
+                  ["shield", "Trusted by Winners"],
                 ].map(([icon, label]) => (
-                  <div key={label} className="flex items-center justify-center gap-1 text-[9px] font-bold text-white/48">
-                    <span className="text-[15px] text-white/50">{icon}</span>
+                  <div key={label} className="flex items-center justify-center gap-1 text-[8.5px] font-bold text-white/48">
+                    <JoinUiIcon type={icon as "lock" | "check" | "shield"} className="h-4 w-4 text-white/48" />
                     <span>{label}</span>
                   </div>
                 ))}
@@ -6770,7 +6841,46 @@ const subscriptionPlansBoard = (
                 ))}
               </div>
             </section>
+
+            <section className="rounded-[18px] border border-cyan-300/16 bg-[#07111d]/86 p-3 shadow-[0_0_24px_rgba(34,211,238,0.07)] backdrop-blur-md">
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  {
+                    icon: "updates" as const,
+                    title: "24/7 Updates",
+                    body: "Real-time signals and market scans",
+                    tone: "border-cyan-300/28 bg-cyan-300/10 text-cyan-300",
+                  },
+                  {
+                    icon: "trophy" as const,
+                    title: "Winning Edge",
+                    body: "AI-powered analysis for sharp results",
+                    tone: "border-amber-300/28 bg-amber-300/10 text-amber-300",
+                  },
+                  {
+                    icon: "shield" as const,
+                    title: "Cancel Anytime",
+                    body: "No long-term contracts. You're in control.",
+                    tone: "border-emerald-300/28 bg-emerald-300/10 text-emerald-300",
+                  },
+                ].map((item, index) => (
+                  <div
+                    key={item.title}
+                    className={`grid min-w-0 grid-cols-[28px_1fr] gap-2 ${index < 2 ? "border-r border-white/10 pr-2" : ""}`}
+                  >
+                    <span className={`grid h-8 w-8 place-items-center rounded-full border ${item.tone}`}>
+                      <JoinUiIcon type={item.icon} className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 text-left">
+                      <span className="block text-[9.5px] font-black leading-tight text-white/72">{item.title}</span>
+                      <span className="mt-0.5 block text-[7.5px] font-semibold leading-[1.25] text-white/42">{item.body}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
+        </div>
         </div>
       </main>
     );
