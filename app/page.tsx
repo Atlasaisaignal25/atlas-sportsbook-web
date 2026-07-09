@@ -6541,10 +6541,10 @@ const subscriptionPlansBoard = (
               type="button"
               onClick={() => navigateAppState({ section: "signals", view: "live", sport: "TOP" })}
               aria-label="Back to signals"
-              className="absolute left-[3.5%] top-[4.8%] z-10 h-11 w-11 rounded-full"
+              className="absolute left-[3.2%] top-[5.2%] z-10 h-12 w-12 rounded-full"
             />
 
-            <div className="relative z-10 space-y-5 px-4 pb-8 pt-[18vh]">
+            <div className="relative z-10 space-y-4 px-4 pb-8 pt-[19vh]">
             <section className="rounded-[18px] border border-cyan-300/18 bg-[#07111d]/90 p-3 shadow-[0_0_24px_rgba(34,211,238,0.08)] backdrop-blur-md">
               <div className="grid grid-cols-[1fr_34px_1fr] items-center gap-2">
                 <div className="text-center">
@@ -6674,14 +6674,14 @@ const subscriptionPlansBoard = (
               </div>
               <p className="mt-2 text-[11px] font-semibold text-white/50">Pick the plan that matches your game.</p>
 
-              <div className="mt-4 grid grid-cols-3 gap-1.5">
+              <div className="mt-3 grid grid-cols-3 gap-1.5">
                 {joinPlans.map((plan) => {
                   const styles = joinStyles[plan.accent];
 
                   return (
                     <article
                       key={plan.plan}
-                      className={`relative flex min-h-[314px] min-w-0 flex-col rounded-[15px] border px-2 pb-2 pt-5 text-left ${styles.shell}`}
+                      className={`relative flex min-h-[270px] min-w-0 flex-col rounded-[15px] border px-1.5 pb-1.5 pt-3.5 text-left ${styles.shell}`}
                     >
                       {plan.badge ? (
                         <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
@@ -6690,38 +6690,38 @@ const subscriptionPlansBoard = (
                       ) : null}
 
                       <div className="flex justify-center">
-                        <span className={`grid h-12 w-12 place-items-center rounded-full border shadow-[0_0_16px_currentColor] ${styles.icon}`}>
+                        <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
                           <JoinIcon
                             type={plan.plan === "premium" ? "crown" : plan.plan === "elite" ? "diamond" : "star"}
-                            className="h-7 w-7"
+                            className="h-5 w-5"
                           />
                         </span>
                       </div>
 
-                      <p className={`mt-3 text-center text-[13px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
+                      <p className={`mt-1.5 text-center text-[11.5px] font-black uppercase tracking-[0.07em] ${styles.text}`}>
                         {plan.title}
                       </p>
-                      <p className="mt-1 text-center text-[8.5px] font-bold leading-tight text-white/78">
+                      <p className="mt-0.5 text-center text-[7.5px] font-bold leading-tight text-white/78">
                         {plan.subtitle}
                       </p>
 
-                      <div className={`mt-3 rounded-[11px] border px-1.5 py-2 text-center ${styles.pill}`}>
-                        <p className="text-[10px] font-black leading-tight text-white">{plan.featureTitle}</p>
-                        <p className={`mt-0.5 text-[9px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+                      <div className={`mt-1.5 rounded-[10px] border px-1 py-1.5 text-center ${styles.pill}`}>
+                        <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
+                        <p className={`mt-0.5 text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
                       </div>
 
-                      <div className="mt-3 grid grid-cols-1 gap-1.5">
+                      <div className="mt-2 grid grid-cols-1 gap-0.5">
                         {plan.features.map((feature) => (
-                          <p key={feature} className="grid grid-cols-[10px_1fr] gap-1 text-[8.5px] font-semibold leading-tight text-white/76">
+                          <p key={feature} className="grid grid-cols-[9px_1fr] gap-1 text-[7.5px] font-semibold leading-tight text-white/76">
                             <span className={`${styles.check} leading-tight`}>✓</span>
                             <span>{feature}</span>
                           </p>
                         ))}
                       </div>
 
-                      <div className="mt-auto pt-3">
+                      <div className="mt-auto pt-1.5">
                         <div className="text-center">
-                          <span className="text-[16px] font-black leading-none text-white">{plan.price}</span>
+                          <span className="text-[14px] font-black leading-none text-white">{plan.price}</span>
                           <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
                         </div>
 
@@ -6729,7 +6729,7 @@ const subscriptionPlansBoard = (
                           type="button"
                           onClick={() => handleJoinPlanChoose(plan.plan)}
                           disabled={checkoutPlan !== null}
-                          className={`mt-2 h-[34px] w-full rounded-[10px] border px-0.5 text-[9px] font-black uppercase tracking-[0.04em] disabled:opacity-60 ${styles.button}`}
+                          className={`mt-1.5 h-[29px] w-full rounded-[9px] border px-0.5 text-[8px] font-black uppercase tracking-[0.035em] disabled:opacity-60 ${styles.button}`}
                         >
                           {plan.cta}
                         </button>
