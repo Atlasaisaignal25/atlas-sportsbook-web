@@ -4639,6 +4639,28 @@ function getSignalSportKey(sport: SportTab) {
   return String(sport).toLowerCase();
 }
 
+function getOddsSportKeyForScores(sport: SportTab) {
+  if (sport === "MLB") return "baseball_mlb";
+  if (sport === "NBA") return "basketball_nba";
+  if (sport === "NHL") return "icehockey_nhl";
+  if (sport === "SOCCER") return "soccer_public_signals";
+  return String(sport).toLowerCase();
+}
+
+function oddsGameToScheduledScore(game: OddsGame, sport: SportTab): LiveScore {
+  return {
+    id: String(game.id),
+    sport_key: getOddsSportKeyForScores(sport),
+    sport_title: sport,
+    commence_time: game.commence_time,
+    home_team: game.home_team,
+    away_team: game.away_team,
+    completed: false,
+    scores: [],
+    rawStatus: "Scheduled",
+  };
+}
+
 function findLiveGameForSignal(signal: SignalGame, sport: SportTab) {
   return filteredLiveGames.find((game) => {
     if (getLiveSportFromKey(game.sport_key) !== sport) return false;
@@ -4962,9 +4984,17 @@ useEffect(() => {
       cache: "no-store",
     });
     const scoresData = await scoresRes.json();
-    const apiLiveGames = Array.isArray(scoresData)
+    let apiLiveGames = Array.isArray(scoresData)
       ? (scoresData as LiveScore[])
       : [];
+
+    if (apiLiveGames.length === 0 && activeDay > getRelativeDayKey(0)) {
+      const scheduledOddsGames = await fetchScoreOddsForSport(sport).catch(() => []);
+      apiLiveGames = scheduledOddsGames
+        .map((game) => oddsGameToScheduledScore(game, sport))
+        .filter((game) => getGameDayKey(game.commence_time) === activeDay);
+    }
+
     const storageKey = getLiveScoresStorageKey(sport, activeDay);
     let storedLiveGames: LiveScore[] = [];
 
