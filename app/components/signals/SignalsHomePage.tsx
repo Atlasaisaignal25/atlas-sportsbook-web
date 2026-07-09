@@ -2152,24 +2152,52 @@ const pricingAccentStyles = {
     shell: "border-cyan-300/40 bg-cyan-400/[0.045] shadow-[0_0_18px_rgba(34,211,238,0.12)]",
     text: "text-cyan-300",
     pill: "border-cyan-300/35 bg-cyan-300/10 text-cyan-200",
-    button: "border-cyan-300/70 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.16)]",
+    button: "border-cyan-300/70 bg-cyan-300 text-black shadow-[0_0_14px_rgba(34,211,238,0.22)]",
     check: "text-cyan-300",
+    icon: "border-cyan-300/45 bg-cyan-300/10 text-cyan-200",
   },
   gold: {
     shell: "border-amber-300/55 bg-amber-400/[0.055] shadow-[0_0_20px_rgba(251,191,36,0.16)]",
     text: "text-amber-300",
     pill: "border-amber-300/45 bg-amber-300/12 text-amber-200",
-    button: "border-amber-300/80 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.18)]",
+    button: "border-amber-300/80 bg-amber-300 text-black shadow-[0_0_14px_rgba(251,191,36,0.22)]",
     check: "text-amber-300",
+    icon: "border-amber-300/45 bg-amber-300/10 text-amber-200",
   },
   purple: {
     shell: "border-purple-300/45 bg-purple-400/[0.045] shadow-[0_0_18px_rgba(192,132,252,0.14)]",
     text: "text-purple-300",
     pill: "border-purple-300/40 bg-purple-300/10 text-purple-200",
-    button: "border-purple-300/75 text-purple-200 shadow-[0_0_14px_rgba(192,132,252,0.16)]",
+    button: "border-purple-300/75 bg-purple-500 text-white shadow-[0_0_14px_rgba(192,132,252,0.22)]",
     check: "text-purple-300",
+    icon: "border-purple-300/45 bg-purple-300/10 text-purple-200",
   },
 };
+
+function PricingIcon({ type, className = "" }: { type: "star" | "crown" | "diamond"; className?: string }) {
+  if (type === "crown") {
+    return (
+      <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
+        <path d="M10 45h44l-4 10H14l-4-10Zm4-26 11 10 7-17 7 17 11-10 4 22H10l4-22Z" />
+      </svg>
+    );
+  }
+
+  if (type === "diamond") {
+    return (
+      <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
+        <path d="M12 19 22 8h20l10 11-20 37L12 19Z" />
+        <path d="M22 8 27 19H12L22 8Zm20 0-5 11h15L42 8ZM27 19h10l-5 37-5-37Z" fill="rgba(5,8,22,.42)" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="m12 2.7 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 2.7Z" />
+    </svg>
+  );
+}
 
 function PricingPacksSection({
   activeSports,
@@ -2220,9 +2248,7 @@ function PricingPacksSection({
         className="relative flex min-h-[66px] w-full items-center gap-3 overflow-hidden px-3 py-2 text-left"
       >
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] border border-cyan-300/45 bg-cyan-300/10 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
-            <path d="m12 2.7 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 2.7Z" />
-          </svg>
+          <PricingIcon type="star" className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-black tracking-tight text-white">
@@ -2269,43 +2295,53 @@ function PricingPacksSection({
                 return (
                   <article
                     key={plan.code}
-                    className={`relative flex min-h-[168px] min-w-0 flex-col rounded-[13px] border px-1.5 pb-1.5 pt-2 ${styles.shell}`}
+                    className={`relative flex min-h-[314px] min-w-0 flex-col rounded-[15px] border px-2 pb-2 pt-5 ${styles.shell}`}
                   >
                     {plan.badge ? (
-                      <span className="absolute left-1/2 top-0.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-1.5 py-0.5 text-[5.8px] font-black uppercase tracking-[0.06em] text-black">
+                      <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
                         {plan.badge}
                       </span>
                     ) : null}
 
-                    <p className={`mt-2 text-center text-[9.5px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
+                    <div className="flex justify-center">
+                      <span className={`grid h-12 w-12 place-items-center rounded-full border shadow-[0_0_16px_currentColor] ${styles.icon}`}>
+                        <PricingIcon
+                          type={plan.code === "premium" ? "crown" : plan.code === "elite" ? "diamond" : "star"}
+                          className="h-7 w-7"
+                        />
+                      </span>
+                    </div>
+
+                    <p className={`mt-3 text-center text-[13px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
                       {plan.title}
                     </p>
-                    <p className="mt-0.5 truncate text-center text-[6.8px] font-bold text-white/72">
+                    <p className="mt-1 text-center text-[8.5px] font-bold leading-tight text-white/78">
                       {plan.subtitle}
                     </p>
-                    <div className="mt-1 text-center">
-                      <span className="text-[17px] font-black leading-none text-white">{plan.price}</span>
-                      <span className="ml-0.5 text-[6.2px] font-bold text-white/52">/mo</span>
+
+                    <div className={`mt-3 rounded-[11px] border px-1.5 py-2 text-center ${styles.pill}`}>
+                      <p className="text-[10px] font-black leading-tight text-white">{plan.featureTitle}</p>
+                      <p className={`mt-0.5 text-[9px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
                     </div>
 
-                    <div className={`mt-1 rounded-[9px] border px-1.5 py-1 ${styles.pill}`}>
-                      <p className="truncate text-[7.3px] font-black leading-tight text-white">{plan.featureTitle}</p>
-                      <p className={`truncate text-[6.6px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
-                    </div>
-
-                    <div className="mt-1 grid grid-cols-1 gap-0.5">
-                      {plan.features.slice(0, 4).map((feature) => (
-                        <p key={feature} className="truncate text-[6.4px] font-semibold leading-tight text-white/62">
-                          <span className={`${styles.check} mr-0.5`}>✓</span>
-                          {feature}
+                    <div className="mt-3 grid grid-cols-1 gap-1.5">
+                      {plan.features.map((feature) => (
+                        <p key={feature} className="grid grid-cols-[10px_1fr] gap-1 text-[8.5px] font-semibold leading-tight text-white/76">
+                          <span className={`${styles.check} leading-tight`}>✓</span>
+                          <span>{feature}</span>
                         </p>
                       ))}
+                    </div>
+
+                    <div className="mt-3 text-center">
+                      <span className="text-[16px] font-black leading-none text-white">{plan.price}</span>
+                      <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
-                      className={`mt-auto h-[24px] rounded-[8px] border bg-black/18 px-0.5 text-[6.2px] font-black uppercase tracking-[0.04em] ${styles.button}`}
+                      className={`mt-auto h-[34px] rounded-[10px] border px-0.5 text-[9px] font-black uppercase tracking-[0.04em] ${styles.button}`}
                     >
                       {plan.cta}
                     </button>
@@ -2346,27 +2382,37 @@ function PricingPacksSection({
                 <button
                   type="button"
                   onClick={() => onTopSignalAction?.(selectedSport)}
-                  className="min-h-[58px] rounded-[12px] border border-purple-300/35 bg-purple-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(192,132,252,0.10)]"
+                  className="min-h-[112px] rounded-[14px] border border-purple-300/35 bg-purple-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(192,132,252,0.10)]"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
-                    <span className="rounded-[7px] border border-purple-300/40 px-1.5 py-0.5 text-[9px] font-black text-purple-200">$24.99</span>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-purple-300/40 bg-purple-300/10 text-purple-200">
+                      <PricingIcon type="star" className="h-5 w-5" />
+                    </span>
+                    <div className="text-left">
+                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
+                      <p className="text-[15px] font-black text-white">$24.99 <span className="text-[8px] text-white/50">/ day</span></p>
+                    </div>
                   </div>
-                  <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">#1 strongest signal for a specific sport.</p>
-                  <span className="mt-1 inline-flex rounded-full border border-purple-300/35 px-2 py-0.5 text-[6.5px] font-black uppercase text-purple-200">Unlock</span>
+                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The #1 strongest signal of the day for a specific sport.</p>
+                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-purple-300/45 px-2 py-1 text-[8px] font-black uppercase text-purple-200">Unlock</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={onTopPlayAction}
-                  className="min-h-[58px] rounded-[12px] border border-amber-300/35 bg-amber-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(251,191,36,0.10)]"
+                  className="min-h-[112px] rounded-[14px] border border-amber-300/35 bg-amber-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(251,191,36,0.10)]"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
-                    <span className="rounded-[7px] border border-amber-300/40 px-1.5 py-0.5 text-[9px] font-black text-amber-200">$149.99</span>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-300/40 bg-amber-300/10 text-amber-200">
+                      <PricingIcon type="crown" className="h-5 w-5" />
+                    </span>
+                    <div className="text-left">
+                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
+                      <p className="text-[15px] font-black text-white">$149.99</p>
+                    </div>
                   </div>
-                  <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">Highest-conviction play selected by Atlas AI.</p>
-                  <span className="mt-1 inline-flex rounded-full border border-amber-300/35 px-2 py-0.5 text-[6.5px] font-black uppercase text-amber-200">Unlock</span>
+                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The highest-conviction play selected by Atlas AI.</p>
+                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-amber-300/45 px-2 py-1 text-[8px] font-black uppercase text-amber-200">Unlock</span>
                 </button>
               </div>
             </div>
