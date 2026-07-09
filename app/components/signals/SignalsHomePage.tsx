@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HowItWorksSheet } from "./HowItWorksSheet";
 import { PrecisionRevealSheet } from "./PrecisionRevealSheet";
 import { SignalDetectedDetailSheet } from "./SignalDetectedDetailSheet";
@@ -2118,7 +2118,7 @@ const pricingPlans: PricingPlan[] = [
     subtitle: "Choose Your Sport",
     featureTitle: "Top 3 Signals",
     featureSubtitle: "Not Ranked",
-    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Start Time", "History", "Closing Status"],
+    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Ordered by Start Time", "Signal History", "Closing Status"],
     cta: "Get Exclusive",
     accent: "cyan",
   },
@@ -2127,9 +2127,9 @@ const pricingPlans: PricingPlan[] = [
     title: "Premium",
     price: "$59.99",
     subtitle: "Choose Your Sport",
-    featureTitle: "Top 3 Signals",
-    featureSubtitle: "Ranked",
-    features: ["Choose 1 Sport", "Top 3 Signals", "Ranked", "Best to Worst", "History", "Closing Status"],
+    featureTitle: "Ranked Top 3",
+    featureSubtitle: "Best to Worst",
+    features: ["Choose 1 Sport", "Ranked Top 3", "Best to Worst", "Atlas AI Ranking", "Signal History", "Closing Status"],
     cta: "Get Premium",
     accent: "gold",
     badge: "Most Popular",
@@ -2139,9 +2139,9 @@ const pricingPlans: PricingPlan[] = [
     title: "Elite",
     price: "$99.99",
     subtitle: "All Active Sports",
-    featureTitle: "Top 3 Signals",
-    featureSubtitle: "Ranked Every Sport",
-    features: ["All Active Sports", "Top 3 Signals", "Ranked", "Best to Worst", "History", "Closing Status"],
+    featureTitle: "Ranked Top 3",
+    featureSubtitle: "For Every Sport",
+    features: ["All Active Sports", "Ranked Top 3 Per Sport", "Best to Worst", "Auto-Includes New Sports", "Signal History", "Closing Status"],
     cta: "Get Elite",
     accent: "purple",
   },
@@ -2187,123 +2187,190 @@ function PricingPacksSection({
   onTopPlayAction?: () => void;
 }) {
   const sportsToShow = activeSports.length > 0 ? activeSports : (["MLB"] as SportCode[]);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    try {
+      setExpanded(localStorage.getItem("atlas_membership_open") === "1");
+    } catch {
+      setExpanded(false);
+    }
+  }, []);
+
+  function toggleExpanded() {
+    setExpanded((current) => {
+      const next = !current;
+
+      try {
+        localStorage.setItem("atlas_membership_open", next ? "1" : "0");
+      } catch {
+        // The membership section still works if local storage is unavailable.
+      }
+
+      return next;
+    });
+  }
 
   return (
-    <section className="rounded-[18px] border border-white/10 bg-[#050816]/88 p-2 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
-      <div className="text-center">
-        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">
-          Choose Your Plan
-        </p>
-        <p className="mt-0.5 text-[9px] font-semibold text-white/58">
-          More clarity. Less risk. Better results.
-        </p>
-      </div>
+    <section className="overflow-hidden rounded-[18px] border border-cyan-300/24 bg-[#050816]/88 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+      <button
+        type="button"
+        onClick={toggleExpanded}
+        aria-expanded={expanded}
+        className="relative flex min-h-[66px] w-full items-center gap-3 overflow-hidden px-3 py-2 text-left"
+      >
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] border border-cyan-300/45 bg-cyan-300/10 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+            <path d="m12 2.7 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 2.7Z" />
+          </svg>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-black tracking-tight text-white">
+            Atlas Membership
+          </span>
+          <span className="mt-0.5 block text-[11px] font-semibold text-cyan-200/76">
+            Choose your plan
+          </span>
+        </span>
+        <span className="relative z-10 rounded-full border border-cyan-300/24 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200">
+          {expanded ? "Hide Plans ↑" : "View Plans ↓"}
+        </span>
+        <svg
+          viewBox="0 0 64 64"
+          className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rotate-[-12deg] text-amber-300/10"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M10 45h44l-4 10H14l-4-10Zm4-26 11 10 7-17 7 17 11-10 4 22H10l4-22Z" />
+        </svg>
+      </button>
 
-      <div className="mt-2 grid grid-cols-3 gap-1.5">
-        {pricingPlans.map((plan) => {
-          const styles = pricingAccentStyles[plan.accent];
-          const sportForPlan = plan.code === "elite" ? undefined : selectedSport;
-
-          return (
-            <article
-              key={plan.code}
-              className={`relative flex min-h-[164px] min-w-0 flex-col rounded-[13px] border px-1.5 pb-1.5 pt-2 ${styles.shell}`}
-            >
-              {plan.badge ? (
-                <span className="absolute left-1/2 top-0.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-1.5 py-0.5 text-[5.8px] font-black uppercase tracking-[0.06em] text-black">
-                  {plan.badge}
-                </span>
-              ) : null}
-
-              <p className={`mt-2 text-center text-[9.5px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
-                {plan.title}
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
+          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="border-t border-white/10 p-2">
+            <div className="text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">
+                Choose Your Plan
               </p>
-              <p className="mt-0.5 truncate text-center text-[6.8px] font-bold text-white/72">
-                {plan.subtitle}
+              <p className="mt-0.5 text-[8.5px] font-semibold text-white/58">
+                More clarity. Less risk. Better results.
               </p>
-              <div className="mt-1 text-center">
-                <span className="text-[18px] font-black leading-none text-white">{plan.price}</span>
-                <span className="ml-0.5 text-[6.5px] font-bold text-white/52">/mo</span>
-              </div>
+            </div>
 
-              <div className={`mt-1 rounded-[9px] border px-1.5 py-1 ${styles.pill}`}>
-                <p className="truncate text-[7.5px] font-black leading-tight text-white">{plan.featureTitle}</p>
-                <p className={`truncate text-[6.8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
-              </div>
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              {pricingPlans.map((plan) => {
+                const styles = pricingAccentStyles[plan.accent];
+                const sportForPlan = plan.code === "elite" ? undefined : selectedSport;
 
-              <div className="mt-1 grid grid-cols-1 gap-0.5">
-                {plan.features.slice(0, 4).map((feature) => (
-                  <p key={feature} className="truncate text-[6.5px] font-semibold leading-tight text-white/62">
-                    <span className={`${styles.check} mr-0.5`}>✓</span>
-                    {feature}
-                  </p>
+                return (
+                  <article
+                    key={plan.code}
+                    className={`relative flex min-h-[168px] min-w-0 flex-col rounded-[13px] border px-1.5 pb-1.5 pt-2 ${styles.shell}`}
+                  >
+                    {plan.badge ? (
+                      <span className="absolute left-1/2 top-0.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-1.5 py-0.5 text-[5.8px] font-black uppercase tracking-[0.06em] text-black">
+                        {plan.badge}
+                      </span>
+                    ) : null}
+
+                    <p className={`mt-2 text-center text-[9.5px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
+                      {plan.title}
+                    </p>
+                    <p className="mt-0.5 truncate text-center text-[6.8px] font-bold text-white/72">
+                      {plan.subtitle}
+                    </p>
+                    <div className="mt-1 text-center">
+                      <span className="text-[17px] font-black leading-none text-white">{plan.price}</span>
+                      <span className="ml-0.5 text-[6.2px] font-bold text-white/52">/mo</span>
+                    </div>
+
+                    <div className={`mt-1 rounded-[9px] border px-1.5 py-1 ${styles.pill}`}>
+                      <p className="truncate text-[7.3px] font-black leading-tight text-white">{plan.featureTitle}</p>
+                      <p className={`truncate text-[6.6px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+                    </div>
+
+                    <div className="mt-1 grid grid-cols-1 gap-0.5">
+                      {plan.features.slice(0, 4).map((feature) => (
+                        <p key={feature} className="truncate text-[6.4px] font-semibold leading-tight text-white/62">
+                          <span className={`${styles.check} mr-0.5`}>✓</span>
+                          {feature}
+                        </p>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
+                      className={`mt-auto h-[24px] rounded-[8px] border bg-black/18 px-0.5 text-[6.2px] font-black uppercase tracking-[0.04em] ${styles.button}`}
+                    >
+                      {plan.cta}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+
+            {sportsToShow.length > 1 ? (
+              <div className="mt-1.5 flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {sportsToShow.map((sport) => (
+                  <button
+                    key={`pricing-sport-${sport}`}
+                    type="button"
+                    onClick={() => onSelectedSportChange?.(sport)}
+                    aria-pressed={selectedSport === sport}
+                    className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] ${
+                      selectedSport === sport
+                        ? "border-cyan-300 bg-cyan-300 text-black"
+                        : "border-white/10 bg-white/[0.04] text-white/55"
+                    }`}
+                  >
+                    {sport}
+                  </button>
                 ))}
               </div>
+            ) : null}
 
-              <button
-                type="button"
-                onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
-                className={`mt-auto h-[24px] rounded-[8px] border bg-black/18 px-0.5 text-[6.2px] font-black uppercase tracking-[0.04em] ${styles.button}`}
-              >
-                {plan.cta}
-              </button>
-            </article>
-          );
-        })}
-      </div>
+            <div className="mt-1.5 rounded-[14px] border border-white/10 bg-black/20 p-1.5">
+              <div className="mb-1.5 flex items-center justify-center gap-1.5">
+                <span className="h-px flex-1 bg-white/10" />
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/86">Premium Add-ons</p>
+                <span className="text-[6.5px] font-black uppercase tracking-[0.06em] text-white/40">Not included</span>
+                <span className="h-px flex-1 bg-white/10" />
+              </div>
 
-      {sportsToShow.length > 1 ? (
-        <div className="mt-1.5 flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {sportsToShow.map((sport) => (
-            <button
-              key={`pricing-sport-${sport}`}
-              type="button"
-              onClick={() => onSelectedSportChange?.(sport)}
-              aria-pressed={selectedSport === sport}
-              className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] ${
-                selectedSport === sport
-                  ? "border-cyan-300 bg-cyan-300 text-black"
-                  : "border-white/10 bg-white/[0.04] text-white/55"
-              }`}
-            >
-              {sport}
-            </button>
-          ))}
-        </div>
-      ) : null}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onTopSignalAction?.(selectedSport)}
+                  className="min-h-[58px] rounded-[12px] border border-purple-300/35 bg-purple-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(192,132,252,0.10)]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
+                    <span className="rounded-[7px] border border-purple-300/40 px-1.5 py-0.5 text-[9px] font-black text-purple-200">$24.99</span>
+                  </div>
+                  <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">#1 strongest signal for a specific sport.</p>
+                  <span className="mt-1 inline-flex rounded-full border border-purple-300/35 px-2 py-0.5 text-[6.5px] font-black uppercase text-purple-200">Unlock</span>
+                </button>
 
-      <div className="mt-1.5 rounded-[14px] border border-white/10 bg-black/20 p-1.5">
-        <div className="mb-1.5 flex items-center justify-center gap-1.5">
-          <span className="h-px flex-1 bg-white/10" />
-          <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/86">Premium Add-ons</p>
-          <span className="text-[6.5px] font-black uppercase tracking-[0.06em] text-white/40">Not included</span>
-          <span className="h-px flex-1 bg-white/10" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => onTopSignalAction?.(selectedSport)}
-            className="min-h-[50px] rounded-[12px] border border-purple-300/35 bg-purple-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(192,132,252,0.10)]"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
-              <span className="rounded-[7px] border border-purple-300/40 px-1.5 py-0.5 text-[9px] font-black text-purple-200">$24.99</span>
+                <button
+                  type="button"
+                  onClick={onTopPlayAction}
+                  className="min-h-[58px] rounded-[12px] border border-amber-300/35 bg-amber-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(251,191,36,0.10)]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
+                    <span className="rounded-[7px] border border-amber-300/40 px-1.5 py-0.5 text-[9px] font-black text-amber-200">$149.99</span>
+                  </div>
+                  <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">Highest-conviction play selected by Atlas AI.</p>
+                  <span className="mt-1 inline-flex rounded-full border border-amber-300/35 px-2 py-0.5 text-[6.5px] font-black uppercase text-amber-200">Unlock</span>
+                </button>
+              </div>
             </div>
-            <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">The #1 absolute best play of the day.</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={onTopPlayAction}
-            className="min-h-[50px] rounded-[12px] border border-amber-300/35 bg-amber-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(251,191,36,0.10)]"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
-              <span className="rounded-[7px] border border-amber-300/40 px-1.5 py-0.5 text-[9px] font-black text-amber-200">$149.99</span>
-            </div>
-            <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">The most exclusive, highest conviction play.</p>
-          </button>
+          </div>
         </div>
       </div>
     </section>
