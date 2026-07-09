@@ -88,6 +88,56 @@ async function fetchOddsApiScores(sport: string, date?: string | null) {
   return responses.flat();
 }
 
+function normalizeMlbStatsApiStatus(value: unknown) {
+  const status = String(value ?? "").trim();
+  return status || "Scheduled";
+}
+
+async function fetchMlbStatsApiSchedule(date?: string | null) {
+  if (!date || !isDateKey(date)) return [];
+
+  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${encodeURIComponent(
+    date
+  )}`;
+  const res = await fetch(url, { cache: "no-store" });
+
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  const games = Array.isArray(data?.dates?.[0]?.games)
+    ? data.dates[0].games
+    : [];
+
+  return games.map((game: any) => {
+    const awayTeam = String(game?.teams?.away?.team?.name ?? "Away Team");
+    const homeTeam = String(game?.teams?.home?.team?.name ?? "Home Team");
+    const awayScore = game?.teams?.away?.score;
+    const homeScore = game?.teams?.home?.score;
+    const rawStatus = normalizeMlbStatsApiStatus(game?.status?.detailedState);
+    const completed = /final|completed/i.test(rawStatus);
+    const scores =
+      awayScore === undefined || homeScore === undefined
+        ? []
+        : [
+            { name: awayTeam, score: String(awayScore) },
+            { name: homeTeam, score: String(homeScore) },
+          ];
+
+    return {
+      id: String(game?.gamePk ?? `${awayTeam}-${homeTeam}-${game?.gameDate ?? date}`),
+      sport_key: "baseball_mlb",
+      sport_title: "MLB",
+      commence_time: String(game?.gameDate ?? `${date}T12:00:00Z`),
+      away_team: awayTeam,
+      home_team: homeTeam,
+      completed,
+      scores,
+      provider: "mlb_statsapi",
+      rawStatus,
+    };
+  });
+}
+
 function findMatchingOddsScore(game: any, oddsScores: any[]) {
   const away = normalizeName(game.away_team);
   const home = normalizeName(game.home_team);
@@ -167,6 +217,14 @@ export async function GET(req: Request) {
           `SportsDataIO scores fallback for ${sport}:`,
           error instanceof Error ? error.message : "Unknown error"
         );
+      }
+    }
+
+    if (sport === "MLB" && scoresDate) {
+      const mlbSchedule = await fetchMlbStatsApiSchedule(scoresDate).catch(() => []);
+
+      if (mlbSchedule.length > 0) {
+        return NextResponse.json(mlbSchedule);
       }
     }
 
