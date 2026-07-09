@@ -6156,17 +6156,112 @@ const sectionEyebrow =
     ? "Intelligence"
     : "Account";
 
+const homeMembershipPlans = [
+  {
+    plan: "exclusive" as const,
+    title: "Exclusive",
+    price: "$34.99",
+    subtitle: "Choose Your Sport",
+    featureTitle: "Not Ranked Top 3",
+    featureSubtitle: "One Sport Focus",
+    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Signal History", "Closing Status"],
+    cta: "Get Exclusive",
+    accent: "cyan" as const,
+  },
+  {
+    plan: "premium" as const,
+    title: "Premium",
+    price: "$59.99",
+    subtitle: "Choose Your Sport",
+    featureTitle: "Ranked Top 3",
+    featureSubtitle: "Best to Worst",
+    features: ["Choose 1 Sport", "Ranked Top 3", "Best to Worst", "Atlas AI Ranking", "Signal History", "Closing Status"],
+    cta: "Get Premium",
+    accent: "gold" as const,
+    badge: "Most Popular",
+  },
+  {
+    plan: "elite" as const,
+    title: "Elite",
+    price: "$99.99",
+    subtitle: "All Active Sports",
+    featureTitle: "Ranked Top 3",
+    featureSubtitle: "For Every Sport",
+    features: ["All Active Sports", "Ranked Top 3 Per Sport", "Best to Worst", "Auto-Includes New Sports", "Signal History", "Closing Status"],
+    cta: "Get Elite",
+    accent: "purple" as const,
+  },
+];
+
+const homeMembershipStyles = {
+  cyan: {
+    shell: "border-cyan-300/40 bg-cyan-400/[0.045] shadow-[0_0_18px_rgba(34,211,238,0.12)]",
+    text: "text-cyan-300",
+    pill: "border-cyan-300/35 bg-cyan-300/10 text-cyan-200",
+    button: "border-cyan-300/70 bg-cyan-300 text-black shadow-[0_0_14px_rgba(34,211,238,0.22)]",
+    check: "text-cyan-300",
+    icon: "border-cyan-300/45 bg-cyan-300/10 text-cyan-200",
+  },
+  gold: {
+    shell: "border-amber-300/55 bg-amber-400/[0.055] shadow-[0_0_20px_rgba(251,191,36,0.16)]",
+    text: "text-amber-300",
+    pill: "border-amber-300/45 bg-amber-300/12 text-amber-200",
+    button: "border-amber-300/80 bg-amber-300 text-black shadow-[0_0_14px_rgba(251,191,36,0.22)]",
+    check: "text-amber-300",
+    icon: "border-amber-300/45 bg-amber-300/10 text-amber-200",
+  },
+  purple: {
+    shell: "border-purple-300/45 bg-purple-400/[0.045] shadow-[0_0_18px_rgba(192,132,252,0.14)]",
+    text: "text-purple-300",
+    pill: "border-purple-300/40 bg-purple-300/10 text-purple-200",
+    button: "border-purple-300/75 bg-purple-500 text-white shadow-[0_0_14px_rgba(192,132,252,0.22)]",
+    check: "text-purple-300",
+    icon: "border-purple-300/45 bg-purple-300/10 text-purple-200",
+  },
+};
+
+function HomeMembershipIcon({ type, className = "" }: { type: "star" | "crown" | "diamond"; className?: string }) {
+  if (type === "crown") {
+    return (
+      <svg viewBox="0 0 64 64" className={className} fill="none" aria-hidden="true">
+        <circle cx="14" cy="19" r="4" fill="currentColor" />
+        <circle cx="32" cy="11" r="4" fill="currentColor" />
+        <circle cx="50" cy="19" r="4" fill="currentColor" />
+        <path d="M12 25 25 36 32 18l7 18 13-11-4 22H16l-4-22Z" fill="currentColor" />
+        <path d="M16 50h32l-3 7H19l-3-7Z" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  if (type === "diamond") {
+    return (
+      <svg viewBox="0 0 64 64" className={className} fill="none" aria-hidden="true">
+        <path d="M11 21 22 9h20l11 12-21 35L11 21Z" fill="currentColor" />
+        <path d="M22 9 27 21H11L22 9Zm20 0-5 12h16L42 9ZM27 21h10l-5 35-5-35Z" fill="rgba(255,255,255,.32)" />
+        <path d="m22 9 10 12L42 9H22Zm5 12 5 35 5-35H27Z" fill="rgba(5,8,22,.34)" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
+      <path d="m32 8.5 6.8 13.8 15.2 2.2-11 10.8 2.6 15.2L32 43.3l-13.6 7.2L21 35.3 10 24.5l15.2-2.2L32 8.5Z" />
+    </svg>
+  );
+}
+
 const subscriptionPlansBoard = (
   <section className="space-y-3">
-    <div className="rounded-[20px] border border-cyan-400/20 bg-cyan-400/[0.07] p-3.5 text-center">
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
-        Atlas Plans
-      </p>
-      <h2 className="mt-1.5 text-[21px] font-black tracking-tight text-white">
-        Unlock premium picks
-      </h2>
-      <p className="mt-1.5 text-[11px] leading-4 text-white/62">
-        Choose the pack that fits your board. Top Signal and Top Play stay locked as daily premium products.
+    <div className="text-center">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <span className="h-px bg-cyan-300/22" />
+        <h2 className="text-[14px] font-black uppercase tracking-[0.22em] text-cyan-300">
+          Choose Your Plan
+        </h2>
+        <span className="h-px bg-cyan-300/22" />
+      </div>
+      <p className="mt-1.5 text-[10.5px] font-semibold text-white/50">
+        Pick the plan that matches your game.
       </p>
     </div>
 
@@ -6187,16 +6282,69 @@ const subscriptionPlansBoard = (
       sports={activeSubscriptionSports}
     />
 
-    <div className="grid grid-cols-3 gap-2">
-      {subscriptionPackPlans.map((pack) => (
-        <PackCard
-          key={`scores-pack-${pack.plan}`}
-          pack={pack}
-          onChoose={(plan) => handleSubscribe(plan, selectedPackSport)}
-          disabled={checkoutPlan !== null}
-          compact
-        />
-      ))}
+    <div className="grid grid-cols-3 gap-1.5">
+      {homeMembershipPlans.map((plan) => {
+        const styles = homeMembershipStyles[plan.accent];
+
+        return (
+          <article
+            key={`home-membership-${plan.plan}`}
+            className={`relative flex min-h-[270px] min-w-0 flex-col rounded-[15px] border px-1.5 pb-1.5 pt-3.5 text-left ${styles.shell}`}
+          >
+            {plan.badge ? (
+              <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
+                {plan.badge}
+              </span>
+            ) : null}
+
+            <div className="flex justify-center">
+              <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
+                <HomeMembershipIcon
+                  type={plan.plan === "premium" ? "crown" : plan.plan === "elite" ? "diamond" : "star"}
+                  className="h-5 w-5"
+                />
+              </span>
+            </div>
+
+            <p className={`mt-1.5 text-center text-[11.5px] font-black uppercase tracking-[0.07em] ${styles.text}`}>
+              {plan.title}
+            </p>
+            <p className="mt-0.5 text-center text-[7.5px] font-bold leading-tight text-white/78">
+              {plan.subtitle}
+            </p>
+
+            <div className={`mt-1.5 rounded-[10px] border px-1 py-1.5 text-center ${styles.pill}`}>
+              <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
+              <p className={`mt-0.5 text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+            </div>
+
+            <div className="mt-2 grid grid-cols-1 gap-0.5">
+              {plan.features.map((feature) => (
+                <p key={feature} className="grid grid-cols-[9px_1fr] gap-1 text-[7.5px] font-semibold leading-tight text-white/76">
+                  <span className={`${styles.check} leading-tight`}>✓</span>
+                  <span>{feature}</span>
+                </p>
+              ))}
+            </div>
+
+            <div className="mt-auto pt-1.5">
+              <div className="text-center">
+                <span className="text-[14px] font-black leading-none text-white">{plan.price}</span>
+                <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSubscribe(plan.plan, selectedPackSport)}
+                disabled={checkoutPlan !== null}
+                className={`mt-1.5 h-[29px] w-full rounded-[9px] border px-0.5 text-[8px] font-black uppercase tracking-[0.035em] disabled:opacity-60 ${styles.button}`}
+              >
+                {plan.cta}
+              </button>
+            </div>
+          </article>
+        );
+      })}
     </div>
 
     <StripeTrustBar />
