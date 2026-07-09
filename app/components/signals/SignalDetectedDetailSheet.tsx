@@ -12,7 +12,7 @@ const logoFolderToSport: Record<string, SportCode> = {
   soccer: "SOCCER",
 };
 
-type SignalStatus = "pending" | "confirmed" | "removed" | "downgraded";
+type SignalStatus = "pending" | "confirmed" | "removed" | "downgraded" | "won" | "lost";
 
 const liveTeamLogoFileOverrides: Record<string, string> = {
   oaklandathletics: "athletics",
@@ -141,7 +141,9 @@ function SignalDetailTeamLogoStack({ row }: { row: SignalDetectedRow }) {
 function normalizeStatus(status?: string): SignalStatus {
   const normalized = (status || "").trim().toLowerCase();
 
-  if (normalized.includes("confirm") || normalized === "won") return "confirmed";
+  if (["won", "win", "winner", "w"].includes(normalized)) return "won";
+  if (["lost", "loss", "lose", "l"].includes(normalized)) return "lost";
+  if (normalized.includes("confirm")) return "confirmed";
   if (normalized.includes("remove")) return "removed";
   if (normalized.includes("downgrade")) return "downgraded";
 
@@ -149,6 +151,8 @@ function normalizeStatus(status?: string): SignalStatus {
 }
 
 function formatStatus(status: SignalStatus) {
+  if (status === "won") return "✅";
+  if (status === "lost") return "❌";
   if (status === "confirmed") return "Confirmed";
   if (status === "removed") return "Removed";
   if (status === "downgraded") return "Downgraded";
@@ -156,6 +160,8 @@ function formatStatus(status: SignalStatus) {
 }
 
 function getStatusMessage(status: SignalStatus) {
+  if (status === "won") return "Final result: this Signal Detected pick won.";
+  if (status === "lost") return "Final result: this Signal Detected pick lost.";
   if (status === "confirmed") return "This signal remained strong after market validation.";
   if (status === "removed") return "Atlas removed this signal because market conditions changed.";
   if (status === "downgraded") return "This signal lost strength during market validation.";
@@ -163,10 +169,10 @@ function getStatusMessage(status: SignalStatus) {
 }
 
 function getStatusClass(status: SignalStatus) {
-  if (status === "confirmed") {
+  if (status === "confirmed" || status === "won") {
     return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
   }
-  if (status === "removed") {
+  if (status === "removed" || status === "lost") {
     return "border-rose-400/30 bg-rose-400/10 text-rose-200";
   }
   if (status === "downgraded") {

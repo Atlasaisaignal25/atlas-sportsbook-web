@@ -546,7 +546,7 @@ function getSignalViewAllResultBadge(status?: string | null) {
   if (["LOST", "LOSS", "LOSE", "L"].includes(normalized)) {
     return {
       icon: "❌",
-      label: "Lost",
+      label: "Lose",
       className: "border-rose-300/45 bg-rose-400/10 text-rose-200",
     };
   }
@@ -1381,6 +1381,7 @@ function FrameSignalDetectedFeed({
         <div className="relative z-10 bg-[rgba(3,8,20,0.42)]">
           {visibleRows.map((row) => {
             const label = getSportCompetitionLabel(row.sport);
+            const resultBadge = getSignalViewAllResultBadge(row.status);
 
             return (
               <button
@@ -1400,7 +1401,17 @@ function FrameSignalDetectedFeed({
                   <p className="truncate text-[13px] font-semibold text-cyan-300">{compactSignalPickLabel(row.pick)}</p>
                 </div>
                 <div className="flex items-center justify-end gap-2">
-                  <span className="rounded-[9px] border border-cyan-300/45 px-2 py-1 text-[10px] font-black uppercase text-cyan-300">{row.status}</span>
+                  {resultBadge ? (
+                    <span
+                      aria-label={resultBadge.label}
+                      title={resultBadge.label}
+                      className={`rounded-[9px] border px-2 py-1 text-[10px] font-black uppercase ${resultBadge.className}`}
+                    >
+                      <span aria-hidden="true">{resultBadge.icon}</span>
+                    </span>
+                  ) : (
+                    <span className="rounded-[9px] border border-cyan-300/45 px-2 py-1 text-[10px] font-black uppercase text-cyan-300">{row.status}</span>
+                  )}
                   <span className="text-[11px] font-semibold text-white/58">{row.time}</span>
                 </div>
                 <span className="text-2xl font-light text-white/70">›</span>
