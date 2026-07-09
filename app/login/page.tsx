@@ -68,18 +68,18 @@ const checkoutPlans: Record<
   },
   exclusive: {
     name: "Exclusive Pack",
-    price: "$29.99 / month",
-    description: "Top 5 diario sin ranking. Incluye Subs, Top 5 e History Top 5. No incluye Top Signal ni Top Play.",
+    price: "$34.99 / month",
+    description: "Choose one sport. Includes Top 3 Signals ordered by start time, not ranked. Does not include Top Signal or Top Play.",
   },
   premium: {
     name: "Premium Pack",
     price: "$59.99 / month",
-    description: "Top 3 rankeado con Subs, History, Records, Win Rate y Estadisticas. No incluye Top Signal ni Top Play.",
+    description: "Recommended. Choose one sport. Includes Ranked Top 3 Signals ordered by Atlas value priority. Does not include Top Signal or Top Play.",
   },
   elite: {
     name: "Elite Pack",
     price: "$99.99 / month",
-    description: "Premium para todos los deportes. Incluye todo Premium para MLB, NBA, NHL, SOCCER y NFL.",
+    description: "All active sports. Includes Ranked Top 3 Signals for every active sport. Does not include Top Signal or Top Play.",
   },
 };
 

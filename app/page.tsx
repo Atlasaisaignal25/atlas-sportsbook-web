@@ -79,6 +79,9 @@ type Top5Entry = {
   startTime?: string | null;
   status?: string;
   isTopSignal?: boolean;
+  label?: string;
+  confidence?: number | string | null;
+  internalScore?: number | string | null;
 };
 
 type TopSignalCard = Top5Entry & {
@@ -105,6 +108,15 @@ type LiveScore = {
 };
 
 type UserPlan = "free" | "exclusive" | "premium" | "elite" | "admin";
+type PlanAccess = {
+  plan: Exclude<UserPlan, "admin">;
+  selectedSport?: SportTab;
+  canViewTop3: boolean;
+  canViewRankedTop3: boolean;
+  canViewAllSports: boolean;
+  canViewTopSignal: false;
+  canViewTopPlay: false;
+};
 type CheckoutProduct =
   | "exclusive"
   | "premium"
@@ -123,6 +135,37 @@ type UserAccess = {
     topPlay: boolean;
     topSignals: SportTab[];
   };
+};
+
+const planAccessRules: Record<Exclude<UserPlan, "admin">, Omit<PlanAccess, "plan" | "selectedSport">> = {
+  free: {
+    canViewTop3: false,
+    canViewRankedTop3: false,
+    canViewAllSports: false,
+    canViewTopSignal: false,
+    canViewTopPlay: false,
+  },
+  exclusive: {
+    canViewTop3: true,
+    canViewRankedTop3: false,
+    canViewAllSports: false,
+    canViewTopSignal: false,
+    canViewTopPlay: false,
+  },
+  premium: {
+    canViewTop3: true,
+    canViewRankedTop3: true,
+    canViewAllSports: false,
+    canViewTopSignal: false,
+    canViewTopPlay: false,
+  },
+  elite: {
+    canViewTop3: true,
+    canViewRankedTop3: true,
+    canViewAllSports: true,
+    canViewTopSignal: false,
+    canViewTopPlay: false,
+  },
 };
 
 type RecordStats = {
@@ -1945,6 +1988,45 @@ function sortPicksByStartTime<T extends Top5Entry>(picks: T[]) {
   });
 }
 
+function getPickValuePriority(pick: Top5Entry) {
+  const rankScore = Number.isFinite(Number(pick.rank))
+    ? 1000 - Number(pick.rank) * 100
+    : 0;
+  const internalScore = Number(pick.internalScore);
+  const confidence = Number(pick.confidence);
+
+  return (
+    rankScore +
+    (Number.isFinite(internalScore) ? internalScore : 0) +
+    (Number.isFinite(confidence) ? confidence : 0)
+  );
+}
+
+function sortPicksByAtlasValue<T extends Top5Entry>(picks: T[]) {
+  return [...picks].sort((a, b) => {
+    const valueDiff = getPickValuePriority(b) - getPickValuePriority(a);
+    if (valueDiff !== 0) return valueDiff;
+
+    const rankDiff = Number(a.rank ?? 999) - Number(b.rank ?? 999);
+    if (rankDiff !== 0) return rankDiff;
+
+    const aTime = a.startTime ? new Date(a.startTime).getTime() : Number.POSITIVE_INFINITY;
+    const bTime = b.startTime ? new Date(b.startTime).getTime() : Number.POSITIVE_INFINITY;
+    return aTime - bTime;
+  });
+}
+
+function getSubscriptionEligiblePicks(picks: Top5Entry[]) {
+  return picks.filter((pick) => pick.isTopSignal !== true && pick.rank !== 1);
+}
+
+function labelSubscriptionPicks(picks: Top5Entry[], ranked: boolean) {
+  return picks.slice(0, 3).map((pick, index) => ({
+    ...pick,
+    label: ranked ? `Ranked Top 3 #${index + 1}` : "Top 3",
+  }));
+}
+
 function mapHistoryRowToTop5Entry(row: any): Top5Entry {
   return {
     gameId: row.game_id ?? row.gameId ?? null,
@@ -1979,42 +2061,25 @@ function getSubPicksForUser(
 ) {
   if (!hasSportAccess(userAccess, selectedSport)) return [];
 
-  const top5 = sortPicksByStartTime(
-    getTop5BySport(
-      selectedSport,
-      mlbTop5DataParam,
-      nbaTop5DataParam,
-      nhlTop5DataParam,
-      soccerTop5DataParam
-    )
+  const top5 = getTop5BySport(
+    selectedSport,
+    mlbTop5DataParam,
+    nbaTop5DataParam,
+    nhlTop5DataParam,
+    soccerTop5DataParam
   );
-
-  const topSignalUnlocked =
-    userAccess.plan === "admin" ||
-    userAccess.unlocks.topSignals.includes(selectedSport);
-  const subscriptionPicks = topSignalUnlocked
-    ? top5
-    : top5.filter((pick) => pick.isTopSignal !== true && pick.rank !== 1);
+  const subscriptionPicks = getSubscriptionEligiblePicks(top5);
 
   if (userAccess.plan === "exclusive") {
-    return subscriptionPicks.map((pick) => ({
-      ...pick,
-      label: "Top 5",
-    }));
+    return labelSubscriptionPicks(sortPicksByStartTime(subscriptionPicks), false);
   }
 
   if (userAccess.plan === "premium") {
-    return subscriptionPicks.slice(0, 3).map((pick) => ({
-      ...pick,
-      label: `Top 3 #${pick.rank ?? ""}`,
-    }));
+    return labelSubscriptionPicks(sortPicksByAtlasValue(subscriptionPicks), true);
   }
 
   if (userAccess.plan === "elite") {
-    return subscriptionPicks.slice(0, 3).map((pick) => ({
-      ...pick,
-      label: `Top 3 #${pick.rank ?? ""}`,
-    }));
+    return labelSubscriptionPicks(sortPicksByAtlasValue(subscriptionPicks), true);
   }
 
   if (userAccess.plan === "admin") {
@@ -2100,7 +2165,7 @@ function getSubsBadgeLabel(
   pickData: SignalGame
 ) {
   if (userAccess.plan === "exclusive" && pickData.isTop5 && !pickData.isTopSignal) {
-    return "Top 5";
+    return "Top 3";
   }
 
   if (
@@ -2108,9 +2173,7 @@ function getSubsBadgeLabel(
     userAccess.plan === "elite"
   ) {
     if (pickData.isTop5) {
-      return userAccess.plan === "premium"
-        ? `Top 3 #${pickData.topRank ?? ""}`
-        : `Top 3 #${pickData.topRank ?? ""}`;
+      return `Ranked Top 3 #${pickData.topRank ?? ""}`;
     }
   }
 
@@ -2133,6 +2196,7 @@ type PackPlan = {
   price: string;
   icon: string;
   tone: "bronze" | "blue" | "purple";
+  badge?: string;
   description: string;
   included: string[];
   locked?: string[];
@@ -2143,15 +2207,15 @@ const subscriptionPackPlans: PackPlan[] = [
   {
     plan: "exclusive",
     name: "EXCLUSIVE",
-    price: "$29.99",
+    price: "$34.99",
     icon: "★",
     tone: "bronze",
-    description: "Top 5 daily picks without rankings.",
+    description: "Best for users focused on one sport.",
     included: [
-      "Top 5 picks daily",
-      "No rankings",
-      "Access to Subs",
-      "History Top 5",
+      "Choose Your Sport",
+      "Top 3 Signals",
+      "Not Ranked",
+      "Sorted by start time",
     ],
     locked: ["Top Signal (locked)", "Top Play (locked)"],
     cta: "Choose Exclusive",
@@ -2162,11 +2226,12 @@ const subscriptionPackPlans: PackPlan[] = [
     price: "$59.99",
     icon: "◎",
     tone: "blue",
-    description: "Ranked Top 3 picks with full insights.",
+    badge: "Recommended",
+    description: "Best for users who want Atlas AI to prioritize the strongest plays.",
     included: [
-      "Top 3 ranked daily",
-      "History, Records & Win Rate",
-      "Advanced statistics",
+      "Choose Your Sport",
+      "Ranked Top 3 Signals",
+      "Atlas value priority",
     ],
     locked: ["Top Signal (locked)", "Top Play (locked)"],
     cta: "Choose Premium",
@@ -2177,12 +2242,11 @@ const subscriptionPackPlans: PackPlan[] = [
     price: "$99.99",
     icon: "◆",
     tone: "purple",
-    description: "Premium access across all sports.",
+    description: "Best for users who want full coverage across all available sports.",
     included: [
-      "Top 3 ranked in all sports",
-      "History, Records & Win Rate",
-      "Advanced statistics",
-      "All sports included",
+      "All Active Sports",
+      "Ranked Top 3 for Every Sport",
+      "Each sport ranked separately",
     ],
     locked: ["Top Signal (locked)", "Top Play (locked)"],
     cta: "Choose Elite",
@@ -2352,6 +2416,14 @@ function PackCard({
         {pack.name}
       </p>
 
+      {pack.badge ? (
+        <div className="mt-1 flex justify-center">
+          <span className="rounded-full bg-cyan-300 px-2 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] text-black">
+            {pack.badge}
+          </span>
+        </div>
+      ) : null}
+
       <div className={compact ? "mt-1.5" : "mt-2"}>
         <span className={`${compact ? "text-[15px]" : "text-[17px]"} font-black leading-none text-white`}>
           {pack.price}
@@ -2471,9 +2543,11 @@ function CompactTopPlayCard({
 function PackSportSelector({
   value,
   onChange,
+  sports,
 }: {
   value: CheckoutSport;
   onChange: (sport: CheckoutSport) => void;
+  sports: CheckoutSport[];
 }) {
   return (
     <div className="rounded-[18px] border border-white/10 bg-white/[0.035] p-2.5">
@@ -2487,7 +2561,7 @@ function PackSportSelector({
       </div>
 
       <div className="grid grid-cols-5 gap-1.5">
-        {checkoutSports.map((sport) => {
+        {sports.map((sport) => {
           const active = value === sport;
 
           return (
@@ -4623,6 +4697,27 @@ const activeSoccerTop5Data =
     ? historicalTop5Data
     : soccerTop5LiveData;
 
+const activeSubscriptionSports = useMemo(() => {
+  const available = checkoutSports.filter((sport) => {
+    if (sport === "NFL") return false;
+    return getTop5BySport(
+      sport,
+      activeMlbTop5Data,
+      activeNbaTop5Data,
+      activeNhlTop5Data,
+      activeSoccerTop5Data
+    ).some((pick) => pick.isTopSignal !== true && pick.rank !== 1);
+  });
+
+  return available.length > 0 ? available : (["MLB"] as CheckoutSport[]);
+}, [activeMlbTop5Data, activeNbaTop5Data, activeNhlTop5Data, activeSoccerTop5Data]);
+
+useEffect(() => {
+  if (!activeSubscriptionSports.includes(selectedPackSport)) {
+    setSelectedPackSport(activeSubscriptionSports[0] ?? "MLB");
+  }
+}, [activeSubscriptionSports, selectedPackSport]);
+
 function getSignalSourceForSport(sport: SportTab) {
   if (sport === "MLB") return mlbSignalsData.games;
   if (sport === "NBA") return nbaSignalsData.games;
@@ -5621,6 +5716,55 @@ const subsPicks = useMemo(() => {
   activeSoccerTop5Data,
 ]);
 
+const subscriptionSportGroups = useMemo(() => {
+  const sportsToRender: CheckoutSport[] =
+    userAccess.plan === "elite" || userAccess.plan === "admin"
+      ? activeSubscriptionSports
+      : selectedSport !== "TOP" && checkoutSports.includes(selectedSport as CheckoutSport)
+      ? [selectedSport as CheckoutSport]
+      : userAccess.sports.filter((sport): sport is CheckoutSport =>
+          checkoutSports.includes(sport as CheckoutSport)
+        );
+
+  return sportsToRender
+    .map((sport) => ({
+      sport,
+      picks:
+        userAccess.plan === "admin"
+          ? sortPicksByAtlasValue(
+              getTop5BySport(
+                sport,
+                activeMlbTop5Data,
+                activeNbaTop5Data,
+                activeNhlTop5Data,
+                activeSoccerTop5Data
+              )
+            )
+          : getSubPicksForUser(
+              userAccess,
+              sport,
+              activeMlbTop5Data,
+              activeNbaTop5Data,
+              activeNhlTop5Data,
+              activeSoccerTop5Data
+            ),
+    }))
+    .filter((group) => group.picks.length > 0);
+}, [
+  activeSubscriptionSports,
+  activeMlbTop5Data,
+  activeNbaTop5Data,
+  activeNhlTop5Data,
+  activeSoccerTop5Data,
+  selectedSport,
+  userAccess,
+]);
+
+const visibleSubscriptionPickCount = subscriptionSportGroups.reduce(
+  (total, group) => total + group.picks.length,
+  0
+);
+
 const selectedTopSignalRecord =
   selectedSport === "MLB"
     ? mlbRecord
@@ -5717,11 +5861,11 @@ const atlasAlerts = useMemo<AtlasAlert[]>(() => {
     alerts.push({
       id: `${selectedSport}-top5-ready`,
       tone: "yellow",
-      label: "Top 5",
-      title: `${selectedSport} Top 5 is available`,
+      label: "Top 3",
+      title: `${selectedSport} Top 3 Signals are available`,
       body:
         userAccess.plan === "free"
-          ? "A premium Top 5 board is detected. Subscribe to unlock the full pick card."
+          ? "Premium subscription signals are detected. Subscribe to unlock the Top 3 board."
           : `${selectedTop5Count} premium picks are ready for the selected slate.`,
       action: () => {
         setAppSection("signals");
@@ -5929,14 +6073,10 @@ const subscriptionPlansBoard = (
       </button>
     ) : null}
 
-    <CompactTopPlayCard
-      onChoose={() => handleSubscribe("top_play")}
-      disabled={checkoutPlan !== null}
-    />
-
     <PackSportSelector
       value={selectedPackSport}
       onChange={setSelectedPackSport}
+      sports={activeSubscriptionSports}
     />
 
     <div className="grid grid-cols-3 gap-2">
@@ -6511,7 +6651,7 @@ const subscriptionPlansBoard = (
                 Choose your Atlas access
               </h2>
               <p className="mx-auto mt-2 max-w-[340px] text-[14px] leading-6 text-white/65">
-                Unlock daily premium products or choose a monthly pack for subscription picks.
+                Choose one sport for Exclusive or Premium, or go Elite for every active sport. Top Signal and Top Play stay separate.
               </p>
             </div>
 
@@ -6563,15 +6703,15 @@ const subscriptionPlansBoard = (
                     product: "exclusive" as const,
                     plan: "exclusive" as const,
                     name: "EXCLUSIVE",
-                    price: "$29.99",
+                    price: "$34.99",
                     period: "month",
                     tone: "bronze",
-                    summary: "Top 5 diario sin ranking.",
+                    summary: "Choose one sport. Top 3 Signals, not ranked.",
                     features: [
-                      "Acceso a Subs",
-                      "Acceso Top 5",
-                      "Top 5 sin ranking",
-                      "History Top 5",
+                      "Choose Your Sport",
+                      "Top 3 Signals",
+                      "Not Ranked",
+                      "Sorted by start time",
                     ],
                     excludes: ["Top Signal", "Top Play"],
                     cta: "Choose",
@@ -6583,15 +6723,13 @@ const subscriptionPlansBoard = (
                     price: "$59.99",
                     period: "month",
                     tone: "silver",
-                    summary: "Top 3 rankeado.",
+                    summary: "Choose one sport. Ranked Top 3 Signals.",
                     recommended: true,
                     features: [
-                      "Acceso a Subs",
-                      "Top 3 rankeado",
-                      "History",
-                      "Records",
-                      "Win Rate",
-                      "Estadisticas",
+                      "Choose Your Sport",
+                      "Ranked Top 3 Signals",
+                      "Atlas value priority",
+                      "Recommended",
                     ],
                     excludes: ["Top Signal", "Top Play"],
                     cta: "Choose",
@@ -6603,15 +6741,13 @@ const subscriptionPlansBoard = (
                     price: "$99.99",
                     period: "month",
                     tone: "cyan",
-                    summary: "Premium para todos los deportes.",
+                    summary: "All active sports. Ranked Top 3 for every sport.",
                     features: [
-                      "Todo lo incluido en Premium",
-                      "MLB",
-                      "NBA",
-                      "NHL",
-                      "SOCCER",
-                      "NFL",
+                      "All Active Sports",
+                      "Ranked Top 3 per sport",
+                      "Dynamic sports coverage",
                     ],
+                    excludes: ["Top Signal", "Top Play"],
                     cta: "Choose",
                   },
                 ]
@@ -6715,7 +6851,14 @@ const subscriptionPlansBoard = (
                   </article>
                 ))}
                 </div>
-                <div className="mt-6 flex gap-4 overflow-x-auto pb-2">
+                <div className="mt-6">
+                  <PackSportSelector
+                    value={selectedPackSport}
+                    onChange={setSelectedPackSport}
+                    sports={activeSubscriptionSports}
+                  />
+                </div>
+                <div className="mt-3 flex gap-4 overflow-x-auto pb-2">
                   {subscriptionPackPlans.map((pack) => (
                     <PackCard
                       key={pack.plan}
@@ -6729,9 +6872,9 @@ const subscriptionPlansBoard = (
               </>
             )}
           </section>
-        ) : subsPicks.length === 0 ? (
+        ) : visibleSubscriptionPickCount === 0 ? (
   <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-    No subscription picks available for {selectedSport}.
+    No subscription picks available for {userAccess.plan === "elite" ? "active sports" : selectedSport}.
   </div>
 ) : (
   <div className="space-y-3">
@@ -6778,7 +6921,7 @@ const subscriptionPlansBoard = (
 
       <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-          Top 5
+          Top 3
         </p>
         <p className="mt-2 text-[16px] font-bold text-white">
           {top5RecordStats.wins}-{top5RecordStats.losses}
@@ -6811,7 +6954,19 @@ const subscriptionPlansBoard = (
       </div>
     ) : null}
 
-    {subsPicks.map((pick, idx) => {
+    {subscriptionSportGroups.map((group) => (
+      <div key={`subscription-group-${group.sport}`} className="space-y-3">
+        {userAccess.plan === "elite" || userAccess.plan === "admin" ? (
+          <div className="rounded-[18px] border border-cyan-300/18 bg-cyan-400/[0.045] px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
+              {group.sport}
+            </p>
+            <p className="mt-1 text-[12px] text-white/58">
+              Ranked Top 3 for this sport.
+            </p>
+          </div>
+        ) : null}
+        {group.picks.map((pick, idx) => {
       const savedResult = String(pick.status ?? "").toUpperCase();
       const finalResult =
         isHistoricalDay &&
@@ -6839,12 +6994,12 @@ const subscriptionPlansBoard = (
 
       return (
         <article
-          key={`subs-pick-${selectedSport}-${idx}`}
+          key={`subs-pick-${group.sport}-${idx}`}
           className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]"
         >
           <div className="mb-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/65">
-              {selectedSport}
+              {group.sport}
             </p>
 
             {pick.startTime && (
@@ -6856,14 +7011,14 @@ const subscriptionPlansBoard = (
 
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <TeamBadge teamName={pick.awayTeam ?? ""} sport={selectedSport} />
+              <TeamBadge teamName={pick.awayTeam ?? ""} sport={group.sport} />
               <p className="truncate text-[16px] font-semibold tracking-tight text-white">
                 {getDisplayAbbr(pick.awayTeam ?? "")}
               </p>
             </div>
 
             <div className="flex items-center gap-3">
-              <TeamBadge teamName={pick.homeTeam ?? ""} sport={selectedSport} />
+              <TeamBadge teamName={pick.homeTeam ?? ""} sport={group.sport} />
               <p className="truncate text-[16px] font-semibold tracking-tight text-white">
                 {getDisplayAbbr(pick.homeTeam ?? "")}
               </p>
@@ -6878,7 +7033,7 @@ const subscriptionPlansBoard = (
             </div>
 
             <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
-              {formatDisplayedPick(pick.pick, selectedSport)}
+              {formatDisplayedPick(pick.pick, group.sport)}
             </p>
 
             <div className="mt-3 flex flex-wrap gap-2">
@@ -6911,7 +7066,9 @@ const subscriptionPlansBoard = (
           </div>
         </article>
       );
-    })}
+        })}
+      </div>
+    ))}
   </div>
 )}
 
@@ -6964,7 +7121,7 @@ const subscriptionPlansBoard = (
 {viewMode === "live" && activeDay < getRelativeDayKey(0) && canViewTop5History(userAccess) && (
   <div className="mt-6">
     <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-white/50">
-      Top 5 Signals History
+      Top 3 Signals History
     </p>
 
     <div className="mt-3 space-y-2">
@@ -7704,7 +7861,7 @@ const subscriptionPlansBoard = (
 
                     <div className="rounded-[20px] border border-yellow-400/20 bg-yellow-500/[0.08] p-4">
                       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-yellow-200/70">
-                        Top 5
+                        Top 3
                       </p>
                       <p className="mt-3 text-[28px] font-black leading-none text-white">
                         {top5RecordStats.wins}-{top5RecordStats.losses}
@@ -7730,7 +7887,7 @@ const subscriptionPlansBoard = (
 
                     <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
                       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
-                        Top 5 Win Rate
+                        Top 3 Win Rate
                       </p>
                       <p className="mt-2 text-[26px] font-black text-yellow-300">
                         {top5RecordStats.winRate}%
@@ -7744,7 +7901,7 @@ const subscriptionPlansBoard = (
                     Premium stats are locked
                   </p>
                   <p className="mt-2 text-[13px] leading-5 text-white/62">
-                    Premium and Elite unlock Top Signal Record, Top 5 Record, win rate, decided picks and history.
+                    Premium and Elite unlock ranked Top 3 records, win rate, decided picks and history.
                   </p>
                   <button
                     type="button"
