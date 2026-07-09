@@ -3584,6 +3584,7 @@ const [joinAuthOpen, setJoinAuthOpen] = useState(false);
 const [joinEmail, setJoinEmail] = useState("");
 const [joinPassword, setJoinPassword] = useState("");
 const [joinAuthMessage, setJoinAuthMessage] = useState<SignalsJourneyMessage | null>(null);
+const [joinFrameScrolled, setJoinFrameScrolled] = useState(false);
 const [checkoutPlan, setCheckoutPlan] = useState<CheckoutProduct | null>(null);
 const [selectedPackSport, setSelectedPackSport] = useState<CheckoutSport>("MLB");
 const [billingBusy, setBillingBusy] = useState(false);
@@ -4216,6 +4217,22 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
 }>({
   top5: [],
 });
+
+useEffect(() => {
+  if (appSection !== "more") {
+    setJoinFrameScrolled(false);
+    return;
+  }
+
+  const updateJoinFrameMask = () => {
+    setJoinFrameScrolled(window.scrollY > 8);
+  };
+
+  updateJoinFrameMask();
+  window.addEventListener("scroll", updateJoinFrameMask, { passive: true });
+
+  return () => window.removeEventListener("scroll", updateJoinFrameMask);
+}, [appSection]);
 
 function navigateAppState(
   updates: Partial<{
@@ -6539,7 +6556,11 @@ const subscriptionPlansBoard = (
                 className="h-full w-full object-cover object-top"
               />
             </div>
-            <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto h-[19vh] w-full max-w-md overflow-hidden">
+            <div
+              className={`pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto w-full max-w-md overflow-hidden transition-[height] duration-200 ease-out ${
+                joinFrameScrolled ? "h-[38vh]" : "h-[19vh]"
+              }`}
+            >
               <img
                 src="/join-atlas-frame.jpeg"
                 alt=""
