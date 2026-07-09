@@ -2117,6 +2117,7 @@ const pricingPlans: PricingPlan[] = [
     price: "$34.99",
     subtitle: "Choose Your Sport",
     featureTitle: "Not Ranked Top 3",
+    featureSubtitle: "One Sport Focus",
     features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Signal History", "Closing Status"],
     cta: "Get Exclusive",
     accent: "cyan",
