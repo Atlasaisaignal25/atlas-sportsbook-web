@@ -7,14 +7,153 @@ type LoginPageProps = {
   searchParams?: Promise<{
     error?: string;
     message?: string;
+    intent?: string;
+    plan?: string;
+    product?: string;
+    sport?: string;
+    next?: string;
+    mode?: string;
   }>;
 };
+
+type CheckoutProduct =
+  | "exclusive"
+  | "premium"
+  | "elite"
+  | "top_signal_mlb"
+  | "top_signal_nba"
+  | "top_signal_nhl"
+  | "top_signal_soccer"
+  | "top_signal_nfl"
+  | "top_play";
+type CheckoutSport = "MLB" | "NBA" | "NHL" | "SOCCER" | "NFL";
+
+const checkoutPlans: Record<
+  CheckoutProduct,
+  {
+    name: string;
+    price: string;
+    description: string;
+  }
+> = {
+  top_signal_mlb: {
+    name: "MLB Top Signal",
+    price: "$24.99",
+    description: "Unlock today's best MLB pick only.",
+  },
+  top_signal_nba: {
+    name: "NBA Top Signal",
+    price: "$24.99",
+    description: "Unlock today's best NBA pick only.",
+  },
+  top_signal_nhl: {
+    name: "NHL Top Signal",
+    price: "$24.99",
+    description: "Unlock today's best NHL pick only.",
+  },
+  top_signal_soccer: {
+    name: "Soccer Top Signal",
+    price: "$24.99",
+    description: "Unlock today's best Soccer pick only.",
+  },
+  top_signal_nfl: {
+    name: "NFL Top Signal",
+    price: "$24.99",
+    description: "Unlock today's best NFL pick only.",
+  },
+  top_play: {
+    name: "Top Play",
+    price: "$149.99",
+    description: "Unlock the #1 Atlas pick across all available sports today.",
+  },
+  exclusive: {
+    name: "Exclusive Pack",
+    price: "$29.99 / month",
+    description: "Top 5 diario sin ranking. Incluye Subs, Top 5 e History Top 5. No incluye Top Signal ni Top Play.",
+  },
+  premium: {
+    name: "Premium Pack",
+    price: "$59.99 / month",
+    description: "Top 3 rankeado con Subs, History, Records, Win Rate y Estadisticas. No incluye Top Signal ni Top Play.",
+  },
+  elite: {
+    name: "Elite Pack",
+    price: "$99.99 / month",
+    description: "Premium para todos los deportes. Incluye todo Premium para MLB, NBA, NHL, SOCCER y NFL.",
+  },
+};
+
+function getCheckoutProduct(value: FormDataEntryValue | string | undefined | null) {
+  if (
+    value === "exclusive" ||
+    value === "premium" ||
+    value === "elite" ||
+    value === "top_signal_mlb" ||
+    value === "top_signal_nba" ||
+    value === "top_signal_nhl" ||
+    value === "top_signal_soccer" ||
+    value === "top_signal_nfl" ||
+    value === "top_play"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function getCheckoutSport(value: FormDataEntryValue | string | undefined | null) {
+  const sport = String(value ?? "").trim().toUpperCase();
+
+  if (
+    sport === "MLB" ||
+    sport === "NBA" ||
+    sport === "NHL" ||
+    sport === "SOCCER" ||
+    sport === "NFL"
+  ) {
+    return sport;
+  }
+
+  return null;
+}
+
+function getCheckoutRedirect(product: CheckoutProduct, sport: CheckoutSport | null) {
+  const search = new URLSearchParams({
+    checkout_product: product,
+  });
+
+  if (sport) {
+    search.set("sport", sport);
+  }
+
+  return `/?${search.toString()}`;
+}
+
+function getLoginUrl(product: CheckoutProduct | null, params?: Record<string, string>) {
+  const search = new URLSearchParams();
+
+  if (product) {
+    search.set("intent", "subscribe");
+    search.set("product", product);
+  }
+
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    search.set(key, value);
+  });
+
+  const query = search.toString();
+  return query ? `/login?${query}` : "/login";
+}
 
 async function signIn(formData: FormData) {
   "use server";
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const product = getCheckoutProduct(formData.get("product"));
+  const sport = getCheckoutSport(formData.get("sport"));
+  const next = String(formData.get("next") ?? "");
+  const authMode = String(formData.get("auth_mode") ?? "");
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signInWithPassword({
@@ -23,10 +162,16 @@ async function signIn(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      getLoginUrl(product, {
+        ...(authMode === "login" ? { mode: "login" } : {}),
+        ...(sport ? { sport } : {}),
+        error: error.message,
+      })
+    );
   }
 
-  redirect("/");
+  redirect(product ? getCheckoutRedirect(product, sport) : next === "plans" ? "/?plans=1" : "/");
 }
 
 async function signUp(formData: FormData) {
@@ -34,27 +179,44 @@ async function signUp(formData: FormData) {
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const product = getCheckoutProduct(formData.get("product"));
+  const sport = getCheckoutSport(formData.get("sport"));
+  const next = String(formData.get("next") ?? "");
+  const authMode = String(formData.get("auth_mode") ?? "");
   const requestHeaders = await headers();
   const origin =
     requestHeaders.get("origin") ??
     process.env.NEXT_PUBLIC_SITE_URL ??
     "http://localhost:3000";
+  const nextPath = product ? getCheckoutRedirect(product, sport) : next === "plans" ? "/?plans=1" : "/";
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
     },
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(
+      getLoginUrl(product, {
+        ...(authMode === "free" ? { intent: "free" } : {}),
+        ...(sport ? { sport } : {}),
+        error: error.message,
+      })
+    );
   }
 
   redirect(
-    "/login?message=Check%20your%20email%20to%20confirm%20your%20account"
+    getLoginUrl(product, {
+      ...(authMode === "free" ? { intent: "free" } : {}),
+      ...(sport ? { sport } : {}),
+      message: product
+        ? "Check your email to confirm your account, then checkout will continue."
+        : "Check your email to confirm your account",
+    })
   );
 }
 
@@ -69,10 +231,27 @@ async function signOut() {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
+  const selectedPlan = getCheckoutProduct(params?.product ?? params?.plan);
+  const selectedSport = getCheckoutSport(params?.sport);
+  const subscriptionMode = params?.intent === "subscribe" && selectedPlan;
+  const freeMode = params?.intent === "free";
+  const loginOnlyMode = params?.mode === "login" && !subscriptionMode && !freeMode;
+  const showLoginForm = subscriptionMode || loginOnlyMode || (!freeMode && !subscriptionMode);
+  const showCreateForm = subscriptionMode || freeMode || (!loginOnlyMode && !subscriptionMode);
+  const nextMode = params?.next === "plans" ? "plans" : "";
+  const planDetails = selectedPlan ? checkoutPlans[selectedPlan] : null;
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user && selectedPlan) {
+    redirect(getCheckoutRedirect(selectedPlan, selectedSport));
+  }
+
+  if (user && nextMode === "plans") {
+    redirect("/?plans=1");
+  }
 
   return (
     <main className="min-h-screen bg-[#050816] px-5 py-8 text-white">
@@ -83,37 +262,60 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               ATLAS SIGNALS
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight">
-              Account Access
+              {subscriptionMode
+                ? "Secure Checkout"
+                : freeMode
+                ? "Free Registration"
+                : "Account Access"}
             </h1>
           </div>
 
           <Link
-            href="/"
-            className="shrink-0 rounded-full border border-white/15 px-3 py-2 text-[12px] font-semibold text-white/80 transition-colors hover:bg-white/10"
+            href="/?board=1&section=scores&view=live"
+            className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-[12px] font-black uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-400/15"
           >
-            Back to app
+            View Board
           </Link>
         </div>
 
         <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.06] px-4 py-3 text-sm text-white/70">
-          Secure access for Atlas Signals members. Subscriptions are not active
-          yet; authenticated users remain on FREE unless marked as admin.
+          {subscriptionMode && planDetails ? (
+            <>
+              Create or access your account to continue to Stripe Checkout for{" "}
+              <span className="font-bold text-cyan-200">{planDetails.name}</span>.
+            </>
+          ) : (
+            <>
+              {freeMode
+                ? "Create your FREE account before entering Atlas Signals."
+                : "Create a FREE account to access the sports app, live games and Signal Detected cards."}
+            </>
+          )}
         </div>
 
-        <div className="flex rounded-full border border-white/10 bg-white/[0.04] p-1 text-sm font-semibold">
-          <a
-            href="#login"
-            className="flex-1 rounded-full bg-cyan-400 px-3 py-2 text-center text-slate-950"
-          >
-            Login
-          </a>
-          <a
-            href="#create-account"
-            className="flex-1 rounded-full px-3 py-2 text-center text-white/70"
-          >
-            Create Account
-          </a>
-        </div>
+        {subscriptionMode && planDetails ? (
+          <div className="rounded-xl border border-cyan-400/25 bg-black/25 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                  Selected Plan
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-white">
+                  {planDetails.name}
+                </h2>
+                <p className="mt-1 text-sm font-bold text-cyan-200">
+                  {planDetails.price}
+                </p>
+              </div>
+              <span className="rounded-full bg-cyan-400 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-black">
+                Checkout
+              </span>
+            </div>
+            <p className="mt-3 text-[13px] leading-5 text-white/60">
+              {planDetails.description}
+            </p>
+          </div>
+        ) : null}
 
         {params?.error ? (
           <div className="rounded-md border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
@@ -145,17 +347,28 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </form>
         ) : (
           <>
+            {showLoginForm ? (
             <form
               id="login"
               action={signIn}
               className="rounded-xl border border-white/10 bg-white/[0.04] p-5"
             >
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Login</h2>
+                <h2 className="text-lg font-semibold">
+                  {subscriptionMode
+                    ? "Already have an account?"
+                    : freeMode
+                    ? "Login instead"
+                    : "Login"}
+                </h2>
                 <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300">
                   Member
                 </span>
               </div>
+              {selectedPlan ? <input type="hidden" name="product" value={selectedPlan} /> : null}
+              {selectedSport ? <input type="hidden" name="sport" value={selectedSport} /> : null}
+              {nextMode ? <input type="hidden" name="next" value={nextMode} /> : null}
+              {loginOnlyMode ? <input type="hidden" name="auth_mode" value="login" /> : null}
 
               <label className="mt-4 block text-sm text-white/70">
                 Email
@@ -190,21 +403,42 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 type="submit"
                 className="mt-5 w-full rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition-colors hover:bg-cyan-200"
               >
-                Login
+                {subscriptionMode ? "Login and continue to checkout" : "Login"}
               </button>
-            </form>
 
+              {!subscriptionMode ? (
+                <Link
+                  href={loginOnlyMode ? "/login?intent=free" : "/?board=1&section=scores&view=live"}
+                  className="mt-3 block w-full rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-center text-sm font-bold text-cyan-100 transition-colors hover:bg-cyan-400/10"
+                >
+                  {loginOnlyMode ? "Create FREE account" : "View Board as Guest"}
+                </Link>
+              ) : null}
+            </form>
+            ) : null}
+
+            {showCreateForm ? (
             <form
               id="create-account"
               action={signUp}
               className="rounded-xl border border-white/10 bg-white/[0.04] p-5"
             >
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Create Account</h2>
+                <h2 className="text-lg font-semibold">
+                  {subscriptionMode
+                    ? "Create account for checkout"
+                    : freeMode
+                    ? "Create FREE account"
+                    : "Create Account"}
+                </h2>
                 <span className="rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
-                  FREE
+                  {subscriptionMode && planDetails ? planDetails.name : "FREE"}
                 </span>
               </div>
+              {selectedPlan ? <input type="hidden" name="product" value={selectedPlan} /> : null}
+              {selectedSport ? <input type="hidden" name="sport" value={selectedSport} /> : null}
+              {nextMode ? <input type="hidden" name="next" value={nextMode} /> : null}
+              {freeMode ? <input type="hidden" name="auth_mode" value="free" /> : null}
 
               <label className="mt-4 block text-sm text-white/70">
                 Email
@@ -230,16 +464,28 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               </label>
 
               <p className="mt-3 text-[12px] leading-relaxed text-white/50">
-                Creating an account may require email confirmation before login.
+                {subscriptionMode
+                  ? "After account confirmation, Atlas will continue to Stripe Checkout for this plan."
+                  : "Creating an account may require email confirmation before login."}
               </p>
 
               <button
                 type="submit"
                 className="mt-5 w-full rounded-md border border-white/20 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-white/10"
               >
-                Create account
+                {subscriptionMode ? "Create account and continue" : "Create account"}
               </button>
+
+              {!subscriptionMode ? (
+                <Link
+                  href={freeMode ? "/login?mode=login" : "/?board=1&section=scores&view=live"}
+                  className="mt-3 block w-full rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-center text-sm font-bold text-cyan-100 transition-colors hover:bg-cyan-400/10"
+                >
+                  {freeMode ? "Login to existing account" : "View Board before creating account"}
+                </Link>
+              ) : null}
             </form>
+            ) : null}
 
             <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-white/45">
               <span>Support</span>

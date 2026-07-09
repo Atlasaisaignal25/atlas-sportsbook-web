@@ -1,0 +1,2463 @@
+"use client";
+
+import type { CSSProperties, ReactNode } from "react";
+import { useMemo, useState } from "react";
+import { HowItWorksSheet } from "./HowItWorksSheet";
+import { PrecisionRevealSheet } from "./PrecisionRevealSheet";
+import { SignalDetectedDetailSheet } from "./SignalDetectedDetailSheet";
+import type { SignalDetectedRow } from "./SignalDetectedFeed";
+import { SignalInfoBar } from "./SignalInfoBar";
+import { SportSignalRail } from "./SportSignalRail";
+import type { SportCode, SportSignalViewModel } from "./SportSignalCard";
+import { SportLineIcon } from "./sportVisuals";
+import { SportSignalDetailSheet } from "./SportSignalDetailSheet";
+import { TodayActivityCard, type ActivityMetric } from "./TodayActivityCard";
+import { TopPlayCard, type TopPlayViewModel } from "./TopPlayCard";
+import { TopPlayDetailSheet } from "./TopPlayDetailSheet";
+import { teamBranding } from "../../lib/teamBranding";
+
+export type SignalsHomePrecisionResponse = {
+  productType?: "top_signal" | "top_play";
+  sport?: string;
+  date?: string;
+  status?: string;
+  releaseAt?: string | null;
+  lockedAt?: string | null;
+  progressPercent?: number;
+  minutesToRelease?: number | null;
+  minutesToKickoff?: number | null;
+  canPurchase?: boolean;
+  canRevealPick?: boolean;
+  purchased?: boolean;
+  admin?: boolean;
+  availableForPurchase?: boolean;
+  noPlayReason?: string | null;
+  preview?: {
+    message?: string;
+    subtitle?: string;
+  };
+  pick?: {
+    gameId?: string | null;
+    matchup?: string | null;
+    startTime?: string | null;
+    pickLabel?: string | null;
+    market?: string | null;
+    selection?: string | null;
+    line?: number | null;
+    odds?: number | null;
+  } | null;
+};
+
+export type SignalsHomeNavSection = "challenges" | "scores" | "signals" | "alerts" | "more";
+export type SelectedSport = "all" | "baseball" | "basketball" | "football" | "ice_hockey" | "soccer";
+export type SignalsContentMode = "signals" | "live";
+
+export type SignalsLiveRow = {
+  id: string;
+  gameId: string;
+  sport: SportCode;
+  leagueTitle: string;
+  awayTeam: string;
+  homeTeam: string;
+  awayScore: string;
+  homeScore: string;
+  centerValue: string;
+  statusLabel: string;
+  awayOdds: string;
+  totalLabel: string;
+  homeOdds: string;
+};
+
+export type PrecisionNotifyResult =
+  | { status: "reserved"; prepared?: boolean; persisted?: boolean }
+  | { status: "prepared"; prepared?: boolean; persisted?: boolean }
+  | { status: "login" }
+  | { status: "error"; message?: string };
+
+export type PrecisionUnlockResult =
+  | { status: "checkout" }
+  | { status: "login" }
+  | { status: "view_pick" }
+  | { status: "error"; message: string };
+
+type JourneyMessage = {
+  tone: "success" | "info" | "error";
+  title: string;
+  body?: string;
+};
+
+type SignalsHomePageProps = {
+  topPlay?: SignalsHomePrecisionResponse | null;
+  topSignals?: Partial<Record<SportCode, SignalsHomePrecisionResponse | null>>;
+  signalRows?: SignalDetectedRow[];
+  liveRows?: SignalsLiveRow[];
+  liveLoading?: boolean;
+  liveErrorMessage?: string | null;
+  signalGroupCount?: number;
+  activeSection?: SignalsHomeNavSection;
+  onNavigate?: (section: SignalsHomeNavSection) => void;
+  onSportProductAction?: (sport: SportCode) => Promise<PrecisionUnlockResult> | PrecisionUnlockResult | void;
+  onTopPlayAction?: () => Promise<PrecisionUnlockResult> | PrecisionUnlockResult | void;
+  onTopPlayNotify?: () => Promise<PrecisionNotifyResult>;
+  onSportNotify?: (sport: SportCode) => Promise<PrecisionNotifyResult>;
+  onLiveRowOpen?: (row: SignalsLiveRow) => void;
+  onRetry?: () => void;
+  journeyMessage?: JourneyMessage | null;
+  onDismissJourneyMessage?: () => void;
+  loading?: boolean;
+  errorMessage?: string | null;
+};
+
+const sports: SportCode[] = ["MLB", "NBA", "NFL", "NHL", "SOCCER"];
+const selectedSportToSportCode: Record<Exclude<SelectedSport, "all">, SportCode> = {
+  baseball: "MLB",
+  basketball: "NBA",
+  football: "NFL",
+  ice_hockey: "NHL",
+  soccer: "SOCCER",
+};
+
+const sportCodeToSelectedSport: Record<SportCode, Exclude<SelectedSport, "all">> = {
+  MLB: "baseball",
+  NBA: "basketball",
+  NFL: "football",
+  NHL: "ice_hockey",
+  SOCCER: "soccer",
+};
+
+const selectedSportLabels: Record<SelectedSport, string> = {
+  all: "All Sports",
+  baseball: "Baseball",
+  basketball: "Basketball",
+  football: "Football",
+  ice_hockey: "Hockey",
+  soccer: "Soccer",
+};
+
+const selectedSportTopSignalEndpoints: Record<SelectedSport, string | null> = {
+  all: null,
+  baseball: "/api/precision/top-signal/mlb",
+  basketball: "/api/precision/top-signal/nba",
+  football: "/api/precision/top-signal/nfl",
+  ice_hockey: "/api/precision/top-signal/nhl",
+  soccer: "/api/precision/top-signal/soccer",
+};
+
+function getLogoKey(value: string) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const logoFolderToSport: Record<string, SportCode> = {
+  mlb: "MLB",
+  nba: "NBA",
+  nhl: "NHL",
+  soccer: "SOCCER",
+};
+
+const liveTeamLogoFileOverrides: Record<string, string> = {
+  oaklandathletics: "athletics",
+  stlouiscardinals: "stlouiscardinals",
+};
+
+const soccerLiveTeamLogoPathOverrides: Record<string, string> = {
+  acmilan: "/team-logos/soccer/acmilan.png",
+  clubamerica: "/team-logos/soccer/cfamerica.png",
+  clubamrica: "/team-logos/soccer/cfamerica.png",
+  inter: "/team-logos/soccer/intermilan.png",
+  internazionale: "/team-logos/soccer/intermilan.png",
+  intermiami: "/team-logos/soccer/intermiami.png",
+  intermiamicf: "/team-logos/soccer/intermiami.png",
+  orlandocity: "/team-logos/soccer/orlandocity.png",
+  orlandocitysc: "/team-logos/soccer/orlandocity.png",
+  parissaintgermain: "/team-logos/soccer/parissg.png",
+  psg: "/team-logos/soccer/parissg.png",
+  porto: "/team-logos/soccer/fcporto.png",
+  pumasunam: "/team-logos/soccer/pumas.png",
+  tigresuanl: "/team-logos/soccer/tigres.png",
+  atletico: "/team-logos/soccer/atlticomadrid.png",
+  atleticomadrid: "/team-logos/soccer/atlticomadrid.png",
+  atlticomadrid: "/team-logos/soccer/atlticomadrid.png",
+  unitedstates: "/team-logos/soccer/flags/us.svg",
+  usa: "/team-logos/soccer/flags/us.svg",
+  us: "/team-logos/soccer/flags/us.svg",
+  mexico: "/team-logos/soccer/flags/mx.svg",
+  canada: "/team-logos/soccer/flags/ca.svg",
+  brazil: "/team-logos/soccer/flags/br.svg",
+  argentina: "/team-logos/soccer/flags/ar.svg",
+  england: "/team-logos/soccer/flags/eng.svg",
+  france: "/team-logos/soccer/flags/fr.svg",
+  germany: "/team-logos/soccer/flags/de.svg",
+  spain: "/team-logos/soccer/flags/es.svg",
+  portugal: "/team-logos/soccer/flags/pt.svg",
+  netherlands: "/team-logos/soccer/flags/nl.svg",
+  holland: "/team-logos/soccer/flags/nl.svg",
+  japan: "/team-logos/soccer/flags/jp.svg",
+  morocco: "/team-logos/soccer/flags/ma.svg",
+  uruguay: "/team-logos/soccer/flags/uy.svg",
+  belgium: "/team-logos/soccer/flags/be.svg",
+  croatia: "/team-logos/soccer/flags/hr.svg",
+  colombia: "/team-logos/soccer/flags/co.svg",
+  ecuador: "/team-logos/soccer/flags/ec.svg",
+  southkorea: "/team-logos/soccer/flags/kr.svg",
+  korea: "/team-logos/soccer/flags/kr.svg",
+  denmark: "/team-logos/soccer/flags/dk.svg",
+  poland: "/team-logos/soccer/flags/pl.svg",
+  switzerland: "/team-logos/soccer/flags/ch.svg",
+  chile: "/team-logos/soccer/flags/cl.svg",
+  costarica: "/team-logos/soccer/flags/cr.svg",
+};
+
+const liveTeamLogoLookup = Object.entries(teamBranding).reduce(
+  (lookup, [teamName, team]) => {
+    const folder = team.logo.match(/\/team-logos\/([^/]+)\//)?.[1];
+    const sport = folder ? logoFolderToSport[folder] : null;
+
+    if (!folder || !sport) return lookup;
+
+    const teamKey = getLogoKey(teamName);
+    const fileKey = liveTeamLogoFileOverrides[teamKey] ?? teamKey;
+    const logo = sport === "SOCCER"
+      ? soccerLiveTeamLogoPathOverrides[teamKey] ?? team.logo
+      : `/team-logos/${folder}/${fileKey}.png`;
+
+    [teamName, team.shortName, team.abbr].forEach((alias) => {
+      const aliasKey = getLogoKey(alias);
+      lookup[sport][aliasKey] = sport === "SOCCER"
+        ? soccerLiveTeamLogoPathOverrides[aliasKey] ?? logo
+        : logo;
+    });
+
+    return lookup;
+  },
+  {
+    MLB: {},
+    NBA: {},
+    NFL: {},
+    NHL: {},
+    SOCCER: {},
+  } as Record<SportCode, Record<string, string>>
+);
+
+function getLiveTeamLogoSrc(name: string, sport: SportCode) {
+  const key = getLogoKey(name);
+  const mappedSoccerLogo = sport === "SOCCER" ? soccerLiveTeamLogoPathOverrides[key] : null;
+  if (mappedSoccerLogo) return mappedSoccerLogo;
+
+  const mappedLogo = liveTeamLogoLookup[sport][key];
+
+  if (mappedLogo) return mappedLogo;
+
+  if (sport === "NBA") return `/team-logos/nba/${key}.png`;
+  if (sport === "NHL") return `/team-logos/nhl/${key}.png`;
+  if (sport === "MLB") return `/team-logos/mlb/${liveTeamLogoFileOverrides[key] ?? key}.png`;
+  if (sport === "SOCCER") return `/team-logos/soccer/${key}.png`;
+
+  return null;
+}
+
+function getSignalMatchupTeams(row: SignalDetectedRow) {
+  const matchup = row.matchup ?? "";
+  const teams = matchup
+    .split(/\s+(?:vs\.?|at|@)\s+/i)
+    .map((team) => team.trim())
+    .filter(Boolean);
+
+  return {
+    awayTeam: teams[0] ?? "",
+    homeTeam: teams.length > 1 ? teams.slice(1).join(" vs ") : "",
+  };
+}
+
+function getTeamInitials(team: string) {
+  const words = team.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "AT";
+  return words
+    .slice(-2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function SignalTeamLogo({
+  team,
+  sport,
+  className = "",
+}: {
+  team: string;
+  sport: SportCode;
+  className?: string;
+}) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const logoSrc = team ? getLiveTeamLogoSrc(team, sport) : null;
+  const canShowLogo = Boolean(logoSrc && failedSrc !== logoSrc);
+
+  return (
+    <span
+      className={`grid place-items-center ${className}`}
+      aria-hidden="true"
+    >
+      {canShowLogo ? (
+        <img
+          src={logoSrc ?? ""}
+          alt=""
+          className="h-full w-full object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.18)]"
+          onError={() => {
+            if (logoSrc) setFailedSrc(logoSrc);
+          }}
+        />
+      ) : (
+        <span className="grid h-[82%] w-[82%] place-items-center rounded-full border border-white/14 bg-[#061521] text-[8px] font-black uppercase tracking-[-0.04em] text-cyan-200">
+          {getTeamInitials(team)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function SignalTeamLogoStack({
+  row,
+  size = "compact",
+}: {
+  row: SignalDetectedRow;
+  size?: "compact" | "large";
+}) {
+  const { awayTeam, homeTeam } = getSignalMatchupTeams(row);
+  const containerSize = size === "large" ? "h-[60px] w-[60px]" : "h-[50px] w-[50px]";
+  const logoSize = size === "large" ? "h-[36px] w-[36px]" : "h-[28px] w-[28px]";
+
+  return (
+    <span className={`relative block shrink-0 ${containerSize}`} aria-label={`${row.matchup} team logos`}>
+      <SignalTeamLogo team={awayTeam} sport={row.sport} className={`absolute left-1 top-1 z-10 ${logoSize}`} />
+      <SignalTeamLogo team={homeTeam || awayTeam} sport={row.sport} className={`absolute bottom-1 right-1 z-20 ${logoSize}`} />
+    </span>
+  );
+}
+
+function getSignalStartTime(row: SignalDetectedRow) {
+  if (!row.startTime) return null;
+  const parsed = Date.parse(row.startTime);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function parseDisplayTimeToMinutes(value?: string | null) {
+  if (!value) return null;
+  const normalized = value.toLowerCase().replace(/\./g, "").replace(/\s+/g, " ").trim();
+  const match = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*([ap]m)?/);
+  if (!match) return null;
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2] ?? 0);
+  const meridiem = match[3];
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  if (meridiem === "pm" && hours < 12) hours += 12;
+  if (meridiem === "am" && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+}
+
+function getSignalStartMinutes(row: SignalDetectedRow) {
+  const displayMinutes = parseDisplayTimeToMinutes(row.time);
+  if (displayMinutes !== null) return displayMinutes;
+
+  const parsed = getSignalStartTime(row);
+  if (parsed === null) return null;
+
+  const date = new Date(parsed);
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+export function sortSignalsByStartTime(signals: SignalDetectedRow[]) {
+  return [...signals].sort((a, b) => {
+    const aStart = getSignalStartMinutes(a);
+    const bStart = getSignalStartMinutes(b);
+
+    if (aStart !== null && bStart !== null && aStart !== bStart) {
+      return aStart - bStart;
+    }
+
+    if (aStart !== null) return -1;
+    if (bStart !== null) return 1;
+
+    const aDetected = a.detectedAt ? Date.parse(a.detectedAt) : null;
+    const bDetected = b.detectedAt ? Date.parse(b.detectedAt) : null;
+
+    if (aDetected !== null && bDetected !== null && !Number.isNaN(aDetected) && !Number.isNaN(bDetected) && aDetected !== bDetected) {
+      return aDetected - bDetected;
+    }
+
+    return a.id.localeCompare(b.id);
+  });
+}
+
+const compactTeamSuffixes = [
+  "Diamondbacks",
+  "Blue Jays",
+  "White Sox",
+  "Red Sox",
+  "Guardians",
+  "Nationals",
+  "Athletics",
+  "Yankees",
+  "Phillies",
+  "Cardinals",
+  "Mariners",
+  "Dodgers",
+  "Rockies",
+  "Orioles",
+  "Rangers",
+  "Astros",
+  "Braves",
+  "Brewers",
+  "Padres",
+  "Tigers",
+  "Royals",
+  "Twins",
+  "Angels",
+  "Pirates",
+  "Marlins",
+  "Giants",
+  "Mets",
+  "Cubs",
+  "Reds",
+  "Rays",
+  "Chiefs",
+  "Chargers",
+  "Raiders",
+  "Lakers",
+  "Celtics",
+  "Oilers",
+  "Canucks",
+  "Real Madrid",
+  "Barcelona",
+];
+
+function compactTeamName(team: string) {
+  const normalized = team.trim();
+  const exact = compactTeamSuffixes.find((name) => normalized.toLowerCase() === name.toLowerCase());
+  if (exact) return exact;
+  const suffix = compactTeamSuffixes.find((name) =>
+    normalized.toLowerCase().endsWith(` ${name.toLowerCase()}`),
+  );
+  return suffix ?? normalized;
+}
+
+function compactSignalPickLabel(pick: string) {
+  const value = pick.trim();
+  if (!value || /^(over|under)\b/i.test(value)) return value;
+
+  const match = value.match(/\s+(ML|[+-]\d+(?:\.\d+)?|\([+-]?\d+(?:\.\d+)?\))$/i);
+  if (!match || match.index === undefined) return value;
+
+  const team = value.slice(0, match.index).trim();
+  return `${compactTeamName(team)} ${match[1]}`;
+}
+
+export function getSignalsBySport(signals: SignalDetectedRow[], sport: SelectedSport) {
+  if (sport === "all") return signals;
+  const sportCode = selectedSportToSportCode[sport];
+  return signals.filter((signal) => signal.sport === sportCode);
+}
+
+export function getUpcomingSignalsBySport(
+  signals: SignalDetectedRow[],
+  sport: SelectedSport,
+  now: Date,
+) {
+  const nowTime = now.getTime();
+  return sortSignalsByStartTime(getSignalsBySport(signals, sport)).filter((signal) => {
+    const startTime = getSignalStartTime(signal);
+    return startTime === null || startTime > nowTime;
+  });
+}
+
+export function getNextSignalBySport(
+  signals: SignalDetectedRow[],
+  sport: SelectedSport,
+  now: Date,
+) {
+  return getUpcomingSignalsBySport(signals, sport, now)[0] ?? null;
+}
+
+function getSignalViewAllResultBadge(status?: string | null) {
+  const normalized = (status ?? "").trim().toUpperCase();
+
+  if (["WON", "WIN", "WINNER", "W"].includes(normalized)) {
+    return {
+      icon: "✅",
+      label: "Won",
+      className: "border-emerald-300/45 bg-emerald-400/10 text-emerald-200",
+    };
+  }
+
+  if (["LOST", "LOSS", "LOSE", "L"].includes(normalized)) {
+    return {
+      icon: "❌",
+      label: "Lost",
+      className: "border-rose-300/45 bg-rose-400/10 text-rose-200",
+    };
+  }
+
+  return null;
+}
+
+function formatCountdown(minutes?: number | null) {
+  if (minutes === null || minutes === undefined || minutes <= 0) return "";
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, "0")}h ${String(mins).padStart(2, "0")}m`;
+}
+
+function normalizeStatus(status?: string) {
+  const value = (status ?? "scanning").toLowerCase();
+  if (value === "closed") return "locked";
+  if (value === "offseason") return "off_season";
+  return value;
+}
+
+function getTopPlayStatusLabel(status?: string) {
+  switch (normalizeStatus(status)) {
+    case "validating":
+      return "Market Analysis";
+    case "strong_candidate":
+      return "Strong Candidate";
+    case "final_review":
+      return "Final Review";
+    case "available_now":
+      return "Available Now";
+    case "locked":
+      return "Closed";
+    case "no_play":
+      return "No Play";
+    default:
+      return "Market Scan";
+  }
+}
+
+function getSportStatusLabel(status?: string) {
+  switch (normalizeStatus(status)) {
+    case "validating":
+      return "Analyzing Market";
+    case "strong_candidate":
+      return "Strong Candidate";
+    case "final_review":
+      return "Final Review";
+    case "available_now":
+      return "Available Now";
+    case "locked":
+      return "Closed Today";
+    case "no_play":
+      return "No Signal Today";
+    case "off_season":
+    case "unavailable":
+      return "OFF SEASON";
+    default:
+      return "Scanning Market";
+  }
+}
+
+function getVisualProgress(status?: string, backendProgress?: number) {
+  const mapped = (() => {
+    switch (normalizeStatus(status)) {
+      case "scanning":
+        return 10;
+      case "validating":
+        return 35;
+      case "strong_candidate":
+        return 60;
+      case "final_review":
+        return 85;
+      case "available_now":
+      case "locked":
+      case "no_play":
+      case "off_season":
+      case "unavailable":
+        return 100;
+      default:
+        return Number.isFinite(backendProgress) ? Number(backendProgress) : 10;
+    }
+  })();
+
+  return Math.max(0, Math.min(100, Math.round(mapped)));
+}
+
+function formatOdds(odds?: number | null) {
+  if (odds === null || odds === undefined || Number.isNaN(Number(odds))) return "";
+  return `${Number(odds) > 0 ? "+" : ""}${odds}`;
+}
+
+function formatPickMeta(data?: SignalsHomePrecisionResponse | null) {
+  const parts = [
+    data?.pick?.market,
+    data?.pick?.line === null || data?.pick?.line === undefined ? null : String(data.pick.line),
+    formatOdds(data?.pick?.odds),
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(" · ") : null;
+}
+
+function hasRevealAccess(data?: SignalsHomePrecisionResponse | null) {
+  return Boolean(data?.admin || (data?.purchased && data?.canRevealPick));
+}
+
+function isClosed(data?: SignalsHomePrecisionResponse | null) {
+  return (
+    normalizeStatus(data?.status) === "locked" ||
+    (data?.minutesToKickoff !== null &&
+      data?.minutesToKickoff !== undefined &&
+      data.minutesToKickoff <= 0)
+  );
+}
+
+function buildTopPlayViewModel(data?: SignalsHomePrecisionResponse | null): TopPlayViewModel {
+  const status = normalizeStatus(data?.status);
+  const canReveal = hasRevealAccess(data);
+  const closed = isClosed(data);
+  const available = Boolean(
+    data?.availableForPurchase ||
+      data?.canPurchase ||
+      status === "available_now"
+  );
+
+  if (canReveal) {
+    return {
+      status: "Available Now",
+      progressPercent: 100,
+      helperText: "Unlocked for today",
+      actionLabel: "View Pick",
+      actionTone: "view",
+      pickLabel: data?.pick?.pickLabel ?? "Top Play unlocked",
+      pickMeta: formatPickMeta(data),
+    };
+  }
+
+  if (status === "no_play") {
+    return {
+      status: "No Play",
+      progressPercent: 100,
+      helperText: "No Top Play Today",
+      actionLabel: "No Play",
+      actionTone: "closed",
+    };
+  }
+
+  if (closed) {
+    return {
+      status: "Closed",
+      progressPercent: 100,
+      helperText: "Today's Top Play Closed",
+      actionLabel: "Closed",
+      actionTone: "closed",
+    };
+  }
+
+  if (available) {
+    return {
+      status: "Available Now",
+      progressPercent: 100,
+      helperText: "$149.99 / day",
+      actionLabel: "Unlock",
+      actionTone: "unlock",
+    };
+  }
+
+  return {
+    status: getTopPlayStatusLabel(status),
+    progressPercent: getVisualProgress(status, data?.progressPercent),
+    helperText: formatCountdown(data?.minutesToRelease) || "Coming Soon",
+    actionLabel: "Notify Me",
+    actionTone: "notify",
+  };
+}
+
+function buildSportSignalViewModel(
+  sport: SportCode,
+  data?: SignalsHomePrecisionResponse | null,
+): SportSignalViewModel {
+  const status = normalizeStatus(data?.status);
+  const canReveal = hasRevealAccess(data);
+  const closed = isClosed(data);
+  const available = Boolean(
+    data?.availableForPurchase ||
+      data?.canPurchase ||
+      status === "available_now"
+  );
+
+  if (canReveal) {
+    return {
+      sport,
+      status: "Available Now",
+      progressPercent: 100,
+      helperText: "Unlocked",
+      actionLabel: "View Pick",
+      actionTone: "view",
+      pickLabel: data?.pick?.pickLabel ?? "Unlocked",
+      pickMeta: formatPickMeta(data),
+    };
+  }
+
+  if (status === "no_play") {
+    return {
+      sport,
+      status: "No Signal Today",
+      progressPercent: 100,
+      helperText: "No Signal",
+      actionLabel: "No Signal",
+      actionTone: "closed",
+    };
+  }
+
+  if (status === "off_season" || status === "unavailable") {
+    return {
+      sport,
+      status: "OFF SEASON",
+      progressPercent: 100,
+      helperText: "Off Season",
+      actionLabel: "Off",
+      actionTone: "closed",
+    };
+  }
+
+  if (closed) {
+    return {
+      sport,
+      status: "Closed Today",
+      progressPercent: 100,
+      helperText: "Closed",
+      actionLabel: "Closed",
+      actionTone: "closed",
+    };
+  }
+
+  if (available) {
+    return {
+      sport,
+      status: "Available Now",
+      progressPercent: 100,
+      helperText: "$24.99 / day",
+      actionLabel: "Unlock",
+      actionTone: "unlock",
+    };
+  }
+
+  return {
+    sport,
+    status: getSportStatusLabel(status),
+    progressPercent: getVisualProgress(status, data?.progressPercent),
+    helperText: formatCountdown(data?.minutesToRelease) || "Coming Soon",
+    actionLabel: "Notify Me",
+    actionTone: "notify",
+  };
+}
+
+function isActiveSportSignalView(signal: SportSignalViewModel) {
+  if (signal.actionTone === "view" || signal.actionTone === "unlock") return true;
+  if (signal.actionTone === "closed") return false;
+
+  const status = signal.status.toLowerCase();
+  const helper = signal.helperText.toLowerCase();
+
+  if (
+    status.includes("off season") ||
+    status.includes("no signal") ||
+    status.includes("closed") ||
+    helper.includes("off season") ||
+    helper.includes("no signal") ||
+    helper.includes("closed")
+  ) {
+    return false;
+  }
+
+  return signal.progressPercent > 0;
+}
+
+function orderSportSignalViews(signals: SportSignalViewModel[]) {
+  return [...signals].sort((first, second) => {
+    const firstActive = isActiveSportSignalView(first);
+    const secondActive = isActiveSportSignalView(second);
+
+    if (firstActive !== secondActive) return firstActive ? -1 : 1;
+
+    return sports.indexOf(first.sport) - sports.indexOf(second.sport);
+  });
+}
+
+function CalendarBadge() {
+  const now = new Date();
+  const month = now.toLocaleString("en-US", { month: "short", timeZone: "America/New_York" });
+  const day = now.toLocaleString("en-US", { day: "2-digit", timeZone: "America/New_York" });
+
+  return (
+    <div className="grid h-[68px] w-[56px] place-items-center rounded-[18px] border border-cyan-300/22 bg-cyan-950/18 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+      <div className="text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-300">
+          {month}
+        </p>
+        <p className="mt-1 text-[28px] font-black leading-none text-white">
+          {day}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function OpportunitySkeleton() {
+  return (
+    <div className="space-y-2">
+      <div className="h-[112px] rounded-[20px] bg-white/[0.055]" />
+      <div className="grid grid-cols-5 gap-1.5">
+        {sports.map((sport) => (
+          <div key={`skeleton-${sport}`} className="h-[126px] rounded-[15px] bg-white/[0.055]" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SignalsModeSwitch({
+  mode,
+  onChange,
+}: {
+  mode: SignalsContentMode;
+  onChange: (mode: SignalsContentMode) => void;
+}) {
+  return (
+    <div
+      className="grid grid-cols-2 rounded-[13px] border border-white/10 bg-[#080b18]/92 p-[2px] shadow-[0_0_18px_rgba(34,211,238,0.08)] backdrop-blur-md"
+      role="tablist"
+      aria-label="Signals view mode"
+    >
+      {(["signals", "live"] as SignalsContentMode[]).map((item) => {
+        const active = mode === item;
+
+        return (
+          <button
+            key={item}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(item)}
+            className={`h-7 rounded-[10px] text-[12px] font-black transition ${
+              active
+                ? "bg-cyan-300 text-black shadow-[0_0_18px_rgba(34,211,238,0.26)]"
+                : "text-white/58 hover:text-white"
+            }`}
+          >
+            {item === "signals" ? "Signals" : "Scores"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SignalsContent({ children }: { children: ReactNode }) {
+  return <div className="mt-2 space-y-2">{children}</div>;
+}
+
+const frameSportHotspots: Array<{ sport: SelectedSport; label: string; left: string; width: string }> = [
+  { sport: "all", label: "TOP", left: "3.3%", width: "13.5%" },
+  { sport: "baseball", label: "Baseball", left: "18.7%", width: "13.7%" },
+  { sport: "basketball", label: "Basketball", left: "34.1%", width: "13.8%" },
+  { sport: "ice_hockey", label: "Hockey", left: "49.5%", width: "13.8%" },
+  { sport: "football", label: "Football", left: "64.8%", width: "13.7%" },
+  { sport: "soccer", label: "Soccer", left: "80.2%", width: "13.6%" },
+];
+
+const frameSportMeta: Record<SportCode, { title: string; color: string; glow: string }> = {
+  MLB: { title: "BASEBALL", color: "#22d3ee", glow: "rgba(34,211,238,0.10)" },
+  NBA: { title: "BASKETBALL", color: "#22d3ee", glow: "rgba(34,211,238,0.10)" },
+  NFL: { title: "FOOTBALL", color: "#22d3ee", glow: "rgba(34,211,238,0.10)" },
+  NHL: { title: "HOCKEY", color: "#22d3ee", glow: "rgba(34,211,238,0.10)" },
+  SOCCER: { title: "SOCCER", color: "#22d3ee", glow: "rgba(34,211,238,0.10)" },
+};
+
+function getSportCompetitionLabel(sport: SportCode) {
+  return frameSportMeta[sport]?.title ?? sport;
+}
+
+function SignalsFrameHotspots({
+  onSelectSport,
+  onHowItWorks,
+  onNavigate,
+}: {
+  onSelectSport: (sport: SelectedSport) => void;
+  onHowItWorks: () => void;
+  onNavigate?: (section: SignalsHomeNavSection) => void;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30">
+      <button
+        type="button"
+        aria-label="Open alerts"
+        onClick={() => onNavigate?.("alerts")}
+        className="pointer-events-auto absolute right-[29.5%] top-[2.1%] h-[4.6%] w-[9%] rounded-2xl"
+      />
+      <button
+        type="button"
+        aria-label="Open profile"
+        onClick={() => onNavigate?.("more")}
+        className="pointer-events-auto absolute right-[4.2%] top-[2.0%] h-[4.9%] w-[22.5%] rounded-2xl"
+      />
+      <button
+        type="button"
+        aria-label="How Atlas Signals works"
+        onClick={onHowItWorks}
+        className="pointer-events-auto absolute right-[4.0%] top-[13.0%] h-[4.7%] w-[29.8%] rounded-2xl"
+      />
+      {frameSportHotspots.map((item) => (
+        <button
+          key={item.sport}
+          type="button"
+          aria-label={item.label}
+          onClick={() => onSelectSport(item.sport)}
+          className="pointer-events-auto absolute top-[18.1%] h-[5.5%] rounded-2xl"
+          style={{ left: item.left, width: item.width }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function FrameTopActions({
+  onHowItWorks,
+  onNavigate,
+}: {
+  onHowItWorks: () => void;
+  onNavigate?: (section: SignalsHomeNavSection) => void;
+}) {
+  const today = new Date();
+  const month = today.toLocaleString("en-US", { month: "short" }).toUpperCase();
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return (
+    <>
+      <div className="pointer-events-auto absolute right-[3.4%] top-[2.4%] z-50 flex items-center gap-1.5">
+        <div
+          aria-label={`Today ${month} ${day}`}
+          className="grid h-[34px] w-[34px] place-items-center rounded-[10px] border border-cyan-300/30 bg-[#061526]/80 text-center shadow-[0_0_12px_rgba(34,211,238,0.08)] backdrop-blur-md"
+        >
+          <span className="block text-[6.5px] font-black uppercase tracking-[0.10em] text-cyan-300">{month}</span>
+          <span className="-mt-1 block text-[16px] font-black leading-none text-white">{day}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate?.("more")}
+          className="inline-flex h-[34px] items-center gap-1.5 rounded-[10px] border border-amber-400/75 bg-black/36 px-2.5 text-[11px] font-black uppercase tracking-[0.08em] text-white shadow-[0_0_12px_rgba(217,145,18,0.08)] backdrop-blur-md"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
+            <path d="M4.5 21a7.5 7.5 0 0 1 15 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          Join
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={onHowItWorks}
+        className="pointer-events-auto absolute right-[3.4%] top-[13.65%] z-50 inline-flex h-[30px] items-center gap-1.5 rounded-[9px] border border-cyan-300/55 bg-black/34 px-2.5 text-[9px] font-black text-white shadow-[0_0_12px_rgba(34,211,238,0.08)] backdrop-blur-md"
+      >
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-cyan-200" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+          <path d="M12 11v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M12 8h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+        How It Works
+      </button>
+    </>
+  );
+}
+
+function FrameSportSelectorRow({
+  selectedSport,
+  onSelectSport,
+}: {
+  selectedSport: SelectedSport;
+  onSelectSport: (sport: SelectedSport) => void;
+}) {
+  return (
+    <div className="pointer-events-auto absolute left-[3.1%] right-[3.1%] top-[18.6%] z-40">
+      <div className="absolute -inset-x-2 -top-3 -bottom-6 rounded-[15px] bg-[#030814]/[0.99] shadow-[0_-10px_22px_rgba(3,8,20,0.92),0_12px_24px_rgba(3,8,20,0.95)]" />
+      <div className="relative grid grid-cols-6 gap-[5px]">
+        {selectedSportOptions.map((option) => {
+          const active = selectedSport === option.sport;
+          const sportCode = option.sport === "all" ? null : selectedSportToSportCode[option.sport];
+
+          return (
+            <button
+              key={option.sport}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onSelectSport(option.sport)}
+              className={`grid h-[40px] place-items-center rounded-[8px] border px-1 py-0.5 transition ${
+                active
+                  ? "border-cyan-300 bg-cyan-400/8 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.16)]"
+                  : "border-white/18 bg-[#050b16]/95 text-white/78"
+              }`}
+            >
+              <span className={active ? "text-cyan-300" : "text-white/80"}>
+                {option.sport === "all" ? (
+                  <TrophyIcon className="h-[22px] w-[22px]" />
+                ) : (
+                  <SportLineIcon sport={sportCode as SportCode} className="h-[22px] w-[22px]" alt="" />
+                )}
+              </span>
+              <span className="mt-0.5 max-w-full truncate text-center text-[7.5px] font-bold leading-none">
+                {option.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FrameSectionTitle({ children }: { children: ReactNode }) {
+  return <h2 className="pb-0.5 pt-1.5 text-[12.5px] font-black uppercase tracking-[0.16em] text-cyan-300">{children}</h2>;
+}
+
+function FrameTopPlayCard({
+  data,
+  onOpen,
+  onAction,
+}: {
+  data: TopPlayViewModel;
+  onOpen: () => void;
+  onAction: () => void;
+}) {
+  const progress = Math.max(0, Math.min(100, data.progressPercent || 0));
+  const actionLabel = data.actionTone === "view" ? "VIEW" : "UNLOCK";
+
+  return (
+    <section
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onOpen();
+      }}
+      className="atlas-top-play-card relative grid min-h-[76px] grid-cols-[46px_minmax(0,1fr)_94px] items-center gap-1.5 overflow-hidden rounded-[16px] border border-amber-300/95 bg-[radial-gradient(circle_at_12%_45%,rgba(245,158,11,0.18),rgba(2,7,19,0.84)_39%),linear-gradient(180deg,rgba(10,20,34,0.94),rgba(3,8,20,0.97))] px-2.5 py-2 shadow-[0_0_24px_rgba(245,158,11,0.24),inset_0_0_24px_rgba(245,158,11,0.05)]"
+    >
+      <div className="atlas-top-play-trophy grid h-10 w-10 place-items-center rounded-full border border-amber-300/80 bg-amber-400/10 shadow-[0_0_24px_rgba(250,204,21,0.42),inset_0_0_16px_rgba(250,204,21,0.12)]">
+        <TrophyIcon className="h-8 w-8 drop-shadow-[0_0_10px_rgba(250,204,21,0.70)]" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-[17px] font-black uppercase tracking-[-0.02em] text-white">TOP PLAY</p>
+          <span className="rounded-full bg-cyan-400/13 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-300">
+            ALL SPORTS
+          </span>
+        </div>
+        <p className="mt-0.5 truncate text-[11px] font-semibold text-white/78">Atlas is comparing every sport</p>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-[linear-gradient(90deg,#facc15,#f59e0b,#fde68a)] shadow-[0_0_14px_rgba(250,204,21,0.55)] transition-[width] duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="w-8 text-right text-[15px] font-black text-amber-300">{progress}%</span>
+        </div>
+      </div>
+      <div className="flex h-full flex-col justify-center border-l border-white/14 pl-2">
+        <p className="truncate text-[12px] font-black text-amber-300">{data.status || "Market Scan"}</p>
+        <p className="mt-1 truncate whitespace-nowrap text-[9px] font-semibold text-white/62">
+          {data.helperText || "Coming Soon"}
+        </p>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAction();
+          }}
+          className="atlas-unlock-cta mt-1.5 inline-flex h-7 items-center justify-center rounded-[10px] border border-[#c8911d]/90 px-2 text-[9px] font-black uppercase tracking-[0.08em] text-[#d7a12a]"
+        >
+          {actionLabel}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function FrameTopSignalCard({
+  signal,
+  active,
+  onOpen,
+  onAction,
+}: {
+  signal: SportSignalViewModel;
+  active: boolean;
+  onOpen: (sport: SportCode) => void;
+  onAction: (sport: SportCode) => void;
+}) {
+  const meta = frameSportMeta[signal.sport];
+  const progress = Math.max(0, Math.min(100, signal.progressPercent || 0));
+  const cta =
+    signal.actionTone === "view"
+      ? "VIEW"
+      : signal.actionTone === "closed"
+        ? signal.actionLabel.toUpperCase()
+        : "UNLOCK";
+  const borderColor = active ? meta.color : "rgba(148,163,184,0.36)";
+  const accentColor = active ? meta.color : "rgba(226,232,240,0.62)";
+  const glow = active ? meta.glow : "rgba(148,163,184,0.04)";
+  const disabled = signal.actionTone === "closed";
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(signal.sport)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onOpen(signal.sport);
+      }}
+      className={`min-h-[104px] rounded-[12px] border bg-[linear-gradient(180deg,rgba(8,18,32,0.92),rgba(3,8,20,0.96))] px-1 py-1 text-center shadow-[0_0_8px_var(--sport-glow)] ${
+        active ? "" : "opacity-75 saturate-[0.55]"
+      }`}
+      style={{ borderColor, "--sport-glow": glow } as CSSProperties}
+    >
+      <p className="truncate text-[8px] font-black uppercase tracking-[-0.04em] text-white">{meta.title}</p>
+      <div className="mx-auto mt-0.5 h-10 w-10 text-white drop-shadow-[0_0_7px_rgba(255,255,255,0.10)]">
+        <SportLineIcon sport={signal.sport} className="h-full w-full" />
+      </div>
+      <p className="mt-1 text-[9.5px] font-black" style={{ color: accentColor }}>Top Signal</p>
+      <div className="mt-1 flex items-center justify-center gap-1">
+        <div className="h-1.5 w-8 overflow-hidden rounded-full bg-white/12">
+          <div
+            className="h-full rounded-full shadow-[0_0_10px_currentColor] transition-[width] duration-300"
+            style={{ width: `${progress}%`, backgroundColor: accentColor, color: accentColor }}
+          />
+        </div>
+        <span className="text-[8.5px] font-black" style={{ color: accentColor }}>{progress}%</span>
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (disabled) return;
+          onAction(signal.sport);
+        }}
+        className="atlas-unlock-cta atlas-unlock-cta-compact mt-1 h-[18px] w-full rounded-[8px] border text-[7px] font-black uppercase tracking-[0.03em] disabled:cursor-default disabled:opacity-70"
+        style={{ borderColor, color: accentColor }}
+      >
+        {cta}
+      </button>
+    </article>
+  );
+}
+
+function FrameSignalInfoBar() {
+  return (
+    <div className="grid min-h-[35px] grid-cols-[minmax(0,1.1fr)_1px_minmax(0,0.9fr)] items-center overflow-hidden rounded-[18px] border border-white/16 bg-[linear-gradient(180deg,rgba(8,18,33,0.64),rgba(2,7,19,0.72))] px-2 text-[clamp(7.2px,2vw,8.5px)] font-semibold leading-none tracking-[-0.065em] text-white/78 shadow-[0_0_18px_rgba(0,213,255,0.04),inset_0_0_16px_rgba(255,255,255,0.015)]">
+      <div className="flex min-w-0 items-center justify-start gap-1 pr-1.5">
+        <span className="grid h-[19px] w-[19px] shrink-0 place-items-center rounded-full border border-cyan-300/80 text-cyan-300 shadow-[0_0_8px_rgba(34,211,238,0.13)]">
+          <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+            <path d="M12 10v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path d="M12 7h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          </svg>
+        </span>
+        <span className="min-w-0 whitespace-nowrap">Top Signal releases 1 hour before each game</span>
+      </div>
+      <div className="h-[22px] w-px shrink-0 bg-white/24" />
+      <div className="flex min-w-0 items-center justify-start gap-1 pl-2">
+        <span className="grid h-[19px] w-[19px] shrink-0 place-items-center text-white/68">
+          <svg viewBox="0 0 24 24" className="h-[16px] w-[16px]" fill="none" aria-hidden="true">
+            <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </span>
+        <span className="min-w-0 whitespace-nowrap">Picks remain locked after kickoff</span>
+      </div>
+    </div>
+  );
+}
+
+function ActivityMetricIcon({ index, className = "" }: { index: number; className?: string }) {
+  if (index === 0) {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+        <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M17.5 5.5h2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (index === 1) {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+        <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="2" />
+        <path d="m15.5 15.5 4.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (index === 2) {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+        <path d="M4 17l5-5 4 3 7-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M15 7h5v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (index === 3) {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+        <path d="M12 12 17 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M17 4v3h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
+      <path d="M8 4h8v3a4 4 0 0 1-8 0V4Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M8 6H5a3 3 0 0 0 3 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M16 6h3a3 3 0 0 1-3 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 11v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M9 20h6M10 16h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
+  return (
+    <section className="rounded-[17px] border border-white/14 bg-[radial-gradient(circle_at_top_left,rgba(0,213,255,0.08),transparent_36%),linear-gradient(180deg,rgba(6,18,31,0.92),rgba(3,8,20,0.96))] px-3 py-2 shadow-[0_0_18px_rgba(0,213,255,0.06)]">
+      <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-cyan-300">TODAY'S ACTIVITY</h2>
+      <div className="mt-2 grid grid-cols-5 divide-x divide-white/14 text-center">
+        {metrics.map((metric, index) => {
+          const colors = ["text-lime-300", "text-cyan-300", "text-cyan-300", "text-fuchsia-300", "text-amber-300"];
+
+          return (
+            <div key={metric.label} className="px-1">
+              <ActivityMetricIcon className={`mx-auto h-5 w-5 ${colors[index] ?? "text-cyan-300"}`} index={index} />
+              <p className="mt-1 text-[18px] font-black leading-none text-white">{metric.value}</p>
+              <p className="mt-1 text-[8.5px] font-semibold leading-tight text-white/62">{metric.label}</p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function FrameSignalDetectedFeed({
+  rows,
+  count,
+  loading,
+  errorMessage,
+  onRetry,
+  onRowOpen,
+  onViewAll,
+}: {
+  rows: SignalDetectedRow[];
+  count: number;
+  loading?: boolean;
+  errorMessage?: string | null;
+  onRetry?: () => void;
+  onRowOpen: (row: SignalDetectedRow) => void;
+  onViewAll?: () => void;
+}) {
+  const visibleRows = sortSignalsByStartTime(rows).slice(0, 5);
+
+  return (
+    <section className="relative isolate overflow-hidden rounded-[17px] border border-white/14 bg-[linear-gradient(180deg,rgba(6,18,31,0.86),rgba(3,8,20,0.92))]">
+      <div className="relative z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[rgba(5,12,24,0.94)] px-3 py-2.5 backdrop-blur-sm">
+        <div className="flex min-w-0 items-center gap-2">
+          <h2 className="shrink-0 text-[14px] font-black uppercase tracking-[0.18em] text-cyan-300">SIGNAL DETECTED</h2>
+          <span className="truncate rounded-full bg-cyan-400/12 px-2.5 py-1 text-[9.5px] font-black text-cyan-300">All • {count} Signals</span>
+        </div>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="atlas-view-all-cta inline-flex shrink-0 items-center gap-1 rounded-full border border-cyan-300/16 bg-white/8 px-3 py-1 text-[11px] font-bold text-white/86"
+        >
+          View All <span className="text-lg leading-none">›</span>
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-0 px-3 py-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={`frame-signal-loading-${index}`} className="h-[56px] animate-pulse border-b border-white/8 bg-white/[0.025] last:border-b-0" />
+          ))}
+        </div>
+      ) : errorMessage ? (
+        <div className="p-4 text-sm text-white/70">
+          <p className="font-black text-white">Unable to load market data.</p>
+          <p className="mt-1">Please try again.</p>
+          {onRetry ? (
+            <button type="button" onClick={onRetry} className="mt-3 rounded-full border border-cyan-300/30 px-3 py-1 text-xs font-black text-cyan-300">
+              Retry
+            </button>
+          ) : null}
+        </div>
+      ) : visibleRows.length ? (
+        <div className="relative z-10 bg-[rgba(3,8,20,0.42)]">
+          {visibleRows.map((row) => {
+            const label = getSportCompetitionLabel(row.sport);
+
+            return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => onRowOpen(row)}
+                className="grid min-h-[60px] w-full grid-cols-[74px_minmax(0,1fr)_76px_20px] items-center gap-2 border-b border-white/10 px-3 py-1.5 text-left last:border-b-0"
+              >
+                <div className="grid place-items-center gap-1">
+                  <SignalTeamLogoStack row={row} />
+                  <span className="max-w-[72px] truncate text-[8px] font-black uppercase tracking-[0.03em] text-white/58">
+                    {label}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-black text-white">{row.matchup}</p>
+                  <p className="truncate text-[13px] font-semibold text-cyan-300">{compactSignalPickLabel(row.pick)}</p>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <span className="rounded-[9px] border border-cyan-300/45 px-2 py-1 text-[10px] font-black uppercase text-cyan-300">{row.status}</span>
+                  <span className="text-[11px] font-semibold text-white/58">{row.time}</span>
+                </div>
+                <span className="text-2xl font-light text-white/70">›</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm font-black text-white">No signals detected yet.</p>
+          <p className="mt-1 text-xs text-white/58">Atlas continues monitoring today’s market.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LiveTeamMark({ name, sport }: { name: string; sport: SportCode }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const logoSrc = getLiveTeamLogoSrc(name, sport);
+  const showLogo = logoSrc && failedSrc !== logoSrc;
+  const markSizeClass = "h-8 w-8";
+  const isSoccerFlag = sport === "SOCCER" && logoSrc?.includes("/team-logos/soccer/flags/");
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+  if (showLogo) {
+    if (isSoccerFlag) {
+      return (
+        <span className={`grid ${markSizeClass} shrink-0 place-items-center`}>
+          <span className="block h-7 w-7 overflow-hidden rounded-full shadow-[0_0_8px_rgba(255,255,255,0.18)]">
+            <img
+              src={logoSrc}
+              alt=""
+              className="block h-full w-full object-cover"
+              onError={() => setFailedSrc(logoSrc)}
+            />
+          </span>
+        </span>
+      );
+    }
+
+    return (
+      <span className={`grid ${markSizeClass} shrink-0 place-items-center`}>
+        <img
+          src={logoSrc}
+          alt=""
+          className={`${markSizeClass} object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.18)]`}
+          onError={() => setFailedSrc(logoSrc)}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className={`grid ${markSizeClass} shrink-0 place-items-center text-[9px] font-black text-white/70`}>
+      {initials || "AT"}
+    </span>
+  );
+}
+
+function LiveContent({
+  rows,
+  loading,
+  errorMessage,
+  onRetry,
+  onRowOpen,
+}: {
+  rows: SignalsLiveRow[];
+  loading?: boolean;
+  errorMessage?: string | null;
+  onRetry?: () => void;
+  onRowOpen?: (row: SignalsLiveRow) => void;
+}) {
+  const groups = useMemo(() => {
+    const grouped = new Map<string, SignalsLiveRow[]>();
+
+    rows.forEach((row) => {
+      const key = row.leagueTitle || row.sport;
+      grouped.set(key, [...(grouped.get(key) ?? []), row]);
+    });
+
+    return Array.from(grouped.entries()).map(([title, groupRows]) => ({
+      title,
+      rows: groupRows,
+    }));
+  }, [rows]);
+
+  if (loading) {
+    return (
+      <SignalsContent>
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={`signals-live-loading-${index}`} className="h-24 animate-pulse rounded-[18px] border border-white/10 bg-white/[0.05]" />
+        ))}
+      </SignalsContent>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <SignalsContent>
+        <div className="rounded-[18px] border border-red-400/20 bg-red-950/50 p-5 text-center">
+          <p className="text-[14px] font-black text-white">Unable to load live games.</p>
+          <p className="mt-1 text-[12px] text-white/58">Please try again.</p>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-3 rounded-full border border-red-200/25 px-4 py-2 text-[11px] font-black text-red-50"
+            >
+              Retry
+            </button>
+          ) : null}
+        </div>
+      </SignalsContent>
+    );
+  }
+
+  if (!groups.length) {
+    return (
+      <SignalsContent>
+        <div className="rounded-[18px] border border-white/10 bg-white/[0.04] p-5 text-center">
+          <p className="text-[16px] font-black text-white">No live games available</p>
+          <p className="mt-1 text-[12px] text-white/55">Atlas will update this board as games become available.</p>
+        </div>
+      </SignalsContent>
+    );
+  }
+
+  return (
+    <SignalsContent>
+      {groups.map((group) => (
+        <article
+          key={`signals-live-${group.title}`}
+          className="overflow-hidden rounded-[18px] border border-white/10 bg-white/[0.04]"
+        >
+          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
+            <p className="truncate text-[13px] font-black text-white">{group.title}</p>
+            <span className="rounded-full bg-white/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/55">
+              {group.rows.length} games
+            </span>
+          </div>
+
+          <div className="divide-y divide-white/10">
+            {group.rows.map((row) => {
+              const hasScore = row.awayScore !== "-" || row.homeScore !== "-";
+
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  onClick={() => onRowOpen?.(row)}
+                  className="block w-full px-3 py-3 text-left transition hover:bg-white/[0.035]"
+                  aria-label={`Open ${row.awayTeam} vs ${row.homeTeam}`}
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_32px_82px_32px_minmax(0,1fr)] items-center gap-x-2">
+                    <div className="min-w-0 text-right">
+                      <span className="truncate text-right text-[13px] font-semibold text-white">
+                        {row.awayTeam}
+                      </span>
+                    </div>
+                    <LiveTeamMark name={row.awayTeam} sport={row.sport} />
+
+                    <div className="text-center">
+                      {row.statusLabel ? (
+                        <p className={`truncate text-[9px] font-black ${hasScore ? "text-rose-300" : "text-cyan-300"}`}>
+                          {row.statusLabel}
+                        </p>
+                      ) : null}
+                      <p className={`${hasScore ? "text-[19px]" : "text-[15px]"} font-black leading-tight text-white`}>
+                        {row.centerValue}
+                      </p>
+                    </div>
+
+                    <LiveTeamMark name={row.homeTeam} sport={row.sport} />
+                    <div className="min-w-0 text-left">
+                      <span className="truncate text-[13px] font-semibold text-white">
+                        {row.homeTeam}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <span className="rounded-full bg-black/55 px-2 py-1.5 text-center text-[10px] font-black text-white/82">
+                      {row.awayOdds}
+                    </span>
+                    <span className="rounded-full bg-black/55 px-2 py-1.5 text-center text-[10px] font-black text-white/82">
+                      {row.totalLabel}
+                    </span>
+                    <span className="rounded-full bg-black/55 px-2 py-1.5 text-center text-[10px] font-black text-white/82">
+                      {row.homeOdds}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </article>
+      ))}
+    </SignalsContent>
+  );
+}
+
+function BottomNavIcon({ section }: { section: SignalsHomeNavSection }) {
+  if (section === "challenges") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+        <path d="M8 5h8v4c0 4-1.8 7-4 7S8 13 8 9V5Z" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M8 7H5c0 3 1.3 5.1 4 5.8M16 7h3c0 3-1.3 5.1-4 5.8M10 20h4M12 16v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (section === "scores") {
+    return <span className="text-[10px] font-black leading-none">0:0</span>;
+  }
+
+  if (section === "signals") {
+    return (
+      <img
+        src="/signals-nav-logo.png"
+        alt=""
+        className="h-full w-full object-cover object-center"
+      />
+    );
+  }
+
+  if (section === "alerts") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+        <path d="M6.5 10.4a5.5 5.5 0 0 1 11 0v3.1l1.5 2.7H5l1.5-2.7v-3.1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M10 18.2a2.3 2.3 0 0 0 4 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+      <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BottomNav({
+  activeSection,
+  onNavigate,
+}: {
+  activeSection: SignalsHomeNavSection;
+  onNavigate?: (section: SignalsHomeNavSection) => void;
+}) {
+  const items: Array<{ section: SignalsHomeNavSection; label: string }> = [
+    { section: "challenges", label: "Challenges" },
+    { section: "scores", label: "Scores" },
+    { section: "signals", label: "Home" },
+    { section: "alerts", label: "Alerts" },
+    { section: "more", label: "More" },
+  ];
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+      <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-3 text-[11px]">
+        {items.map((item) => {
+          const active = activeSection === item.section;
+
+          return (
+            <button
+              key={item.section}
+              type="button"
+              onClick={() => onNavigate?.(item.section)}
+              aria-label={`Open ${item.label}`}
+              className={`flex flex-col items-center rounded-2xl px-2 font-semibold transition-all ${
+                item.section === "signals" ? "-mt-2 gap-0.5 py-1" : "gap-1 py-2"
+              } ${
+                active
+                  ? "bg-cyan-400/10 text-cyan-300"
+                  : "text-white/45 hover:text-white/70"
+              }`}
+            >
+              <span
+                className={`flex items-center justify-center overflow-hidden rounded-full text-[10px] font-black ${
+                  item.section === "signals"
+                    ? `h-12 w-12 border border-cyan-300/30 bg-[#020916] shadow-[0_0_20px_rgba(34,211,238,0.22)] ${
+                        active ? "ring-2 ring-cyan-300/40" : ""
+                      }`
+                    : `h-6 w-6 ${active ? "bg-cyan-400 text-black" : "bg-white/10"}`
+                }`}
+              >
+                <BottomNavIcon section={item.section} />
+              </span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+function HeaderBellIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M15 17H9m9-2v-4a6 6 0 0 0-12 0v4l-2 2h16l-2-2Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 20a2 2 0 0 0 4 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HeaderUserIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M20 21a8 8 0 0 0-16 0" strokeLinecap="round" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function HeaderInfoIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="1.9">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 10v6" strokeLinecap="round" />
+      <path d="M12 7h.01" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SelectedSportIcon({ sport }: { sport: SelectedSport }) {
+  if (sport === "all") {
+    return (
+      <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden="true">
+        <path
+          d="m16 4 3.5 7.1 7.8 1.1-5.6 5.5 1.3 7.7-7-3.7-7 3.7 1.3-7.7-5.6-5.5 7.8-1.1L16 4Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  const sportCode = selectedSportToSportCode[sport];
+  return <SportLineIcon sport={sportCode} className="h-9 w-9 opacity-95" alt="" />;
+}
+
+function TrophyIcon({ className = "h-16 w-16" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 56 56" className={className} fill="none" aria-hidden="true">
+      <path d="M19 14h18v6.5c0 6.6-3.6 11.4-9 12.4-5.4-1-9-5.8-9-12.4V14Z" fill="url(#selectedTrophyGradient)" stroke="#ffcf55" strokeWidth="1.4" />
+      <path d="M19 18h-5c0 5 2.4 8.4 6.1 9.4M37 18h5c0 5-2.4 8.4-6.1 9.4M28 33v6M22 42h12M20 46h16" stroke="#ffcf55" strokeWidth="2" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="selectedTrophyGradient" x1="18" y1="14" x2="38" y2="34" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffe58b" />
+          <stop offset="0.45" stopColor="#ffb81c" />
+          <stop offset="1" stopColor="#a86500" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+const selectedSportOptions: Array<{ sport: SelectedSport; label: string }> = [
+  { sport: "all", label: "TOP" },
+  { sport: "baseball", label: "Baseball" },
+  { sport: "basketball", label: "Basketball" },
+  { sport: "ice_hockey", label: "Hockey" },
+  { sport: "football", label: "Football" },
+  { sport: "soccer", label: "Soccer" },
+];
+
+function SelectedSportSelector({
+  selectedSport,
+  onSelect,
+}: {
+  selectedSport: SelectedSport;
+  onSelect: (sport: SelectedSport) => void;
+}) {
+  return (
+    <div className="flex gap-2.5 overflow-x-auto px-3 pb-4 pt-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {selectedSportOptions.map((option) => {
+        const active = selectedSport === option.sport;
+
+        return (
+          <button
+            key={option.sport}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onSelect(option.sport)}
+            className={`grid h-[86px] min-w-[78px] place-items-center rounded-[14px] border px-2 transition ${
+              active
+                ? "border-cyan-300 bg-cyan-400/8 text-cyan-300 shadow-[0_0_22px_rgba(34,211,238,0.18)]"
+                : "border-white/12 bg-white/[0.035] text-white/72"
+            }`}
+          >
+            <span className={active ? "text-cyan-300" : "text-white/70"}>
+              <SelectedSportIcon sport={option.sport} />
+            </span>
+            <span className="text-center text-[12px] font-bold leading-tight">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SelectedSportTopSignalCard({
+  sportLabel,
+  progressPercent,
+  actionLabel,
+  disabled = false,
+  onAction,
+}: {
+  sportLabel: string;
+  progressPercent: number;
+  actionLabel: string;
+  disabled?: boolean;
+  onAction: () => void;
+}) {
+  const clampedProgress = Math.max(0, Math.min(100, Math.round(progressPercent)));
+
+  return (
+    <section className="atlas-top-play-card relative grid min-h-[76px] grid-cols-[42px_minmax(0,1fr)_76px] items-center gap-1.5 overflow-hidden rounded-[16px] border border-amber-300/95 bg-[radial-gradient(circle_at_12%_45%,rgba(245,158,11,0.18),rgba(2,7,19,0.84)_39%),linear-gradient(180deg,rgba(10,20,34,0.94),rgba(3,8,20,0.97))] px-2.5 py-2 shadow-[0_0_24px_rgba(245,158,11,0.24),inset_0_0_24px_rgba(245,158,11,0.05)]">
+      <div className="atlas-top-play-trophy grid h-10 w-10 place-items-center rounded-full border border-amber-300/80 bg-amber-400/10 shadow-[0_0_24px_rgba(250,204,21,0.42),inset_0_0_16px_rgba(250,204,21,0.12)]">
+          <TrophyIcon className="h-8 w-8 drop-shadow-[0_0_10px_rgba(250,204,21,0.70)]" />
+        </div>
+
+        <div className="min-w-0">
+        <div className="min-w-0">
+          <h2 className="whitespace-nowrap text-[clamp(10px,2.9vw,13px)] font-black uppercase tracking-[-0.08em] text-white">
+            {sportLabel} Top Signal
+          </h2>
+        </div>
+          <p className="mt-0.5 truncate text-[10.5px] font-semibold text-white/78">
+            Best {sportLabel} Opportunity
+          </p>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-[linear-gradient(90deg,#facc15,#f59e0b,#fde68a)] shadow-[0_0_14px_rgba(250,204,21,0.55)] transition-[width] duration-300"
+              style={{ width: `${clampedProgress}%` }}
+            />
+          </div>
+          <span className="w-8 text-right text-[15px] font-black text-amber-300">{clampedProgress}%</span>
+        </div>
+      </div>
+
+      <div className="flex h-full flex-col justify-center border-l border-white/14 pl-2">
+        <p className="truncate text-[11px] font-black text-amber-300">One Time</p>
+        <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/68">Access</p>
+        <button
+          type="button"
+          onClick={onAction}
+          disabled={disabled}
+          className={`atlas-unlock-cta mt-1.5 inline-flex h-7 items-center justify-center rounded-[10px] border px-2 text-[9px] font-black uppercase tracking-[0.08em] ${
+            disabled
+              ? "border-white/10 bg-white/[0.04] text-white/42 shadow-none"
+              : "border-[#c8911d]/90 text-[#d7a12a]"
+          }`}
+        >
+          {actionLabel}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function getSelectedSportTopSignalActionLabel({
+  signal,
+  hasPrecisionData,
+  hasSportRows,
+  loading,
+}: {
+  signal?: SportSignalViewModel | null;
+  hasPrecisionData: boolean;
+  hasSportRows: boolean;
+  loading: boolean;
+}) {
+  if (loading) return "Unlock";
+  if (!hasPrecisionData && !hasSportRows) return "No Games Available";
+  if (!signal) return "No Games Available";
+  if (signal.actionTone === "view") return "View Pick";
+  if (signal.actionTone === "unlock") return "Unlock";
+  if (signal.actionTone === "notify") return "Unlock";
+  if (signal.status === "No Signal Today") return "No Play";
+  if (signal.status === "Closed Today") return "Closed";
+  if (signal.status === "OFF SEASON") return "No Games Available";
+  return "Closed";
+}
+
+function isSelectedSportTopSignalActionDisabled({
+  signal,
+  hasPrecisionData,
+  hasSportRows,
+  loading,
+}: {
+  signal?: SportSignalViewModel | null;
+  hasPrecisionData: boolean;
+  hasSportRows: boolean;
+  loading: boolean;
+}) {
+  if (loading) return true;
+  if (!hasPrecisionData && !hasSportRows) return true;
+  if (!signal) return true;
+  return signal.actionTone === "closed";
+}
+
+function formatSelectedSportTime(time: string) {
+  return time.replace("AM", "a.m.").replace("PM", "p.m.");
+}
+
+function SelectedSportSignalRow({
+  row,
+  sport,
+  onOpen,
+}: {
+  row: SignalDetectedRow;
+  sport: SelectedSport;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="grid min-h-[66px] w-full grid-cols-[50px_50px_1fr_58px_12px] items-center gap-2 rounded-[14px] border border-white/10 bg-[linear-gradient(135deg,rgba(6,24,42,0.92),rgba(3,8,20,0.94))] px-2.5 text-left shadow-[inset_0_0_30px_rgba(34,211,238,0.03)] transition hover:border-cyan-300/25"
+    >
+      <span className="grid place-items-center gap-1 border-r border-cyan-300/20 pr-3 text-cyan-300">
+        <SignalTeamLogoStack row={row} size="compact" />
+        <span className="text-[7px] font-black uppercase text-white">{selectedSportLabels[sport]}</span>
+      </span>
+      <span className="border-r border-cyan-300/20 pr-2 text-[12px] font-black leading-tight text-white">
+        {formatSelectedSportTime(row.time)}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[12px] font-black text-white">{row.matchup}</span>
+        <span className="mt-0.5 block truncate text-[11px] font-medium text-cyan-300">{compactSignalPickLabel(row.pick)}</span>
+      </span>
+      <span className="justify-self-end rounded-[7px] border border-cyan-300/50 px-2 py-1.5 text-[8px] font-black uppercase text-cyan-300">
+        {row.status || "Pending"}
+      </span>
+      <span className="text-lg font-light text-white">›</span>
+    </button>
+  );
+}
+
+function SelectedSportEmptyState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-[16px] border border-white/10 bg-white/[0.035] px-5 py-8 text-center">
+      <p className="text-lg font-black text-white">{title}</p>
+      <p className="mt-2 text-sm text-white/58">{description}</p>
+    </div>
+  );
+}
+
+function SignalExplorerSheet({
+  open,
+  rows,
+  loading,
+  errorMessage,
+  onRetry,
+  onClose,
+  onRowOpen,
+}: {
+  open: boolean;
+  rows: SignalDetectedRow[];
+  loading: boolean;
+  errorMessage?: string | null;
+  onRetry?: () => void;
+  onClose: () => void;
+  onRowOpen: (row: SignalDetectedRow) => void;
+}) {
+  if (!open) return null;
+
+  const orderedRows = sortSignalsByStartTime(rows);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-3 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Signal Detected Explorer"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[84vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border border-cyan-300/18 bg-[#050816] pb-5 shadow-[0_-18px_60px_rgba(34,211,238,0.16)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#050816]/95 px-4 py-4 backdrop-blur-xl">
+          <div>
+            <p className="text-[12px] font-black uppercase tracking-[0.18em] text-cyan-300">
+              Signal Detected
+            </p>
+            <p className="mt-1 text-sm text-white/58">All sports • {orderedRows.length} signals</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-white/[0.04] text-lg font-black text-white/70"
+            aria-label="Close Signal Detected Explorer"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="px-3 py-3">
+          {loading ? (
+            <div className="overflow-hidden rounded-[18px] border border-white/10 bg-white/[0.025]">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div
+                  key={`signal-explorer-loading-${index}`}
+                  className="h-[64px] animate-pulse border-b border-white/8 bg-white/[0.025] last:border-b-0"
+                />
+              ))}
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-[18px] border border-red-400/20 bg-red-950/30 p-4 text-sm text-white/70">
+              <p className="font-black text-white">Unable to load market data.</p>
+              <p className="mt-1">Please try again.</p>
+              {onRetry ? (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="mt-3 rounded-full border border-cyan-300/30 px-3 py-1 text-xs font-black text-cyan-300"
+                >
+                  Retry
+                </button>
+              ) : null}
+            </div>
+          ) : orderedRows.length ? (
+            <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(6,18,31,0.82),rgba(3,8,20,0.94))]">
+              {orderedRows.map((row) => {
+                const resultBadge = getSignalViewAllResultBadge(row.status);
+
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onRowOpen(row);
+                    }}
+                    className="grid min-h-[64px] w-full grid-cols-[60px_minmax(0,1fr)_64px_40px_14px] items-center gap-2 border-b border-white/10 px-3 py-2 text-left last:border-b-0"
+                  >
+                    <span className="grid place-items-center gap-1 text-cyan-300">
+                      <SignalTeamLogoStack row={row} />
+                      <span className="max-w-[58px] truncate text-[7.5px] font-black uppercase tracking-[0.03em] text-white/58">
+                        {getSportCompetitionLabel(row.sport)}
+                      </span>
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-black text-white">{row.matchup}</span>
+                      <span className="mt-0.5 block truncate text-[13px] font-semibold text-cyan-300">
+                        {compactSignalPickLabel(row.pick)}
+                      </span>
+                    </span>
+                    {resultBadge ? (
+                      <span
+                        aria-label={resultBadge.label}
+                        title={resultBadge.label}
+                        className={`inline-flex h-[30px] min-w-[48px] items-center justify-center justify-self-end rounded-[8px] border px-2 py-1 text-[15px] ${resultBadge.className}`}
+                      >
+                        <span aria-hidden="true">{resultBadge.icon}</span>
+                      </span>
+                    ) : (
+                      <span className="justify-self-end rounded-[8px] border border-cyan-300/45 px-2 py-1 text-[9px] font-black uppercase text-cyan-300">
+                        {row.status || "Pending"}
+                      </span>
+                    )}
+                    <span className="justify-self-end text-[10px] font-semibold text-white/58">{row.time}</span>
+                    <span className="text-xl font-light text-white/65">›</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[18px] border border-white/10 bg-white/[0.025] px-4 py-8 text-center">
+              <p className="text-sm font-black text-white">No signals detected yet.</p>
+              <p className="mt-1 text-xs text-white/58">Atlas continues monitoring today’s market.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SignalsHomePage({
+  topPlay,
+  topSignals,
+  signalRows = [],
+  liveRows = [],
+  liveLoading = false,
+  liveErrorMessage,
+  signalGroupCount,
+  activeSection = "signals",
+  onNavigate,
+  onSportProductAction,
+  onTopPlayAction,
+  onTopPlayNotify,
+  onSportNotify,
+  onLiveRowOpen,
+  onRetry,
+  journeyMessage,
+  onDismissJourneyMessage,
+  loading = false,
+  errorMessage,
+}: SignalsHomePageProps) {
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [howItWorksInitialSection, setHowItWorksInitialSection] = useState<"top-signal" | undefined>();
+  const [topPlayDetailOpen, setTopPlayDetailOpen] = useState(false);
+  const [selectedSportSignal, setSelectedSportSignal] = useState<SportCode | null>(null);
+  const [selectedSignalRow, setSelectedSignalRow] = useState<SignalDetectedRow | null>(null);
+  const [selectedSport, setSelectedSport] = useState<SelectedSport>("all");
+  const [contentMode, setContentMode] = useState<SignalsContentMode>("signals");
+  const [revealTarget, setRevealTarget] = useState<"top_play" | SportCode | null>(null);
+  const [signalExplorerOpen, setSignalExplorerOpen] = useState(false);
+  const [notifyStates, setNotifyStates] = useState<Record<string, "idle" | "reserved" | "prepared" | "error">>({});
+
+  const selectedSportMode = useMemo(() => {
+    const now = new Date();
+    const filteredSignalRows =
+      selectedSport === "all"
+        ? getUpcomingSignalsBySport(signalRows, "all", now)
+        : getUpcomingSignalsBySport(signalRows, selectedSport, now);
+
+    return {
+      sport: selectedSport,
+      sportLabel: selectedSportLabels[selectedSport],
+      sportSignalCount: filteredSignalRows.length,
+      sportTopSignalEndpoint: selectedSportTopSignalEndpoints[selectedSport],
+      filteredSignalRows,
+      nextSignal: getNextSignalBySport(signalRows, selectedSport, now),
+      emptyState: {
+        title: "No Games Available",
+        description: "Check back later for new signals.",
+      },
+    };
+  }, [selectedSport, signalRows]);
+
+  const activeSignalRows = selectedSportMode.filteredSignalRows;
+  const topPlayView = buildTopPlayViewModel(topPlay);
+  const sportSignalViews = sports.map((sport) =>
+    buildSportSignalViewModel(sport, topSignals?.[sport]),
+  );
+  const orderedSportSignalViews = useMemo(
+    () => orderSportSignalViews(sportSignalViews),
+    [sportSignalViews],
+  );
+  const selectedSportCode =
+    selectedSport === "all" ? null : selectedSportToSportCode[selectedSport];
+  const selectedSportSignalView = selectedSportCode
+    ? sportSignalViews.find((signal) => signal.sport === selectedSportCode)
+    : null;
+  const selectedSportPrecisionData = selectedSportCode ? topSignals?.[selectedSportCode] : null;
+  const selectedSportHasPrecisionData = Boolean(selectedSportPrecisionData);
+  const signalsDetectedCount =
+    selectedSportMode.sportSignalCount;
+  const topPlayReleased = hasRevealAccess(topPlay) && topPlay?.pick ? 1 : 0;
+  const activityMetrics: ActivityMetric[] = [
+    { label: "Signals Detected", value: signalsDetectedCount, tone: "green" },
+    {
+      label: "In Review",
+      value: sportSignalViews.filter((signal) =>
+        ["Scanning Market", "Analyzing Market"].includes(signal.status),
+      ).length,
+      tone: "cyan",
+    },
+    {
+      label: "Strong Candidates",
+      value: sportSignalViews.filter((signal) => signal.status === "Strong Candidate").length,
+      tone: "blue",
+    },
+    {
+      label: "Final Review",
+      value: sportSignalViews.filter((signal) => signal.status === "Final Review").length,
+      tone: "purple",
+    },
+    { label: "Top Play", value: topPlayReleased, tone: "gold" },
+  ];
+
+  async function reserveNotification(
+    key: string,
+    handler?: () => Promise<PrecisionNotifyResult>,
+  ) {
+    if (notifyStates[key] === "reserved" || notifyStates[key] === "prepared") {
+      return { status: notifyStates[key] } as PrecisionNotifyResult;
+    }
+
+    try {
+      const result = await handler?.();
+
+      if (!result || result.status === "error" || result.status === "login") {
+        setNotifyStates((current) => ({
+          ...current,
+          [key]: result?.status === "login" ? "idle" : "error",
+        }));
+        return result ?? { status: "error", message: "Could not reserve notification." };
+      }
+
+      setNotifyStates((current) => ({ ...current, [key]: result.status }));
+      return result;
+    } catch {
+      setNotifyStates((current) => ({ ...current, [key]: "error" }));
+      return { status: "error", message: "Could not reserve notification." } as PrecisionNotifyResult;
+    }
+  }
+
+  async function handleTopPlayAction() {
+    if (topPlayView.actionTone === "view") {
+      setRevealTarget("top_play");
+      return;
+    }
+
+    const result = await onTopPlayAction?.();
+    if (result?.status === "view_pick") setRevealTarget("top_play");
+  }
+
+  async function handleSportAction(sport: SportCode) {
+    const signal = sportSignalViews.find((item) => item.sport === sport);
+
+    if (signal?.actionTone === "view") {
+      setRevealTarget(sport);
+      return;
+    }
+
+    const result = await onSportProductAction?.(sport);
+    if (result?.status === "view_pick") setRevealTarget(sport);
+  }
+
+  function handleSelectedSportTopSignalAction() {
+    if (!selectedSportCode || !selectedSportSignalView) return;
+
+    setSelectedSportSignal(selectedSportCode);
+  }
+
+  function openHowItWorks(initialSection?: "top-signal") {
+    setHowItWorksInitialSection(initialSection);
+    setHowItWorksOpen(true);
+  }
+
+  return (
+    <main className="min-h-screen bg-[#050816] text-white">
+      <div className="mx-auto min-h-screen w-full max-w-md bg-[#030814]">
+        <section className="relative mx-auto h-dvh min-h-screen w-full overflow-hidden bg-[#030814] text-white">
+            <img
+              src="/mockups/signals-frame-v2.jpg"
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-[calc(100%+32px)] w-full -translate-y-8 select-none object-cover object-top"
+              draggable={false}
+            />
+
+            <SignalsFrameHotspots
+              onSelectSport={setSelectedSport}
+              onHowItWorks={() => openHowItWorks()}
+              onNavigate={onNavigate}
+            />
+            <FrameTopActions onHowItWorks={() => openHowItWorks()} onNavigate={onNavigate} />
+
+            <FrameSportSelectorRow selectedSport={selectedSport} onSelectSport={setSelectedSport} />
+
+            <div className="pointer-events-auto absolute left-[3.3%] right-[3.3%] top-[25.1%] z-50">
+              <SignalsModeSwitch mode={contentMode} onChange={setContentMode} />
+            </div>
+
+            <div className="pointer-events-auto absolute inset-x-0 bottom-[82px] top-[29.85%] z-20 overflow-y-auto overscroll-contain px-3 pb-2 scroll-smooth [scrollbar-width:none] [touch-action:pan-y] [&::-webkit-scrollbar]:hidden">
+              {journeyMessage ? (
+                <div
+                  className={`mb-2 rounded-2xl border px-4 py-3 text-xs shadow-2xl backdrop-blur-md ${
+                    journeyMessage.tone === "error"
+                      ? "border-red-400/25 bg-red-950/80 text-red-50"
+                      : journeyMessage.tone === "success"
+                        ? "border-lime-300/25 bg-lime-950/70 text-lime-50"
+                        : "border-cyan-300/25 bg-cyan-950/75 text-cyan-50"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-black">{journeyMessage.title}</p>
+                      {journeyMessage.body ? <p className="mt-1 text-white/70">{journeyMessage.body}</p> : null}
+                    </div>
+                    {onDismissJourneyMessage ? (
+                      <button
+                        type="button"
+                        onClick={onDismissJourneyMessage}
+                        className="text-lg leading-none text-white/60"
+                        aria-label="Dismiss message"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {contentMode === "signals" ? (
+                selectedSport === "all" ? (
+                  <div className="space-y-2 pt-2">
+                    {loading ? (
+                      <OpportunitySkeleton />
+                    ) : (
+                      <>
+                        <FrameTopPlayCard
+                          data={topPlayView}
+                          onOpen={() => setTopPlayDetailOpen(true)}
+                          onAction={() => {
+                            void handleTopPlayAction();
+                          }}
+                        />
+
+                        <FrameSectionTitle>Top Signals</FrameSectionTitle>
+                        <div className="grid grid-cols-5 gap-1">
+                          {orderedSportSignalViews.map((signal) => (
+                            <FrameTopSignalCard
+                              key={signal.sport}
+                              signal={signal}
+                              active={isActiveSportSignalView(signal)}
+                              onOpen={setSelectedSportSignal}
+                              onAction={(sport) => {
+                                void handleSportAction(sport);
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        <FrameSignalInfoBar />
+                      </>
+                    )}
+
+                    <FrameSignalDetectedFeed
+                      rows={activeSignalRows}
+                      count={signalsDetectedCount}
+                      loading={loading}
+                      errorMessage={errorMessage}
+                      onRetry={onRetry}
+                      onRowOpen={(row) => setSelectedSignalRow(row)}
+                      onViewAll={() => setSignalExplorerOpen(true)}
+                    />
+                    <FrameTodayActivityCard metrics={activityMetrics} />
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-2">
+                    {errorMessage && !loading ? (
+                      <div className="rounded-2xl border border-red-400/25 bg-red-950/80 px-4 py-3 text-xs text-red-50 shadow-2xl backdrop-blur-md">
+                        <p className="font-black">Unable to load market data.</p>
+                        <p className="mt-1 text-white/70">Please try again.</p>
+                        {onRetry ? (
+                          <button
+                            type="button"
+                            onClick={onRetry}
+                            className="mt-2 rounded-full border border-red-200/25 px-3 py-1 text-[11px] font-black"
+                          >
+                            Retry
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {loading ? (
+                      <OpportunitySkeleton />
+                    ) : (
+                      <SelectedSportTopSignalCard
+                        sportLabel={selectedSportMode.sportLabel}
+                        progressPercent={selectedSportSignalView?.progressPercent ?? 87}
+                        actionLabel={getSelectedSportTopSignalActionLabel({
+                          signal: selectedSportSignalView,
+                          hasPrecisionData: selectedSportHasPrecisionData,
+                          hasSportRows: selectedSportMode.sportSignalCount > 0,
+                          loading,
+                        })}
+                        disabled={isSelectedSportTopSignalActionDisabled({
+                          signal: selectedSportSignalView,
+                          hasPrecisionData: selectedSportHasPrecisionData,
+                          hasSportRows: selectedSportMode.sportSignalCount > 0,
+                          loading,
+                        })}
+                        onAction={() => {
+                          void handleSelectedSportTopSignalAction();
+                        }}
+                      />
+                    )}
+
+                    <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(1,18,34,0.94),rgba(3,8,20,0.96))] shadow-[0_0_22px_rgba(0,229,255,0.08)]">
+                      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3 py-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <h2 className="shrink-0 text-[13px] font-black uppercase tracking-[0.14em] text-cyan-300">
+                            Signal Detected
+                          </h2>
+                          <span className="truncate rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-bold text-cyan-300">
+                            {selectedSportMode.sportLabel} • {selectedSportMode.sportSignalCount} Signals
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSignalExplorerOpen(true)}
+                          className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-white/78"
+                          aria-label={`View all ${selectedSportMode.sportLabel} Signal Detected rows`}
+                        >
+                          View All
+                          <span className="text-xl font-light">›</span>
+                        </button>
+                      </div>
+
+                      <div>
+                        {loading ? (
+                          Array.from({ length: 3 }).map((_, index) => (
+                            <div
+                              key={`selected-sport-loading-${index}`}
+                              className="h-[66px] animate-pulse border-b border-white/10 bg-white/[0.045] last:border-b-0"
+                            />
+                          ))
+                        ) : activeSignalRows.length ? (
+                          activeSignalRows.map((row) => (
+                            <SelectedSportSignalRow
+                              key={row.id}
+                              row={row}
+                              sport={selectedSport}
+                              onOpen={() => setSelectedSignalRow(row)}
+                            />
+                          ))
+                        ) : (
+                          <SelectedSportEmptyState
+                            title={selectedSportMode.emptyState.title}
+                            description={selectedSportMode.emptyState.description}
+                          />
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSport("all")}
+                          className="flex h-11 w-full items-center justify-center border-t border-white/10 bg-white/[0.025] px-4 text-[13px] font-black text-white"
+                        >
+                          View All Available Sports
+                          <span className="ml-auto text-xl font-light">›</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <LiveContent
+                  rows={
+                    selectedSportCode
+                      ? liveRows.filter((row) => row.sport === selectedSportCode)
+                      : liveRows
+                  }
+                  loading={liveLoading}
+                  errorMessage={liveErrorMessage}
+                  onRetry={onRetry}
+                  onRowOpen={onLiveRowOpen}
+                />
+              )}
+            </div>
+
+            <BottomNav activeSection={activeSection} onNavigate={onNavigate} />
+          </section>
+      </div>
+
+      <SignalExplorerSheet
+        open={signalExplorerOpen}
+        rows={signalRows}
+        loading={loading}
+        errorMessage={errorMessage}
+        onRetry={onRetry}
+        onClose={() => setSignalExplorerOpen(false)}
+        onRowOpen={setSelectedSignalRow}
+      />
+
+      <HowItWorksSheet
+        open={howItWorksOpen}
+        onClose={() => setHowItWorksOpen(false)}
+        initialSection={howItWorksInitialSection}
+      />
+
+      <TopPlayDetailSheet
+        open={topPlayDetailOpen}
+        data={topPlay}
+        onClose={() => setTopPlayDetailOpen(false)}
+        onPrimaryAction={onTopPlayAction}
+        onReveal={() => setRevealTarget("top_play")}
+        notifyState={notifyStates.top_play ?? "idle"}
+        onNotify={() => reserveNotification("top_play", onTopPlayNotify)}
+      />
+
+      <SportSignalDetailSheet
+        open={Boolean(selectedSportSignal)}
+        sport={selectedSportSignal}
+        data={selectedSportSignal ? topSignals?.[selectedSportSignal] : null}
+        onClose={() => setSelectedSportSignal(null)}
+        onPrimaryAction={onSportProductAction}
+        onReveal={(sport) => setRevealTarget(sport)}
+        notifyState={
+          selectedSportSignal
+            ? notifyStates[`top_signal_${selectedSportSignal}`] ?? "idle"
+            : "idle"
+        }
+        onNotify={(sport) =>
+          reserveNotification(`top_signal_${sport}`, () => onSportNotify?.(sport) ?? Promise.resolve({ status: "error" }))
+        }
+      />
+
+      <SignalDetectedDetailSheet
+        open={Boolean(selectedSignalRow)}
+        row={selectedSignalRow}
+        onClose={() => setSelectedSignalRow(null)}
+        onLearnTopSignals={() => {
+          setSelectedSignalRow(null);
+          openHowItWorks("top-signal");
+        }}
+      />
+
+      <PrecisionRevealSheet
+        open={Boolean(revealTarget)}
+        productType={revealTarget === "top_play" ? "top_play" : "top_signal"}
+        sport={revealTarget === "top_play" ? undefined : revealTarget}
+        data={
+          revealTarget === "top_play"
+            ? topPlay
+            : revealTarget
+              ? topSignals?.[revealTarget]
+              : null
+        }
+        onClose={() => setRevealTarget(null)}
+        onRefresh={onRetry}
+      />
+    </main>
+  );
+}

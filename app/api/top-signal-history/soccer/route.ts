@@ -6,15 +6,21 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const { data, error } = await supabase
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get("date");
+    let query = supabase
       .from("soccer_top_signal_history")
       .select("*")
       .eq("is_top_signal", true)
       .order("date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(50);
+      .order("created_at", { ascending: false });
+
+    if (date) query = query.eq("date", date);
+    else query = query.limit(50);
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(

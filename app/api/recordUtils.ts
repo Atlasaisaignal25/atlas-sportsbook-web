@@ -6,9 +6,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function buildRecordResponse(tableName: string) {
+export async function buildRecordResponse(tableName: string, req?: Request) {
   try {
-    const { data, error } = await supabase.from(tableName).select("result");
+    const date = req ? new URL(req.url).searchParams.get("date") : null;
+    let query = supabase.from(tableName).select("result,date");
+
+    if (date) query = query.eq("date", date);
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(

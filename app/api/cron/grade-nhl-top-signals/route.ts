@@ -15,6 +15,8 @@ export async function GET() {
 
     const updated = await gradePendingHistory({
       historyTable: "nhl_top_signal_history",
+      liveTable: "nhl_top5_live",
+      sport: "NHL",
       scoreKeys: scoreKeysBySport.NHL,
     });
 

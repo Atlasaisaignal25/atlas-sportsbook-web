@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  getSportsDataIoScores,
+  isSportsDataIoSport,
+} from "@/app/lib/sportsdataio";
 
 const sportGroups = {
   NBA: ["basketball_nba"],
@@ -22,10 +26,149 @@ const sportGroups = {
 ],
 } as const;
 
+function normalizeName(value: string) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/&/g, "and")
+    .replace(/'/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getGameDayKey(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
+}
+
+function isDateKey(value: string | null) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+async function fetchOddsApiScores(sport: string, date?: string | null) {
+  const apiKey = process.env.ODDS_API_KEY;
+  if (!apiKey) return [];
+
+  const selectedSports =
+    sport in sportGroups
+      ? sportGroups[sport as keyof typeof sportGroups]
+      : sportGroups.NBA;
+
+  const responses = await Promise.all(
+    selectedSports.map(async (sportKey) => {
+      const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores?daysFrom=1&apiKey=${apiKey}`;
+
+      const res = await fetch(url, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.log(`Scores API failed for ${sportKey}: ${text}`);
+        return [];
+      }
+
+      const data = await res.json();
+      const games = Array.isArray(data)
+        ? data.map((game) => ({
+            ...game,
+            sport_key: sportKey,
+          }))
+        : [];
+
+      return date && isDateKey(date)
+        ? games.filter((game) => getGameDayKey(game.commence_time) === date)
+        : games;
+    })
+  );
+
+  return responses.flat();
+}
+
+function findMatchingOddsScore(game: any, oddsScores: any[]) {
+  const away = normalizeName(game.away_team);
+  const home = normalizeName(game.home_team);
+
+  return (
+    oddsScores.find((oddsGame) => {
+      const oddsAway = normalizeName(oddsGame.away_team);
+      const oddsHome = normalizeName(oddsGame.home_team);
+
+      return (
+        (away === oddsAway && home === oddsHome) ||
+        (away === oddsHome && home === oddsAway)
+      );
+    }) ?? null
+  );
+}
+
+function hasUsableScores(game: any) {
+  return Array.isArray(game?.scores) && game.scores.length > 0;
+}
+
+function mergeAuthoritativeScores(games: any[], oddsScores: any[]) {
+  if (oddsScores.length === 0) return games;
+
+  const mergedGames = games.map((game) => {
+    const oddsGame = findMatchingOddsScore(game, oddsScores);
+
+    if (!oddsGame || !hasUsableScores(oddsGame)) {
+      return game;
+    }
+
+    return {
+      ...game,
+      completed: Boolean(oddsGame.completed ?? game.completed),
+      scores: oddsGame.scores,
+      rawStatus: oddsGame.completed ? "Final" : game.rawStatus,
+    };
+  });
+
+  const sportsDataOnlyKeys = new Set(
+    mergedGames.map((game) => {
+      const away = normalizeName(game.away_team);
+      const home = normalizeName(game.home_team);
+      return [away, home].sort().join("|");
+    })
+  );
+
+  const oddsOnlyGames = oddsScores.filter((oddsGame) => {
+    const away = normalizeName(oddsGame.away_team);
+    const home = normalizeName(oddsGame.home_team);
+    return !sportsDataOnlyKeys.has([away, home].sort().join("|"));
+  });
+
+  return [...mergedGames, ...oddsOnlyGames];
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const sport = (searchParams.get("sport") || "NBA").toUpperCase();
+    const date = searchParams.get("date");
+    const scoresDate = isDateKey(date) ? date : null;
+    const oddsScoresPromise = fetchOddsApiScores(sport, scoresDate).catch(() => []);
+
+    if (process.env.SPORTSDATAIO_API_KEY && isSportsDataIoSport(sport)) {
+      try {
+        const sportsDataIoGames = await getSportsDataIoScores(sport, scoresDate);
+
+        if (sportsDataIoGames.length > 0) {
+          const oddsScores = await oddsScoresPromise;
+          return NextResponse.json(
+            mergeAuthoritativeScores(sportsDataIoGames, oddsScores)
+          );
+        }
+      } catch (error) {
+        console.log(
+          `SportsDataIO scores fallback for ${sport}:`,
+          error instanceof Error ? error.message : "Unknown error"
+        );
+      }
+    }
 
     const apiKey = process.env.ODDS_API_KEY;
     if (!apiKey) {
@@ -35,38 +178,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const selectedSports =
-      sport in sportGroups
-        ? sportGroups[sport as keyof typeof sportGroups]
-        : sportGroups.NBA;
-
-    const responses = await Promise.all(
-      selectedSports.map(async (sportKey) => {
-        const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores?daysFrom=1&apiKey=${apiKey}`;
-
-        const res = await fetch(url, {
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-  const text = await res.text();
-  console.log(`Scores API failed for ${sportKey}: ${text}`);
-  return [];
-}
-
-        const data = await res.json();
-        return Array.isArray(data)
-          ? data.map((game) => ({
-              ...game,
-              sport_key: sportKey,
-            }))
-          : [];
-      })
-    );
-
-    const merged = responses.flat();
-
-    return NextResponse.json(merged);
+    return NextResponse.json(await oddsScoresPromise);
   } catch (error) {
     console.error("Scores route error:", error);
 

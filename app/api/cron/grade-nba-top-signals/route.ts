@@ -15,6 +15,8 @@ export async function GET() {
 
     const updated = await gradePendingHistory({
       historyTable: "nba_top_signal_history",
+      liveTable: "nba_top5_live",
+      sport: "NBA",
       scoreKeys: scoreKeysBySport.NBA,
     });
 

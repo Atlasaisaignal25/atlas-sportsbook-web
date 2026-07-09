@@ -6,13 +6,11 @@ function todayMiamiDate() {
   });
 }
 
-export async function getSoccerPublicSignals() {
-  const today = todayMiamiDate();
-
+export async function getSoccerPublicSignals(date = todayMiamiDate()) {
   const { data, error } = await supabase
     .from("soccer_public_signals")
     .select("*")
-    .eq("date", today)
+    .eq("date", date)
     .order("start_time", { ascending: true });
 
   if (error) {
@@ -23,13 +21,11 @@ export async function getSoccerPublicSignals() {
   return data ?? [];
 }
 
-export async function getSoccerTop5Live() {
-  const today = todayMiamiDate();
-
+export async function getSoccerTop5Live(date = todayMiamiDate()) {
   const { data, error } = await supabase
     .from("soccer_top5_live")
     .select("*")
-    .eq("date", today)
+    .eq("date", date)
     .order("rank", { ascending: true });
 
   if (error) {

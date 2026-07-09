@@ -6,14 +6,12 @@ function todayMiamiDate() {
   });
 }
 
-export async function getNhlPublicSignals() {
-  const today = todayMiamiDate();
-
+export async function getNhlPublicSignals(date = todayMiamiDate()) {
   const { data, error } = await supabase
     .from("nhl_public_signals")
     .select("*")
     .eq("sport", "NHL")
-    .eq("date", today)
+    .eq("date", date)
     .order("start_time", { ascending: true });
 
   if (error) {
@@ -24,14 +22,12 @@ export async function getNhlPublicSignals() {
   return data ?? [];
 }
 
-export async function getNhlTop5Live() {
-  const today = todayMiamiDate();
-
+export async function getNhlTop5Live(date = todayMiamiDate()) {
   const { data, error } = await supabase
     .from("nhl_top5_live")
     .select("*")
     .eq("sport", "NHL")
-    .eq("date", today)
+    .eq("date", date)
     .order("rank", { ascending: true });
 
   if (error) {
