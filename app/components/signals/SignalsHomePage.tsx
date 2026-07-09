@@ -101,6 +101,8 @@ type SignalsHomePageProps = {
   onTopPlayNotify?: () => Promise<PrecisionNotifyResult>;
   onSportNotify?: (sport: SportCode) => Promise<PrecisionNotifyResult>;
   onLiveRowOpen?: (row: SignalsLiveRow) => void;
+  activeDate?: string;
+  onDateChange?: (date: string) => void;
   onRetry?: () => void;
   journeyMessage?: JourneyMessage | null;
   onDismissJourneyMessage?: () => void;
@@ -133,6 +135,49 @@ const selectedSportLabels: Record<SelectedSport, string> = {
   ice_hockey: "Hockey",
   soccer: "Soccer",
 };
+
+function getTodayKey() {
+  return new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
+}
+
+function parseDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(Date.UTC(year, month - 1, day, 12));
+}
+
+function formatCalendarMonth(dateKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+    .format(parseDateKey(dateKey))
+    .toUpperCase();
+}
+
+function formatCalendarDay(dateKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    timeZone: "UTC",
+  }).format(parseDateKey(dateKey));
+}
+
+function formatCalendarWeekday(dateKey: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    timeZone: "UTC",
+  })
+    .format(parseDateKey(dateKey))
+    .toUpperCase();
+}
+
+function getDateBoardLabel(dateKey: string) {
+  const today = getTodayKey();
+  if (dateKey === today) return "Today";
+  return dateKey < today ? "Results" : "Schedule";
+}
 
 const selectedSportTopSignalEndpoints: Record<SelectedSport, string | null> = {
   all: null,
@@ -786,13 +831,27 @@ function orderSportSignalViews(signals: SportSignalViewModel[]) {
   });
 }
 
-function CalendarBadge() {
-  const now = new Date();
-  const month = now.toLocaleString("en-US", { month: "short", timeZone: "America/New_York" });
-  const day = now.toLocaleString("en-US", { day: "2-digit", timeZone: "America/New_York" });
+function CalendarBadge({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange?: (date: string) => void;
+}) {
+  const month = formatCalendarMonth(value);
+  const day = formatCalendarDay(value);
 
   return (
-    <div className="grid h-[68px] w-[56px] place-items-center rounded-[18px] border border-cyan-300/22 bg-cyan-950/18 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+    <label className="relative grid h-[68px] w-[56px] place-items-center overflow-hidden rounded-[18px] border border-cyan-300/22 bg-cyan-950/18 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+      <input
+        type="date"
+        value={value}
+        onChange={(event) => {
+          if (event.target.value) onChange?.(event.target.value);
+        }}
+        aria-label="Select board date"
+        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+      />
       <div className="text-center">
         <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-300">
           {month}
@@ -801,7 +860,7 @@ function CalendarBadge() {
           {day}
         </p>
       </div>
-    </div>
+    </label>
   );
 }
 
@@ -926,24 +985,37 @@ function SignalsFrameHotspots({
 function FrameTopActions({
   onHowItWorks,
   onNavigate,
+  activeDate,
+  onDateChange,
 }: {
   onHowItWorks: () => void;
   onNavigate?: (section: SignalsHomeNavSection) => void;
+  activeDate: string;
+  onDateChange?: (date: string) => void;
 }) {
-  const today = new Date();
-  const month = today.toLocaleString("en-US", { month: "short" }).toUpperCase();
-  const day = String(today.getDate()).padStart(2, "0");
+  const month = formatCalendarMonth(activeDate);
+  const day = formatCalendarDay(activeDate);
+  const boardLabel = getDateBoardLabel(activeDate);
 
   return (
     <>
       <div className="pointer-events-auto absolute right-[3.4%] top-[2.4%] z-50 flex items-center gap-1.5">
-        <div
-          aria-label={`Today ${month} ${day}`}
-          className="grid h-[34px] w-[34px] place-items-center rounded-[10px] border border-cyan-300/30 bg-[#061526]/80 text-center shadow-[0_0_12px_rgba(34,211,238,0.08)] backdrop-blur-md"
+        <label
+          aria-label={`Select ${boardLabel} date ${month} ${day}`}
+          className="relative grid h-[34px] w-[34px] cursor-pointer place-items-center overflow-hidden rounded-[10px] border border-cyan-300/30 bg-[#061526]/80 text-center shadow-[0_0_12px_rgba(34,211,238,0.08)] backdrop-blur-md"
         >
+          <input
+            type="date"
+            value={activeDate}
+            onChange={(event) => {
+              if (event.target.value) onDateChange?.(event.target.value);
+            }}
+            aria-label="Select board date"
+            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+          />
           <span className="block text-[6.5px] font-black uppercase tracking-[0.10em] text-cyan-300">{month}</span>
           <span className="-mt-1 block text-[16px] font-black leading-none text-white">{day}</span>
-        </div>
+        </label>
         <button
           type="button"
           onClick={() => onNavigate?.("more")}
@@ -2034,6 +2106,8 @@ export function SignalsHomePage({
   onTopPlayNotify,
   onSportNotify,
   onLiveRowOpen,
+  activeDate = getTodayKey(),
+  onDateChange,
   onRetry,
   journeyMessage,
   onDismissJourneyMessage,
@@ -2053,10 +2127,17 @@ export function SignalsHomePage({
 
   const selectedSportMode = useMemo(() => {
     const now = new Date();
+    const todayKey = getTodayKey();
+    const isTodayBoard = activeDate === todayKey;
+    const isPastBoard = activeDate < todayKey;
     const filteredSignalRows =
       selectedSport === "all"
-        ? getUpcomingSignalsBySport(signalRows, "all", now)
-        : getUpcomingSignalsBySport(signalRows, selectedSport, now);
+        ? isTodayBoard
+          ? getUpcomingSignalsBySport(signalRows, "all", now)
+          : sortSignalsByStartTime(getSignalsBySport(signalRows, "all"))
+        : isTodayBoard
+          ? getUpcomingSignalsBySport(signalRows, selectedSport, now)
+          : sortSignalsByStartTime(getSignalsBySport(signalRows, selectedSport));
 
     return {
       sport: selectedSport,
@@ -2066,11 +2147,13 @@ export function SignalsHomePage({
       filteredSignalRows,
       nextSignal: getNextSignalBySport(signalRows, selectedSport, now),
       emptyState: {
-        title: "No Games Available",
-        description: "Check back later for new signals.",
+        title: isPastBoard ? "No Results Available" : "No Games Available",
+        description: isPastBoard
+          ? "No completed signal board was found for this date."
+          : "Check back later for new scheduled games.",
       },
     };
-  }, [selectedSport, signalRows]);
+  }, [activeDate, selectedSport, signalRows]);
 
   const activeSignalRows = selectedSportMode.filteredSignalRows;
   const topPlayView = buildTopPlayViewModel(topPlay);
@@ -2190,7 +2273,12 @@ export function SignalsHomePage({
               onHowItWorks={() => openHowItWorks()}
               onNavigate={onNavigate}
             />
-            <FrameTopActions onHowItWorks={() => openHowItWorks()} onNavigate={onNavigate} />
+            <FrameTopActions
+              activeDate={activeDate}
+              onDateChange={onDateChange}
+              onHowItWorks={() => openHowItWorks()}
+              onNavigate={onNavigate}
+            />
 
             <FrameSportSelectorRow selectedSport={selectedSport} onSelectSport={setSelectedSport} />
 

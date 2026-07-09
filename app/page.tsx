@@ -6055,6 +6055,8 @@ const subscriptionPlansBoard = (
         onTopPlayAction={handleTopPlayCommerceAction}
         onTopPlayNotify={() => handlePrecisionNotify("top_play")}
         onSportNotify={(sport) => handlePrecisionNotify(topSignalProductForSport(sport), sport)}
+        activeDate={activeDay}
+        onDateChange={(date) => navigateAppState({ section: "signals", view: "live", day: date })}
         onLiveRowOpen={(row) => {
           const liveGame = groupedFilteredLiveGames
             .flatMap((group) => group.games.map((game) => ({ game, sport: group.sport })))
