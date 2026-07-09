@@ -4225,7 +4225,7 @@ useEffect(() => {
   }
 
   const updateJoinFrameMask = () => {
-    setJoinFrameScrolled(window.scrollY > 8);
+    setJoinFrameScrolled(window.scrollY > 1);
   };
 
   updateJoinFrameMask();
@@ -6558,7 +6558,7 @@ const subscriptionPlansBoard = (
             </div>
             <div
               className={`pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto w-full max-w-md overflow-hidden transition-[height] duration-200 ease-out ${
-                joinFrameScrolled ? "h-[38vh]" : "h-[19vh]"
+                joinFrameScrolled ? "h-[48vh]" : "h-[19vh]"
               }`}
             >
               <img
