@@ -6227,6 +6227,12 @@ const subscriptionPlansBoard = (
         onSportNotify={(sport) => handlePrecisionNotify(topSignalProductForSport(sport), sport)}
         activeDate={activeDay}
         onDateChange={(date) => navigateAppState({ section: "signals", view: "live", day: date })}
+        activeSubscriptionSports={activeSubscriptionSports}
+        selectedSubscriptionSport={selectedPackSport}
+        onSelectedSubscriptionSportChange={setSelectedPackSport}
+        onPlanSubscribe={(plan, sport) => {
+          void handleSubscribe(plan, sport);
+        }}
         onLiveRowOpen={(row) => {
           const liveGame = groupedFilteredLiveGames
             .flatMap((group) => group.games.map((game) => ({ game, sport: group.sport })))

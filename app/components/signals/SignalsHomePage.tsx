@@ -103,6 +103,10 @@ type SignalsHomePageProps = {
   onLiveRowOpen?: (row: SignalsLiveRow) => void;
   activeDate?: string;
   onDateChange?: (date: string) => void;
+  activeSubscriptionSports?: SportCode[];
+  selectedSubscriptionSport?: SportCode;
+  onSelectedSubscriptionSportChange?: (sport: SportCode) => void;
+  onPlanSubscribe?: (plan: "exclusive" | "premium" | "elite", sport?: SportCode) => void;
   onRetry?: () => void;
   journeyMessage?: JourneyMessage | null;
   onDismissJourneyMessage?: () => void;
@@ -2091,6 +2095,221 @@ function SignalExplorerSheet({
   );
 }
 
+type PricingPlanCode = "exclusive" | "premium" | "elite";
+
+type PricingPlan = {
+  code: PricingPlanCode;
+  title: string;
+  price: string;
+  subtitle: string;
+  featureTitle: string;
+  featureSubtitle: string;
+  features: string[];
+  cta: string;
+  accent: "cyan" | "gold" | "purple";
+  badge?: string;
+};
+
+const pricingPlans: PricingPlan[] = [
+  {
+    code: "exclusive",
+    title: "Exclusive",
+    price: "$34.99",
+    subtitle: "Choose Your Sport",
+    featureTitle: "Top 3 Signals",
+    featureSubtitle: "Not Ranked",
+    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Start Time", "History", "Closing Status"],
+    cta: "Get Exclusive",
+    accent: "cyan",
+  },
+  {
+    code: "premium",
+    title: "Premium",
+    price: "$59.99",
+    subtitle: "Choose Your Sport",
+    featureTitle: "Top 3 Signals",
+    featureSubtitle: "Ranked",
+    features: ["Choose 1 Sport", "Top 3 Signals", "Ranked", "Best to Worst", "History", "Closing Status"],
+    cta: "Get Premium",
+    accent: "gold",
+    badge: "Most Popular",
+  },
+  {
+    code: "elite",
+    title: "Elite",
+    price: "$99.99",
+    subtitle: "All Active Sports",
+    featureTitle: "Top 3 Signals",
+    featureSubtitle: "Ranked Every Sport",
+    features: ["All Active Sports", "Top 3 Signals", "Ranked", "Best to Worst", "History", "Closing Status"],
+    cta: "Get Elite",
+    accent: "purple",
+  },
+];
+
+const pricingAccentStyles = {
+  cyan: {
+    shell: "border-cyan-300/40 bg-cyan-400/[0.045] shadow-[0_0_18px_rgba(34,211,238,0.12)]",
+    text: "text-cyan-300",
+    pill: "border-cyan-300/35 bg-cyan-300/10 text-cyan-200",
+    button: "border-cyan-300/70 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.16)]",
+    check: "text-cyan-300",
+  },
+  gold: {
+    shell: "border-amber-300/55 bg-amber-400/[0.055] shadow-[0_0_20px_rgba(251,191,36,0.16)]",
+    text: "text-amber-300",
+    pill: "border-amber-300/45 bg-amber-300/12 text-amber-200",
+    button: "border-amber-300/80 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.18)]",
+    check: "text-amber-300",
+  },
+  purple: {
+    shell: "border-purple-300/45 bg-purple-400/[0.045] shadow-[0_0_18px_rgba(192,132,252,0.14)]",
+    text: "text-purple-300",
+    pill: "border-purple-300/40 bg-purple-300/10 text-purple-200",
+    button: "border-purple-300/75 text-purple-200 shadow-[0_0_14px_rgba(192,132,252,0.16)]",
+    check: "text-purple-300",
+  },
+};
+
+function PricingPacksSection({
+  activeSports,
+  selectedSport,
+  onSelectedSportChange,
+  onPlanSubscribe,
+  onTopSignalAction,
+  onTopPlayAction,
+}: {
+  activeSports: SportCode[];
+  selectedSport: SportCode;
+  onSelectedSportChange?: (sport: SportCode) => void;
+  onPlanSubscribe?: (plan: PricingPlanCode, sport?: SportCode) => void;
+  onTopSignalAction?: (sport: SportCode) => void;
+  onTopPlayAction?: () => void;
+}) {
+  const sportsToShow = activeSports.length > 0 ? activeSports : (["MLB"] as SportCode[]);
+
+  return (
+    <section className="rounded-[18px] border border-white/10 bg-[#050816]/88 p-2.5 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+      <div className="text-center">
+        <p className="text-[12px] font-black uppercase tracking-[0.32em] text-cyan-300">
+          Choose Your Plan
+        </p>
+        <p className="mt-0.5 text-[10px] font-semibold text-white/58">
+          More clarity. Less risk. Better results.
+        </p>
+      </div>
+
+      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {pricingPlans.map((plan) => {
+          const styles = pricingAccentStyles[plan.accent];
+          const sportForPlan = plan.code === "elite" ? undefined : selectedSport;
+
+          return (
+            <article
+              key={plan.code}
+              className={`relative flex min-h-[184px] min-w-[126px] max-w-[126px] flex-col rounded-[15px] border p-2 ${styles.shell}`}
+            >
+              {plan.badge ? (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-black">
+                  {plan.badge}
+                </span>
+              ) : null}
+
+              <p className={`mt-1 text-center text-[11px] font-black uppercase tracking-[0.12em] ${styles.text}`}>
+                {plan.title}
+              </p>
+              <p className="mt-0.5 text-center text-[8.5px] font-bold text-white/72">
+                {plan.subtitle}
+              </p>
+              <div className="mt-1.5 text-center">
+                <span className="text-[22px] font-black leading-none text-white">{plan.price}</span>
+                <span className="ml-0.5 text-[8px] font-bold text-white/52">/mo</span>
+              </div>
+
+              <div className={`mt-1.5 rounded-[11px] border px-2 py-1 ${styles.pill}`}>
+                <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
+                <p className={`text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+              </div>
+
+              <div className="mt-1.5 grid grid-cols-1 gap-0.5">
+                {plan.features.slice(0, 4).map((feature) => (
+                  <p key={feature} className="truncate text-[7.6px] font-semibold leading-tight text-white/62">
+                    <span className={`${styles.check} mr-1`}>✓</span>
+                    {feature}
+                  </p>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
+                className={`mt-auto h-[28px] rounded-[10px] border bg-black/18 px-1 text-[7.5px] font-black uppercase tracking-[0.08em] ${styles.button}`}
+              >
+                {plan.cta}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+
+      {sportsToShow.length > 1 ? (
+        <div className="mt-1.5 flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {sportsToShow.map((sport) => (
+            <button
+              key={`pricing-sport-${sport}`}
+              type="button"
+              onClick={() => onSelectedSportChange?.(sport)}
+              aria-pressed={selectedSport === sport}
+              className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] ${
+                selectedSport === sport
+                  ? "border-cyan-300 bg-cyan-300 text-black"
+                  : "border-white/10 bg-white/[0.04] text-white/55"
+              }`}
+            >
+              {sport}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-2 rounded-[14px] border border-white/10 bg-black/20 p-2">
+        <div className="mb-1.5 flex items-center justify-center gap-1.5">
+          <span className="h-px flex-1 bg-white/10" />
+          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/86">Premium Add-ons</p>
+          <span className="text-[7.5px] font-black uppercase tracking-[0.08em] text-white/40">Not included</span>
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onTopSignalAction?.(selectedSport)}
+            className="min-h-[56px] rounded-[13px] border border-purple-300/35 bg-purple-400/[0.055] p-2 text-left shadow-[0_0_14px_rgba(192,132,252,0.10)]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.08em] text-purple-300">Top Signal</p>
+              <span className="rounded-[8px] border border-purple-300/40 px-2 py-1 text-[11px] font-black text-purple-200">$24.99</span>
+            </div>
+            <p className="mt-1 text-[8px] font-semibold leading-tight text-white/64">The #1 absolute best play of the day.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={onTopPlayAction}
+            className="min-h-[56px] rounded-[13px] border border-amber-300/35 bg-amber-400/[0.055] p-2 text-left shadow-[0_0_14px_rgba(251,191,36,0.10)]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.08em] text-amber-300">Top Play</p>
+              <span className="rounded-[8px] border border-amber-300/40 px-2 py-1 text-[11px] font-black text-amber-200">$149.99</span>
+            </div>
+            <p className="mt-1 text-[8px] font-semibold leading-tight text-white/64">The most exclusive, highest conviction play of the day.</p>
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SignalsHomePage({
   topPlay,
   topSignals,
@@ -2108,6 +2327,10 @@ export function SignalsHomePage({
   onLiveRowOpen,
   activeDate = getTodayKey(),
   onDateChange,
+  activeSubscriptionSports = ["MLB"],
+  selectedSubscriptionSport = activeSubscriptionSports[0] ?? "MLB",
+  onSelectedSubscriptionSportChange,
+  onPlanSubscribe,
   onRetry,
   journeyMessage,
   onDismissJourneyMessage,
@@ -2346,9 +2569,24 @@ export function SignalsHomePage({
                           ))}
                         </div>
 
-                        <FrameSignalInfoBar />
-                      </>
-                    )}
+                    <FrameSignalInfoBar />
+                  </>
+                )}
+
+                    {contentMode === "signals" ? (
+                      <PricingPacksSection
+                        activeSports={activeSubscriptionSports}
+                        selectedSport={selectedSubscriptionSport}
+                        onSelectedSportChange={onSelectedSubscriptionSportChange}
+                        onPlanSubscribe={onPlanSubscribe}
+                        onTopSignalAction={(sport) => {
+                          void onSportProductAction?.(sport);
+                        }}
+                        onTopPlayAction={() => {
+                          void onTopPlayAction?.();
+                        }}
+                      />
+                    ) : null}
 
                     <FrameSignalDetectedFeed
                       rows={activeSignalRows}
