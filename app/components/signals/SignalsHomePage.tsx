@@ -2282,7 +2282,7 @@ function PricingPacksSection({
         }`}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="border-t border-white/10 p-2">
+          <div className="border-t border-white/10 p-1">
             <div className="text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">
                 Choose Your Plan
@@ -2300,7 +2300,7 @@ function PricingPacksSection({
                 return (
                   <article
                     key={plan.code}
-                    className={`relative flex min-h-[314px] min-w-0 flex-col rounded-[15px] border px-2 pb-2 pt-5 ${styles.shell}`}
+                    className={`relative flex min-h-[270px] min-w-0 flex-col rounded-[15px] border px-1.5 pb-1.5 pt-3.5 ${styles.shell}`}
                   >
                     {plan.badge ? (
                       <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
@@ -2309,47 +2309,47 @@ function PricingPacksSection({
                     ) : null}
 
                     <div className="flex justify-center">
-                      <span className={`grid h-12 w-12 place-items-center rounded-full border shadow-[0_0_16px_currentColor] ${styles.icon}`}>
+                      <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
                         <PricingIcon
                           type={plan.code === "premium" ? "crown" : plan.code === "elite" ? "diamond" : "star"}
-                          className="h-7 w-7"
+                          className="h-5 w-5"
                         />
                       </span>
                     </div>
 
-                    <p className={`mt-3 text-center text-[13px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
+                    <p className={`mt-1.5 text-center text-[11.5px] font-black uppercase tracking-[0.07em] ${styles.text}`}>
                       {plan.title}
                     </p>
-                    <p className="mt-1 text-center text-[8.5px] font-bold leading-tight text-white/78">
+                    <p className="mt-0.5 text-center text-[7.5px] font-bold leading-tight text-white/78">
                       {plan.subtitle}
                     </p>
 
-                    <div className={`mt-3 rounded-[11px] border px-1.5 py-2 text-center ${styles.pill}`}>
-                      <p className="text-[10px] font-black leading-tight text-white">{plan.featureTitle}</p>
+                    <div className={`mt-1.5 rounded-[10px] border px-1 py-1.5 text-center ${styles.pill}`}>
+                      <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
                       {plan.featureSubtitle ? (
-                        <p className={`mt-0.5 text-[9px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+                        <p className={`mt-0.5 text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
                       ) : null}
                     </div>
 
-                    <div className="mt-3 grid grid-cols-1 gap-1.5">
+                    <div className="mt-2 grid grid-cols-1 gap-0.5">
                       {plan.features.map((feature) => (
-                        <p key={feature} className="grid grid-cols-[10px_1fr] gap-1 text-[8.5px] font-semibold leading-tight text-white/76">
+                        <p key={feature} className="grid grid-cols-[9px_1fr] gap-1 text-[7.5px] font-semibold leading-tight text-white/76">
                           <span className={`${styles.check} leading-tight`}>✓</span>
                           <span>{feature}</span>
                         </p>
                       ))}
                     </div>
 
-                    <div className="mt-auto pt-3">
+                    <div className="mt-auto pt-1.5">
                       <div className="text-center">
-                        <span className="text-[16px] font-black leading-none text-white">{plan.price}</span>
+                        <span className="text-[14px] font-black leading-none text-white">{plan.price}</span>
                         <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
-                        className={`mt-2 h-[34px] w-full rounded-[10px] border px-0.5 text-[9px] font-black uppercase tracking-[0.04em] ${styles.button}`}
+                        className={`mt-1.5 h-[29px] w-full rounded-[9px] border px-0.5 text-[8px] font-black uppercase tracking-[0.035em] ${styles.button}`}
                       >
                         {plan.cta}
                       </button>
