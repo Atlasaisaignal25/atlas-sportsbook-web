@@ -3580,6 +3580,7 @@ const [authSession, setAuthSession] = useState<AuthSessionState>({
 const [authLoaded, setAuthLoaded] = useState(false);
 const [authBusy, setAuthBusy] = useState(false);
 const [joinAuthMode, setJoinAuthMode] = useState<JoinAuthMode>("signup");
+const [joinAuthOpen, setJoinAuthOpen] = useState(false);
 const [joinEmail, setJoinEmail] = useState("");
 const [joinPassword, setJoinPassword] = useState("");
 const [joinAuthMessage, setJoinAuthMessage] = useState<SignalsJourneyMessage | null>(null);
@@ -4122,6 +4123,7 @@ async function handleInlineAuthSubmit(event: FormEvent<HTMLFormElement>) {
 function handleJoinPlanChoose(plan: PackPlan["plan"]) {
   if (!authSession.authenticated) {
     setJoinAuthMode("signup");
+    setJoinAuthOpen(true);
     setJoinAuthMessage({
       tone: "info",
       title: "Create your account first.",
@@ -4130,7 +4132,7 @@ function handleJoinPlanChoose(plan: PackPlan["plan"]) {
     return;
   }
 
-  void handleSubscribe(plan, selectedPackSport);
+  void handleSubscribe(plan, plan === "elite" ? undefined : selectedPackSport);
 }
 
 async function handleLogout() {
@@ -6353,6 +6355,107 @@ const subscriptionPlansBoard = (
   }
 
   if (appSection === "more") {
+    const joinPlans = [
+      {
+        plan: "exclusive" as const,
+        title: "Exclusive",
+        price: "$34.99",
+        subtitle: "Choose Your Sport",
+        featureTitle: "Not Ranked Top 3",
+        featureSubtitle: "One Sport Focus",
+        features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Signal History", "Closing Status"],
+        cta: "Get Exclusive",
+        accent: "cyan" as const,
+      },
+      {
+        plan: "premium" as const,
+        title: "Premium",
+        price: "$59.99",
+        subtitle: "Choose Your Sport",
+        featureTitle: "Ranked Top 3",
+        featureSubtitle: "Best to Worst",
+        features: ["Choose 1 Sport", "Ranked Top 3", "Best to Worst", "Atlas AI Ranking", "Signal History", "Closing Status"],
+        cta: "Get Premium",
+        accent: "gold" as const,
+        badge: "Most Popular",
+      },
+      {
+        plan: "elite" as const,
+        title: "Elite",
+        price: "$99.99",
+        subtitle: "All Active Sports",
+        featureTitle: "Ranked Top 3",
+        featureSubtitle: "For Every Sport",
+        features: ["All Active Sports", "Ranked Top 3 Per Sport", "Best to Worst", "Auto-Includes New Sports", "Signal History", "Closing Status"],
+        cta: "Get Elite",
+        accent: "purple" as const,
+      },
+    ];
+    const joinStyles = {
+      cyan: {
+        shell: "border-cyan-300/40 bg-cyan-400/[0.045] shadow-[0_0_18px_rgba(34,211,238,0.12)]",
+        text: "text-cyan-300",
+        pill: "border-cyan-300/35 bg-cyan-300/10 text-cyan-200",
+        button: "border-cyan-300/70 bg-cyan-300 text-black shadow-[0_0_14px_rgba(34,211,238,0.22)]",
+        check: "text-cyan-300",
+        icon: "border-cyan-300/45 bg-cyan-300/10 text-cyan-200",
+      },
+      gold: {
+        shell: "border-amber-300/55 bg-amber-400/[0.055] shadow-[0_0_20px_rgba(251,191,36,0.16)]",
+        text: "text-amber-300",
+        pill: "border-amber-300/45 bg-amber-300/12 text-amber-200",
+        button: "border-amber-300/80 bg-amber-300 text-black shadow-[0_0_14px_rgba(251,191,36,0.22)]",
+        check: "text-amber-300",
+        icon: "border-amber-300/45 bg-amber-300/10 text-amber-200",
+      },
+      purple: {
+        shell: "border-purple-300/45 bg-purple-400/[0.045] shadow-[0_0_18px_rgba(192,132,252,0.14)]",
+        text: "text-purple-300",
+        pill: "border-purple-300/40 bg-purple-300/10 text-purple-200",
+        button: "border-purple-300/75 bg-purple-500 text-white shadow-[0_0_14px_rgba(192,132,252,0.22)]",
+        check: "text-purple-300",
+        icon: "border-purple-300/45 bg-purple-300/10 text-purple-200",
+      },
+    };
+    const comparisonRows = [
+      ["Choose 1 Sport", "✓", "✓", "✓"],
+      ["Top 3 Signals", "✓", "✓", "✓"],
+      ["Ranked (Best to Worst)", "×", "✓", "✓"],
+      ["All Active Sports", "×", "×", "✓"],
+      ["Auto-Includes New Sports", "×", "×", "✓"],
+      ["Signal History", "✓", "✓", "✓"],
+      ["Closing Status", "✓", "✓", "✓"],
+    ];
+    function JoinIcon({ type, className = "" }: { type: "star" | "crown" | "diamond"; className?: string }) {
+      if (type === "crown") {
+        return (
+          <svg viewBox="0 0 64 64" className={className} fill="none" aria-hidden="true">
+            <circle cx="14" cy="19" r="4" fill="currentColor" />
+            <circle cx="32" cy="11" r="4" fill="currentColor" />
+            <circle cx="50" cy="19" r="4" fill="currentColor" />
+            <path d="M12 25 25 36 32 18l7 18 13-11-4 22H16l-4-22Z" fill="currentColor" />
+            <path d="M16 50h32l-3 7H19l-3-7Z" fill="currentColor" />
+          </svg>
+        );
+      }
+
+      if (type === "diamond") {
+        return (
+          <svg viewBox="0 0 64 64" className={className} fill="none" aria-hidden="true">
+            <path d="M11 21 22 9h20l11 12-21 35L11 21Z" fill="currentColor" />
+            <path d="M22 9 27 21H11L22 9Zm20 0-5 12h16L42 9ZM27 21h10l-5 35-5-35Z" fill="rgba(255,255,255,.32)" />
+            <path d="m22 9 10 12L42 9H22Zm5 12 5 35 5-35H27Z" fill="rgba(5,8,22,.34)" />
+          </svg>
+        );
+      }
+
+      return (
+        <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
+          <path d="m32 8.5 6.8 13.8 15.2 2.2-11 10.8 2.6 15.2L32 43.3l-13.6 7.2L21 35.3 10 24.5l15.2-2.2L32 8.5Z" />
+        </svg>
+      );
+    }
+
     return (
       <main className="min-h-screen bg-[#020715] text-white">
         <div className="mx-auto min-h-screen w-full max-w-md bg-[#020715]">
@@ -6368,6 +6471,305 @@ const subscriptionPlansBoard = (
               aria-label="Back to signals"
               className="absolute left-[3.5%] top-[4.8%] z-10 h-11 w-11 rounded-full"
             />
+          </div>
+
+          <div className="space-y-6 px-4 pb-8 pt-6">
+            <section className="rounded-[20px] border border-cyan-300/18 bg-[#07111d]/88 p-4 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
+              <div className="grid grid-cols-[1fr_42px_1fr] items-center gap-2">
+                <div className="text-center">
+                  <h2 className="text-[17px] font-black text-white">Welcome Back</h2>
+                  <p className="mt-2 text-[12px] font-semibold text-white/54">Sign in to continue</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setJoinAuthMode("signin");
+                      setJoinAuthOpen(true);
+                      setJoinAuthMessage(null);
+                    }}
+                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] bg-cyan-300 text-[13px] font-black uppercase tracking-[0.10em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]"
+                  >
+                    <span className="text-[22px] leading-none">↪</span>
+                    Sign In
+                  </button>
+                </div>
+
+                <div className="flex h-full flex-col items-center justify-center">
+                  <span className="h-10 w-px bg-white/10" />
+                  <span className="grid h-9 w-9 place-items-center rounded-full border border-white/12 bg-[#080d19] text-[11px] font-black text-white/78">OR</span>
+                  <span className="h-10 w-px bg-white/10" />
+                </div>
+
+                <div className="text-center">
+                  <h2 className="text-[17px] font-black text-white">New Here?</h2>
+                  <p className="mt-2 text-[12px] font-semibold text-white/54">Create an account to get started</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setJoinAuthMode("signup");
+                      setJoinAuthOpen(true);
+                      setJoinAuthMessage(null);
+                    }}
+                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[12px] border border-cyan-300/65 bg-transparent text-[13px] font-black uppercase tracking-[0.10em] text-cyan-300"
+                  >
+                    <span className="text-[22px] leading-none">♙</span>
+                    Sign Up
+                  </button>
+                </div>
+              </div>
+
+              {joinAuthMessage ? (
+                <div
+                  className={`mt-4 rounded-[14px] border px-3 py-2 text-[12px] leading-4 ${
+                    joinAuthMessage.tone === "error"
+                      ? "border-red-400/25 bg-red-500/10 text-red-100"
+                      : joinAuthMessage.tone === "success"
+                      ? "border-lime-300/25 bg-lime-400/10 text-lime-100"
+                      : "border-cyan-300/25 bg-cyan-400/10 text-cyan-100"
+                  }`}
+                >
+                  <p className="font-black">{joinAuthMessage.title}</p>
+                  {joinAuthMessage.body ? <p className="mt-0.5 text-white/68">{joinAuthMessage.body}</p> : null}
+                </div>
+              ) : null}
+
+              {authSession.authenticated ? (
+                <div className="mt-4 rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Signed in</p>
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <p className="truncate text-[13px] font-bold text-white/80">{authSession.email}</p>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={authBusy}
+                      className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-[10px] font-black text-white/70 disabled:opacity-60"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              ) : joinAuthOpen ? (
+                <form onSubmit={handleInlineAuthSubmit} className="mt-4 grid gap-2 rounded-[16px] border border-cyan-300/15 bg-black/24 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                    {joinAuthMode === "signup" ? "Create Account" : "Sign In"}
+                  </p>
+                  <input
+                    value={joinEmail}
+                    onChange={(event) => setJoinEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="Email"
+                    required
+                    className="h-11 rounded-[12px] border border-white/10 bg-black/35 px-3 text-[14px] text-white outline-none placeholder:text-white/32 focus:border-cyan-300"
+                  />
+                  <input
+                    value={joinPassword}
+                    onChange={(event) => setJoinPassword(event.target.value)}
+                    type="password"
+                    autoComplete={joinAuthMode === "signup" ? "new-password" : "current-password"}
+                    placeholder="Password"
+                    required
+                    minLength={6}
+                    className="h-11 rounded-[12px] border border-white/10 bg-black/35 px-3 text-[14px] text-white outline-none placeholder:text-white/32 focus:border-cyan-300"
+                  />
+                  <button
+                    type="submit"
+                    disabled={authBusy}
+                    className="h-11 rounded-[12px] bg-cyan-300 text-[12px] font-black uppercase tracking-[0.12em] text-black disabled:opacity-60"
+                  >
+                    {authBusy ? "Working..." : joinAuthMode === "signup" ? "Create Account" : "Sign In"}
+                  </button>
+                </form>
+              ) : null}
+
+              <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-3 text-center">
+                {[
+                  ["▣", "Secure & Encrypted"],
+                  ["○", "Cancel Anytime"],
+                  ["♢", "Trusted by Winners"],
+                ].map(([icon, label]) => (
+                  <div key={label} className="flex items-center justify-center gap-1 text-[9px] font-bold text-white/48">
+                    <span className="text-[15px] text-white/50">{icon}</span>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="text-center">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <span className="h-px bg-cyan-300/22" />
+                <h2 className="text-[15px] font-black uppercase tracking-[0.24em] text-cyan-300">Choose Your Plan</h2>
+                <span className="h-px bg-cyan-300/22" />
+              </div>
+              <p className="mt-2 text-[11px] font-semibold text-white/50">Pick the plan that matches your game.</p>
+
+              <div className="mt-4 grid grid-cols-3 gap-1.5">
+                {joinPlans.map((plan) => {
+                  const styles = joinStyles[plan.accent];
+
+                  return (
+                    <article
+                      key={plan.plan}
+                      className={`relative flex min-h-[314px] min-w-0 flex-col rounded-[15px] border px-2 pb-2 pt-5 text-left ${styles.shell}`}
+                    >
+                      {plan.badge ? (
+                        <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
+                          {plan.badge}
+                        </span>
+                      ) : null}
+
+                      <div className="flex justify-center">
+                        <span className={`grid h-12 w-12 place-items-center rounded-full border shadow-[0_0_16px_currentColor] ${styles.icon}`}>
+                          <JoinIcon
+                            type={plan.plan === "premium" ? "crown" : plan.plan === "elite" ? "diamond" : "star"}
+                            className="h-7 w-7"
+                          />
+                        </span>
+                      </div>
+
+                      <p className={`mt-3 text-center text-[13px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
+                        {plan.title}
+                      </p>
+                      <p className="mt-1 text-center text-[8.5px] font-bold leading-tight text-white/78">
+                        {plan.subtitle}
+                      </p>
+
+                      <div className={`mt-3 rounded-[11px] border px-1.5 py-2 text-center ${styles.pill}`}>
+                        <p className="text-[10px] font-black leading-tight text-white">{plan.featureTitle}</p>
+                        <p className={`mt-0.5 text-[9px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 gap-1.5">
+                        {plan.features.map((feature) => (
+                          <p key={feature} className="grid grid-cols-[10px_1fr] gap-1 text-[8.5px] font-semibold leading-tight text-white/76">
+                            <span className={`${styles.check} leading-tight`}>✓</span>
+                            <span>{feature}</span>
+                          </p>
+                        ))}
+                      </div>
+
+                      <div className="mt-auto pt-3">
+                        <div className="text-center">
+                          <span className="text-[16px] font-black leading-none text-white">{plan.price}</span>
+                          <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleJoinPlanChoose(plan.plan)}
+                          disabled={checkoutPlan !== null}
+                          className={`mt-2 h-[34px] w-full rounded-[10px] border px-0.5 text-[9px] font-black uppercase tracking-[0.04em] disabled:opacity-60 ${styles.button}`}
+                        >
+                          {plan.cta}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-[14px] border border-white/10 bg-black/20 p-1.5">
+              <div className="mb-1.5 flex items-center justify-center gap-1.5">
+                <span className="h-px flex-1 bg-white/10" />
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/86">Premium Add-ons</p>
+                <span className="text-[6.5px] font-black uppercase tracking-[0.06em] text-white/40">Not included</span>
+                <span className="h-px flex-1 bg-white/10" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!authSession.authenticated) {
+                      setJoinAuthMode("signup");
+                      setJoinAuthOpen(true);
+                      setJoinAuthMessage({
+                        tone: "info",
+                        title: "Create your account first.",
+                        body: "Sign up here, then unlock Top Signal inside Atlas Signals.",
+                      });
+                      return;
+                    }
+
+                    void handleSubscribe(topSignalProductForSport(selectedPackSport), selectedPackSport);
+                  }}
+                  disabled={checkoutPlan !== null}
+                  className="min-h-[112px] rounded-[14px] border border-purple-300/35 bg-purple-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(192,132,252,0.10)] disabled:opacity-60"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-purple-300/40 bg-purple-300/10 text-purple-200">
+                      <JoinIcon type="star" className="h-5 w-5" />
+                    </span>
+                    <div className="text-left">
+                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
+                      <p className="text-[15px] font-black text-white">$24.99 <span className="text-[8px] text-white/50">/ day</span></p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The #1 strongest signal of the day for a specific sport.</p>
+                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-purple-300/45 px-2 py-1 text-[8px] font-black uppercase text-purple-200">Unlock</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!authSession.authenticated) {
+                      setJoinAuthMode("signup");
+                      setJoinAuthOpen(true);
+                      setJoinAuthMessage({
+                        tone: "info",
+                        title: "Create your account first.",
+                        body: "Sign up here, then unlock Top Play inside Atlas Signals.",
+                      });
+                      return;
+                    }
+
+                    void handleSubscribe("top_play");
+                  }}
+                  disabled={checkoutPlan !== null}
+                  className="min-h-[112px] rounded-[14px] border border-amber-300/35 bg-amber-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(251,191,36,0.10)] disabled:opacity-60"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-300/40 bg-amber-300/10 text-amber-200">
+                      <JoinIcon type="crown" className="h-5 w-5" />
+                    </span>
+                    <div className="text-left">
+                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
+                      <p className="text-[15px] font-black text-white">$149.99</p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The highest-conviction play selected by Atlas Signals.</p>
+                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-amber-300/45 px-2 py-1 text-[8px] font-black uppercase text-amber-200">Unlock</span>
+                </button>
+              </div>
+            </section>
+
+            <section>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <span className="h-px bg-cyan-300/20" />
+                <h2 className="text-[15px] font-black uppercase tracking-[0.24em] text-cyan-300">Compare Plans</h2>
+                <span className="h-px bg-cyan-300/20" />
+              </div>
+              <div className="mt-3 overflow-hidden rounded-[16px] border border-white/12 bg-cyan-300/[0.035] text-[10px]">
+                <div className="grid grid-cols-[1.35fr_1fr_1fr_1fr] border-b border-white/10 text-center font-black uppercase tracking-[0.08em]">
+                  <div className="px-2 py-3 text-left text-cyan-300">Features</div>
+                  <div className="px-2 py-3 text-cyan-300">Exclusive</div>
+                  <div className="relative px-2 py-3 text-amber-300">
+                    <span className="absolute left-1/2 top-[-9px] -translate-x-1/2 rounded-full bg-amber-300 px-2 py-0.5 text-[6px] text-black">Most Popular</span>
+                    Premium
+                  </div>
+                  <div className="px-2 py-3 text-purple-300">Elite</div>
+                </div>
+                {comparisonRows.map(([feature, exclusive, premium, elite]) => (
+                  <div key={feature} className="grid grid-cols-[1.35fr_1fr_1fr_1fr] border-b border-white/8 last:border-b-0">
+                    <div className="px-2 py-2.5 font-semibold text-white/72">{feature}</div>
+                    <div className={`px-2 py-2.5 text-center text-[16px] font-black ${exclusive === "✓" ? "text-cyan-300" : "text-white/34"}`}>{exclusive}</div>
+                    <div className={`px-2 py-2.5 text-center text-[16px] font-black ${premium === "✓" ? "text-amber-300" : "text-white/34"}`}>{premium}</div>
+                    <div className={`px-2 py-2.5 text-center text-[16px] font-black ${elite === "✓" ? "text-purple-300" : "text-white/34"}`}>{elite}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </div>
       </main>
