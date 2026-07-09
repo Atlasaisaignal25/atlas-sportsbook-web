@@ -6544,7 +6544,7 @@ const subscriptionPlansBoard = (
               className="absolute left-[3.5%] top-[4.8%] z-10 h-11 w-11 rounded-full"
             />
 
-            <div className="relative z-10 space-y-5 px-4 pb-8 pt-[34vh]">
+            <div className="relative z-10 space-y-5 px-4 pb-8 pt-[25vh]">
             <section className="rounded-[18px] border border-cyan-300/18 bg-[#07111d]/90 p-3 shadow-[0_0_24px_rgba(34,211,238,0.08)] backdrop-blur-md">
               <div className="grid grid-cols-[1fr_34px_1fr] items-center gap-2">
                 <div className="text-center">
