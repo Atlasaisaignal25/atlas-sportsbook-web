@@ -1,0 +1,95 @@
+import { createHash } from "crypto";
+import type { AtlasPulseItem } from "@/types/marketImpact";
+import { classifyMarketImpact } from "./classifyArticle";
+import { relativeTimestamp } from "./relativeTimestamp";
+
+export type GNewsArticle = {
+  title?: string;
+  description?: string;
+  content?: string;
+  url?: string;
+  image?: string;
+  publishedAt?: string;
+  source?: {
+    name?: string;
+    url?: string;
+  };
+};
+
+const MAX_SUMMARY_LENGTH = 180;
+const DEFAULT_FRESHNESS_HOURS = 48;
+const MIN_RELEVANCE_SCORE = 4;
+
+const irrelevantPatterns = [
+  /retrospective/i,
+  /all-time/i,
+  /history/i,
+  /rankings?/i,
+  /merchandise/i,
+  /tickets?/i,
+  /celebrity/i,
+  /bobblehead/i,
+  /giveaway/i,
+  /recap/i,
+  /opinion/i,
+];
+
+function stableArticleId(url: string, publishedAt: string) {
+  return createHash("sha1").update(`${url}:${publishedAt}`).digest("hex").slice(0, 16);
+}
+
+function truncateSummary(description: string) {
+  const normalized = description.replace(/\s+/g, " ").trim();
+
+  if (normalized.length <= MAX_SUMMARY_LENGTH) return normalized;
+
+  return `${normalized.slice(0, MAX_SUMMARY_LENGTH - 1).trimEnd()}…`;
+}
+
+function isFresh(publishedAt: string, now: Date, freshnessHours: number) {
+  const published = new Date(publishedAt).getTime();
+  if (!Number.isFinite(published)) return false;
+
+  return now.getTime() - published <= freshnessHours * 60 * 60 * 1000;
+}
+
+function looksIrrelevant(title: string, description: string) {
+  const text = `${title} ${description}`;
+  return irrelevantPatterns.some((pattern) => pattern.test(text));
+}
+
+export function normalizeGNewsArticle(
+  article: GNewsArticle,
+  options: { now?: Date; freshnessHours?: number } = {},
+): AtlasPulseItem | null {
+  const now = options.now ?? new Date();
+  const freshnessHours = options.freshnessHours ?? DEFAULT_FRESHNESS_HOURS;
+  const title = article.title?.trim() ?? "";
+  const description = article.description?.trim() ?? "";
+  const url = article.url?.trim() ?? "";
+  const publishedAt = article.publishedAt?.trim() ?? "";
+  const source = article.source?.name?.trim() ?? "Original Publisher";
+
+  if (!title || !description || !url || !publishedAt) return null;
+  if (!isFresh(publishedAt, now, freshnessHours)) return null;
+  if (looksIrrelevant(title, description)) return null;
+
+  const classification = classifyMarketImpact({ title, description });
+  if (classification.relevanceScore < MIN_RELEVANCE_SCORE) return null;
+
+  return {
+    id: stableArticleId(url, publishedAt),
+    sport: "MLB",
+    title,
+    summary: truncateSummary(description),
+    impact: classification.impact,
+    category: classification.category,
+    markets: classification.markets,
+    source,
+    sourceUrl: url,
+    publishedAt,
+    timestampLabel: relativeTimestamp(publishedAt, now),
+    imageUrl: article.image?.trim() || undefined,
+    isLiveData: true,
+  };
+}

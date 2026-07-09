@@ -15,7 +15,8 @@ import {getMlbPublicSignals,getMlbTop5Live,} from "@/app/lib/supabase/mlbLiveSig
 import { getNbaPublicSignals, getNbaTop5Live } from "@/app/lib/supabase/nbaLiveSignals";
 import { getNhlPublicSignals, getNhlTop5Live } from "@/app/lib/supabase/nhlLiveSignals";
 import {getSoccerPublicSignals,getSoccerTop5Live,} from "@/app/lib/supabase/soccerLiveSignals";
-import { atlasPulseMock, type PulseImpact, type PulseSport } from "@/app/data/atlasPulseMock";
+import { atlasPulseMock } from "@/app/data/atlasPulseMock";
+import type { AtlasPulseItem, PulseImpact, PulseSport } from "@/types/marketImpact";
 import {
   SignalsHomePage,
   type PrecisionNotifyResult,
@@ -4183,6 +4184,10 @@ const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [appSection, setAppSection] = useState<AppSection>("signals");
 const [pulseSportFilter, setPulseSportFilter] = useState<"ALL" | PulseSport>("ALL");
 const [pulseImpactFilter, setPulseImpactFilter] = useState<"ALL" | PulseImpact>("ALL");
+const [pulseMlbItems, setPulseMlbItems] = useState<AtlasPulseItem[]>(
+  atlasPulseMock.filter((item) => item.sport === "MLB")
+);
+const [pulseLoading, setPulseLoading] = useState(false);
 const [followedSports, setFollowedSports] = useState<SportTab[]>([]);
 const [followedTeams, setFollowedTeams] = useState<string[]>([]);
 const [challengeSnapshot, setChallengeSnapshot] = useState<ChallengeSnapshot>({
@@ -5083,6 +5088,41 @@ useEffect(() => {
     setActiveDay(resolveScheduleDay(dayFromUrl));
   }
 }, [searchParams]);
+
+useEffect(() => {
+  if (appSection !== "news") return;
+
+  const controller = new AbortController();
+
+  async function loadMarketImpactNews() {
+    setPulseLoading(true);
+
+    try {
+      const response = await fetch("/api/market-impact/news?sport=MLB&limit=20", {
+        signal: controller.signal,
+      });
+      const data = (await response.json()) as { items?: AtlasPulseItem[] };
+
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        setPulseMlbItems(data.items);
+      } else {
+        setPulseMlbItems(atlasPulseMock.filter((item) => item.sport === "MLB"));
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setPulseMlbItems(atlasPulseMock.filter((item) => item.sport === "MLB"));
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setPulseLoading(false);
+      }
+    }
+  }
+
+  loadMarketImpactNews();
+
+  return () => controller.abort();
+}, [appSection]);
 
   useEffect(() => {
   async function loadGames() {
@@ -6202,7 +6242,17 @@ const pulseImpactFilters: Array<{ label: string; value: "ALL" | PulseImpact }> =
   { label: "Low", value: "LOW" },
 ];
 
-const filteredPulseItems = atlasPulseMock.filter((item) => {
+const pulseBaseItems =
+  pulseSportFilter === "MLB"
+    ? pulseMlbItems
+    : pulseSportFilter === "ALL"
+    ? [
+        ...pulseMlbItems,
+        ...atlasPulseMock.filter((item) => item.sport !== "MLB"),
+      ]
+    : atlasPulseMock.filter((item) => item.sport === pulseSportFilter);
+
+const filteredPulseItems = pulseBaseItems.filter((item) => {
   const sportMatches = pulseSportFilter === "ALL" || item.sport === pulseSportFilter;
   const impactMatches = pulseImpactFilter === "ALL" || item.impact === pulseImpactFilter;
 
@@ -8185,7 +8235,16 @@ const subscriptionPlansBoard = (
               </div>
             </section>
 
-            {filteredPulseItems.length === 0 ? (
+            {pulseLoading ? (
+              <section className="space-y-2.5">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={`pulse-loading-${index}`}
+                    className="h-[178px] animate-pulse rounded-[20px] border border-white/10 bg-white/[0.035]"
+                  />
+                ))}
+              </section>
+            ) : filteredPulseItems.length === 0 ? (
               <section className="rounded-[22px] border border-white/10 bg-white/[0.04] p-5 text-center">
                 <p className="text-[15px] font-black text-white">No market-impact updates right now.</p>
                 <p className="mt-1 text-[12px] font-semibold text-white/52">Atlas is still scanning.</p>
@@ -8209,6 +8268,9 @@ const subscriptionPlansBoard = (
                             </span>
                             <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${impactStyles.badge}`}>
                               {item.impact}
+                            </span>
+                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/48">
+                              {item.category.replaceAll("_", " ")}
                             </span>
                           </div>
                           <h3 className="mt-2 text-[16px] font-black leading-tight text-white">
@@ -8242,14 +8304,14 @@ const subscriptionPlansBoard = (
                             {item.source}
                           </p>
                           <p className="mt-0.5 text-[10px] font-semibold text-white/42">
-                            {item.timestamp}
+                            {item.timestampLabel}
                           </p>
                         </div>
-                        {item.url ? (
+                        {item.sourceUrl ? (
                           <a
-                            href={item.url}
+                            href={item.sourceUrl}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="shrink-0 rounded-full border border-cyan-300/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200"
                           >
                             Read Source

@@ -1,81 +1,6 @@
-export type PulseImpact = "HIGH" | "MEDIUM" | "LOW";
+import type { AtlasPulseItem } from "@/types/marketImpact";
 
-export type PulseMarket =
-  | "Moneyline"
-  | "Spread"
-  | "Total"
-  | "Team Total"
-  | "Props"
-  | "Live Market";
-
-export type PulseSport =
-  | "MLB"
-  | "NFL"
-  | "NBA"
-  | "NHL"
-  | "SOCCER"
-  | "TENNIS"
-  | "UFC"
-  | "NCAA";
-
-export type AtlasPulseItem = {
-  id: string;
-  sport: PulseSport;
-  title: string;
-  summary: string;
-  impact: PulseImpact;
-  markets: PulseMarket[];
-  source: string;
-  timestamp: string;
-  team?: string;
-  player?: string;
-  url?: string;
-};
-
-const highImpactKeywords = [
-  "out",
-  "scratched",
-  "ruled out",
-  "starting pitcher change",
-  "injury",
-  "suspended",
-  "questionable",
-  "lineup change",
-  "severe weather",
-  "line moved",
-  "odds movement",
-];
-
-const mediumImpactKeywords = [
-  "probable",
-  "limited",
-  "wind",
-  "bullpen",
-  "roster move",
-  "travel",
-  "rest",
-  "practice report",
-];
-
-const lowImpactKeywords = ["expected", "minor", "available", "no limitation"];
-
-export function classifyPulseImpact(text: string): PulseImpact {
-  const normalized = text.toLowerCase();
-
-  if (highImpactKeywords.some((keyword) => normalized.includes(keyword))) {
-    return "HIGH";
-  }
-
-  if (mediumImpactKeywords.some((keyword) => normalized.includes(keyword))) {
-    return "MEDIUM";
-  }
-
-  if (lowImpactKeywords.some((keyword) => normalized.includes(keyword))) {
-    return "LOW";
-  }
-
-  return "LOW";
-}
+const fallbackPublishedAt = new Date().toISOString();
 
 export const atlasPulseMock: AtlasPulseItem[] = [
   {
@@ -84,10 +9,14 @@ export const atlasPulseMock: AtlasPulseItem[] = [
     title: "Starting Pitcher Changed",
     summary: "The listed starter has changed, which may affect moneyline and total markets.",
     impact: "HIGH",
-    markets: ["Moneyline", "Total", "Live Market"],
+    category: "STARTING_PITCHER",
+    markets: ["Moneyline", "Run Line", "Total", "First Five", "Player Props"],
     source: "Atlas Monitor",
-    timestamp: "12 min ago",
+    sourceUrl: "",
+    publishedAt: fallbackPublishedAt,
+    timestampLabel: "12 min ago",
     team: "MLB Slate",
+    isLiveData: false,
   },
   {
     id: "mlb-batter-scratched",
@@ -95,10 +24,14 @@ export const atlasPulseMock: AtlasPulseItem[] = [
     title: "Key Batter Scratched From Lineup",
     summary: "A major offensive player is out of the confirmed lineup. Team total projection may decrease.",
     impact: "HIGH",
-    markets: ["Team Total", "Moneyline", "Props"],
+    category: "LINEUP",
+    markets: ["Moneyline", "Team Total", "Player Props"],
     source: "Atlas Monitor",
-    timestamp: "18 min ago",
+    sourceUrl: "",
+    publishedAt: fallbackPublishedAt,
+    timestampLabel: "18 min ago",
     player: "Key Batter",
+    isLiveData: false,
   },
   {
     id: "mlb-wrigley-wind",
@@ -106,10 +39,14 @@ export const atlasPulseMock: AtlasPulseItem[] = [
     title: "Wind Blowing Out at Wrigley",
     summary: "Weather conditions may favor hitters and increase total market volatility.",
     impact: "MEDIUM",
-    markets: ["Total", "Team Total"],
+    category: "WEATHER",
+    markets: ["Total", "Team Total", "First Five"],
     source: "Atlas Weather Scan",
-    timestamp: "25 min ago",
+    sourceUrl: "",
+    publishedAt: fallbackPublishedAt,
+    timestampLabel: "25 min ago",
     team: "Cubs",
+    isLiveData: false,
   },
   {
     id: "nfl-qb-limited",
@@ -117,10 +54,14 @@ export const atlasPulseMock: AtlasPulseItem[] = [
     title: "Star QB Limited in Practice",
     summary: "Injury status may affect early-week spread and moneyline movement.",
     impact: "MEDIUM",
-    markets: ["Spread", "Moneyline", "Props"],
+    category: "INJURY",
+    markets: ["Moneyline", "Run Line", "Team Total", "Player Props"],
     source: "Atlas Monitor",
-    timestamp: "40 min ago",
+    sourceUrl: "",
+    publishedAt: fallbackPublishedAt,
+    timestampLabel: "40 min ago",
     player: "Starting QB",
+    isLiveData: false,
   },
   {
     id: "nba-player-probable",
@@ -128,9 +69,13 @@ export const atlasPulseMock: AtlasPulseItem[] = [
     title: "Player Upgraded to Probable",
     summary: "Player availability improves team projection but may already be priced into the market.",
     impact: "LOW",
-    markets: ["Spread", "Props"],
+    category: "INJURY",
+    markets: ["Run Line", "Player Props"],
     source: "Atlas Monitor",
-    timestamp: "1 hr ago",
+    sourceUrl: "",
+    publishedAt: fallbackPublishedAt,
+    timestampLabel: "1 hr ago",
     player: "Rotation Player",
+    isLiveData: false,
   },
 ];
