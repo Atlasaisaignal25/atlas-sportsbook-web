@@ -3584,7 +3584,6 @@ const [joinAuthOpen, setJoinAuthOpen] = useState(false);
 const [joinEmail, setJoinEmail] = useState("");
 const [joinPassword, setJoinPassword] = useState("");
 const [joinAuthMessage, setJoinAuthMessage] = useState<SignalsJourneyMessage | null>(null);
-const [joinFrameScrolled, setJoinFrameScrolled] = useState(false);
 const [checkoutPlan, setCheckoutPlan] = useState<CheckoutProduct | null>(null);
 const [selectedPackSport, setSelectedPackSport] = useState<CheckoutSport>("MLB");
 const [billingBusy, setBillingBusy] = useState(false);
@@ -4217,22 +4216,6 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
 }>({
   top5: [],
 });
-
-useEffect(() => {
-  if (appSection !== "more") {
-    setJoinFrameScrolled(false);
-    return;
-  }
-
-  const updateJoinFrameMask = () => {
-    setJoinFrameScrolled(window.scrollY > 8);
-  };
-
-  updateJoinFrameMask();
-  window.addEventListener("scroll", updateJoinFrameMask, { passive: true });
-
-  return () => window.removeEventListener("scroll", updateJoinFrameMask);
-}, [appSection]);
 
 function navigateAppState(
   updates: Partial<{
@@ -6546,9 +6529,9 @@ const subscriptionPlansBoard = (
     }
 
     return (
-      <main className="min-h-screen bg-[#020715] text-white">
-        <div className="mx-auto min-h-screen w-full max-w-md bg-[#020715]">
-          <div className="relative min-h-screen overflow-hidden">
+      <main className="h-[100dvh] overflow-hidden bg-[#020715] text-white">
+        <div className="mx-auto h-[100dvh] w-full max-w-md bg-[#020715]">
+          <div className="relative h-[100dvh] overflow-hidden">
             <div className="pointer-events-none fixed inset-x-0 top-0 z-0 mx-auto h-screen w-full max-w-md overflow-hidden">
               <img
                 src="/join-atlas-frame.jpeg"
@@ -6556,23 +6539,6 @@ const subscriptionPlansBoard = (
                 className="h-full w-full object-cover object-top"
               />
             </div>
-            <div
-              className={`pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto w-full max-w-md overflow-hidden transition-[height] duration-200 ease-out ${
-                joinFrameScrolled ? "h-[38vh]" : "h-[19vh]"
-              }`}
-            >
-              <img
-                src="/join-atlas-frame.jpeg"
-                alt=""
-                aria-hidden="true"
-                className="h-screen w-full object-cover object-top"
-              />
-            </div>
-            <div
-              className={`pointer-events-none fixed inset-x-0 top-[15vh] z-[21] mx-auto h-[24vh] w-full max-w-md bg-[#020715] transition-opacity duration-150 ${
-                joinFrameScrolled ? "opacity-100" : "opacity-0"
-              }`}
-            />
             <button
               type="button"
               onClick={() => navigateAppState({ section: "signals", view: "live", sport: "TOP" })}
@@ -6580,7 +6546,11 @@ const subscriptionPlansBoard = (
               className="fixed left-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 h-12 w-12 rounded-full"
             />
 
-            <div className="relative z-10 space-y-4 px-4 pb-8 pt-[19vh]">
+            <div
+              className="fixed inset-0 z-10 mx-auto w-full max-w-md overflow-y-auto overscroll-contain"
+              style={{ clipPath: "inset(19vh 0 0 0)" }}
+            >
+            <div className="space-y-4 px-4 pb-8 pt-[19vh]">
             <section className="rounded-[18px] border border-cyan-300/18 bg-[#07111d]/90 p-3 shadow-[0_0_24px_rgba(34,211,238,0.08)] backdrop-blur-md">
               <div className="grid grid-cols-[1fr_34px_1fr] items-center gap-2">
                 <div className="text-center">
@@ -6916,6 +6886,7 @@ const subscriptionPlansBoard = (
               </div>
             </section>
           </div>
+        </div>
         </div>
         </div>
       </main>
