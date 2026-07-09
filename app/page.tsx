@@ -16,7 +16,9 @@ import { getNbaPublicSignals, getNbaTop5Live } from "@/app/lib/supabase/nbaLiveS
 import { getNhlPublicSignals, getNhlTop5Live } from "@/app/lib/supabase/nhlLiveSignals";
 import {getSoccerPublicSignals,getSoccerTop5Live,} from "@/app/lib/supabase/soccerLiveSignals";
 import { atlasPulseMock } from "@/app/data/atlasPulseMock";
-import type { AtlasPulseItem, AtlasPulseSource, PulseImpact, PulseSport } from "@/types/marketImpact";
+import { createAtlasEventsFromPulseItems } from "@/lib/market-impact/eventEngine";
+import type { AtlasEvent, AtlasSource } from "@/types/atlasEvent";
+import type { PulseImpact, PulseSport } from "@/types/marketImpact";
 import {
   SignalsHomePage,
   type PrecisionNotifyResult,
@@ -4184,13 +4186,13 @@ const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [appSection, setAppSection] = useState<AppSection>("signals");
 const [pulseSportFilter, setPulseSportFilter] = useState<"ALL" | PulseSport>("ALL");
 const [pulseImpactFilter, setPulseImpactFilter] = useState<"ALL" | PulseImpact>("ALL");
-const [pulseMlbItems, setPulseMlbItems] = useState<AtlasPulseItem[]>(
-  atlasPulseMock.filter((item) => item.sport === "MLB")
+const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
+  createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB"))
 );
 const [pulseLoading, setPulseLoading] = useState(false);
 const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
   title: string;
-  sources: AtlasPulseSource[];
+  sources: AtlasSource[];
 } | null>(null);
 const [followedSports, setFollowedSports] = useState<SportTab[]>([]);
 const [followedTeams, setFollowedTeams] = useState<string[]>([]);
@@ -5105,16 +5107,16 @@ useEffect(() => {
       const response = await fetch("/api/market-impact/news?sport=MLB&limit=20", {
         signal: controller.signal,
       });
-      const data = (await response.json()) as { items?: AtlasPulseItem[] };
+      const data = (await response.json()) as { items?: AtlasEvent[] };
 
       if (Array.isArray(data.items) && data.items.length > 0) {
         setPulseMlbItems(data.items);
       } else {
-        setPulseMlbItems(atlasPulseMock.filter((item) => item.sport === "MLB"));
+        setPulseMlbItems(createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB")));
       }
     } catch (error) {
       if (!controller.signal.aborted) {
-        setPulseMlbItems(atlasPulseMock.filter((item) => item.sport === "MLB"));
+        setPulseMlbItems(createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB")));
       }
     } finally {
       if (!controller.signal.aborted) {
@@ -6252,9 +6254,9 @@ const pulseBaseItems =
     : pulseSportFilter === "ALL"
     ? [
         ...pulseMlbItems,
-        ...atlasPulseMock.filter((item) => item.sport !== "MLB"),
+        ...createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport !== "MLB")),
       ]
-    : atlasPulseMock.filter((item) => item.sport === pulseSportFilter);
+    : createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === pulseSportFilter));
 
 const filteredPulseItems = pulseBaseItems.filter((item) => {
   const sportMatches = pulseSportFilter === "ALL" || item.sport === pulseSportFilter;
@@ -8323,6 +8325,25 @@ const subscriptionPlansBoard = (
                       <p className="mt-2 text-[12px] font-semibold leading-5 text-white/66">
                         {item.summary}
                       </p>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className="rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2">
+                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-white/38">
+                            Confidence
+                          </p>
+                          <p className="mt-0.5 text-[13px] font-black text-white">
+                            {item.confidence}%
+                          </p>
+                        </div>
+                        <div className="rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2">
+                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-white/38">
+                            Atlas Impact
+                          </p>
+                          <p className="mt-0.5 text-[13px] font-black text-white">
+                            {score}
+                          </p>
+                        </div>
+                      </div>
 
                       {item.whyItMatters ? (
                         <div className="mt-3 rounded-[14px] border border-cyan-300/12 bg-cyan-300/[0.045] p-2.5">
