@@ -15,6 +15,7 @@ import {getMlbPublicSignals,getMlbTop5Live,} from "@/app/lib/supabase/mlbLiveSig
 import { getNbaPublicSignals, getNbaTop5Live } from "@/app/lib/supabase/nbaLiveSignals";
 import { getNhlPublicSignals, getNhlTop5Live } from "@/app/lib/supabase/nhlLiveSignals";
 import {getSoccerPublicSignals,getSoccerTop5Live,} from "@/app/lib/supabase/soccerLiveSignals";
+import { atlasPulseMock, type PulseImpact, type PulseSport } from "@/app/data/atlasPulseMock";
 import {
   SignalsHomePage,
   type PrecisionNotifyResult,
@@ -257,7 +258,7 @@ type PrecisionPublicResponse = {
   };
   pick: PrecisionPickPreview | null;
 };
-type AppSection = "signals" | "scores" | "challenges" | "alerts" | "more";
+type AppSection = "signals" | "scores" | "challenges" | "news" | "alerts" | "more";
 type AtlasAlert = {
   id: string;
   tone: "cyan" | "yellow" | "green" | "red" | "white";
@@ -2647,6 +2648,25 @@ function BottomNavIcon({ itemKey }: { itemKey: AppSection }) {
     return <span className="text-[10px] font-black leading-none">0:0</span>;
   }
 
+  if (itemKey === "news") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+        <path
+          d="M5 5.5h10.5A2.5 2.5 0 0 1 18 8v10.5H7.5A2.5 2.5 0 0 1 5 16V5.5Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M8 9h6M8 12h3M18 9h1.2A1.8 1.8 0 0 1 21 10.8V16a2.5 2.5 0 0 1-2.5 2.5H18"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
   if (itemKey === "signals") {
     return (
       <img
@@ -4161,6 +4181,8 @@ async function handleLogout() {
 
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [appSection, setAppSection] = useState<AppSection>("signals");
+const [pulseSportFilter, setPulseSportFilter] = useState<"ALL" | PulseSport>("ALL");
+const [pulseImpactFilter, setPulseImpactFilter] = useState<"ALL" | PulseImpact>("ALL");
 const [followedSports, setFollowedSports] = useState<SportTab[]>([]);
 const [followedTeams, setFollowedTeams] = useState<string[]>([]);
 const [challengeSnapshot, setChallengeSnapshot] = useState<ChallengeSnapshot>({
@@ -5042,6 +5064,7 @@ useEffect(() => {
     sectionFromUrl === "signals" ||
     sectionFromUrl === "scores" ||
     sectionFromUrl === "challenges" ||
+    sectionFromUrl === "news" ||
     sectionFromUrl === "alerts" ||
     sectionFromUrl === "more"
   ) {
@@ -6141,6 +6164,8 @@ const sectionTitle =
     ? "Scores"
     : appSection === "challenges"
     ? "Challenges"
+    : appSection === "news"
+    ? "Market Impact"
     : appSection === "alerts"
     ? "Alerts"
     : "More";
@@ -6152,9 +6177,61 @@ const sectionEyebrow =
     ? "Live Center"
     : appSection === "challenges"
     ? "Weekly Board"
+    : appSection === "news"
+    ? "Atlas Pulse"
     : appSection === "alerts"
     ? "Intelligence"
     : "Account";
+
+const pulseSportFilters: Array<{ label: string; value: "ALL" | PulseSport }> = [
+  { label: "All", value: "ALL" },
+  { label: "MLB", value: "MLB" },
+  { label: "NFL", value: "NFL" },
+  { label: "NBA", value: "NBA" },
+  { label: "NHL", value: "NHL" },
+  { label: "Soccer", value: "SOCCER" },
+  { label: "Tennis", value: "TENNIS" },
+  { label: "UFC", value: "UFC" },
+  { label: "NCAA", value: "NCAA" },
+];
+
+const pulseImpactFilters: Array<{ label: string; value: "ALL" | PulseImpact }> = [
+  { label: "All Impact", value: "ALL" },
+  { label: "High", value: "HIGH" },
+  { label: "Medium", value: "MEDIUM" },
+  { label: "Low", value: "LOW" },
+];
+
+const filteredPulseItems = atlasPulseMock.filter((item) => {
+  const sportMatches = pulseSportFilter === "ALL" || item.sport === pulseSportFilter;
+  const impactMatches = pulseImpactFilter === "ALL" || item.impact === pulseImpactFilter;
+
+  return sportMatches && impactMatches;
+});
+
+function getPulseImpactClasses(impact: PulseImpact) {
+  if (impact === "HIGH") {
+    return {
+      card: "border-orange-300/35 bg-orange-500/[0.055] shadow-[0_0_18px_rgba(251,113,133,0.10)]",
+      badge: "border-orange-300/45 bg-orange-400/12 text-orange-200",
+      dot: "bg-orange-300",
+    };
+  }
+
+  if (impact === "MEDIUM") {
+    return {
+      card: "border-amber-300/32 bg-amber-400/[0.045] shadow-[0_0_18px_rgba(251,191,36,0.08)]",
+      badge: "border-amber-300/45 bg-amber-300/12 text-amber-200",
+      dot: "bg-amber-300",
+    };
+  }
+
+  return {
+    card: "border-emerald-300/28 bg-emerald-400/[0.04] shadow-[0_0_18px_rgba(52,211,153,0.07)]",
+    badge: "border-emerald-300/40 bg-emerald-300/10 text-emerald-200",
+    dot: "bg-emerald-300",
+  };
+}
 
 const homeMembershipPlans = [
   {
@@ -7081,7 +7158,7 @@ const subscriptionPlansBoard = (
             />
           ) : (
             <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">
-              {selectedSport}
+              {appSection === "news" ? "Impact" : selectedSport}
             </div>
           )}
         </div>
@@ -7112,7 +7189,7 @@ const subscriptionPlansBoard = (
           </div>
         ) : null}
 
-        {appSection !== "signals" ? (
+        {appSection !== "signals" && appSection !== "news" ? (
         <div className="mt-3 grid grid-cols-6 gap-1">
           {sportsTabs.map((sport) => (
             <button
@@ -8058,6 +8135,133 @@ const subscriptionPlansBoard = (
               </div>
             )}
           </>
+        ) : appSection === "news" ? (
+          <div className="space-y-3">
+            <section className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-4 shadow-[0_0_22px_rgba(34,211,238,0.08)]">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
+                Atlas Pulse
+              </p>
+              <h2 className="mt-2 text-[24px] font-black tracking-tight text-white">
+                Market Impact
+              </h2>
+              <p className="mt-1.5 text-[12px] font-semibold leading-5 text-white/62">
+                Market-impact news for smarter signals. Filtered by Atlas AI.
+              </p>
+            </section>
+
+            <section className="space-y-2">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {pulseSportFilters.map((filter) => (
+                  <button
+                    key={`pulse-sport-${filter.value}`}
+                    type="button"
+                    onClick={() => setPulseSportFilter(filter.value)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] ${
+                      pulseSportFilter === filter.value
+                        ? "border-cyan-300 bg-cyan-300 text-black"
+                        : "border-white/10 bg-white/[0.04] text-white/55"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-4 gap-1.5">
+                {pulseImpactFilters.map((filter) => (
+                  <button
+                    key={`pulse-impact-${filter.value}`}
+                    type="button"
+                    onClick={() => setPulseImpactFilter(filter.value)}
+                    className={`rounded-[12px] border px-1.5 py-2 text-[8.5px] font-black uppercase tracking-[0.04em] ${
+                      pulseImpactFilter === filter.value
+                        ? "border-cyan-300/70 bg-cyan-300/14 text-cyan-200"
+                        : "border-white/10 bg-white/[0.035] text-white/44"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {filteredPulseItems.length === 0 ? (
+              <section className="rounded-[22px] border border-white/10 bg-white/[0.04] p-5 text-center">
+                <p className="text-[15px] font-black text-white">No market-impact updates right now.</p>
+                <p className="mt-1 text-[12px] font-semibold text-white/52">Atlas is still scanning.</p>
+              </section>
+            ) : (
+              <section className="space-y-2.5">
+                {filteredPulseItems.map((item) => {
+                  const impactStyles = getPulseImpactClasses(item.impact);
+                  const affected = item.player ?? item.team ?? item.sport;
+
+                  return (
+                    <article
+                      key={item.id}
+                      className={`rounded-[20px] border p-3.5 ${impactStyles.card}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-200">
+                              {item.sport}
+                            </span>
+                            <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${impactStyles.badge}`}>
+                              {item.impact}
+                            </span>
+                          </div>
+                          <h3 className="mt-2 text-[16px] font-black leading-tight text-white">
+                            {item.title}
+                          </h3>
+                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white/42">
+                            {affected}
+                          </p>
+                        </div>
+                        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${impactStyles.dot}`} />
+                      </div>
+
+                      <p className="mt-2 text-[12px] font-semibold leading-5 text-white/66">
+                        {item.summary}
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {item.markets.map((market) => (
+                          <span
+                            key={`${item.id}-${market}`}
+                            className="rounded-full border border-white/10 bg-black/22 px-2 py-1 text-[9px] font-black uppercase tracking-[0.04em] text-white/58"
+                          >
+                            {market}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-2.5">
+                        <div className="min-w-0">
+                          <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-white/42">
+                            {item.source}
+                          </p>
+                          <p className="mt-0.5 text-[10px] font-semibold text-white/42">
+                            {item.timestamp}
+                          </p>
+                        </div>
+                        {item.url ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="shrink-0 rounded-full border border-cyan-300/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200"
+                          >
+                            Read Source
+                          </a>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
+            )}
+          </div>
         ) : appSection === "challenges" ? (
           <div className="space-y-3">
             <section className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-5">
@@ -8989,8 +9193,8 @@ const subscriptionPlansBoard = (
         <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-3 text-[11px]">
           {[
             { key: "challenges" as const, label: "Challenges" },
-            { key: "scores" as const, label: "Scores" },
-            { key: "signals" as const, label: "Signals" },
+            { key: "news" as const, label: "Impact" },
+            { key: "signals" as const, label: "Home" },
             { key: "alerts" as const, label: "Alerts" },
             { key: "more" as const, label: "More" },
           ].map((item) => (
@@ -8999,7 +9203,7 @@ const subscriptionPlansBoard = (
               type="button"
               aria-label={item.label}
               onClick={() => {
-                if (item.key === "signals" || item.key === "scores") {
+                if (item.key === "signals") {
                   navigateAppState({ section: item.key, view: "live" });
                   return;
                 }

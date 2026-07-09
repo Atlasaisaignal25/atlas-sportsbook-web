@@ -48,7 +48,7 @@ export type SignalsHomePrecisionResponse = {
   } | null;
 };
 
-export type SignalsHomeNavSection = "challenges" | "scores" | "signals" | "alerts" | "more";
+export type SignalsHomeNavSection = "challenges" | "news" | "signals" | "alerts" | "more";
 export type SelectedSport = "all" | "baseball" | "basketball" | "football" | "ice_hockey" | "soccer";
 export type SignalsContentMode = "signals" | "live";
 
@@ -1629,8 +1629,13 @@ function BottomNavIcon({ section }: { section: SignalsHomeNavSection }) {
     );
   }
 
-  if (section === "scores") {
-    return <span className="text-[10px] font-black leading-none">0:0</span>;
+  if (section === "news") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+        <path d="M5 5.5h10.5A2.5 2.5 0 0 1 18 8v10.5H7.5A2.5 2.5 0 0 1 5 16V5.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M8 9h6M8 12h3M18 9h1.2A1.8 1.8 0 0 1 21 10.8V16a2.5 2.5 0 0 1-2.5 2.5H18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
   }
 
   if (section === "signals") {
@@ -1668,7 +1673,7 @@ function BottomNav({
 }) {
   const items: Array<{ section: SignalsHomeNavSection; label: string }> = [
     { section: "challenges", label: "Challenges" },
-    { section: "scores", label: "Scores" },
+    { section: "news", label: "Impact" },
     { section: "signals", label: "Home" },
     { section: "alerts", label: "Alerts" },
     { section: "more", label: "More" },
