@@ -2189,17 +2189,17 @@ function PricingPacksSection({
   const sportsToShow = activeSports.length > 0 ? activeSports : (["MLB"] as SportCode[]);
 
   return (
-    <section className="rounded-[18px] border border-white/10 bg-[#050816]/88 p-2.5 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+    <section className="rounded-[18px] border border-white/10 bg-[#050816]/88 p-2 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
       <div className="text-center">
-        <p className="text-[12px] font-black uppercase tracking-[0.32em] text-cyan-300">
+        <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-300">
           Choose Your Plan
         </p>
-        <p className="mt-0.5 text-[10px] font-semibold text-white/58">
+        <p className="mt-0.5 text-[9px] font-semibold text-white/58">
           More clarity. Less risk. Better results.
         </p>
       </div>
 
-      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
         {pricingPlans.map((plan) => {
           const styles = pricingAccentStyles[plan.accent];
           const sportForPlan = plan.code === "elite" ? undefined : selectedSport;
@@ -2207,34 +2207,34 @@ function PricingPacksSection({
           return (
             <article
               key={plan.code}
-              className={`relative flex min-h-[184px] min-w-[126px] max-w-[126px] flex-col rounded-[15px] border p-2 ${styles.shell}`}
+              className={`relative flex min-h-[164px] min-w-0 flex-col rounded-[13px] border px-1.5 pb-1.5 pt-2 ${styles.shell}`}
             >
               {plan.badge ? (
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-black">
+                <span className="absolute left-1/2 top-0.5 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-1.5 py-0.5 text-[5.8px] font-black uppercase tracking-[0.06em] text-black">
                   {plan.badge}
                 </span>
               ) : null}
 
-              <p className={`mt-1 text-center text-[11px] font-black uppercase tracking-[0.12em] ${styles.text}`}>
+              <p className={`mt-2 text-center text-[9.5px] font-black uppercase tracking-[0.08em] ${styles.text}`}>
                 {plan.title}
               </p>
-              <p className="mt-0.5 text-center text-[8.5px] font-bold text-white/72">
+              <p className="mt-0.5 truncate text-center text-[6.8px] font-bold text-white/72">
                 {plan.subtitle}
               </p>
-              <div className="mt-1.5 text-center">
-                <span className="text-[22px] font-black leading-none text-white">{plan.price}</span>
-                <span className="ml-0.5 text-[8px] font-bold text-white/52">/mo</span>
+              <div className="mt-1 text-center">
+                <span className="text-[18px] font-black leading-none text-white">{plan.price}</span>
+                <span className="ml-0.5 text-[6.5px] font-bold text-white/52">/mo</span>
               </div>
 
-              <div className={`mt-1.5 rounded-[11px] border px-2 py-1 ${styles.pill}`}>
-                <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
-                <p className={`text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+              <div className={`mt-1 rounded-[9px] border px-1.5 py-1 ${styles.pill}`}>
+                <p className="truncate text-[7.5px] font-black leading-tight text-white">{plan.featureTitle}</p>
+                <p className={`truncate text-[6.8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
               </div>
 
-              <div className="mt-1.5 grid grid-cols-1 gap-0.5">
+              <div className="mt-1 grid grid-cols-1 gap-0.5">
                 {plan.features.slice(0, 4).map((feature) => (
-                  <p key={feature} className="truncate text-[7.6px] font-semibold leading-tight text-white/62">
-                    <span className={`${styles.check} mr-1`}>✓</span>
+                  <p key={feature} className="truncate text-[6.5px] font-semibold leading-tight text-white/62">
+                    <span className={`${styles.check} mr-0.5`}>✓</span>
                     {feature}
                   </p>
                 ))}
@@ -2243,7 +2243,7 @@ function PricingPacksSection({
               <button
                 type="button"
                 onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
-                className={`mt-auto h-[28px] rounded-[10px] border bg-black/18 px-1 text-[7.5px] font-black uppercase tracking-[0.08em] ${styles.button}`}
+                className={`mt-auto h-[24px] rounded-[8px] border bg-black/18 px-0.5 text-[6.2px] font-black uppercase tracking-[0.04em] ${styles.button}`}
               >
                 {plan.cta}
               </button>
@@ -2272,11 +2272,11 @@ function PricingPacksSection({
         </div>
       ) : null}
 
-      <div className="mt-2 rounded-[14px] border border-white/10 bg-black/20 p-2">
+      <div className="mt-1.5 rounded-[14px] border border-white/10 bg-black/20 p-1.5">
         <div className="mb-1.5 flex items-center justify-center gap-1.5">
           <span className="h-px flex-1 bg-white/10" />
-          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/86">Premium Add-ons</p>
-          <span className="text-[7.5px] font-black uppercase tracking-[0.08em] text-white/40">Not included</span>
+          <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/86">Premium Add-ons</p>
+          <span className="text-[6.5px] font-black uppercase tracking-[0.06em] text-white/40">Not included</span>
           <span className="h-px flex-1 bg-white/10" />
         </div>
 
@@ -2284,25 +2284,25 @@ function PricingPacksSection({
           <button
             type="button"
             onClick={() => onTopSignalAction?.(selectedSport)}
-            className="min-h-[56px] rounded-[13px] border border-purple-300/35 bg-purple-400/[0.055] p-2 text-left shadow-[0_0_14px_rgba(192,132,252,0.10)]"
+            className="min-h-[50px] rounded-[12px] border border-purple-300/35 bg-purple-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(192,132,252,0.10)]"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.08em] text-purple-300">Top Signal</p>
-              <span className="rounded-[8px] border border-purple-300/40 px-2 py-1 text-[11px] font-black text-purple-200">$24.99</span>
+              <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
+              <span className="rounded-[7px] border border-purple-300/40 px-1.5 py-0.5 text-[9px] font-black text-purple-200">$24.99</span>
             </div>
-            <p className="mt-1 text-[8px] font-semibold leading-tight text-white/64">The #1 absolute best play of the day.</p>
+            <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">The #1 absolute best play of the day.</p>
           </button>
 
           <button
             type="button"
             onClick={onTopPlayAction}
-            className="min-h-[56px] rounded-[13px] border border-amber-300/35 bg-amber-400/[0.055] p-2 text-left shadow-[0_0_14px_rgba(251,191,36,0.10)]"
+            className="min-h-[50px] rounded-[12px] border border-amber-300/35 bg-amber-400/[0.055] p-1.5 text-left shadow-[0_0_14px_rgba(251,191,36,0.10)]"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.08em] text-amber-300">Top Play</p>
-              <span className="rounded-[8px] border border-amber-300/40 px-2 py-1 text-[11px] font-black text-amber-200">$149.99</span>
+              <p className="text-[8.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
+              <span className="rounded-[7px] border border-amber-300/40 px-1.5 py-0.5 text-[9px] font-black text-amber-200">$149.99</span>
             </div>
-            <p className="mt-1 text-[8px] font-semibold leading-tight text-white/64">The most exclusive, highest conviction play of the day.</p>
+            <p className="mt-1 text-[7px] font-semibold leading-tight text-white/64">The most exclusive, highest conviction play.</p>
           </button>
         </div>
       </div>
@@ -2541,52 +2541,19 @@ export function SignalsHomePage({
 
               {contentMode === "signals" ? (
                 selectedSport === "all" ? (
-                  <div className="space-y-2 pt-2">
-                    {loading ? (
-                      <OpportunitySkeleton />
-                    ) : (
-                      <>
-                        <FrameTopPlayCard
-                          data={topPlayView}
-                          onOpen={() => setTopPlayDetailOpen(true)}
-                          onAction={() => {
-                            void handleTopPlayAction();
-                          }}
-                        />
-
-                        <FrameSectionTitle>Top Signals</FrameSectionTitle>
-                        <div className="grid grid-cols-5 gap-1">
-                          {orderedSportSignalViews.map((signal) => (
-                            <FrameTopSignalCard
-                              key={signal.sport}
-                              signal={signal}
-                              active={isActiveSportSignalView(signal)}
-                              onOpen={setSelectedSportSignal}
-                              onAction={(sport) => {
-                                void handleSportAction(sport);
-                              }}
-                            />
-                          ))}
-                        </div>
-
-                    <FrameSignalInfoBar />
-                  </>
-                )}
-
-                    {contentMode === "signals" ? (
-                      <PricingPacksSection
-                        activeSports={activeSubscriptionSports}
-                        selectedSport={selectedSubscriptionSport}
-                        onSelectedSportChange={onSelectedSubscriptionSportChange}
-                        onPlanSubscribe={onPlanSubscribe}
-                        onTopSignalAction={(sport) => {
-                          void onSportProductAction?.(sport);
-                        }}
-                        onTopPlayAction={() => {
-                          void onTopPlayAction?.();
-                        }}
-                      />
-                    ) : null}
+                  <div className="space-y-2 pt-1">
+                    <PricingPacksSection
+                      activeSports={activeSubscriptionSports}
+                      selectedSport={selectedSubscriptionSport}
+                      onSelectedSportChange={onSelectedSubscriptionSportChange}
+                      onPlanSubscribe={onPlanSubscribe}
+                      onTopSignalAction={(sport) => {
+                        void onSportProductAction?.(sport);
+                      }}
+                      onTopPlayAction={() => {
+                        void onTopPlayAction?.();
+                      }}
+                    />
 
                     <FrameSignalDetectedFeed
                       rows={activeSignalRows}
