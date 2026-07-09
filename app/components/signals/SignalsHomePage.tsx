@@ -330,7 +330,7 @@ function SignalTeamLogoStack({
   const logoSize = size === "large" ? "h-[36px] w-[36px]" : "h-[28px] w-[28px]";
 
   return (
-    <span className={`relative block shrink-0 ${containerSize}`} aria-label={`${row.matchup} team logos`}>
+    <span className={`relative isolate block shrink-0 ${containerSize}`} aria-label={`${row.matchup} team logos`}>
       <SignalTeamLogo team={awayTeam} sport={row.sport} className={`absolute left-1 top-1 z-10 ${logoSize}`} />
       <SignalTeamLogo team={homeTeam || awayTeam} sport={row.sport} className={`absolute bottom-1 right-1 z-20 ${logoSize}`} />
     </span>
@@ -1920,7 +1920,7 @@ function SignalExplorerSheet({
         className="max-h-[84vh] w-full max-w-md overflow-y-auto rounded-t-[28px] border border-cyan-300/18 bg-[#050816] pb-5 shadow-[0_-18px_60px_rgba(34,211,238,0.16)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#050816]/95 px-4 py-4 backdrop-blur-xl">
+        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-[#050816] px-4 py-4 shadow-[0_10px_22px_rgba(5,8,22,0.92)]">
           <div>
             <p className="text-[12px] font-black uppercase tracking-[0.18em] text-cyan-300">
               Signal Detected
@@ -1962,7 +1962,7 @@ function SignalExplorerSheet({
               ) : null}
             </div>
           ) : orderedRows.length ? (
-            <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(6,18,31,0.82),rgba(3,8,20,0.94))]">
+            <div className="relative z-0 isolate overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(6,18,31,0.82),rgba(3,8,20,0.94))]">
               {orderedRows.map((row) => {
                 const resultBadge = getSignalViewAllResultBadge(row.status);
 
