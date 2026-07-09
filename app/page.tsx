@@ -6568,6 +6568,11 @@ const subscriptionPlansBoard = (
                 className="h-screen w-full object-cover object-top"
               />
             </div>
+            <div
+              className={`pointer-events-none fixed inset-x-0 top-[15vh] z-[21] mx-auto h-[24vh] w-full max-w-md bg-[#020715] transition-opacity duration-150 ${
+                joinFrameScrolled ? "opacity-100" : "opacity-0"
+              }`}
+            />
             <button
               type="button"
               onClick={() => navigateAppState({ section: "signals", view: "live", sport: "TOP" })}
