@@ -2103,7 +2103,7 @@ type PricingPlan = {
   price: string;
   subtitle: string;
   featureTitle: string;
-  featureSubtitle: string;
+  featureSubtitle?: string;
   features: string[];
   cta: string;
   accent: "cyan" | "gold" | "purple";
@@ -2116,9 +2116,8 @@ const pricingPlans: PricingPlan[] = [
     title: "Exclusive",
     price: "$34.99",
     subtitle: "Choose Your Sport",
-    featureTitle: "Top 3 Signals",
-    featureSubtitle: "Not Ranked",
-    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Ordered by Start Time", "Signal History", "Closing Status"],
+    featureTitle: "Not Ranked Top 3",
+    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Signal History", "Closing Status"],
     cta: "Get Exclusive",
     accent: "cyan",
   },
@@ -2177,24 +2176,29 @@ const pricingAccentStyles = {
 function PricingIcon({ type, className = "" }: { type: "star" | "crown" | "diamond"; className?: string }) {
   if (type === "crown") {
     return (
-      <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
-        <path d="M10 45h44l-4 10H14l-4-10Zm4-26 11 10 7-17 7 17 11-10 4 22H10l4-22Z" />
+      <svg viewBox="0 0 64 64" className={className} fill="none" aria-hidden="true">
+        <circle cx="14" cy="19" r="4" fill="currentColor" />
+        <circle cx="32" cy="11" r="4" fill="currentColor" />
+        <circle cx="50" cy="19" r="4" fill="currentColor" />
+        <path d="M12 25 25 36 32 18l7 18 13-11-4 22H16l-4-22Z" fill="currentColor" />
+        <path d="M16 50h32l-3 7H19l-3-7Z" fill="currentColor" />
       </svg>
     );
   }
 
   if (type === "diamond") {
     return (
-      <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
-        <path d="M12 19 22 8h20l10 11-20 37L12 19Z" />
-        <path d="M22 8 27 19H12L22 8Zm20 0-5 11h15L42 8ZM27 19h10l-5 37-5-37Z" fill="rgba(5,8,22,.42)" />
+      <svg viewBox="0 0 64 64" className={className} fill="none" aria-hidden="true">
+        <path d="M11 21 22 9h20l11 12-21 35L11 21Z" fill="currentColor" />
+        <path d="M22 9 27 21H11L22 9Zm20 0-5 12h16L42 9ZM27 21h10l-5 35-5-35Z" fill="rgba(255,255,255,.32)" />
+        <path d="m22 9 10 12L42 9H22Zm5 12 5 35 5-35H27Z" fill="rgba(5,8,22,.34)" />
       </svg>
     );
   }
 
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="m12 2.7 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 2.7Z" />
+    <svg viewBox="0 0 64 64" className={className} fill="currentColor" aria-hidden="true">
+      <path d="m32 8.5 6.8 13.8 15.2 2.2-11 10.8 2.6 15.2L32 43.3l-13.6 7.2L21 35.3 10 24.5l15.2-2.2L32 8.5Z" />
     </svg>
   );
 }
@@ -2321,7 +2325,9 @@ function PricingPacksSection({
 
                     <div className={`mt-3 rounded-[11px] border px-1.5 py-2 text-center ${styles.pill}`}>
                       <p className="text-[10px] font-black leading-tight text-white">{plan.featureTitle}</p>
-                      <p className={`mt-0.5 text-[9px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+                      {plan.featureSubtitle ? (
+                        <p className={`mt-0.5 text-[9px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+                      ) : null}
                     </div>
 
                     <div className="mt-3 grid grid-cols-1 gap-1.5">
@@ -2333,18 +2339,20 @@ function PricingPacksSection({
                       ))}
                     </div>
 
-                    <div className="mt-3 text-center">
-                      <span className="text-[16px] font-black leading-none text-white">{plan.price}</span>
-                      <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
-                    </div>
+                    <div className="mt-auto pt-3">
+                      <div className="text-center">
+                        <span className="text-[16px] font-black leading-none text-white">{plan.price}</span>
+                        <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
+                      </div>
 
-                    <button
-                      type="button"
-                      onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
-                      className={`mt-auto h-[34px] rounded-[10px] border px-0.5 text-[9px] font-black uppercase tracking-[0.04em] ${styles.button}`}
-                    >
-                      {plan.cta}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
+                        className={`mt-2 h-[34px] w-full rounded-[10px] border px-0.5 text-[9px] font-black uppercase tracking-[0.04em] ${styles.button}`}
+                      >
+                        {plan.cta}
+                      </button>
+                    </div>
                   </article>
                 );
               })}
@@ -2411,7 +2419,7 @@ function PricingPacksSection({
                       <p className="text-[15px] font-black text-white">$149.99</p>
                     </div>
                   </div>
-                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The highest-conviction play selected by Atlas AI.</p>
+                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The highest-conviction play selected by Atlas Signals.</p>
                   <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-amber-300/45 px-2 py-1 text-[8px] font-black uppercase text-amber-200">Unlock</span>
                 </button>
               </div>
