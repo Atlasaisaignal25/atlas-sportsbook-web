@@ -14,6 +14,10 @@ const highPhrases = [
   "starting pitcher change",
   "new starting pitcher",
   "placed on injured list",
+  "fractured",
+  "fracture",
+  "broken",
+  "out indefinitely",
   "suspended",
   "postponed",
   "severe weather",
@@ -57,6 +61,13 @@ const irrelevantPhrases = [
   "merchandise",
   "tickets",
   "ticket",
+  "draft",
+  "fanbase",
+  "fanbases",
+  "all-star game",
+  "home run derby",
+  "dead at",
+  "legacy",
   "celebrity",
   "bobblehead",
   "giveaway",
@@ -83,7 +94,7 @@ function detectCategory(text: string): PulseCategory {
     return "LINEUP";
   }
 
-  if (/(injury|injured|injured list|il\b|ruled out|questionable|day-to-day|probable|limited)/.test(text)) {
+  if (/(injury|injured|injured list|il\b|ruled out|questionable|day-to-day|probable|limited|fracture|fractured|broken)/.test(text)) {
     return "INJURY";
   }
 

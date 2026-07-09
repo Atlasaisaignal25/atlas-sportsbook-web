@@ -61,10 +61,7 @@ function sortNewestFirst(items: AtlasPulseItem[]) {
 function gnewsQueryForSport(sport: PulseSport) {
   if (sport !== "MLB") return "";
 
-  return [
-    '("MLB" OR "Major League Baseball")',
-    "(injury OR injured OR lineup OR scratched OR \"ruled out\" OR pitcher OR bullpen OR weather OR suspension OR trade OR transaction OR odds OR betting OR moneyline OR total OR roster OR activated OR placed)",
-  ].join(" AND ");
+  return "MLB";
 }
 
 export async function GET(request: Request) {
@@ -86,7 +83,7 @@ export async function GET(request: Request) {
     const params = new URLSearchParams({
       q: gnewsQueryForSport(sport),
       lang: "en",
-      max: String(limit),
+      max: "50",
       sortby: "publishedAt",
       apikey: apiKey,
     });
