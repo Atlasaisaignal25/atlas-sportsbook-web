@@ -11,7 +11,7 @@ export type IntelligenceConfidenceTier = "HIGH" | "MEDIUM" | "LOW" | "UNAVAILABL
 
 export type TeamScoreComponent = {
   component: string;
-  rawValue?: number | string | Record<string, unknown>;
+  rawValue?: number | string | boolean | Record<string, unknown>;
   normalizedValue?: number;
   weight: number;
   effectiveWeight: number;
@@ -525,7 +525,7 @@ export function buildTeamIntelligence(input: TeamIntelligenceInput): TeamIntelli
   };
 }
 
-export function scoreDistribution(values: Array<number | undefined>) {
+export function intelligenceScoreDistribution(values: Array<number | undefined>) {
   const scores = values.filter(isNumber).sort((a, b) => a - b);
   if (scores.length === 0) return { count: 0 };
   const mean = scores.reduce((sum, value) => sum + value, 0) / scores.length;

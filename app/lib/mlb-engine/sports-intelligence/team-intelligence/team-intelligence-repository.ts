@@ -12,7 +12,7 @@ import {
   buildTeamIntelligence,
   GAME_CONTEXT_CERTAINTY_VERSION,
   GAME_READINESS_VERSION,
-  scoreDistribution,
+  intelligenceScoreDistribution,
   TEAM_INTELLIGENCE_CONFIDENCE_VERSION,
   TEAM_QUALITY_VERSION,
   type TeamIntelligenceSnapshot,
@@ -350,10 +350,10 @@ export async function getTeamIntelligenceSnapshotStatus() {
     qualityAvailabilityCounts: countBy(rows, "team_quality_availability"),
     readinessAvailabilityCounts: countBy(rows, "game_readiness_availability"),
     confidenceCounts: countBy(rows, "intelligence_confidence_tier"),
-    qualityDistribution: scoreDistribution(rows.filter((row: any) => row.team_quality_availability === "AVAILABLE").map((row: any) => row.team_quality_score ?? undefined)),
-    partialQualityDistribution: scoreDistribution(rows.filter((row: any) => row.team_quality_availability === "PARTIAL").map((row: any) => row.team_quality_score ?? undefined)),
-    readinessDistribution: scoreDistribution(rows.map((row: any) => row.game_readiness_score ?? undefined)),
-    contextCertaintyDistribution: scoreDistribution(rows.map((row: any) => row.context_certainty_score ?? undefined)),
+    qualityDistribution: intelligenceScoreDistribution(rows.filter((row: any) => row.team_quality_availability === "AVAILABLE").map((row: any) => row.team_quality_score ?? undefined)),
+    partialQualityDistribution: intelligenceScoreDistribution(rows.filter((row: any) => row.team_quality_availability === "PARTIAL").map((row: any) => row.team_quality_score ?? undefined)),
+    readinessDistribution: intelligenceScoreDistribution(rows.map((row: any) => row.game_readiness_score ?? undefined)),
+    contextCertaintyDistribution: intelligenceScoreDistribution(rows.map((row: any) => row.context_certainty_score ?? undefined)),
     errors: latestError ? [latestError.message] : [] as string[],
   };
 }

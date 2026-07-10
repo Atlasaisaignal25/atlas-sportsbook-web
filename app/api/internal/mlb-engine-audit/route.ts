@@ -60,7 +60,7 @@ import {
 import {
   GAME_CONTEXT_CERTAINTY_VERSION,
   GAME_READINESS_VERSION,
-  scoreDistribution,
+  intelligenceScoreDistribution,
   TEAM_INTELLIGENCE_CONFIDENCE_VERSION,
   TEAM_QUALITY_VERSION,
 } from "@/app/lib/mlb-engine/sports-intelligence/team-intelligence/team-intelligence-engine";
@@ -542,10 +542,10 @@ async function teamIntelligenceAudit(
       ],
     },
     distributionsFromRows: {
-      completeQuality: scoreDistribution(snapshots.filter((row) => row.teamQuality.availability === "AVAILABLE").map((row) => row.teamQuality.score)),
-      partialQuality: scoreDistribution(snapshots.filter((row) => row.teamQuality.availability === "PARTIAL").map((row) => row.teamQuality.score)),
-      readiness: scoreDistribution(snapshots.map((row) => row.gameReadiness.score)),
-      contextCertainty: scoreDistribution(snapshots.map((row) => row.contextCertainty.score)),
+      completeQuality: intelligenceScoreDistribution(snapshots.filter((row) => row.teamQuality.availability === "AVAILABLE").map((row) => row.teamQuality.score)),
+      partialQuality: intelligenceScoreDistribution(snapshots.filter((row) => row.teamQuality.availability === "PARTIAL").map((row) => row.teamQuality.score)),
+      readiness: intelligenceScoreDistribution(snapshots.map((row) => row.gameReadiness.score)),
+      contextCertainty: intelligenceScoreDistribution(snapshots.map((row) => row.contextCertainty.score)),
     },
     warnings: [
       ...(snapshots.length < 30 ? ["Fewer than 30 canonical team intelligence rows are available."] : []),
