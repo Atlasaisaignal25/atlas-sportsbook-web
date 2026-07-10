@@ -99,12 +99,24 @@ export function compareMlbLineups(
       currentOrder: player.battingOrder,
     }))
     .filter((change) => change.previousOrder !== change.currentOrder);
+  const positionChanges = [...currentPlayers.values()]
+    .map((player) => ({
+      playerId: player.playerId,
+      previousPosition: previousPlayers.get(player.playerId)?.positionCode,
+      currentPosition: player.positionCode,
+    }))
+    .filter((change) => change.previousPosition !== change.currentPosition);
 
   return {
     addedPlayerIds,
     removedPlayerIds,
     battingOrderChanges,
-    changed: addedPlayerIds.length > 0 || removedPlayerIds.length > 0 || battingOrderChanges.length > 0,
+    positionChanges,
+    changed:
+      addedPlayerIds.length > 0 ||
+      removedPlayerIds.length > 0 ||
+      battingOrderChanges.length > 0 ||
+      positionChanges.length > 0,
     detectedAt: new Date().toISOString(),
   };
 }
@@ -176,4 +188,3 @@ export function verifyOfficialStarter(input: {
 
   return { team: input.team, status: "AMBIGUOUS", warnings: [`${input.team} starter verification ambiguous.`] };
 }
-

@@ -15,6 +15,7 @@ import type {
   LineupStrengthFeatures,
   MlbGameContext,
   StartingPitcherFeatures,
+  StarterVerificationResult,
 } from "../types";
 import { UnavailableMlbSportsIntelligenceProvider } from "../provider";
 
@@ -203,6 +204,68 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
         },
       };
     }
+  }
+
+  async getOfficialLineupCaptureContext(context: MlbGameContext): Promise<{
+    officialGameId?: string;
+    gameStatus?: string;
+    gameDate?: string;
+    homeLineup?: NonNullable<LineupStrengthFeatures["homeLineup"]>;
+    awayLineup?: NonNullable<LineupStrengthFeatures["awayLineup"]>;
+    homeStarter?: StarterVerificationResult;
+    awayStarter?: StarterVerificationResult;
+    sourceUpdatedAt?: string;
+    warnings: string[];
+  }> {
+    const resolved = await this.resolveGame(context);
+    if (!resolved.mapping.matched || !resolved.mapping.officialGameId) {
+      return { warnings: resolved.mapping.warnings };
+    }
+
+    const gameClient = this.options.gameClient ?? cachedMlbOfficialGameClient;
+    const [feed, boxscore] = await Promise.all([
+      gameClient.getLiveFeed(resolved.mapping.officialGameId),
+      gameClient.getBoxscore(resolved.mapping.officialGameId),
+    ]);
+    const sourceUpdatedAt = feed.gameData?.datetime?.dateTime ?? new Date().toISOString();
+    const homeLineup = normalizeTeamLineup({
+      side: "HOME",
+      team: boxscore.teams?.home,
+      confirmedAt: sourceUpdatedAt,
+    });
+    const awayLineup = normalizeTeamLineup({
+      side: "AWAY",
+      team: boxscore.teams?.away,
+      confirmedAt: sourceUpdatedAt,
+    });
+    const homeStarter = verifyOfficialStarter({
+      team: "HOME",
+      sideBoxscore: boxscore.teams?.home,
+      liveFeed: feed,
+    });
+    const awayStarter = verifyOfficialStarter({
+      team: "AWAY",
+      sideBoxscore: boxscore.teams?.away,
+      liveFeed: feed,
+    });
+
+    return {
+      officialGameId: resolved.mapping.officialGameId,
+      gameStatus: feed.gameData?.status?.detailedState,
+      gameDate: feed.gameData?.datetime?.dateTime ?? context.commenceTime,
+      homeLineup,
+      awayLineup,
+      homeStarter,
+      awayStarter,
+      sourceUpdatedAt,
+      warnings: [
+        ...resolved.mapping.warnings,
+        ...homeLineup.warnings,
+        ...awayLineup.warnings,
+        ...homeStarter.warnings,
+        ...awayStarter.warnings,
+      ],
+    };
   }
 
   override getHealth(): MlbOfficialLineupProviderHealth {

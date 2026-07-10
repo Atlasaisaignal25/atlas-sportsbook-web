@@ -5,6 +5,9 @@ export type MlbSportsIntelligenceFlags = {
   offensiveFormModelEnabled: boolean;
   bullpenModelEnabled: boolean;
   weatherModelEnabled: boolean;
+  lineupSnapshotsEnabled: boolean;
+  lineupChangeDetectionEnabled: boolean;
+  starterVerificationSnapshotsEnabled: boolean;
 };
 
 function envFlag(name: string) {
@@ -19,6 +22,8 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     offensiveFormModelEnabled: envFlag("MLB_OFFENSIVE_FORM_MODEL_ENABLED"),
     bullpenModelEnabled: envFlag("MLB_BULLPEN_MODEL_ENABLED"),
     weatherModelEnabled: envFlag("MLB_WEATHER_MODEL_ENABLED"),
+    lineupSnapshotsEnabled: envFlag("MLB_LINEUP_SNAPSHOTS_ENABLED"),
+    lineupChangeDetectionEnabled: envFlag("MLB_LINEUP_CHANGE_DETECTION_ENABLED"),
+    starterVerificationSnapshotsEnabled: envFlag("MLB_STARTER_VERIFICATION_SNAPSHOTS_ENABLED"),
   };
 }
-

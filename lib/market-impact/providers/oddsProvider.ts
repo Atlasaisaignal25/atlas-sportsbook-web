@@ -29,7 +29,7 @@ type OddsBookmaker = {
   markets?: OddsMarket[];
 };
 
-type OddsGame = {
+export type OddsGame = {
   id?: string;
   commence_time?: string;
   home_team?: string;

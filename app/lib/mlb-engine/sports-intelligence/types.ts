@@ -108,8 +108,138 @@ export type LineupComparisonResult = {
     previousOrder?: number;
     currentOrder?: number;
   }>;
+  positionChanges: Array<{
+    playerId: string;
+    previousPosition?: string;
+    currentPosition?: string;
+  }>;
   changed: boolean;
   detectedAt: string;
+};
+
+export type MlbLineupSnapshot = {
+  id?: string;
+  officialGameId: string;
+  oddsEventId?: string;
+  sport: "MLB";
+  teamId?: string;
+  teamName: string;
+  side: "HOME" | "AWAY";
+  gameDate?: string;
+  gameStatus?: string;
+  confirmed: boolean;
+  battingOrderComplete: boolean;
+  playerCount: number;
+  battingOrder: NormalizedLineupPlayer[];
+  lineupHash: string;
+  source: "MLB_OFFICIAL";
+  sourceUpdatedAt?: string;
+  capturedAt: string;
+  createdAt?: string;
+};
+
+export type MlbLineupChangeType =
+  | "FIRST_CONFIRMED_LINEUP"
+  | "PLAYER_ADDED"
+  | "PLAYER_REMOVED"
+  | "LATE_SCRATCH"
+  | "BATTING_ORDER_CHANGE"
+  | "POSITION_CHANGE"
+  | "MULTIPLE_CHANGES"
+  | "NO_MEANINGFUL_CHANGE";
+
+export type MlbLineupChangePlayer = {
+  playerId: string;
+  name: string;
+  battingOrder?: number;
+  positionCode?: string;
+};
+
+export type MlbLineupChange = {
+  id: string;
+  officialGameId: string;
+  oddsEventId?: string;
+  teamId?: string;
+  teamName: string;
+  side: "HOME" | "AWAY";
+  previousSnapshotId?: string;
+  currentSnapshotId?: string;
+  detectedAt: string;
+  gameStartTime?: string;
+  minutesBeforeStart?: number;
+  changeType: MlbLineupChangeType;
+  addedPlayers: MlbLineupChangePlayer[];
+  removedPlayers: Array<{
+    playerId: string;
+    name: string;
+    previousBattingOrder?: number;
+    previousPositionCode?: string;
+  }>;
+  battingOrderChanges: Array<{
+    playerId: string;
+    name: string;
+    previousOrder?: number;
+    currentOrder?: number;
+  }>;
+  positionChanges: Array<{
+    playerId: string;
+    name: string;
+    previousPosition?: string;
+    currentPosition?: string;
+  }>;
+  verified: boolean;
+  source: "MLB_OFFICIAL";
+  warnings: string[];
+};
+
+export type MlbStarterVerificationSnapshot = {
+  id?: string;
+  officialGameId: string;
+  oddsEventId?: string;
+  teamId?: string;
+  teamName: string;
+  side: "HOME" | "AWAY";
+  probablePitcherId?: string;
+  probablePitcherName?: string;
+  confirmedPitcherId?: string;
+  confirmedPitcherName?: string;
+  verificationStatus: StarterVerificationResult["status"];
+  capturedAt: string;
+  createdAt?: string;
+  verificationHash: string;
+};
+
+export type MlbPlayerAvailabilityStatus =
+  | "ACTIVE"
+  | "AVAILABLE"
+  | "PROBABLE"
+  | "QUESTIONABLE"
+  | "DAY_TO_DAY"
+  | "OUT"
+  | "INJURED_LIST"
+  | "SUSPENDED"
+  | "RESTRICTED"
+  | "UNKNOWN";
+
+export type MlbPlayerAvailabilityRecord = {
+  playerId: string;
+  playerName: string;
+  teamId?: string;
+  teamName?: string;
+  status: MlbPlayerAvailabilityStatus;
+  effectiveAt?: string;
+  expectedReturn?: string;
+  reason?: string;
+  source?: FeatureSource;
+  verified: boolean;
+  metadata: SportsFeatureMetadata;
+};
+
+export type MlbPlayerAvailabilityFeatures = {
+  metadata: SportsFeatureMetadata;
+  homePlayers: MlbPlayerAvailabilityRecord[];
+  awayPlayers: MlbPlayerAvailabilityRecord[];
+  warnings: string[];
 };
 
 export type OffensiveTeamForm = {
@@ -180,6 +310,7 @@ export type MlbSportsIntelligenceFeatures = {
   startingPitcher: StartingPitcherFeatures;
   lineup: LineupStrengthFeatures;
   offensiveForm: OffensiveFormFeatures;
+  playerAvailability: MlbPlayerAvailabilityFeatures;
   bullpen: BullpenFeatures;
   weatherPark: WeatherParkFeatures;
   overallAvailability: DataAvailability;

@@ -7,6 +7,7 @@ import type {
   DataAvailability,
   LineupStrengthFeatures,
   MlbGameContext,
+  MlbPlayerAvailabilityFeatures,
   MlbSportsIntelligenceFeatures,
   OffensiveFormFeatures,
   SportsFeatureMetadata,
@@ -17,6 +18,7 @@ import type {
 type FeatureModuleName =
   | "startingPitcher"
   | "lineup"
+  | "playerAvailability"
   | "offensiveForm"
   | "bullpen"
   | "weatherPark";
@@ -24,11 +26,27 @@ type FeatureModuleName =
 type FeatureModule =
   | StartingPitcherFeatures
   | LineupStrengthFeatures
+  | MlbPlayerAvailabilityFeatures
   | OffensiveFormFeatures
   | BullpenFeatures
   | WeatherParkFeatures;
 
-const TOTAL_MODULE_COUNT = 5;
+const TOTAL_MODULE_COUNT = 6;
+
+function unavailablePlayerAvailability(): MlbPlayerAvailabilityFeatures {
+  const metadata: SportsFeatureMetadata = {
+    availability: "UNAVAILABLE",
+    source: "UNKNOWN",
+    warnings: ["Structured MLB player availability is not connected in Phase 4."],
+  };
+
+  return {
+    metadata,
+    homePlayers: [],
+    awayPlayers: [],
+    warnings: metadata.warnings ?? [],
+  };
+}
 
 function errorMetadata(moduleName: FeatureModuleName, error: unknown): SportsFeatureMetadata {
   const message = error instanceof Error ? error.message : "Unknown provider error";
@@ -115,7 +133,8 @@ export async function getMlbSportsIntelligenceFeatures(
     safelyLoadFeature("bullpen", () => provider.getBullpenFeatures(context)),
     safelyLoadFeature("weatherPark", () => provider.getWeatherParkFeatures(context)),
   ]);
-  const modules = [startingPitcher, lineup, offensiveForm, bullpen, weatherPark];
+  const playerAvailability = unavailablePlayerAvailability();
+  const modules = [startingPitcher, lineup, playerAvailability, offensiveForm, bullpen, weatherPark];
 
   return {
     eventId: context.eventId,
@@ -124,6 +143,7 @@ export async function getMlbSportsIntelligenceFeatures(
     commenceTime: context.commenceTime,
     startingPitcher,
     lineup,
+    playerAvailability,
     offensiveForm,
     bullpen,
     weatherPark,
@@ -151,6 +171,7 @@ export function buildUnavailableMlbSportsIntelligenceFeatures(
     commenceTime: context.commenceTime,
     startingPitcher: { metadata },
     lineup: { metadata },
+    playerAvailability: unavailablePlayerAvailability(),
     offensiveForm: { metadata },
     bullpen: { metadata },
     weatherPark: { metadata },
@@ -160,4 +181,3 @@ export function buildUnavailableMlbSportsIntelligenceFeatures(
     warnings: metadata.warnings ?? [],
   };
 }
-
