@@ -155,10 +155,12 @@ async function main() {
   assert.match(flags, /MLB_STARTER_VERIFICATION_SNAPSHOTS_ENABLED/);
 
   const changeService = await readFile("app/lib/mlb-engine/sports-intelligence/lineup-change-service.ts", "utf8");
-  assert.match(changeService, /FIRST_CONFIRMED_LINEUP/);
-  assert.match(changeService, /LATE_SCRATCH/);
-  assert.match(changeService, /DEFAULT_LATE_SCRATCH_WINDOW_MINUTES = 120/);
-  assert.match(changeService, /storageHealth: "ERROR"/);
+assert.match(changeService, /FIRST_CONFIRMED_LINEUP/);
+assert.match(changeService, /LATE_SCRATCH/);
+assert.match(changeService, /DEFAULT_LATE_SCRATCH_WINDOW_MINUTES = 120/);
+assert.match(changeService, /getFirstConfirmedLineupSnapshot/);
+assert.match(changeService, /hasPreviousConfirmed/);
+assert.match(changeService, /storageHealth: "ERROR"/);
 
   const repository = await readFile("app/lib/mlb-engine/sports-intelligence/lineup-snapshot-repository.ts", "utf8");
   assert.match(repository, /insertLineupSnapshotDeduped/);

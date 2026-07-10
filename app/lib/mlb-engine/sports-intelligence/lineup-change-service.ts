@@ -3,6 +3,7 @@ import {
 } from "./lineup-normalizer";
 import {
   buildLineupSnapshot,
+  getFirstConfirmedLineupSnapshot,
   getLatestLineupSnapshot,
   insertLineupChangeEventDeduped,
   insertLineupSnapshotDeduped,
@@ -44,6 +45,7 @@ function minutesBeforeStart(gameStartTime?: string, detectedAt?: string) {
 function classifyChange(input: {
   previous: MlbLineupSnapshot | null;
   current: MlbLineupSnapshot;
+  hasPreviousConfirmed: boolean;
   addedCount: number;
   removedCount: number;
   battingOrderChangeCount: number;
@@ -51,7 +53,7 @@ function classifyChange(input: {
   minutesBeforeStart?: number;
   lateScratchWindowMinutes: number;
 }): MlbLineupChangeType {
-  if (!input.previous && input.current.confirmed) return "FIRST_CONFIRMED_LINEUP";
+  if (input.current.confirmed && !input.hasPreviousConfirmed) return "FIRST_CONFIRMED_LINEUP";
 
   const changeKinds = [
     input.addedCount > 0,
@@ -84,6 +86,7 @@ function classifyChange(input: {
 function buildChange(input: {
   previous: MlbLineupSnapshot | null;
   current: MlbLineupSnapshot;
+  hasPreviousConfirmed: boolean;
   detectedAt: string;
   gameStartTime?: string;
   lateScratchWindowMinutes: number;
@@ -119,6 +122,7 @@ function buildChange(input: {
   const changeType = classifyChange({
     previous: input.previous,
     current: input.current,
+    hasPreviousConfirmed: input.hasPreviousConfirmed,
     addedCount: comparison.addedPlayerIds.length,
     removedCount: comparison.removedPlayerIds.length,
     battingOrderChangeCount: comparison.battingOrderChanges.length,
@@ -128,6 +132,7 @@ function buildChange(input: {
   });
 
   if (changeType === "NO_MEANINGFUL_CHANGE") return null;
+  const isFirstConfirmed = changeType === "FIRST_CONFIRMED_LINEUP";
 
   return {
     id: [
@@ -149,7 +154,7 @@ function buildChange(input: {
     gameStartTime: input.gameStartTime,
     minutesBeforeStart: minutes,
     changeType,
-    addedPlayers: comparison.addedPlayerIds.map((playerId) => {
+    addedPlayers: isFirstConfirmed ? [] : comparison.addedPlayerIds.map((playerId) => {
       const player = currentPlayers.get(playerId);
       return {
         playerId,
@@ -158,7 +163,7 @@ function buildChange(input: {
         positionCode: player?.positionCode,
       };
     }),
-    removedPlayers: comparison.removedPlayerIds.map((playerId) => {
+    removedPlayers: isFirstConfirmed ? [] : comparison.removedPlayerIds.map((playerId) => {
       const player = previousPlayers.get(playerId);
       return {
         playerId,
@@ -167,13 +172,13 @@ function buildChange(input: {
         previousPositionCode: player?.positionCode,
       };
     }),
-    battingOrderChanges: comparison.battingOrderChanges.map((change) => ({
+    battingOrderChanges: isFirstConfirmed ? [] : comparison.battingOrderChanges.map((change) => ({
       playerId: change.playerId,
       name: currentPlayers.get(change.playerId)?.name ?? previousPlayers.get(change.playerId)?.name ?? "",
       previousOrder: change.previousOrder,
       currentOrder: change.currentOrder,
     })),
-    positionChanges: comparison.positionChanges.map((change) => ({
+    positionChanges: isFirstConfirmed ? [] : comparison.positionChanges.map((change) => ({
       playerId: change.playerId,
       name: currentPlayers.get(change.playerId)?.name ?? previousPlayers.get(change.playerId)?.name ?? "",
       previousPosition: change.previousPosition,
@@ -210,7 +215,10 @@ export async function processLineupSnapshot(input: {
   });
 
   try {
-    const previous = await getLatestLineupSnapshot(input.officialGameId, input.side);
+    const [previous, firstConfirmedBefore] = await Promise.all([
+      getLatestLineupSnapshot(input.officialGameId, input.side),
+      getFirstConfirmedLineupSnapshot(input.officialGameId, input.side),
+    ]);
     const writeResult = await insertLineupSnapshotDeduped(current);
     warnings.push(...writeResult.warnings);
     const savedCurrent = {
@@ -233,6 +241,7 @@ export async function processLineupSnapshot(input: {
     const change = buildChange({
       previous,
       current: savedCurrent,
+      hasPreviousConfirmed: Boolean(firstConfirmedBefore),
       detectedAt: savedCurrent.capturedAt,
       gameStartTime: input.gameStartTime,
       lateScratchWindowMinutes: input.lateScratchWindowMinutes ?? DEFAULT_LATE_SCRATCH_WINDOW_MINUTES,
