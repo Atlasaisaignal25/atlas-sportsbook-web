@@ -189,6 +189,9 @@ async function main() {
   process.env.MLB_BULLPEN_FATIGUE_VERSION = "v1";
   process.env.MLB_BULLPEN_QUALITY_SCORE_ENABLED = "false";
   process.env.MLB_BULLPEN_QUALITY_SCORE_MODE = "DISABLED";
+  process.env.MLB_BULLPEN_QUALITY_VERSION = "v1";
+  process.env.MLB_BULLPEN_SEASON_ARCHIVE_ENABLED = "false";
+  process.env.MLB_BULLPEN_QUALITY_BASELINE_ENABLED = "false";
   process.env.MLB_WEATHER_MODEL_ENABLED = "false";
   const flags = getMlbSportsIntelligenceFlags();
   assert.deepEqual(flags, {
@@ -206,6 +209,9 @@ async function main() {
     bullpenFatigueVersion: "v1",
     bullpenQualityScoreEnabled: false,
     bullpenQualityScoreMode: "DISABLED",
+    bullpenQualityVersion: "v1",
+    bullpenSeasonArchiveEnabled: false,
+    bullpenQualityBaselineEnabled: false,
     weatherModelEnabled: false,
     lineupSnapshotsEnabled: false,
     lineupChangeDetectionEnabled: false,
