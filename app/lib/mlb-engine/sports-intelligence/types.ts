@@ -276,6 +276,7 @@ export type OffensiveRollingFormWindow = {
   gamesIncluded?: number;
   startDate?: string;
   endDate?: string;
+  selectedGamePks?: string[];
   plateAppearances?: number;
   battedBallEvents?: number;
   rawRows?: number;

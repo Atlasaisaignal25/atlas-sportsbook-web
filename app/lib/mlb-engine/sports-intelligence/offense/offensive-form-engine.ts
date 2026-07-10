@@ -30,6 +30,7 @@ export type VerifiedOffensiveRollingStats = {
     gamesIncluded?: number;
     startDate?: string;
     endDate?: string;
+    selectedGamePks?: string[];
     plateAppearances?: number;
     battedBallEvents?: number;
     rawRows?: number;
@@ -189,6 +190,7 @@ function buildWindow(
     gamesIncluded: stats.gamesIncluded ?? stats.games,
     startDate: stats.startDate,
     endDate: stats.endDate,
+    selectedGamePks: stats.selectedGamePks,
     rawRows: stats.rawRows,
     uniquePlateAppearances: stats.uniquePlateAppearances,
     terminalPlateAppearances: stats.terminalPlateAppearances,

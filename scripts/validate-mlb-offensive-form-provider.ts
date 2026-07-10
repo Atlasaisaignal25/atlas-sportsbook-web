@@ -4,6 +4,7 @@ import {
   aggregateStatcastRowsForTeam,
   buildMlbSportsProjection,
   buildOffensiveFormFeatures,
+  buildOffensiveFormSnapshotRows,
   buildStatcastLeagueBaseline,
   classifyOffensiveSampleQuality,
   getMlbTeamIdentityByName,
@@ -242,6 +243,25 @@ const unscored = buildOffensiveFormFeatures({ home: strongWindow, away: weakWind
 assert.equal(unscored.home?.atlasOffensiveScore, undefined);
 assert.equal(unscored.home?.rollingWindows.last30?.componentBreakdown.length, 0);
 assert.equal(unscored.home?.availability, "AVAILABLE");
+const snapshotRows = buildOffensiveFormSnapshotRows(unscored.home, asOf);
+assert.equal(snapshotRows.length, 1);
+assert.equal(snapshotRows[0]?.atlas_offensive_score, undefined);
+const sameSnapshotRows = buildOffensiveFormSnapshotRows(unscored.home, asOf);
+assert.equal(snapshotRows[0]?.feature_hash, sameSnapshotRows[0]?.feature_hash);
+const timestampOnlyRows = buildOffensiveFormSnapshotRows(unscored.home, "2026-07-10T19:00:00Z");
+assert.equal(snapshotRows[0]?.feature_hash, timestampOnlyRows[0]?.feature_hash);
+const changedGameForm = {
+  ...unscored.home!,
+  rollingWindows: {
+    ...unscored.home!.rollingWindows,
+    last30: {
+      ...unscored.home!.rollingWindows.last30!,
+      selectedGamePks: ["new-game-pk"],
+    },
+  },
+};
+const changedGameRows = buildOffensiveFormSnapshotRows(changedGameForm, asOf);
+assert.notEqual(snapshotRows[0]?.feature_hash, changedGameRows[0]?.feature_hash);
 
 let scheduleRequests = 0;
 let statcastRequests = 0;

@@ -22,6 +22,13 @@ function standardDeviation(values: number[]) {
   return Math.sqrt(variance);
 }
 
+function median(values: number[]) {
+  if (values.length === 0) return undefined;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+}
+
 function pushSample(samples: MetricSamples, key: OffensiveMetricKey, value: unknown) {
   if (!isNumber(value)) return;
   const current = samples[key] ?? [];
@@ -72,5 +79,69 @@ export function buildStatcastLeagueBaseline(input: {
     sampleSize: { plateAppearances, battedBallEvents },
     metrics,
     warnings,
+  };
+}
+
+export function buildStatcastLeagueBaselineSummary(input: {
+  teamWindows: VerifiedOffensiveRollingStats[];
+  asOf: string;
+}) {
+  const metrics: OffensiveMetricKey[] = [
+    "hardHitRate",
+    "barrelRate",
+    "exitVelocity",
+    "walkRate",
+    "strikeoutRate",
+    "expectedBAOnContact",
+    "expectedSLGOnContact",
+    "expectedWOBAOnContact",
+  ];
+  const windows = ["last7", "last14", "last30"] as const;
+
+  return {
+    asOf: input.asOf,
+    source: "BASEBALL_SAVANT" as const,
+    expectedTeams: 30,
+    teamsMapped: input.teamWindows.length,
+    windows: Object.fromEntries(windows.map((windowKey) => {
+      const rows = input.teamWindows
+        .map((team) => ({ team, window: team.windows[windowKey] }))
+        .filter((item) => item.window);
+      const qualityCounts = {
+        SUFFICIENT: rows.filter((item) => item.window?.sampleQuality === "SUFFICIENT").length,
+        LIMITED: rows.filter((item) => item.window?.sampleQuality === "LIMITED").length,
+        INSUFFICIENT: rows.filter((item) => item.window?.sampleQuality === "INSUFFICIENT").length,
+        UNAVAILABLE: rows.filter((item) => item.window?.sampleQuality === "UNAVAILABLE").length,
+      };
+
+      return [windowKey, {
+        teamsWithData: rows.filter((item) => (item.window?.plateAppearances ?? 0) > 0).length,
+        qualityCounts,
+        metrics: Object.fromEntries(metrics.map((metric) => {
+          const values = rows
+            .filter((item) => item.window?.sampleQuality !== "UNAVAILABLE")
+            .map((item) => {
+              if (metric === "exitVelocity") return item.window?.exitVelocity ?? item.window?.averageExitVelocity;
+              return item.window?.[metric];
+            })
+            .filter(isNumber);
+          const mean = average(values);
+          const sd = standardDeviation(values);
+          return [metric, {
+            teamCount: values.length,
+            mean,
+            standardDeviation: sd,
+            median: median(values),
+            minimum: values.length ? Math.min(...values) : undefined,
+            maximum: values.length ? Math.max(...values) : undefined,
+            ready: values.length >= 26 && isNumber(sd) && sd > 0,
+          }];
+        })),
+      }];
+    })),
+    scoreReadiness: {
+      ready: false,
+      reason: "MLB_OFFENSIVE_SCORE_ENABLED remains false until production baseline is reviewed.",
+    },
   };
 }

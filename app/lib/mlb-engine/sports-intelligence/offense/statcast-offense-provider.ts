@@ -36,6 +36,8 @@ type CompletedGame = {
   awayTeamId?: string;
 };
 
+export type OffensiveCompletedGame = CompletedGame;
+
 export type NormalizedPlateAppearance = {
   gamePk: string;
   atBatNumber: number;
@@ -319,6 +321,7 @@ export function aggregateStatcastRowsForTeam(input: {
     gamesIncluded,
     startDate: input.games.at(-1)?.gameDate?.slice(0, 10),
     endDate: input.games[0]?.gameDate?.slice(0, 10),
+    selectedGamePks: input.games.map((game) => game.gamePk),
     rawRows: rows.length,
     uniquePlateAppearances: normalizedPas.length,
     terminalPlateAppearances: plateAppearances,

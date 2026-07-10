@@ -19,6 +19,7 @@ import {
   type MlbSportsIntelligenceFeatures,
   type OffensiveTeamForm,
 } from "@/app/lib/mlb-engine/sports-intelligence";
+import { getOffensiveFormSnapshotStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-form-repository";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
 
 export const dynamic = "force-dynamic";
@@ -155,7 +156,11 @@ function offensiveTeamAudit(team: OffensiveTeamForm | undefined) {
   };
 }
 
-function offensiveFormAudit(features: MlbSportsIntelligenceFeatures) {
+function offensiveFormAudit(
+  features: MlbSportsIntelligenceFeatures,
+  snapshotStatus: Awaited<ReturnType<typeof getOffensiveFormSnapshotStatus>>,
+  scoreEnabled: boolean,
+) {
   const homeScoreAvailable = features.offensiveForm.home?.atlasOffensiveScore !== undefined;
   const awayScoreAvailable = features.offensiveForm.away?.atlasOffensiveScore !== undefined;
   const rawDataAvailable = [features.offensiveForm.home, features.offensiveForm.away].some((team) =>
@@ -166,8 +171,13 @@ function offensiveFormAudit(features: MlbSportsIntelligenceFeatures) {
     enabled: features.offensiveForm.metadata.availability !== "UNAVAILABLE",
     provider: features.offensiveForm.metadata.source ?? "none",
     providerHealth: "See sportsIntelligence.providerHealth.offense when Statcast provider is active.",
+    storageHealth: snapshotStatus,
+    snapshotsTotal: snapshotStatus.totalSnapshots,
+    teamsTracked: snapshotStatus.teamsTracked,
+    windowsTracked: snapshotStatus.windowsTracked,
     rawDataAvailability: rawDataAvailable ? "AVAILABLE" : "UNAVAILABLE",
-    scoreAvailability: homeScoreAvailable || awayScoreAvailable ? "AVAILABLE" : "UNAVAILABLE",
+    scoreEnabled,
+    scoreAvailability: scoreEnabled && (homeScoreAvailable || awayScoreAvailable) ? "AVAILABLE" : "UNAVAILABLE",
     baselineAvailability: homeScoreAvailable || awayScoreAvailable ? "AVAILABLE" : "UNAVAILABLE",
     teamsAvailable: [features.offensiveForm.home, features.offensiveForm.away]
       .filter((team) => team?.availability === "AVAILABLE")
@@ -177,7 +187,8 @@ function offensiveFormAudit(features: MlbSportsIntelligenceFeatures) {
       .map((team) => team?.teamName)
       .filter(Boolean),
     cacheHealth: "server-side provider cache only",
-    lastSuccessfulRefresh: features.offensiveForm.metadata.updatedAt,
+    latestRefresh: snapshotStatus.latestRefresh,
+    lastSuccessfulRefresh: features.offensiveForm.metadata.updatedAt ?? snapshotStatus.latestRefresh,
     availability: features.offensiveForm.metadata.availability,
     source: features.offensiveForm.metadata.source ?? "none",
     observedAt: features.offensiveForm.metadata.observedAt,
@@ -294,10 +305,11 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
+      getOffensiveFormSnapshotStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -391,7 +403,11 @@ export async function GET(request: Request) {
         source: sportsFeatures.playerAvailability.metadata.source ?? "none",
         warnings: sportsFeatures.playerAvailability.warnings,
       },
-      offensiveForm: offensiveFormAudit(sportsFeatures),
+      offensiveForm: offensiveFormAudit(
+        sportsFeatures,
+        offensiveSnapshotStatus,
+        sportsFlags.offensiveScoreEnabled,
+      ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,
         count: pitcherDiagnostics.length,

@@ -32,6 +32,18 @@ create table if not exists public.mlb_offensive_form_snapshots (
   created_at timestamptz not null default now()
 );
 
+alter table public.mlb_offensive_form_snapshots
+  add column if not exists woba_eligible_plate_appearances integer,
+  add column if not exists untracked_batted_ball_events integer,
+  add column if not exists statcast_coverage numeric,
+  add column if not exists expected_ba_on_contact numeric,
+  add column if not exists expected_slg_on_contact numeric,
+  add column if not exists expected_woba_on_contact numeric,
+  add column if not exists atlas_expected_offense_rate numeric;
+
+create unique index if not exists mlb_offensive_form_snapshots_feature_hash_idx
+  on public.mlb_offensive_form_snapshots (feature_hash);
+
 create index if not exists mlb_offensive_form_snapshots_team_window_captured_idx
   on public.mlb_offensive_form_snapshots (team_id, window_games, captured_at desc);
 
