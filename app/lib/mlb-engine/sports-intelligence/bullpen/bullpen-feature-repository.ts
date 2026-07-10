@@ -251,7 +251,7 @@ export async function insertBullpenQualityBaselinesDeduped(baselines: BullpenQua
   if (baselines.length === 0) return { attempted: 0, inserted: 0, skipped: 0, errors: [] as string[] };
   const rows = baselines.map((baseline) => ({
     season: baseline.season,
-    window: baseline.window,
+    baseline_window: baseline.window,
     metric: baseline.metric,
     team_count: baseline.teamCount,
     mean: baseline.mean,
@@ -300,7 +300,7 @@ export async function getBullpenQualityBaselineStatus() {
     .eq("canonical", true);
   const { data, error: latestError } = await supabase
     .from("mlb_bullpen_quality_baseline_snapshots")
-    .select("window,metric,team_count,captured_at")
+    .select("baseline_window,metric,team_count,captured_at")
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(100);
@@ -309,7 +309,7 @@ export async function getBullpenQualityBaselineStatus() {
     totalBaselines: count ?? 0,
     canonicalBaselines: canonicalBaselines ?? 0,
     latestRefresh: data?.[0]?.captured_at as string | undefined,
-    windows: Array.from(new Set((data ?? []).map((row: any) => row.window))),
+    windows: Array.from(new Set((data ?? []).map((row: any) => row.baseline_window))),
     metrics: Array.from(new Set((data ?? []).map((row: any) => row.metric))),
     minimumTeamCount: Math.min(...(data ?? []).map((row: any) => Number(row.team_count)).filter(Number.isFinite)),
     errors: latestError ? [latestError.message] : [] as string[],

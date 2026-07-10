@@ -20,7 +20,7 @@ create index if not exists mlb_bullpen_feature_snapshots_baseline_version_idx
 create table if not exists public.mlb_bullpen_quality_baseline_snapshots (
   id uuid primary key default gen_random_uuid(),
   season integer not null,
-  window text not null,
+  baseline_window text not null,
   metric text not null,
   team_count integer not null,
   mean numeric not null,
@@ -45,4 +45,4 @@ create index if not exists mlb_bullpen_quality_baseline_canonical_idx
   on public.mlb_bullpen_quality_baseline_snapshots (canonical);
 
 create index if not exists mlb_bullpen_quality_baseline_window_metric_idx
-  on public.mlb_bullpen_quality_baseline_snapshots (season, window, metric, canonical);
+  on public.mlb_bullpen_quality_baseline_snapshots (season, baseline_window, metric, canonical);
