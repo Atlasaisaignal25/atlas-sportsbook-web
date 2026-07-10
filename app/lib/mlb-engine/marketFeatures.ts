@@ -232,6 +232,10 @@ export function collectOutcomeMarketFeatures(
   return features;
 }
 
+export function isQualifiedMlbMarketContext(features?: Pick<OutcomeMarketFeatures, "bookCount" | "isStale"> | null) {
+  return Boolean(features && features.bookCount >= 2 && !features.isStale);
+}
+
 export function buildConsensusMovementFromSnapshots(
   snapshots: OddsSnapshot[],
   monitoredSportsbookCountByEvent = new Map<string, number>(),
@@ -289,4 +293,3 @@ export function buildMarketMovementFeatureMap(consensus: ConsensusMovement[]) {
 
   return features;
 }
-
