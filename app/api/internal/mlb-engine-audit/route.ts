@@ -262,12 +262,13 @@ function bullpenTeamAudit(team: MlbSportsIntelligenceFeatures["bullpen"]["home"]
   };
 }
 
-function bullpenAudit(
+async function bullpenAudit(
   features: MlbSportsIntelligenceFeatures,
   snapshotStatus: Awaited<ReturnType<typeof getBullpenFeatureSnapshotStatus>>,
   scoreEnabled: boolean,
 ) {
   const teams = [features.bullpen.home, features.bullpen.away].filter(Boolean) as NonNullable<MlbSportsIntelligenceFeatures["bullpen"]["home"]>[];
+  const allTeams = await loadLatestCanonicalBullpenTeamFeatures();
   return {
     enabled: features.bullpen.metadata.availability !== "UNAVAILABLE",
     provider: features.bullpen.metadata.source ?? "none",
@@ -281,15 +282,15 @@ function bullpenAudit(
     scoreMode: scoreEnabled ? process.env.MLB_BULLPEN_SCORE_MODE ?? "AUDIT_ONLY" : "DISABLED",
     fatigueVersion: process.env.MLB_BULLPEN_FATIGUE_VERSION ?? "v1",
     scoreVersion: BULLPEN_FATIGUE_SCORE_VERSION_V2,
-    fatigueDistribution: fatigueDistribution(teams),
-    fatigueV1Distribution: fatigueDistribution(teams.map((team) => ({ ...team, fatigueScore: team.fatigueScoreV1 }))),
-    fatigueV2Distribution: fatigueDistribution(teams.map((team) => ({ ...team, fatigueScore: team.fatigueScoreV2 }))),
+    fatigueDistribution: fatigueDistribution(allTeams),
+    fatigueV1Distribution: fatigueDistribution(allTeams.map((team) => ({ ...team, fatigueScore: team.fatigueScoreV1 }))),
+    fatigueV2Distribution: fatigueDistribution(allTeams.map((team) => ({ ...team, fatigueScore: team.fatigueScoreV2 }))),
     qualityVersion: BULLPEN_QUALITY_SCORE_VERSION,
-    qualityDistribution: qualityDistribution(teams),
-    teamsQualityAvailable: teams.filter((team) => team.qualitySample?.availability === "AVAILABLE").map((team) => team.teamName),
-    teamsQualityPartial: teams.filter((team) => team.qualitySample?.availability === "PARTIAL").map((team) => team.teamName),
-    teamsQualityUnavailable: teams.filter((team) => !team.qualitySample || team.qualitySample.availability === "UNAVAILABLE").map((team) => team.teamName),
-    effectiveDepthDistribution: effectiveDepthDistribution(teams),
+    qualityDistribution: qualityDistribution(allTeams),
+    teamsQualityAvailable: allTeams.filter((team) => team.qualitySample?.availability === "AVAILABLE").map((team) => team.teamName),
+    teamsQualityPartial: allTeams.filter((team) => team.qualitySample?.availability === "PARTIAL").map((team) => team.teamName),
+    teamsQualityUnavailable: allTeams.filter((team) => !team.qualitySample || team.qualitySample.availability === "UNAVAILABLE").map((team) => team.teamName),
+    effectiveDepthDistribution: effectiveDepthDistribution(allTeams),
     warnings: features.bullpen.metadata.warnings ?? [],
     home: bullpenTeamAudit(features.bullpen.home),
     away: bullpenTeamAudit(features.bullpen.away),
@@ -546,7 +547,7 @@ export async function GET(request: Request) {
         offensiveBaselineStatus,
         sportsFlags.offensiveScoreEnabled,
       ),
-      bullpen: bullpenAudit(
+      bullpen: await bullpenAudit(
         sportsFeatures,
         bullpenSnapshotStatus,
         sportsFlags.bullpenFatigueScoreEnabled && sportsFlags.bullpenScoreMode === "AUDIT_ONLY",
