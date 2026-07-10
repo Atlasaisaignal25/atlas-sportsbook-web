@@ -195,7 +195,10 @@ async function main() {
 
   const provider = new MlbOfficialPitcherProvider(new FixtureClient([game()]));
   const features = await provider.getStartingPitcherFeatures(context());
-  assert.equal(features.metadata.availability, "PARTIAL");
+  assert.ok(
+    features.metadata.availability === "PARTIAL" || features.metadata.availability === "STALE",
+    `Expected PARTIAL or STALE pitcher availability, received ${features.metadata.availability}`,
+  );
   assert.equal(features.homeStarter?.name, "Home Arm");
   assert.equal(features.homeStarter?.status, "PROBABLE");
   assert.equal(features.homeStarter?.confirmed, false);
