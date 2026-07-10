@@ -74,7 +74,8 @@ async function main() {
   );
   assert.equal(unavailable.overallAvailability, "UNAVAILABLE");
   assert.equal(unavailable.availableModuleCount, 0);
-  assert.equal(unavailable.totalModuleCount, 5);
+  assert.equal(unavailable.totalModuleCount, 6);
+  assert.equal(unavailable.playerAvailability.metadata.availability, "UNAVAILABLE");
   assert.equal(unavailable.startingPitcher.homeStarter, undefined);
   assert.equal(unavailable.weatherPark.temperatureF, undefined);
 
@@ -110,6 +111,9 @@ async function main() {
     offensiveFormModelEnabled: false,
     bullpenModelEnabled: false,
     weatherModelEnabled: false,
+    lineupSnapshotsEnabled: false,
+    lineupChangeDetectionEnabled: false,
+    starterVerificationSnapshotsEnabled: false,
   });
 
   const fs = await import("node:fs/promises");
