@@ -8314,38 +8314,50 @@ const subscriptionPlansBoard = (
                   const eventTypeLabel = item.marketMovement
                     ? "MARKET MOVEMENT"
                     : item.category.replaceAll("_", " ");
+                  const matchupLabel = item.marketMovement
+                    ? `${item.marketMovement.awayTeam} vs ${item.marketMovement.homeTeam}`
+                    : affected;
+                  const eventTitle = item.marketMovement
+                    ? item.title.includes(":")
+                      ? item.title.split(":").slice(1).join(":").trim()
+                      : eventTypeLabel
+                    : item.title;
+                  const sourceDisplay =
+                    displaySourceCount > 1
+                      ? sources
+                          .slice(0, 2)
+                          .map((source) => source.name)
+                          .filter(Boolean)
+                          .join(" + ") || `${displaySourceCount} Sources`
+                      : sourceLabel;
 
                   return (
                     <article
                       key={item.id}
-                      className={`rounded-[20px] border p-3.5 ${impactStyles.card}`}
+                      className={`rounded-[18px] border px-3 py-3 ${impactStyles.card}`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-200">
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-200">
                               {item.sport}
                             </span>
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.06em] ${scoreClasses}`}>
-                              <span>Atlas Impact</span>
-                              <span className="text-[11px]">{score}</span>
-                            </span>
-                            <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${impactStyles.badge}`}>
+                            <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${impactStyles.badge}`}>
                               {item.impact}
                             </span>
-                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/48">
+                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-white/48">
                               {eventTypeLabel}
                             </span>
                           </div>
-                          <h3 className="mt-2 text-[16px] font-black leading-tight text-white">
-                            {item.title}
+                          <h3 className="mt-1.5 truncate text-[15px] font-black leading-tight text-white">
+                            {matchupLabel}
                           </h3>
-                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white/42">
-                            {affected}
+                          <p className="mt-0.5 line-clamp-2 text-[12px] font-bold leading-4 text-white/70">
+                            {eventTitle}
                           </p>
                         </div>
                         <span
-                          className={`mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full border p-[2px] text-[12px] font-black ${scoreClasses}`}
+                          className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border p-[2px] text-[12px] font-black ${scoreClasses}`}
                           style={{
                             background: `conic-gradient(currentColor ${scoreProgress * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
                           }}
@@ -8357,50 +8369,23 @@ const subscriptionPlansBoard = (
                         </span>
                       </div>
 
-                      <p className="mt-2 text-[12px] font-semibold leading-5 text-white/66">
-                        {item.summary}
-                      </p>
-
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2">
-                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-white/38">
-                            Confidence
-                          </p>
-                          <p className="mt-0.5 text-[13px] font-black text-white">
-                            {item.confidence}%
-                          </p>
-                        </div>
-                        <div className="rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2">
-                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-white/38">
-                            Atlas Impact
-                          </p>
-                          <p className="mt-0.5 text-[13px] font-black text-white">
-                            {score}
-                          </p>
-                        </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-black uppercase tracking-[0.08em] text-white/45">
+                        <span>Atlas Impact</span>
+                        <span className="text-white/22">•</span>
+                        <span>Confidence {item.confidence}%</span>
                       </div>
 
-                      {item.whyItMatters ? (
-                        <div className="mt-3 rounded-[14px] border border-cyan-300/12 bg-cyan-300/[0.045] p-2.5">
-                          <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-cyan-300">
-                            Why It Matters
-                          </p>
-                          <p className="mt-1 text-[11px] font-semibold leading-4 text-white/62">
-                            {item.whyItMatters}
-                          </p>
-                        </div>
-                      ) : null}
-
-                      <div className="mt-3 flex flex-wrap gap-1.5">
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         {item.primaryMarket ? (
-                          <span className="rounded-full border border-cyan-300/45 bg-cyan-300/12 px-2 py-1 text-[9px] font-black uppercase tracking-[0.04em] text-cyan-200">
-                            Primary: {item.primaryMarket}
+                          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.04em] text-cyan-200">
+                            <span className="text-white/42">Primary Market</span>
+                            <span>{item.primaryMarket}</span>
                           </span>
                         ) : null}
                         {(item.otherMarkets ?? item.markets).map((market) => (
                           <span
                             key={`${item.id}-${market}`}
-                            className="rounded-full border border-white/10 bg-black/22 px-2 py-1 text-[9px] font-black uppercase tracking-[0.04em] text-white/58"
+                            className="rounded-full border border-white/10 bg-black/18 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.04em] text-white/48"
                           >
                             {market}
                           </span>
@@ -8408,73 +8393,54 @@ const subscriptionPlansBoard = (
                       </div>
 
                       {item.marketMovement ? (
-                        <div className="mt-3 rounded-[14px] border border-cyan-300/14 bg-black/22 p-2.5">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-cyan-300">
-                                Current Movement
-                              </p>
-                              <p className="mt-1 text-[12px] font-black text-white">
-                                {item.marketMovement.marketLabel}
-                              </p>
-                            </div>
-                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/62">
-                              {item.marketMovement.status}
-                            </span>
+                        <div className="mt-2 border-t border-white/10 pt-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
+                              Current Movement
+                            </p>
+                            <p className="text-[11px] font-black text-white">
+                              {item.marketMovement.marketLabel}
+                            </p>
                           </div>
-                          <p className="mt-1 text-[10px] font-bold text-white/42">
-                            {item.marketMovement.awayTeam} vs {item.marketMovement.homeTeam}
+                          <p className="mt-1 text-[16px] font-black leading-none text-white">
+                            {formatMarketMovementValue(
+                              item.marketMovement.previousPoint,
+                              item.marketMovement.previousPrice,
+                            )}{" "}
+                            <span className="text-cyan-300">→</span>{" "}
+                            {formatMarketMovementValue(
+                              item.marketMovement.currentPoint,
+                              item.marketMovement.currentPrice,
+                            )}
                           </p>
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] font-bold text-white/58">
-                            <div>
-                              <p className="text-white/34">Line</p>
-                              <p className="mt-0.5 text-[12px] text-white">
-                                {formatMarketMovementValue(
-                                  item.marketMovement.previousPoint,
-                                  item.marketMovement.previousPrice,
-                                )}{" "}
-                                →{" "}
-                                {formatMarketMovementValue(
-                                  item.marketMovement.currentPoint,
-                                  item.marketMovement.currentPrice,
-                                )}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/34">Sportsbooks</p>
-                              <p className="mt-0.5 text-[12px] text-white">
-                                {item.marketMovement.sportsbookCount}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/34">Consensus</p>
-                              <p className="mt-0.5 text-[12px] text-white">
-                                {Math.round(item.marketMovement.consensusPercent * 100)}%
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/34">Status</p>
-                              <p className="mt-0.5 text-[12px] text-white">
-                                {item.marketMovement.status}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-white/34">Elapsed</p>
-                              <p className="mt-0.5 text-[12px] text-white">
-                                {item.marketMovement.elapsedMinutes} min
-                              </p>
-                            </div>
-                          </div>
-                          <p className="mt-2 text-[10px] font-semibold text-white/42">
-                            {item.marketMovement.elapsedMinutes} min · Possible market reaction detected
+                          <p className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-[0.05em] text-white/45">
+                            <span>{item.marketMovement.sportsbookCount} Books</span>
+                            <span>{Math.round(item.marketMovement.consensusPercent * 100)}% Consensus</span>
+                            <span>{item.marketMovement.status}</span>
+                            <span>{item.marketMovement.elapsedMinutes} min</span>
                           </p>
                         </div>
                       ) : null}
 
-                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-2.5">
+                      {item.whyItMatters ? (
+                        <div className="mt-2">
+                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
+                            Why it matters
+                          </p>
+                          <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold leading-4 text-white/58">
+                            {item.whyItMatters}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mt-2 line-clamp-2 text-[11px] font-semibold leading-4 text-white/52">
+                          {item.summary}
+                        </p>
+                      )}
+
+                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-2">
                         <div className="min-w-0">
-                          <p className="truncate text-[10px] font-black uppercase tracking-[0.12em] text-white/42">
-                            {displaySourceCount > 1 ? `${displaySourceCount} Sources` : sourceLabel}
+                          <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-white/50">
+                            {sourceDisplay}
                           </p>
                           <p className="mt-0.5 text-[10px] font-semibold text-white/42">
                             {sourceMeta}
