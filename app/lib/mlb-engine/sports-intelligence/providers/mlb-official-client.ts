@@ -73,7 +73,7 @@ export class CachedMlbOfficialClient implements MlbOfficialClient {
     if (cached) return cached;
 
     const data = await fetchJson<{ dates?: Array<{ games?: MlbOfficialScheduleGame[] }> }>(
-      `/schedule?sportId=1&date=${encodeURIComponent(date)}&hydrate=probablePitcher`,
+      `/schedule?sportId=1&date=${encodeURIComponent(date)}&hydrate=probablePitcher,venue`,
     );
     const games = data.dates?.flatMap((day) => day.games ?? []) ?? [];
     setCached(scheduleCache, key, games, SCHEDULE_TTL_MS);
@@ -119,4 +119,3 @@ export class CachedMlbOfficialClient implements MlbOfficialClient {
 }
 
 export const cachedMlbOfficialClient = new CachedMlbOfficialClient();
-

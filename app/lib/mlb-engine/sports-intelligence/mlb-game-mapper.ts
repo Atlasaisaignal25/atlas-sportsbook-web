@@ -36,6 +36,10 @@ export type MlbOfficialScheduleGame = {
   gameDate?: string;
   gameNumber?: number;
   doubleHeader?: string;
+  venue?: {
+    id?: number;
+    name?: string;
+  };
   status?: {
     detailedState?: string;
     abstractGameState?: string;

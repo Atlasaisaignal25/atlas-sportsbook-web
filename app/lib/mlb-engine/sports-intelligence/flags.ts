@@ -17,6 +17,12 @@ export type MlbSportsIntelligenceFlags = {
   bullpenSeasonArchiveEnabled: boolean;
   bullpenQualityBaselineEnabled: boolean;
   weatherModelEnabled: boolean;
+  nwsProviderEnabled: boolean;
+  parkFactorModelEnabled: boolean;
+  weatherDelayRiskEnabled: boolean;
+  weatherRunEnvironmentEnabled: boolean;
+  parkEnvironmentScoreEnabled: boolean;
+  weatherScoreMode: "AUDIT_ONLY" | "DISABLED";
   lineupSnapshotsEnabled: boolean;
   lineupChangeDetectionEnabled: boolean;
   starterVerificationSnapshotsEnabled: boolean;
@@ -46,6 +52,12 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     bullpenSeasonArchiveEnabled: envFlag("MLB_BULLPEN_SEASON_ARCHIVE_ENABLED"),
     bullpenQualityBaselineEnabled: envFlag("MLB_BULLPEN_QUALITY_BASELINE_ENABLED"),
     weatherModelEnabled: envFlag("MLB_WEATHER_MODEL_ENABLED"),
+    nwsProviderEnabled: envFlag("MLB_NWS_PROVIDER_ENABLED"),
+    parkFactorModelEnabled: envFlag("MLB_PARK_FACTOR_MODEL_ENABLED"),
+    weatherDelayRiskEnabled: envFlag("MLB_WEATHER_DELAY_RISK_ENABLED"),
+    weatherRunEnvironmentEnabled: envFlag("MLB_WEATHER_RUN_ENVIRONMENT_ENABLED"),
+    parkEnvironmentScoreEnabled: envFlag("MLB_PARK_ENVIRONMENT_SCORE_ENABLED"),
+    weatherScoreMode: process.env.MLB_WEATHER_SCORE_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
     lineupSnapshotsEnabled: envFlag("MLB_LINEUP_SNAPSHOTS_ENABLED"),
     lineupChangeDetectionEnabled: envFlag("MLB_LINEUP_CHANGE_DETECTION_ENABLED"),
     starterVerificationSnapshotsEnabled: envFlag("MLB_STARTER_VERIFICATION_SNAPSHOTS_ENABLED"),

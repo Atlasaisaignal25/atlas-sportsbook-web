@@ -17,6 +17,7 @@ import {
   MlbOfficialBullpenProvider,
   type MlbOfficialBullpenProviderHealth,
 } from "../bullpen/mlb-official-bullpen-provider";
+import { MlbWeatherParkProvider, type MlbWeatherProviderHealth } from "../weather/weather-provider";
 import type {
   BullpenFeatures,
   LineupStrengthFeatures,
@@ -24,6 +25,7 @@ import type {
   OffensiveFormFeatures,
   StartingPitcherFeatures,
   StarterVerificationResult,
+  WeatherParkFeatures,
 } from "../types";
 import { UnavailableMlbSportsIntelligenceProvider } from "../provider";
 import { cachedMlbOfficialClient } from "./mlb-official-client";
@@ -39,6 +41,7 @@ export type MlbOfficialLineupProviderHealth = MlbOfficialPitcherProviderHealth &
   changedStarters: number;
   offense?: StatcastOffenseProviderHealth;
   bullpen?: MlbOfficialBullpenProviderHealth;
+  weatherPark?: MlbWeatherProviderHealth;
 };
 
 const unavailableProvider = new UnavailableMlbSportsIntelligenceProvider();
@@ -68,11 +71,32 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
       enableBullpenFatigueScore?: boolean;
       bullpenFatigueVersion?: "v1" | "v2";
       enableBullpenQualityScore?: boolean;
+      enableWeather?: boolean;
+      enableNwsProvider?: boolean;
+      enableParkFactorModel?: boolean;
+      enableWeatherDelayRisk?: boolean;
+      enableWeatherRunEnvironment?: boolean;
+      enableParkEnvironmentScore?: boolean;
       pitcherClient?: MlbOfficialClient;
       gameClient?: MlbOfficialGameClient;
     },
   ) {
     super(options.pitcherClient);
+  }
+
+  override async getWeatherParkFeatures(context: MlbGameContext): Promise<WeatherParkFeatures> {
+    if (!this.options.enableWeather) return unavailableProvider.getWeatherParkFeatures(context);
+    const provider = new MlbWeatherParkProvider({
+      enabled: true,
+      nwsEnabled: this.options.enableNwsProvider,
+      parkFactorEnabled: this.options.enableParkFactorModel,
+      delayRiskEnabled: this.options.enableWeatherDelayRisk,
+      weatherRunEnvironmentEnabled: this.options.enableWeatherRunEnvironment,
+      parkEnvironmentEnabled: this.options.enableParkEnvironmentScore,
+    });
+    const features = await provider.getWeatherParkFeatures(context);
+    this.lineupHealth.weatherPark = provider.getHealth();
+    return features;
   }
 
   override async getBullpenFeatures(context: MlbGameContext): Promise<BullpenFeatures> {
@@ -361,9 +385,15 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
   bullpenFatigueScoreEnabled?: boolean;
   bullpenFatigueVersion?: "v1" | "v2";
   bullpenQualityScoreEnabled?: boolean;
+  weatherModelEnabled?: boolean;
+  nwsProviderEnabled?: boolean;
+  parkFactorModelEnabled?: boolean;
+  weatherDelayRiskEnabled?: boolean;
+  weatherRunEnvironmentEnabled?: boolean;
+  parkEnvironmentScoreEnabled?: boolean;
 }) {
   if (!flags.sportsIntelligenceEnabled) return unavailableProvider;
-  if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled && !flags.offensiveFormModelEnabled && !flags.bullpenModelEnabled) {
+  if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled && !flags.offensiveFormModelEnabled && !flags.bullpenModelEnabled && !flags.weatherModelEnabled) {
     return unavailableProvider;
   }
 
@@ -378,5 +408,11 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
     enableBullpenFatigueScore: flags.bullpenFatigueScoreEnabled,
     bullpenFatigueVersion: flags.bullpenFatigueVersion,
     enableBullpenQualityScore: flags.bullpenQualityScoreEnabled,
+    enableWeather: flags.weatherModelEnabled,
+    enableNwsProvider: flags.nwsProviderEnabled,
+    enableParkFactorModel: flags.parkFactorModelEnabled,
+    enableWeatherDelayRisk: flags.weatherDelayRiskEnabled,
+    enableWeatherRunEnvironment: flags.weatherRunEnvironmentEnabled,
+    enableParkEnvironmentScore: flags.parkEnvironmentScoreEnabled,
   });
 }

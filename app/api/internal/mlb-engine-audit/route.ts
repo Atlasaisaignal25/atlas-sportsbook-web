@@ -30,12 +30,19 @@ import { getMlbTeamIdentityByName } from "@/app/lib/mlb-engine/sports-intelligen
 import {
   BULLPEN_FATIGUE_SCORE_VERSION_V2,
   BULLPEN_QUALITY_SCORE_VERSION,
+  distribution,
   effectiveDepthDistribution,
   fatigueDistribution,
   qualityDistribution,
 } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-calibration";
 import { BULLPEN_QUALITY_SCORE_VERSION_V2 } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-season-quality";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
+import {
+  getWeatherParkSnapshotStatus,
+  loadLatestCanonicalWeatherParkFeatures,
+} from "@/app/lib/mlb-engine/sports-intelligence/weather/weather-feature-repository";
+import { parkBaselineHealth } from "@/app/lib/mlb-engine/sports-intelligence/weather/park-factor-provider";
+import { venueRegistryHealth } from "@/app/lib/mlb-engine/sports-intelligence/weather/venue-registry";
 
 export const dynamic = "force-dynamic";
 
@@ -221,6 +228,56 @@ function offensiveFormAudit(
     home: offensiveTeamAudit(features.offensiveForm.home),
     away: offensiveTeamAudit(features.offensiveForm.away),
     formAdvantage: features.offensiveForm.formAdvantage,
+  };
+}
+
+async function weatherParkAudit(
+  features: MlbSportsIntelligenceFeatures,
+  snapshotStatus: Awaited<ReturnType<typeof getWeatherParkSnapshotStatus>>,
+  scoreEnabled: boolean,
+) {
+  const snapshots = await loadLatestCanonicalWeatherParkFeatures();
+  const selected = snapshots.find((item) => item.officialGameId === features.eventId) ?? features.weatherPark;
+  return {
+    enabled: features.weatherPark.metadata.availability !== "UNAVAILABLE" || snapshots.length > 0,
+    provider: features.weatherPark.metadata.source ?? "none",
+    storageHealth: snapshotStatus,
+    venueRegistryHealth: venueRegistryHealth(),
+    parkProviderHealth: parkBaselineHealth(),
+    gamesAvailable: snapshots.filter((item) => item.metadata.availability === "AVAILABLE").length,
+    gamesPartial: snapshots.filter((item) => item.metadata.availability === "PARTIAL").length,
+    gamesUnavailable: snapshots.filter((item) => item.metadata.availability === "UNAVAILABLE").length,
+    latestRefresh: snapshotStatus.latestRefresh,
+    scoreEnabled,
+    scoreMode: scoreEnabled ? process.env.MLB_WEATHER_SCORE_MODE ?? "AUDIT_ONLY" : "DISABLED",
+    delayRiskDistribution: distribution(snapshots.map((item) => item.delayRisk)),
+    weatherEnvironmentDistribution: distribution(snapshots.map((item) => item.runEnvironmentScore)),
+    parkEnvironmentDistribution: distribution(snapshots.map((item) => item.parkEnvironmentScore)),
+    cacheHealth: "NWS provider uses server-side in-memory TTL caches.",
+    warnings: features.weatherPark.metadata.warnings ?? [],
+    selectedGame: selected ? {
+      officialGameId: selected.officialGameId,
+      venueId: selected.venueId,
+      venueName: selected.venueName,
+      scheduledStartTime: selected.scheduledStartTime,
+      roof: selected.roof,
+      forecastValidTime: selected.forecast?.validTime,
+      forecastAgeMinutes: selected.forecastAgeMinutes,
+      temperatureF: selected.temperatureF,
+      humidityPercent: selected.humidityPercent,
+      windSpeedMph: selected.windSpeedMph,
+      windGustMph: selected.windGustMph,
+      windDirection: selected.windDirection,
+      relativeWind: selected.relativeWind,
+      precipitationProbability: selected.precipitationProbability,
+      delayRisk: selected.delayRisk,
+      weatherDirection: selected.weatherDirection,
+      weatherRunEnvironmentScore: selected.runEnvironmentScore,
+      parkFactor: selected.parkFactor,
+      parkEnvironmentScore: selected.parkEnvironmentScore,
+      availability: selected.metadata.availability,
+      sourceFreshness: selected.metadata.updatedAt,
+    } : undefined,
   };
 }
 
@@ -489,7 +546,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -497,6 +554,7 @@ export async function GET(request: Request) {
       getOffensiveBaselineStorageStatus(),
       getBullpenFeatureSnapshotStatus(),
       getBullpenQualityBaselineStatus(),
+      getWeatherParkSnapshotStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -507,7 +565,7 @@ export async function GET(request: Request) {
     });
     let sportsFeatures =
       sportsFlags.sportsIntelligenceEnabled &&
-      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled)
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled || sportsFlags.weatherModelEnabled)
         ? await getMlbSportsIntelligenceFeatures(sportsContext, sportsProvider)
         : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
     if (sportsFlags.sportsIntelligenceEnabled && sportsFlags.bullpenModelEnabled) {
@@ -518,7 +576,7 @@ export async function GET(request: Request) {
     }
     const pitcherDiagnostics =
       sportsFlags.sportsIntelligenceEnabled &&
-      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled)
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled || sportsFlags.weatherModelEnabled)
         ? await Promise.all(
             pitcherContexts.map(async (context) =>
               pitcherAuditItem(
@@ -578,7 +636,7 @@ export async function GET(request: Request) {
       sportsIntelligence: sportsIntelligenceAuditSummary({
         enabled:
           sportsFlags.sportsIntelligenceEnabled &&
-          (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled),
+          (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.weatherModelEnabled),
         provider: sportsProvider.name ?? unavailableMlbSportsIntelligenceProvider.name,
         features: sportsFeatures,
         health: providerHealth,
@@ -605,6 +663,11 @@ export async function GET(request: Request) {
         offensiveSnapshotStatus,
         offensiveBaselineStatus,
         sportsFlags.offensiveScoreEnabled,
+      ),
+      weatherPark: await weatherParkAudit(
+        sportsFeatures,
+        weatherSnapshotStatus,
+        sportsFlags.weatherModelEnabled && sportsFlags.weatherScoreMode === "AUDIT_ONLY",
       ),
       bullpen: await bullpenAudit(
         sportsFeatures,

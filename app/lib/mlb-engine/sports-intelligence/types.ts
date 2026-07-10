@@ -8,6 +8,7 @@ export type DataAvailability =
 export type FeatureSource =
   | "MLB_OFFICIAL"
   | "BASEBALL_SAVANT"
+  | "NWS"
   | "WEATHER"
   | "ATLAS_DERIVED"
   | "SPORTSDATAIO"
@@ -605,17 +606,76 @@ export type WeatherParkFeatures = {
   metadata: SportsFeatureMetadata;
   venueId?: string;
   venueName?: string;
-  roofType?: "OPEN" | "CLOSED" | "RETRACTABLE" | "DOME";
-  roofStatus?: "OPEN" | "CLOSED" | "UNKNOWN";
+  officialGameId?: string;
+  scheduledStartTime?: string;
+  localStartTime?: string;
+  roofType?: "OPEN_AIR" | "DOME" | "RETRACTABLE" | "UNKNOWN" | "OPEN" | "CLOSED";
+  roofStatus?: "OPEN" | "CLOSED" | "EXPECTED_OPEN" | "EXPECTED_CLOSED" | "UNKNOWN";
+  roof?: {
+    roofType: "OPEN_AIR" | "DOME" | "RETRACTABLE" | "UNKNOWN";
+    roofStatus: "OPEN" | "CLOSED" | "EXPECTED_OPEN" | "EXPECTED_CLOSED" | "UNKNOWN";
+    statusSource?: "MLB_OFFICIAL" | "VENUE_DEFAULT" | "ATLAS_INFERRED" | "UNKNOWN";
+    verified: boolean;
+    confidence?: number;
+    warnings: string[];
+  };
+  forecast?: {
+    validTime: string;
+    generatedAt?: string;
+    temperatureF?: number;
+    relativeHumidityPercent?: number;
+    windSpeedMph?: number;
+    windGustMph?: number;
+    windDirectionDegrees?: number;
+    windDirectionCardinal?: string;
+    precipitationProbability?: number;
+    shortForecast?: string;
+    source: "NWS_FORECAST";
+    warnings: string[];
+  };
+  relativeWind?: {
+    rawDirectionDegrees?: number;
+    stadiumBearingDegrees?: number;
+    componentOutToCenterMph?: number;
+    componentInFromCenterMph?: number;
+    crosswindComponentMph?: number;
+    classification: "BLOWING_OUT" | "BLOWING_IN" | "CROSSWIND" | "CALM" | "UNKNOWN";
+    confidence?: number;
+  };
+  forecastLeadMinutes?: number;
+  forecastAgeMinutes?: number;
   temperatureF?: number;
   humidityPercent?: number;
   windSpeedMph?: number;
+  windGustMph?: number;
+  windDirectionDegrees?: number;
   windDirection?: string;
   precipitationProbability?: number;
   delayRisk?: number;
+  delayRiskVersion?: string;
+  delayRiskComponents?: Array<{ component: string; value?: number; score: number; weight: number }>;
   parkFactor?: number;
+  parkFactorFeatures?: {
+    officialVenueId: string;
+    venueName: string;
+    season?: number;
+    overallRunFactor?: number;
+    homeRunFactor?: number;
+    source: FeatureSource;
+    sourceUpdatedAt?: string;
+    parkEnvironmentScore?: number;
+    scoreVersion?: string;
+    metadata: SportsFeatureMetadata;
+    warnings: string[];
+  };
+  parkEnvironmentScore?: number;
+  parkEnvironmentVersion?: string;
   runEnvironmentScore?: number;
+  weatherRunEnvironmentVersion?: string;
+  weatherRunComponents?: Array<{ component: string; value?: number; score: number; weight: number }>;
+  weatherDirection?: "MORE_RUN_FRIENDLY" | "LESS_RUN_FRIENDLY" | "NEUTRAL" | "UNKNOWN";
   totalDirection?: "OVER" | "UNDER" | "NEUTRAL";
+  warnings?: string[];
 };
 
 export type MlbGameContext = {
