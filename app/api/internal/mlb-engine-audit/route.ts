@@ -7,9 +7,12 @@ import {
 import {
   buildMlbSportsProjection,
   buildUnavailableMlbSportsIntelligenceFeatures,
+  getLineupChangeStatus,
+  getLineupPersistenceStatus,
   getMlbOfficialSportsIntelligenceProviderWhenEnabled,
   getMlbSportsIntelligenceFeatures,
   getMlbSportsIntelligenceFlags,
+  getStarterVerificationStatus,
   unavailableMlbSportsIntelligenceProvider,
   type MlbGameContext,
   type MlbOfficialPitcherProviderHealth,
@@ -239,6 +242,11 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
+    const [lineupPersistence, lineupChanges, starterVerification] = await Promise.all([
+      getLineupPersistenceStatus(),
+      getLineupChangeStatus(details),
+      getStarterVerificationStatus(details),
+    ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
     const sportsProvider = getMlbOfficialSportsIntelligenceProviderWhenEnabled(sportsFlags);
@@ -314,6 +322,23 @@ export async function GET(request: Request) {
         features: sportsFeatures,
         health: providerHealth,
       }),
+      lineupPersistence: {
+        enabled: sportsFlags.lineupSnapshotsEnabled,
+        ...lineupPersistence,
+      },
+      lineupChanges: {
+        enabled: sportsFlags.lineupChangeDetectionEnabled,
+        ...lineupChanges,
+      },
+      starterVerification: {
+        enabled: sportsFlags.starterVerificationSnapshotsEnabled,
+        ...starterVerification,
+      },
+      playerAvailability: {
+        availability: sportsFeatures.playerAvailability.metadata.availability,
+        source: sportsFeatures.playerAvailability.metadata.source ?? "none",
+        warnings: sportsFeatures.playerAvailability.warnings,
+      },
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,
         count: pitcherDiagnostics.length,

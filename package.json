@@ -11,7 +11,8 @@
     "validate:odds-movement": "npx --yes tsx scripts/validate-odds-movement.ts",
     "validate:mlb-sports-intelligence": "npx --yes tsx scripts/validate-mlb-sports-intelligence-phase1.ts",
     "validate:mlb-pitcher-provider": "npx --yes tsx scripts/validate-mlb-pitcher-provider.ts",
-    "validate:mlb-lineup-provider": "npx --yes tsx scripts/validate-mlb-lineup-provider.ts"
+    "validate:mlb-lineup-provider": "npx --yes tsx scripts/validate-mlb-lineup-provider.ts",
+    "validate:mlb-lineup-snapshots": "npx --yes tsx scripts/validate-mlb-lineup-snapshots.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
