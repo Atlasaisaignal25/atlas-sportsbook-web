@@ -1,4 +1,5 @@
 import type { MlbGameContext } from "./types";
+import { normalizeMlbTeamName } from "./mlb-team-mapping";
 
 export type MlbGameMappingMatchMethod =
   | "TEAM_AND_TIME_EXACT"
@@ -58,59 +59,7 @@ export type MlbResolvedGame = {
   game?: MlbOfficialScheduleGame;
 };
 
-const TEAM_ALIASES: Record<string, string> = {
-  "arizona diamondbacks": "arizona diamondbacks",
-  "atlanta braves": "atlanta braves",
-  "baltimore orioles": "baltimore orioles",
-  "boston red sox": "boston red sox",
-  "chicago cubs": "chicago cubs",
-  "chicago white sox": "chicago white sox",
-  "cincinnati reds": "cincinnati reds",
-  "cleveland guardians": "cleveland guardians",
-  "colorado rockies": "colorado rockies",
-  "detroit tigers": "detroit tigers",
-  "houston astros": "houston astros",
-  "kansas city royals": "kansas city royals",
-  "los angeles angels": "los angeles angels",
-  "la angels": "los angeles angels",
-  "los angeles dodgers": "los angeles dodgers",
-  "la dodgers": "los angeles dodgers",
-  "miami marlins": "miami marlins",
-  "milwaukee brewers": "milwaukee brewers",
-  "minnesota twins": "minnesota twins",
-  "new york mets": "new york mets",
-  "ny mets": "new york mets",
-  "new york yankees": "new york yankees",
-  "ny yankees": "new york yankees",
-  "athletics": "athletics",
-  "oakland athletics": "athletics",
-  "a's": "athletics",
-  "philadelphia phillies": "philadelphia phillies",
-  "pittsburgh pirates": "pittsburgh pirates",
-  "san diego padres": "san diego padres",
-  "seattle mariners": "seattle mariners",
-  "san francisco giants": "san francisco giants",
-  "st louis cardinals": "st louis cardinals",
-  "st. louis cardinals": "st louis cardinals",
-  "tampa bay rays": "tampa bay rays",
-  "texas rangers": "texas rangers",
-  "toronto blue jays": "toronto blue jays",
-  "washington nationals": "washington nationals",
-};
-
-export function normalizeMlbTeamName(value: string) {
-  const normalized = String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[’]/g, "'")
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return TEAM_ALIASES[normalized] ?? normalized;
-}
+export { normalizeMlbTeamName };
 
 function minutesBetween(first: string, second: string) {
   const firstMs = new Date(first).getTime();
@@ -253,4 +202,3 @@ export function mapOddsEventToOfficialMlbGame(input: {
     }),
   };
 }
-

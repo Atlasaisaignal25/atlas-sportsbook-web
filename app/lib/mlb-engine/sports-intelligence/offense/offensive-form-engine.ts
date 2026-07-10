@@ -4,6 +4,7 @@ import type {
   OffensiveFormFeatures,
   OffensiveMetricBreakdown,
   OffensiveRollingWindow,
+  OffensiveSampleQuality,
   OffensiveTeamForm,
   SportsFeatureMetadata,
 } from "../types";
@@ -25,22 +26,53 @@ export type VerifiedOffensiveRollingStats = {
   source: Extract<FeatureSource, "MLB_OFFICIAL" | "BASEBALL_SAVANT">;
   windows: Partial<Record<OffensiveRollingWindow, {
     games: number;
+    gamesRequested?: 7 | 14 | 30;
+    gamesIncluded?: number;
+    startDate?: string;
+    endDate?: string;
+    plateAppearances?: number;
+    battedBallEvents?: number;
+    hits?: number;
+    walks?: number;
+    strikeouts?: number;
+    hardHitBalls?: number;
+    barrels?: number;
     hardHitRate?: number;
     barrelRate?: number;
     exitVelocity?: number;
+    averageExitVelocity?: number;
     walkRate?: number;
     strikeoutRate?: number;
     expectedBattingAverage?: number;
     expectedSlugging?: number;
     expectedWeightedOnBaseAverage?: number;
+    xBA?: number;
+    xSLG?: number;
+    xwOBA?: number;
+    sampleQuality?: OffensiveSampleQuality;
+    warnings?: string[];
   }>>;
 };
 
 type MetricProfile = {
-  min: number;
-  max: number;
   weight: number;
   higherIsBetter: boolean;
+};
+
+export type OffensiveLeagueBaselineMetric = {
+  mean: number;
+  standardDeviation: number;
+};
+
+export type OffensiveLeagueBaseline = {
+  source: Extract<FeatureSource, "BASEBALL_SAVANT">;
+  asOf: string;
+  sampleSize: {
+    plateAppearances: number;
+    battedBallEvents: number;
+  };
+  metrics: Partial<Record<OffensiveMetricKey, OffensiveLeagueBaselineMetric>>;
+  warnings: string[];
 };
 
 const WINDOW_WEIGHTS: Record<OffensiveRollingWindow, number> = {
@@ -50,14 +82,14 @@ const WINDOW_WEIGHTS: Record<OffensiveRollingWindow, number> = {
 };
 
 const METRIC_PROFILES: Record<OffensiveMetricKey, MetricProfile> = {
-  hardHitRate: { min: 30, max: 55, weight: 0.16, higherIsBetter: true },
-  barrelRate: { min: 4, max: 14, weight: 0.16, higherIsBetter: true },
-  exitVelocity: { min: 86, max: 92, weight: 0.12, higherIsBetter: true },
-  walkRate: { min: 5, max: 12, weight: 0.12, higherIsBetter: true },
-  strikeoutRate: { min: 28, max: 16, weight: 0.12, higherIsBetter: false },
-  expectedBattingAverage: { min: 0.22, max: 0.285, weight: 0.1, higherIsBetter: true },
-  expectedSlugging: { min: 0.36, max: 0.5, weight: 0.14, higherIsBetter: true },
-  expectedWeightedOnBaseAverage: { min: 0.29, max: 0.38, weight: 0.18, higherIsBetter: true },
+  hardHitRate: { weight: 0.16, higherIsBetter: true },
+  barrelRate: { weight: 0.16, higherIsBetter: true },
+  exitVelocity: { weight: 0.12, higherIsBetter: true },
+  walkRate: { weight: 0.12, higherIsBetter: true },
+  strikeoutRate: { weight: 0.12, higherIsBetter: false },
+  expectedBattingAverage: { weight: 0.1, higherIsBetter: true },
+  expectedSlugging: { weight: 0.14, higherIsBetter: true },
+  expectedWeightedOnBaseAverage: { weight: 0.18, higherIsBetter: true },
 };
 
 const METRIC_KEYS = Object.keys(METRIC_PROFILES) as OffensiveMetricKey[];
@@ -75,22 +107,40 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function normalizeMetric(value: number, profile: MetricProfile) {
-  const low = Math.min(profile.min, profile.max);
-  const high = Math.max(profile.min, profile.max);
-  const normalized = ((value - low) / (high - low)) * 100;
+function normalizeMetric(value: number, profile: MetricProfile, baseline: OffensiveLeagueBaselineMetric) {
+  if (!Number.isFinite(baseline.standardDeviation) || baseline.standardDeviation <= 0) return undefined;
+  const zScore = (value - baseline.mean) / baseline.standardDeviation;
+  const normalized = 50 + zScore * 12.5;
   const score = profile.higherIsBetter ? normalized : 100 - normalized;
   return round(clamp(score));
 }
 
-function buildMetricBreakdown(stats: NonNullable<VerifiedOffensiveRollingStats["windows"][OffensiveRollingWindow]>) {
+function metricValue(
+  stats: NonNullable<VerifiedOffensiveRollingStats["windows"][OffensiveRollingWindow]>,
+  key: OffensiveMetricKey,
+) {
+  if (key === "exitVelocity") return stats.exitVelocity ?? stats.averageExitVelocity;
+  if (key === "expectedBattingAverage") return stats.expectedBattingAverage ?? stats.xBA;
+  if (key === "expectedSlugging") return stats.expectedSlugging ?? stats.xSLG;
+  if (key === "expectedWeightedOnBaseAverage") return stats.expectedWeightedOnBaseAverage ?? stats.xwOBA;
+  return stats[key];
+}
+
+function buildMetricBreakdown(
+  stats: NonNullable<VerifiedOffensiveRollingStats["windows"][OffensiveRollingWindow]>,
+  baseline?: OffensiveLeagueBaseline,
+) {
   const breakdown: OffensiveMetricBreakdown[] = [];
+  if (!baseline) return breakdown;
 
   METRIC_KEYS.forEach((key) => {
-    const rawValue = stats[key];
+    const rawValue = metricValue(stats, key);
     if (!isFiniteNumber(rawValue)) return;
+    const baselineMetric = baseline.metrics[key];
+    if (!baselineMetric) return;
     const profile = METRIC_PROFILES[key];
-    const normalizedScore = normalizeMetric(rawValue, profile);
+    const normalizedScore = normalizeMetric(rawValue, profile, baselineMetric);
+    if (!isFiniteNumber(normalizedScore)) return;
     breakdown.push({
       metric: key,
       rawValue,
@@ -114,23 +164,42 @@ function calculateWindowScore(breakdown: OffensiveMetricBreakdown[]) {
 function buildWindow(
   window: OffensiveRollingWindow,
   stats: NonNullable<VerifiedOffensiveRollingStats["windows"][OffensiveRollingWindow]> | undefined,
+  baseline?: OffensiveLeagueBaseline,
+  scoringEnabled = false,
 ) {
   if (!stats) return undefined;
 
-  const breakdown = buildMetricBreakdown(stats);
-  const score = calculateWindowScore(breakdown);
+  const breakdown = scoringEnabled ? buildMetricBreakdown(stats, baseline) : [];
+  const score = scoringEnabled ? calculateWindowScore(breakdown) : undefined;
   return {
     window,
     games: stats.games,
+    gamesRequested: stats.gamesRequested,
+    gamesIncluded: stats.gamesIncluded ?? stats.games,
+    startDate: stats.startDate,
+    endDate: stats.endDate,
+    plateAppearances: stats.plateAppearances,
+    battedBallEvents: stats.battedBallEvents,
+    hits: stats.hits,
+    walks: stats.walks,
+    strikeouts: stats.strikeouts,
+    hardHitBalls: stats.hardHitBalls,
+    barrels: stats.barrels,
     score,
     hardHitRate: stats.hardHitRate,
     barrelRate: stats.barrelRate,
-    exitVelocity: stats.exitVelocity,
+    exitVelocity: stats.exitVelocity ?? stats.averageExitVelocity,
+    averageExitVelocity: stats.averageExitVelocity ?? stats.exitVelocity,
     walkRate: stats.walkRate,
     strikeoutRate: stats.strikeoutRate,
-    expectedBattingAverage: stats.expectedBattingAverage,
-    expectedSlugging: stats.expectedSlugging,
-    expectedWeightedOnBaseAverage: stats.expectedWeightedOnBaseAverage,
+    expectedBattingAverage: stats.expectedBattingAverage ?? stats.xBA,
+    expectedSlugging: stats.expectedSlugging ?? stats.xSLG,
+    expectedWeightedOnBaseAverage: stats.expectedWeightedOnBaseAverage ?? stats.xwOBA,
+    xBA: stats.xBA ?? stats.expectedBattingAverage,
+    xSLG: stats.xSLG ?? stats.expectedSlugging,
+    xwOBA: stats.xwOBA ?? stats.expectedWeightedOnBaseAverage,
+    sampleQuality: stats.sampleQuality,
+    warnings: stats.warnings ?? [],
     componentBreakdown: breakdown,
   };
 }
@@ -145,15 +214,26 @@ function calculateAtlasOffensiveScore(windows: OffensiveTeamForm["rollingWindows
   return round(scored.reduce((sum, item) => sum + item.score * WINDOW_WEIGHTS[item.window], 0) / totalWeight);
 }
 
-function buildTeamForm(input: VerifiedOffensiveRollingStats): OffensiveTeamForm {
+function hasRawWindowData(windows: OffensiveTeamForm["rollingWindows"]) {
+  return Object.values(windows).some((window) =>
+    Boolean(window && (window.plateAppearances || window.battedBallEvents || window.gamesIncluded)),
+  );
+}
+
+function buildTeamForm(
+  input: VerifiedOffensiveRollingStats,
+  baseline?: OffensiveLeagueBaseline,
+  scoringEnabled = false,
+): OffensiveTeamForm {
   const rollingWindows = {
-    last7: buildWindow("last7", input.windows.last7),
-    last14: buildWindow("last14", input.windows.last14),
-    last30: buildWindow("last30", input.windows.last30),
+    last7: buildWindow("last7", input.windows.last7, baseline, scoringEnabled),
+    last14: buildWindow("last14", input.windows.last14, baseline, scoringEnabled),
+    last30: buildWindow("last30", input.windows.last30, baseline, scoringEnabled),
   };
 
   const atlasOffensiveScore = calculateAtlasOffensiveScore(rollingWindows);
   const currentWindow = rollingWindows.last7 ?? rollingWindows.last14 ?? rollingWindows.last30;
+  const hasRawData = hasRawWindowData(rollingWindows);
 
   return {
     teamId: input.teamId,
@@ -162,7 +242,7 @@ function buildTeamForm(input: VerifiedOffensiveRollingStats): OffensiveTeamForm 
     currentScore: atlasOffensiveScore,
     scoreTimestamp: input.asOf,
     source: input.source,
-    availability: atlasOffensiveScore === undefined ? "UNAVAILABLE" : "AVAILABLE",
+    availability: atlasOffensiveScore !== undefined || hasRawData ? "AVAILABLE" : "UNAVAILABLE",
     rollingWindows,
     componentBreakdown: currentWindow?.componentBreakdown ?? [],
     last7Score: rollingWindows.last7?.score,
@@ -208,10 +288,13 @@ export function buildOffensiveFormFeatures(input: {
   home?: VerifiedOffensiveRollingStats;
   away?: VerifiedOffensiveRollingStats;
   observedAt?: string;
+  baseline?: OffensiveLeagueBaseline;
+  scoringEnabled?: boolean;
 }): OffensiveFormFeatures {
   const observedAt = input.observedAt ?? new Date().toISOString();
-  const home = input.home ? buildTeamForm(input.home) : undefined;
-  const away = input.away ? buildTeamForm(input.away) : undefined;
+  const scoringEnabled = Boolean(input.scoringEnabled && input.baseline);
+  const home = input.home ? buildTeamForm(input.home, input.baseline, scoringEnabled) : undefined;
+  const away = input.away ? buildTeamForm(input.away, input.baseline, scoringEnabled) : undefined;
   const source = home?.source ?? away?.source;
   const homeScore = home?.atlasOffensiveScore;
   const awayScore = away?.atlasOffensiveScore;

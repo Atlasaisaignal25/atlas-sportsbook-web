@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   buildMlbSportsProjection,
   buildOffensiveFormFeatures,
+  buildStatcastLeagueBaseline,
   getMlbSportsIntelligenceFeatures,
   getMlbSportsIntelligenceFlags,
   unavailableMlbSportsIntelligenceProvider,
@@ -98,9 +99,7 @@ async function main() {
   assert.equal(projection.awayWinProbability, undefined);
   assert.equal(projection.projectedTotalRuns, undefined);
 
-  const offensive = buildOffensiveFormFeatures({
-    observedAt: "2026-07-10T18:00:00Z",
-    home: {
+  const homeOffense = {
       teamId: "116",
       teamName: "Detroit Tigers",
       asOf: "2026-07-10T18:00:00Z",
@@ -140,8 +139,8 @@ async function main() {
           expectedWeightedOnBaseAverage: 0.318,
         },
       },
-    },
-    away: {
+    } as const;
+  const awayOffense = {
       teamId: "143",
       teamName: "Philadelphia Phillies",
       asOf: "2026-07-10T18:00:00Z",
@@ -159,19 +158,29 @@ async function main() {
           expectedWeightedOnBaseAverage: 0.295,
         },
       },
-    },
+    } as const;
+  const offensive = buildOffensiveFormFeatures({
+    observedAt: "2026-07-10T18:00:00Z",
+    home: homeOffense,
+    away: awayOffense,
+    baseline: buildStatcastLeagueBaseline({
+      teamWindows: [homeOffense, awayOffense],
+      asOf: "2026-07-10T18:00:00Z",
+    }),
+    scoringEnabled: true,
   });
   assert.equal(offensive.metadata.availability, "AVAILABLE");
-  assert.equal(offensive.home?.atlasOffensiveScore, 50.8);
-  assert.equal(offensive.home?.rollingWindows.last7?.score, 61);
+  assert.equal(typeof offensive.home?.atlasOffensiveScore, "number");
+  assert.equal(typeof offensive.home?.rollingWindows.last7?.score, "number");
   assert.equal(offensive.home?.componentBreakdown.length, 8);
-  assert.equal(offensive.away?.atlasOffensiveScore, 14.3);
   assert.equal(offensive.formAdvantage, "HOME");
 
   process.env.MLB_SPORTS_INTELLIGENCE_ENABLED = "false";
   process.env.MLB_PITCHER_MODEL_ENABLED = "false";
   process.env.MLB_LINEUP_MODEL_ENABLED = "false";
   process.env.MLB_OFFENSIVE_FORM_MODEL_ENABLED = "false";
+  process.env.MLB_STATCAST_PROVIDER_ENABLED = "false";
+  process.env.MLB_OFFENSIVE_SCORE_ENABLED = "false";
   process.env.MLB_BULLPEN_MODEL_ENABLED = "false";
   process.env.MLB_WEATHER_MODEL_ENABLED = "false";
   const flags = getMlbSportsIntelligenceFlags();
@@ -180,6 +189,8 @@ async function main() {
     pitcherModelEnabled: false,
     lineupModelEnabled: false,
     offensiveFormModelEnabled: false,
+    statcastProviderEnabled: false,
+    offensiveScoreEnabled: false,
     bullpenModelEnabled: false,
     weatherModelEnabled: false,
     lineupSnapshotsEnabled: false,

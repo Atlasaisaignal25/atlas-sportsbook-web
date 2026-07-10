@@ -12,6 +12,7 @@ import {
   verifyOfficialStarter,
 } from "../lineup-normalizer";
 import { buildUnavailableOffensiveFormFeatures } from "../offense/offensive-form-engine";
+import { StatcastOffenseProvider, type StatcastOffenseProviderHealth } from "../offense/statcast-offense-provider";
 import type {
   LineupStrengthFeatures,
   MlbGameContext,
@@ -20,6 +21,7 @@ import type {
   StarterVerificationResult,
 } from "../types";
 import { UnavailableMlbSportsIntelligenceProvider } from "../provider";
+import { cachedMlbOfficialClient } from "./mlb-official-client";
 
 export type MlbOfficialLineupProviderHealth = MlbOfficialPitcherProviderHealth & {
   gamesInspected: number;
@@ -30,13 +32,14 @@ export type MlbOfficialLineupProviderHealth = MlbOfficialPitcherProviderHealth &
   probableStarters: number;
   confirmedStarters: number;
   changedStarters: number;
+  offense?: StatcastOffenseProviderHealth;
 };
 
 const unavailableProvider = new UnavailableMlbSportsIntelligenceProvider();
 
 export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherProvider {
   name = "MlbOfficialSportsIntelligenceProvider";
-  private lineupHealth = {
+  private lineupHealth: Omit<MlbOfficialLineupProviderHealth, keyof MlbOfficialPitcherProviderHealth> = {
     gamesInspected: 0,
     bothLineupsConfirmed: 0,
     oneLineupConfirmed: 0,
@@ -52,6 +55,8 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
       enablePitcher: boolean;
       enableLineup: boolean;
       enableOffense?: boolean;
+      enableStatcastProvider?: boolean;
+      enableOffensiveScore?: boolean;
       pitcherClient?: MlbOfficialClient;
       gameClient?: MlbOfficialGameClient;
     },
@@ -64,14 +69,29 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
       return buildUnavailableOffensiveFormFeatures(context.currentTime);
     }
 
+    const provider = new StatcastOffenseProvider({
+      enabled: Boolean(this.options.enableStatcastProvider),
+      scoreEnabled: Boolean(this.options.enableOffensiveScore),
+      officialClient: this.options.pitcherClient ?? cachedMlbOfficialClient,
+    });
+    const features = await provider.getOffensiveFormFeatures(context);
+    this.lineupHealth = {
+      ...this.lineupHealth,
+      offense: provider.getHealth(),
+    };
+    if (features.metadata.availability !== "UNAVAILABLE") return features;
+
     return {
-      ...buildUnavailableOffensiveFormFeatures(context.currentTime),
+      ...features,
       metadata: {
-        availability: "UNAVAILABLE",
-        source: "MLB_OFFICIAL",
+        ...features.metadata,
+        source: this.options.enableStatcastProvider ? "BASEBALL_SAVANT" : "UNKNOWN",
         observedAt: context.currentTime,
         warnings: [
-          "Offensive Form Engine is available for verified official rolling-stat inputs, but no official rolling Statcast feed is connected.",
+          ...(features.metadata.warnings ?? []),
+          this.options.enableStatcastProvider
+            ? "Statcast offensive provider did not return usable rolling metrics."
+            : "MLB_STATCAST_PROVIDER_ENABLED is false; verified offensive rolling metrics are not requested.",
         ],
       },
     };
@@ -302,13 +322,19 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
   pitcherModelEnabled: boolean;
   lineupModelEnabled: boolean;
   offensiveFormModelEnabled?: boolean;
+  statcastProviderEnabled?: boolean;
+  offensiveScoreEnabled?: boolean;
 }) {
   if (!flags.sportsIntelligenceEnabled) return unavailableProvider;
-  if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled) return unavailableProvider;
+  if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled && !flags.offensiveFormModelEnabled) {
+    return unavailableProvider;
+  }
 
   return new MlbOfficialSportsIntelligenceProvider({
     enablePitcher: flags.pitcherModelEnabled,
     enableLineup: flags.lineupModelEnabled,
     enableOffense: flags.offensiveFormModelEnabled,
+    enableStatcastProvider: flags.statcastProviderEnabled,
+    enableOffensiveScore: flags.offensiveScoreEnabled,
   });
 }

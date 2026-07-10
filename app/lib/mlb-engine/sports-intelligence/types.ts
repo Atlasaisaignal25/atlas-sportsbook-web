@@ -244,6 +244,12 @@ export type MlbPlayerAvailabilityFeatures = {
 
 export type OffensiveRollingWindow = "last7" | "last14" | "last30";
 
+export type OffensiveSampleQuality =
+  | "SUFFICIENT"
+  | "LIMITED"
+  | "INSUFFICIENT"
+  | "UNAVAILABLE";
+
 export type OffensiveMetricBreakdown = {
   metric:
     | "hardHitRate"
@@ -263,15 +269,32 @@ export type OffensiveMetricBreakdown = {
 export type OffensiveRollingFormWindow = {
   window: OffensiveRollingWindow;
   games: number;
+  gamesRequested?: 7 | 14 | 30;
+  gamesIncluded?: number;
+  startDate?: string;
+  endDate?: string;
+  plateAppearances?: number;
+  battedBallEvents?: number;
+  hits?: number;
+  walks?: number;
+  strikeouts?: number;
+  hardHitBalls?: number;
+  barrels?: number;
   score?: number;
   hardHitRate?: number;
   barrelRate?: number;
   exitVelocity?: number;
+  averageExitVelocity?: number;
   walkRate?: number;
   strikeoutRate?: number;
   expectedBattingAverage?: number;
   expectedSlugging?: number;
   expectedWeightedOnBaseAverage?: number;
+  xBA?: number;
+  xSLG?: number;
+  xwOBA?: number;
+  sampleQuality?: OffensiveSampleQuality;
+  warnings?: string[];
   componentBreakdown: OffensiveMetricBreakdown[];
 };
 

@@ -3,6 +3,8 @@ export type MlbSportsIntelligenceFlags = {
   pitcherModelEnabled: boolean;
   lineupModelEnabled: boolean;
   offensiveFormModelEnabled: boolean;
+  statcastProviderEnabled: boolean;
+  offensiveScoreEnabled: boolean;
   bullpenModelEnabled: boolean;
   weatherModelEnabled: boolean;
   lineupSnapshotsEnabled: boolean;
@@ -20,6 +22,8 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     pitcherModelEnabled: envFlag("MLB_PITCHER_MODEL_ENABLED"),
     lineupModelEnabled: envFlag("MLB_LINEUP_MODEL_ENABLED"),
     offensiveFormModelEnabled: envFlag("MLB_OFFENSIVE_FORM_MODEL_ENABLED"),
+    statcastProviderEnabled: envFlag("MLB_STATCAST_PROVIDER_ENABLED"),
+    offensiveScoreEnabled: envFlag("MLB_OFFENSIVE_SCORE_ENABLED"),
     bullpenModelEnabled: envFlag("MLB_BULLPEN_MODEL_ENABLED"),
     weatherModelEnabled: envFlag("MLB_WEATHER_MODEL_ENABLED"),
     lineupSnapshotsEnabled: envFlag("MLB_LINEUP_SNAPSHOTS_ENABLED"),

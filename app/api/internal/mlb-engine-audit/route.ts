@@ -156,7 +156,28 @@ function offensiveTeamAudit(team: OffensiveTeamForm | undefined) {
 }
 
 function offensiveFormAudit(features: MlbSportsIntelligenceFeatures) {
+  const homeScoreAvailable = features.offensiveForm.home?.atlasOffensiveScore !== undefined;
+  const awayScoreAvailable = features.offensiveForm.away?.atlasOffensiveScore !== undefined;
+  const rawDataAvailable = [features.offensiveForm.home, features.offensiveForm.away].some((team) =>
+    Object.values(team?.rollingWindows ?? {}).some((window) => Boolean(window?.plateAppearances || window?.battedBallEvents)),
+  );
+
   return {
+    enabled: features.offensiveForm.metadata.availability !== "UNAVAILABLE",
+    provider: features.offensiveForm.metadata.source ?? "none",
+    providerHealth: "See sportsIntelligence.providerHealth.offense when Statcast provider is active.",
+    rawDataAvailability: rawDataAvailable ? "AVAILABLE" : "UNAVAILABLE",
+    scoreAvailability: homeScoreAvailable || awayScoreAvailable ? "AVAILABLE" : "UNAVAILABLE",
+    baselineAvailability: homeScoreAvailable || awayScoreAvailable ? "AVAILABLE" : "UNAVAILABLE",
+    teamsAvailable: [features.offensiveForm.home, features.offensiveForm.away]
+      .filter((team) => team?.availability === "AVAILABLE")
+      .map((team) => team?.teamName),
+    teamsUnavailable: [features.offensiveForm.home, features.offensiveForm.away]
+      .filter((team) => !team || team.availability !== "AVAILABLE")
+      .map((team) => team?.teamName)
+      .filter(Boolean),
+    cacheHealth: "server-side provider cache only",
+    lastSuccessfulRefresh: features.offensiveForm.metadata.updatedAt,
     availability: features.offensiveForm.metadata.availability,
     source: features.offensiveForm.metadata.source ?? "none",
     observedAt: features.offensiveForm.metadata.observedAt,
@@ -283,12 +304,12 @@ export async function GET(request: Request) {
     const sportsProvider = getMlbOfficialSportsIntelligenceProviderWhenEnabled(sportsFlags);
     const sportsFeatures =
       sportsFlags.sportsIntelligenceEnabled &&
-      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled)
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled)
         ? await getMlbSportsIntelligenceFeatures(sportsContext, sportsProvider)
         : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
     const pitcherDiagnostics =
       sportsFlags.sportsIntelligenceEnabled &&
-      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled)
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled)
         ? await Promise.all(
             pitcherContexts.map(async (context) =>
               pitcherAuditItem(
@@ -348,7 +369,7 @@ export async function GET(request: Request) {
       sportsIntelligence: sportsIntelligenceAuditSummary({
         enabled:
           sportsFlags.sportsIntelligenceEnabled &&
-          (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled),
+          (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled),
         provider: sportsProvider.name ?? unavailableMlbSportsIntelligenceProvider.name,
         features: sportsFeatures,
         health: providerHealth,
