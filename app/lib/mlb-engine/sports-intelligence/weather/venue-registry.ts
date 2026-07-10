@@ -67,9 +67,22 @@ export const MLB_VENUE_ORIENTATIONS: MlbVenueOrientation[] = MLB_VENUES.map((ven
   warnings: ["Relative wind remains UNKNOWN until verified stadium bearing is added."],
 }));
 
+const MLB_VENUE_2026_OVERRIDES: MlbVenueRecord[] = [
+  { officialVenueId: "2", venueName: "Oriole Park at Camden Yards", homeTeamIds: ["110"], latitude: 39.2839, longitude: -76.6217, timezone: "America/New_York", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "4", venueName: "Rate Field", homeTeamIds: ["145"], latitude: 41.83, longitude: -87.6339, timezone: "America/Chicago", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "22", venueName: "UNIQLO Field at Dodger Stadium", homeTeamIds: ["119"], latitude: 34.0739, longitude: -118.24, timezone: "America/Los_Angeles", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "2602", venueName: "Great American Ball Park", homeTeamIds: ["113"], latitude: 39.0979, longitude: -84.5066, timezone: "America/New_York", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "2889", venueName: "Busch Stadium", homeTeamIds: ["138"], latitude: 38.6226, longitude: -90.1928, timezone: "America/Chicago", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "3289", venueName: "Citi Field", homeTeamIds: ["121"], latitude: 40.7571, longitude: -73.8458, timezone: "America/New_York", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "3309", venueName: "Nationals Park", homeTeamIds: ["120"], latitude: 38.873, longitude: -77.0074, timezone: "America/New_York", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "3312", venueName: "Target Field", homeTeamIds: ["142"], latitude: 44.9817, longitude: -93.2776, timezone: "America/Chicago", roofType: "OPEN_AIR", surfaceType: "grass", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: [] },
+  { officialVenueId: "4169", venueName: "loanDepot park", homeTeamIds: ["146"], latitude: 25.7781, longitude: -80.2197, timezone: "America/New_York", roofType: "RETRACTABLE", surfaceType: "synthetic", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: ["Retractable roof status requires game-level verification."] },
+  { officialVenueId: "5325", venueName: "Globe Life Field", homeTeamIds: ["140"], latitude: 32.7473, longitude: -97.0842, timezone: "America/Chicago", roofType: "RETRACTABLE", surfaceType: "synthetic", source: "MLB_OFFICIAL", verifiedAt: "2026-07-10", warnings: ["Retractable roof status requires game-level verification."] },
+];
+
 export function getVenueById(officialVenueId: string | number | undefined) {
   if (officialVenueId === undefined) return undefined;
-  return MLB_VENUES.find((venue) => venue.officialVenueId === String(officialVenueId));
+  return [...MLB_VENUE_2026_OVERRIDES, ...MLB_VENUES].find((venue) => venue.officialVenueId === String(officialVenueId));
 }
 
 export function getVenueOrientation(officialVenueId: string | number | undefined) {
@@ -81,10 +94,9 @@ export function venueRegistryHealth() {
   const missingCoordinates = MLB_VENUES.filter((venue) => venue.latitude === undefined || venue.longitude === undefined);
   return {
     version: MLB_VENUE_REGISTRY_VERSION,
-    venuesTracked: MLB_VENUES.length,
+    venuesTracked: new Set([...MLB_VENUE_2026_OVERRIDES, ...MLB_VENUES].map((venue) => venue.officialVenueId)).size,
     missingCoordinates: missingCoordinates.map((venue) => venue.venueName),
     retractableVenues: MLB_VENUES.filter((venue) => venue.roofType === "RETRACTABLE").length,
     domeVenues: MLB_VENUES.filter((venue) => venue.roofType === "DOME").length,
   };
 }
-

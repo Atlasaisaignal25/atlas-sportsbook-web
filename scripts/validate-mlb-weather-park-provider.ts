@@ -68,7 +68,7 @@ function assertRange(value: number | undefined, label: string) {
 }
 
 async function main() {
-  const venue = getVenueById("2889");
+  const venue = getVenueById("3309");
   assert.equal(venue?.venueName, "Nationals Park", "Venue ID maps correctly.");
   assert.equal(game(2889).venue?.id, 2889, "Neutral venue uses actual venue object, not home team inference.");
   assert.equal(getVenueById("missing"), undefined, "Missing coordinates remain unavailable through missing venue.");
