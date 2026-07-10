@@ -52,7 +52,7 @@ async function recentTop5Rows() {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("mlb_top5_live")
-    .select("date,rank,game_id,away_team,home_team,pick,market,line,odds,status,is_top_signal,model_factors,start_time")
+    .select("date,rank,game_id,away_team,home_team,pick,market,line,odds,status,is_top_signal,start_time")
     .order("date", { ascending: false })
     .order("rank", { ascending: true })
     .limit(10);
