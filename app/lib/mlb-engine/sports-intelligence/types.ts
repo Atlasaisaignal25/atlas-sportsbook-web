@@ -257,6 +257,9 @@ export type OffensiveMetricBreakdown = {
     | "exitVelocity"
     | "walkRate"
     | "strikeoutRate"
+    | "expectedBAOnContact"
+    | "expectedSLGOnContact"
+    | "expectedWOBAOnContact"
     | "expectedBattingAverage"
     | "expectedSlugging"
     | "expectedWeightedOnBaseAverage";
@@ -275,8 +278,18 @@ export type OffensiveRollingFormWindow = {
   endDate?: string;
   plateAppearances?: number;
   battedBallEvents?: number;
+  rawRows?: number;
+  uniquePlateAppearances?: number;
+  terminalPlateAppearances?: number;
+  wobaEligiblePlateAppearances?: number;
+  untrackedBattedBallEvents?: number;
+  statcastCoverage?: number;
+  missingStatcastGames?: string[];
   hits?: number;
   walks?: number;
+  intentionalWalks?: number;
+  hitByPitches?: number;
+  sacrifices?: number;
   strikeouts?: number;
   hardHitBalls?: number;
   barrels?: number;
@@ -290,6 +303,10 @@ export type OffensiveRollingFormWindow = {
   expectedBattingAverage?: number;
   expectedSlugging?: number;
   expectedWeightedOnBaseAverage?: number;
+  expectedBAOnContact?: number;
+  expectedSLGOnContact?: number;
+  expectedWOBAOnContact?: number;
+  atlasExpectedOffenseRate?: number;
   xBA?: number;
   xSLG?: number;
   xwOBA?: number;

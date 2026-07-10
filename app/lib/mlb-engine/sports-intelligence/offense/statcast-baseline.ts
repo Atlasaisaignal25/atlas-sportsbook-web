@@ -47,9 +47,9 @@ export function buildStatcastLeagueBaseline(input: {
     pushSample(samples, "exitVelocity", window.exitVelocity ?? window.averageExitVelocity);
     pushSample(samples, "walkRate", window.walkRate);
     pushSample(samples, "strikeoutRate", window.strikeoutRate);
-    pushSample(samples, "expectedBattingAverage", window.expectedBattingAverage ?? window.xBA);
-    pushSample(samples, "expectedSlugging", window.expectedSlugging ?? window.xSLG);
-    pushSample(samples, "expectedWeightedOnBaseAverage", window.expectedWeightedOnBaseAverage ?? window.xwOBA);
+    pushSample(samples, "expectedBAOnContact", window.expectedBAOnContact);
+    pushSample(samples, "expectedSLGOnContact", window.expectedSLGOnContact);
+    pushSample(samples, "expectedWOBAOnContact", window.expectedWOBAOnContact);
   });
 
   const metrics: OffensiveLeagueBaseline["metrics"] = {};

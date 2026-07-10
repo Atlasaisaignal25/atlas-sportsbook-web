@@ -14,9 +14,10 @@ create table if not exists public.mlb_offensive_form_snapshots (
   average_exit_velocity numeric,
   walk_rate numeric,
   strikeout_rate numeric,
-  xba numeric,
-  xslg numeric,
-  xwoba numeric,
+  expected_ba_on_contact numeric,
+  expected_slg_on_contact numeric,
+  expected_woba_on_contact numeric,
+  atlas_expected_offense_rate numeric,
   atlas_offensive_score numeric,
   sample_quality text not null check (
     sample_quality in ('SUFFICIENT', 'LIMITED', 'INSUFFICIENT', 'UNAVAILABLE')

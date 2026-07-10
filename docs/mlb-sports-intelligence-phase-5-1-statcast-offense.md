@@ -19,7 +19,7 @@ Request parameters:
 - `hfSea=<season>|`
 - `csv=true`
 
-Response format: structured CSV, with pitch/play rows. Atlas consumes only the offensive fields needed for team rolling windows and does not store raw pitch rows.
+Response format: structured CSV with pitch-level detail rows. The selected `type=details` export can include multiple rows for the same plate appearance, so Atlas must not treat CSV row count as plate appearances. Atlas consumes only the offensive fields needed for team rolling windows and does not store raw pitch rows.
 
 Compliance caveat: Baseball Savant makes structured CSV downloads publicly available and documents the fields, but public accessibility is not the same as unrestricted commercial production rights. Production use should be reviewed against MLB/Baseball Savant usage terms, request volume, caching, and attribution requirements before enabling flags.
 
@@ -27,6 +27,8 @@ Compliance caveat: Baseball Savant makes structured CSV downloads publicly avail
 
 - `game_date`
 - `game_pk`
+- `at_bat_number`
+- `pitch_number`
 - `game_type`
 - `home_team`
 - `away_team`
@@ -38,9 +40,29 @@ Compliance caveat: Baseball Savant makes structured CSV downloads publicly avail
 - `estimated_ba_using_speedangle`
 - `estimated_slg_using_speedangle`
 - `estimated_woba_using_speedangle`
+- `woba_value`
 - `woba_denom`
 
 Hard-hit balls use the MLB Statcast definition of exit velocity at or above 95 mph when no explicit hard-hit classification column is present. Barrels use Baseball Savant `launch_speed_angle = 6`.
+
+## Phase 5.1.1 Aggregation Audit
+
+Raw row granularity found: Baseball Savant CSV rows are pitch/play detail rows. A single plate appearance can appear as multiple rows with the same `game_pk + at_bat_number` and different `pitch_number`.
+
+Canonical plate appearance key:
+
+`gamePk + atBatNumber`
+
+Rules:
+
+- `pitch_number` orders rows inside an appearance only.
+- one plate appearance can produce only one terminal offensive event;
+- a terminal row is selected from non-empty `events`;
+- if multiple terminal rows appear for the same key, Atlas emits a warning and uses the latest terminal row by pitch order;
+- rows missing `gamePk` or `atBatNumber` are not eligible for PA aggregation;
+- batting team is resolved from `inning_topbot`: `Top` means away team bats, `Bot` means home team bats;
+- rows outside the selected official `gamePk` window are excluded;
+- opponent batting rows are excluded from the target team aggregation.
 
 ## Rolling-Game Methodology
 
@@ -56,23 +78,29 @@ Only regular-season style Statcast requests are intended for this phase. Postsea
 
 ## Aggregation Formulas
 
-Atlas calculates:
+Atlas calculates from unique normalized terminal plate appearances:
 
-- `plateAppearances`: rows with plate-appearance events or `woba_denom = 1`
-- `battedBallEvents`: rows with numeric `launch_speed`
+- `plateAppearances`: unique terminal plate appearances with supported PA events
+- `wobaEligiblePlateAppearances`: unique terminal PAs with valid `woba_denom`
+- `battedBallEvents`: unique completed plate appearances with valid tracked batted-ball data
+- `untrackedBattedBallEvents`: completed batted-ball outcomes without valid launch speed
+- `statcastCoverage`: valid tracked BBE / all completed BBE
 - `hits`: single, double, triple, home run
-- `walks`: walk, intentional walk
+- `walks`: walk plus intentional walk
 - `strikeouts`: strikeout, strikeout double play
 - `hardHitRate = hardHitBalls / battedBallEvents`
 - `barrelRate = barrels / battedBallEvents`
 - `averageExitVelocity = average(launch_speed)`
 - `walkRate = walks / plateAppearances`
 - `strikeoutRate = strikeouts / plateAppearances`
-- `xBA = average(estimated_ba_using_speedangle)`
-- `xSLG = average(estimated_slg_using_speedangle)`
-- `xwOBA = average(estimated_woba_using_speedangle)`
+- `expectedBAOnContact = average(estimated_ba_using_speedangle)` across unique valid BBE
+- `expectedSLGOnContact = average(estimated_slg_using_speedangle)` across unique valid BBE
+- `expectedWOBAOnContact = average(estimated_woba_using_speedangle)` across unique valid BBE
+- `atlasExpectedOffenseRate`: Atlas-derived hybrid rate using source expected contact values for valid BBE and actual `woba_value` for non-contact events with valid denominators
 
 Denominators must be greater than zero. Missing values remain `undefined`.
+
+Atlas does not label contact-only expected averages as official team `xBA`, `xSLG` or `xwOBA`. Complete official xwOBA remains undefined unless a compatible documented source aggregate is connected.
 
 ## Sample Quality
 
@@ -97,10 +125,10 @@ Atlas Offensive Score remains 0-100 and uses z-score normalization when a valid 
 
 - quality of contact: hard-hit rate, barrel rate, exit velocity
 - plate discipline: walk rate, inverse strikeout rate
-- expected production: xwOBA, xSLG, xBA
+- contact expected metrics: expectedWOBAOnContact, expectedSLGOnContact, expectedBAOnContact
 - recency: last 7 weighted 0.50, last 14 weighted 0.30, last 30 weighted 0.20
 
-If baseline is unavailable or `MLB_OFFENSIVE_SCORE_ENABLED=false`, raw metrics can be available while the score remains unavailable.
+If baseline is unavailable, sample quality fails, or `MLB_OFFENSIVE_SCORE_ENABLED=false`, raw metrics can be available while the score remains unavailable. Contact-family metrics are intentionally lower-weighted so hard-hit rate, barrel rate, exit velocity and expected-contact metrics are not treated as six fully independent signals.
 
 ## Caching
 
@@ -168,6 +196,8 @@ Local live diagnostic examples can be run later with temporary protected flags a
 - Baseball Savant CSV availability and request tolerance are operational risks.
 - Current baseline is computed from available provider window samples, not a full 30-team production baseline store.
 - Suspended games are conservatively excluded.
+- Complete official team xwOBA/xBA/xSLG are not calculated in this phase.
+- `atlasExpectedOffenseRate` is Atlas-derived and must not be represented as official MLB xwOBA.
 - No platoon, pitcher comparison, projected runs or win probability is calculated.
 
 ## Why Picks Remain Unchanged

@@ -3,6 +3,8 @@ import { getMlbTeamIdentityBySavantCode } from "../mlb-team-mapping";
 export type StatcastSearchRow = {
   gameDate?: string;
   gamePk?: string;
+  atBatNumber?: number;
+  pitchNumber?: number;
   gameType?: string;
   homeTeam?: string;
   awayTeam?: string;
@@ -15,6 +17,7 @@ export type StatcastSearchRow = {
   estimatedBaUsingSpeedangle?: number;
   estimatedWobaUsingSpeedangle?: number;
   estimatedSlgUsingSpeedangle?: number;
+  wobaValue?: number;
   wobaDenom?: number;
 };
 
@@ -97,6 +100,8 @@ export function normalizeStatcastCsv(text: string): StatcastSearchRow[] {
     return {
       gameDate: record.get("game_date") || undefined,
       gamePk: record.get("game_pk") || undefined,
+      atBatNumber: parseNumber(record.get("at_bat_number")),
+      pitchNumber: parseNumber(record.get("pitch_number")),
       gameType: record.get("game_type") || undefined,
       homeTeam,
       awayTeam,
@@ -109,6 +114,7 @@ export function normalizeStatcastCsv(text: string): StatcastSearchRow[] {
       estimatedBaUsingSpeedangle: parseNumber(record.get("estimated_ba_using_speedangle")),
       estimatedWobaUsingSpeedangle: parseNumber(record.get("estimated_woba_using_speedangle")),
       estimatedSlgUsingSpeedangle: parseNumber(record.get("estimated_slg_using_speedangle")),
+      wobaValue: parseNumber(record.get("woba_value")),
       wobaDenom: parseNumber(record.get("woba_denom")),
     };
   });

@@ -36,6 +36,30 @@ type CompletedGame = {
   awayTeamId?: string;
 };
 
+export type NormalizedPlateAppearance = {
+  gamePk: string;
+  atBatNumber: number;
+  gameDate: string;
+  battingTeam: string;
+  fieldingTeam: string;
+  event?: string;
+  isTerminal: boolean;
+  isWalk: boolean;
+  isIntentionalWalk: boolean;
+  isStrikeout: boolean;
+  isHitByPitch: boolean;
+  isSacrifice: boolean;
+  isHit: boolean;
+  wobaValue?: number;
+  wobaDenom?: number;
+  launchSpeed?: number;
+  launchSpeedAngle?: number;
+  estimatedBaUsingSpeedangle?: number;
+  estimatedSlgUsingSpeedangle?: number;
+  estimatedWobaUsingSpeedangle?: number;
+  warnings: string[];
+};
+
 const WINDOW_TO_GAMES: Record<OffensiveRollingWindow, 7 | 14 | 30> = {
   last7: 7,
   last14: 14,
@@ -81,6 +105,67 @@ const PA_EVENTS = new Set([
   "sac_fly_double_play",
   "catcher_interf",
 ]);
+
+function canonicalPaKey(row: StatcastSearchRow) {
+  if (!row.gamePk || !isNumber(row.atBatNumber)) return undefined;
+  return `${row.gamePk}:${row.atBatNumber}`;
+}
+
+function fieldingTeamId(row: StatcastSearchRow) {
+  if (row.battingTeamCode === row.awayTeam) return row.homeTeam;
+  if (row.battingTeamCode === row.homeTeam) return row.awayTeam;
+  return undefined;
+}
+
+export function normalizeStatcastPlateAppearances(rows: StatcastSearchRow[]): NormalizedPlateAppearance[] {
+  const grouped = new Map<string, StatcastSearchRow[]>();
+  rows.forEach((row) => {
+    const key = canonicalPaKey(row);
+    if (!key) return;
+    grouped.set(key, [...(grouped.get(key) ?? []), row]);
+  });
+
+  return Array.from(grouped.values()).map((paRows) => {
+    const ordered = [...paRows].sort((a, b) => (a.pitchNumber ?? 0) - (b.pitchNumber ?? 0));
+    const terminalRows = ordered.filter((row) => Boolean(row.events));
+    const terminal = terminalRows.at(-1) ?? ordered.at(-1);
+    const warnings: string[] = [];
+    if (terminalRows.length > 1) warnings.push("Multiple terminal event rows found for one plate appearance.");
+    if (!terminal?.gamePk || !isNumber(terminal.atBatNumber)) {
+      warnings.push("Plate appearance missing canonical gamePk/atBatNumber.");
+    }
+    if (!terminal?.battingTeamId) warnings.push("Batting team could not be resolved from inning_topbot/home_team/away_team.");
+
+    const battedBallRow = [...ordered]
+      .reverse()
+      .find((row) => isNumber(row.launchSpeed) && BATTED_BALL_EVENTS.has(row.events ?? ""));
+    const event = terminal?.events;
+
+    return {
+      gamePk: terminal?.gamePk ?? "",
+      atBatNumber: terminal?.atBatNumber ?? -1,
+      gameDate: terminal?.gameDate ?? "",
+      battingTeam: terminal?.battingTeamId ?? "",
+      fieldingTeam: fieldingTeamId(terminal ?? {}) ?? "",
+      event,
+      isTerminal: Boolean(event),
+      isWalk: event === "walk" || event === "intent_walk",
+      isIntentionalWalk: event === "intent_walk",
+      isStrikeout: STRIKEOUT_EVENTS.has(event ?? ""),
+      isHitByPitch: event === "hit_by_pitch",
+      isSacrifice: event === "sac_fly" || event === "sac_bunt" || event === "sac_fly_double_play",
+      isHit: HIT_EVENTS.has(event ?? ""),
+      wobaValue: terminal?.wobaValue,
+      wobaDenom: terminal?.wobaDenom,
+      launchSpeed: battedBallRow?.launchSpeed,
+      launchSpeedAngle: battedBallRow?.launchSpeedAngle,
+      estimatedBaUsingSpeedangle: battedBallRow?.estimatedBaUsingSpeedangle,
+      estimatedSlgUsingSpeedangle: battedBallRow?.estimatedSlgUsingSpeedangle,
+      estimatedWobaUsingSpeedangle: battedBallRow?.estimatedWobaUsingSpeedangle,
+      warnings,
+    };
+  });
+}
 
 function isNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -158,45 +243,75 @@ export function aggregateStatcastRowsForTeam(input: {
 }): NonNullable<VerifiedOffensiveRollingStats["windows"][OffensiveRollingWindow]> {
   const gameIds = new Set(input.games.map((game) => game.gamePk));
   const rows = input.rows.filter((row) => row.gamePk && gameIds.has(row.gamePk) && row.battingTeamId === input.team.officialTeamId);
+  const normalizedPas = normalizeStatcastPlateAppearances(rows).filter((pa) => pa.battingTeam === input.team.officialTeamId);
   let plateAppearances = 0;
+  let wobaEligiblePlateAppearances = 0;
   let battedBallEvents = 0;
+  let untrackedBattedBallEvents = 0;
   let hits = 0;
   let walks = 0;
+  let intentionalWalks = 0;
+  let hitByPitches = 0;
+  let sacrifices = 0;
   let strikeouts = 0;
   let hardHitBalls = 0;
   let barrels = 0;
+  let atlasExpectedOffenseNumerator = 0;
+  let atlasExpectedOffenseDenominator = 0;
   const exitVelocities: number[] = [];
-  const xbaValues: number[] = [];
-  const xslgValues: number[] = [];
-  const xwobaValues: number[] = [];
+  const expectedBAOnContactValues: number[] = [];
+  const expectedSLGOnContactValues: number[] = [];
+  const expectedWOBAOnContactValues: number[] = [];
+  const warnings: string[] = normalizedPas.flatMap((pa) => pa.warnings);
 
-  rows.forEach((row) => {
-    const event = row.events ?? "";
-    if (PA_EVENTS.has(event) || row.wobaDenom === 1) plateAppearances += 1;
-    if (HIT_EVENTS.has(event)) hits += 1;
-    if (WALK_EVENTS.has(event)) walks += 1;
-    if (STRIKEOUT_EVENTS.has(event)) strikeouts += 1;
-    if (isNumber(row.launchSpeed) && BATTED_BALL_EVENTS.has(event)) {
-      battedBallEvents += 1;
-      exitVelocities.push(row.launchSpeed);
-      if (row.launchSpeed >= 95) hardHitBalls += 1;
+  normalizedPas.forEach((pa) => {
+    const event = pa.event ?? "";
+    if (!pa.isTerminal || !PA_EVENTS.has(event)) return;
+    plateAppearances += 1;
+    if (pa.wobaDenom && pa.wobaDenom > 0) wobaEligiblePlateAppearances += 1;
+    if (pa.isHit) hits += 1;
+    if (pa.isWalk) walks += 1;
+    if (pa.isIntentionalWalk) intentionalWalks += 1;
+    if (pa.isHitByPitch) hitByPitches += 1;
+    if (pa.isSacrifice) sacrifices += 1;
+    if (pa.isStrikeout) strikeouts += 1;
+    if (BATTED_BALL_EVENTS.has(event)) {
+      if (!isNumber(pa.launchSpeed)) untrackedBattedBallEvents += 1;
     }
-    if (row.launchSpeedAngle === 6) barrels += 1;
-    if (isNumber(row.estimatedBaUsingSpeedangle)) xbaValues.push(row.estimatedBaUsingSpeedangle);
-    if (isNumber(row.estimatedSlgUsingSpeedangle)) xslgValues.push(row.estimatedSlgUsingSpeedangle);
-    if (isNumber(row.estimatedWobaUsingSpeedangle)) xwobaValues.push(row.estimatedWobaUsingSpeedangle);
+    if (isNumber(pa.launchSpeed) && BATTED_BALL_EVENTS.has(event)) {
+      battedBallEvents += 1;
+      exitVelocities.push(pa.launchSpeed);
+      if (pa.launchSpeed >= 95) hardHitBalls += 1;
+      if (isNumber(pa.estimatedBaUsingSpeedangle)) expectedBAOnContactValues.push(pa.estimatedBaUsingSpeedangle);
+      if (isNumber(pa.estimatedSlgUsingSpeedangle)) expectedSLGOnContactValues.push(pa.estimatedSlgUsingSpeedangle);
+      if (isNumber(pa.estimatedWobaUsingSpeedangle)) expectedWOBAOnContactValues.push(pa.estimatedWobaUsingSpeedangle);
+      if (isNumber(pa.estimatedWobaUsingSpeedangle)) {
+        atlasExpectedOffenseNumerator += pa.estimatedWobaUsingSpeedangle;
+        atlasExpectedOffenseDenominator += 1;
+      }
+    } else if (isNumber(pa.wobaValue) && pa.wobaDenom && pa.wobaDenom > 0) {
+      atlasExpectedOffenseNumerator += pa.wobaValue;
+      atlasExpectedOffenseDenominator += pa.wobaDenom;
+    }
+    if (pa.launchSpeedAngle === 6 && isNumber(pa.launchSpeed)) barrels += 1;
   });
 
   const gamesRequested = WINDOW_TO_GAMES[input.window];
   const gamesIncluded = input.games.length;
-  const warnings: string[] = [];
+  const gamesWithRows = new Set(rows.map((row) => row.gamePk).filter(Boolean) as string[]);
+  const missingStatcastGames = input.games.map((game) => game.gamePk).filter((gamePk) => !gamesWithRows.has(gamePk));
   if (rows.length === 0) warnings.push("No usable Statcast rows matched this team/window.");
+  if (missingStatcastGames.length > 0) warnings.push(`${missingStatcastGames.length} selected games had no matching Statcast rows.`);
   if (gamesIncluded < gamesRequested) warnings.push(`Only ${gamesIncluded} completed games available for last ${gamesRequested}.`);
 
   const avgExitVelocity = average(exitVelocities);
-  const xBA = average(xbaValues);
-  const xSLG = average(xslgValues);
-  const xwOBA = average(xwobaValues);
+  const expectedBAOnContact = average(expectedBAOnContactValues);
+  const expectedSLGOnContact = average(expectedSLGOnContactValues);
+  const expectedWOBAOnContact = average(expectedWOBAOnContactValues);
+  const statcastCoverage = battedBallEvents + untrackedBattedBallEvents > 0
+    ? rate(battedBallEvents, battedBallEvents + untrackedBattedBallEvents)
+    : undefined;
+  const atlasExpectedOffenseRate = rate(atlasExpectedOffenseNumerator, atlasExpectedOffenseDenominator);
 
   return {
     games: gamesIncluded,
@@ -204,10 +319,20 @@ export function aggregateStatcastRowsForTeam(input: {
     gamesIncluded,
     startDate: input.games.at(-1)?.gameDate?.slice(0, 10),
     endDate: input.games[0]?.gameDate?.slice(0, 10),
+    rawRows: rows.length,
+    uniquePlateAppearances: normalizedPas.length,
+    terminalPlateAppearances: plateAppearances,
+    wobaEligiblePlateAppearances,
+    missingStatcastGames,
     plateAppearances,
     battedBallEvents,
+    untrackedBattedBallEvents,
+    statcastCoverage,
     hits,
     walks,
+    intentionalWalks,
+    hitByPitches,
+    sacrifices,
     strikeouts,
     hardHitBalls,
     barrels,
@@ -217,12 +342,16 @@ export function aggregateStatcastRowsForTeam(input: {
     averageExitVelocity: isNumber(avgExitVelocity) ? round(avgExitVelocity, 1) : undefined,
     walkRate: rate(walks, plateAppearances),
     strikeoutRate: rate(strikeouts, plateAppearances),
-    expectedBattingAverage: isNumber(xBA) ? round(xBA, 3) : undefined,
-    expectedSlugging: isNumber(xSLG) ? round(xSLG, 3) : undefined,
-    expectedWeightedOnBaseAverage: isNumber(xwOBA) ? round(xwOBA, 3) : undefined,
-    xBA: isNumber(xBA) ? round(xBA, 3) : undefined,
-    xSLG: isNumber(xSLG) ? round(xSLG, 3) : undefined,
-    xwOBA: isNumber(xwOBA) ? round(xwOBA, 3) : undefined,
+    expectedBAOnContact: isNumber(expectedBAOnContact) ? round(expectedBAOnContact, 3) : undefined,
+    expectedSLGOnContact: isNumber(expectedSLGOnContact) ? round(expectedSLGOnContact, 3) : undefined,
+    expectedWOBAOnContact: isNumber(expectedWOBAOnContact) ? round(expectedWOBAOnContact, 3) : undefined,
+    atlasExpectedOffenseRate: isNumber(atlasExpectedOffenseRate) ? round(atlasExpectedOffenseRate, 3) : undefined,
+    expectedBattingAverage: undefined,
+    expectedSlugging: undefined,
+    expectedWeightedOnBaseAverage: undefined,
+    xBA: undefined,
+    xSLG: undefined,
+    xwOBA: undefined,
     sampleQuality: classifyOffensiveSampleQuality({
       gamesRequested,
       gamesIncluded,

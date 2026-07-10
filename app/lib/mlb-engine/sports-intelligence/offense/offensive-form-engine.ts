@@ -15,9 +15,9 @@ export type OffensiveMetricKey =
   | "exitVelocity"
   | "walkRate"
   | "strikeoutRate"
-  | "expectedBattingAverage"
-  | "expectedSlugging"
-  | "expectedWeightedOnBaseAverage";
+  | "expectedBAOnContact"
+  | "expectedSLGOnContact"
+  | "expectedWOBAOnContact";
 
 export type VerifiedOffensiveRollingStats = {
   teamId?: string;
@@ -32,8 +32,18 @@ export type VerifiedOffensiveRollingStats = {
     endDate?: string;
     plateAppearances?: number;
     battedBallEvents?: number;
+    rawRows?: number;
+    uniquePlateAppearances?: number;
+    terminalPlateAppearances?: number;
+    wobaEligiblePlateAppearances?: number;
+    untrackedBattedBallEvents?: number;
+    statcastCoverage?: number;
+    missingStatcastGames?: string[];
     hits?: number;
     walks?: number;
+    intentionalWalks?: number;
+    hitByPitches?: number;
+    sacrifices?: number;
     strikeouts?: number;
     hardHitBalls?: number;
     barrels?: number;
@@ -46,6 +56,10 @@ export type VerifiedOffensiveRollingStats = {
     expectedBattingAverage?: number;
     expectedSlugging?: number;
     expectedWeightedOnBaseAverage?: number;
+    expectedBAOnContact?: number;
+    expectedSLGOnContact?: number;
+    expectedWOBAOnContact?: number;
+    atlasExpectedOffenseRate?: number;
     xBA?: number;
     xSLG?: number;
     xwOBA?: number;
@@ -87,9 +101,9 @@ const METRIC_PROFILES: Record<OffensiveMetricKey, MetricProfile> = {
   exitVelocity: { weight: 0.12, higherIsBetter: true },
   walkRate: { weight: 0.12, higherIsBetter: true },
   strikeoutRate: { weight: 0.12, higherIsBetter: false },
-  expectedBattingAverage: { weight: 0.1, higherIsBetter: true },
-  expectedSlugging: { weight: 0.14, higherIsBetter: true },
-  expectedWeightedOnBaseAverage: { weight: 0.18, higherIsBetter: true },
+  expectedBAOnContact: { weight: 0.06, higherIsBetter: true },
+  expectedSLGOnContact: { weight: 0.08, higherIsBetter: true },
+  expectedWOBAOnContact: { weight: 0.1, higherIsBetter: true },
 };
 
 const METRIC_KEYS = Object.keys(METRIC_PROFILES) as OffensiveMetricKey[];
@@ -120,9 +134,6 @@ function metricValue(
   key: OffensiveMetricKey,
 ) {
   if (key === "exitVelocity") return stats.exitVelocity ?? stats.averageExitVelocity;
-  if (key === "expectedBattingAverage") return stats.expectedBattingAverage ?? stats.xBA;
-  if (key === "expectedSlugging") return stats.expectedSlugging ?? stats.xSLG;
-  if (key === "expectedWeightedOnBaseAverage") return stats.expectedWeightedOnBaseAverage ?? stats.xwOBA;
   return stats[key];
 }
 
@@ -178,10 +189,20 @@ function buildWindow(
     gamesIncluded: stats.gamesIncluded ?? stats.games,
     startDate: stats.startDate,
     endDate: stats.endDate,
+    rawRows: stats.rawRows,
+    uniquePlateAppearances: stats.uniquePlateAppearances,
+    terminalPlateAppearances: stats.terminalPlateAppearances,
+    wobaEligiblePlateAppearances: stats.wobaEligiblePlateAppearances,
+    untrackedBattedBallEvents: stats.untrackedBattedBallEvents,
+    statcastCoverage: stats.statcastCoverage,
+    missingStatcastGames: stats.missingStatcastGames,
     plateAppearances: stats.plateAppearances,
     battedBallEvents: stats.battedBallEvents,
     hits: stats.hits,
     walks: stats.walks,
+    intentionalWalks: stats.intentionalWalks,
+    hitByPitches: stats.hitByPitches,
+    sacrifices: stats.sacrifices,
     strikeouts: stats.strikeouts,
     hardHitBalls: stats.hardHitBalls,
     barrels: stats.barrels,
@@ -192,12 +213,16 @@ function buildWindow(
     averageExitVelocity: stats.averageExitVelocity ?? stats.exitVelocity,
     walkRate: stats.walkRate,
     strikeoutRate: stats.strikeoutRate,
-    expectedBattingAverage: stats.expectedBattingAverage ?? stats.xBA,
-    expectedSlugging: stats.expectedSlugging ?? stats.xSLG,
-    expectedWeightedOnBaseAverage: stats.expectedWeightedOnBaseAverage ?? stats.xwOBA,
-    xBA: stats.xBA ?? stats.expectedBattingAverage,
-    xSLG: stats.xSLG ?? stats.expectedSlugging,
-    xwOBA: stats.xwOBA ?? stats.expectedWeightedOnBaseAverage,
+    expectedBAOnContact: stats.expectedBAOnContact,
+    expectedSLGOnContact: stats.expectedSLGOnContact,
+    expectedWOBAOnContact: stats.expectedWOBAOnContact,
+    atlasExpectedOffenseRate: stats.atlasExpectedOffenseRate,
+    expectedBattingAverage: stats.expectedBattingAverage,
+    expectedSlugging: stats.expectedSlugging,
+    expectedWeightedOnBaseAverage: stats.expectedWeightedOnBaseAverage,
+    xBA: stats.xBA,
+    xSLG: stats.xSLG,
+    xwOBA: stats.xwOBA,
     sampleQuality: stats.sampleQuality,
     warnings: stats.warnings ?? [],
     componentBreakdown: breakdown,
@@ -253,9 +278,9 @@ function buildTeamForm(
     exitVelocity: currentWindow?.exitVelocity,
     strikeoutRate: currentWindow?.strikeoutRate,
     walkRate: currentWindow?.walkRate,
-    xBA: currentWindow?.expectedBattingAverage,
-    xSLG: currentWindow?.expectedSlugging,
-    xWoba: currentWindow?.expectedWeightedOnBaseAverage,
+    xBA: currentWindow?.xBA,
+    xSLG: currentWindow?.xSLG,
+    xWoba: currentWindow?.xwOBA,
   };
 }
 

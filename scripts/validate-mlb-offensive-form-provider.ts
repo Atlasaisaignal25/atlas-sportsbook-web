@@ -8,6 +8,7 @@ import {
   classifyOffensiveSampleQuality,
   getMlbTeamIdentityByName,
   normalizeMlbTeamName,
+  normalizeStatcastPlateAppearances,
   normalizeStatcastCsv,
   selectCompletedGamesForTeam,
   StatcastOffenseProvider,
@@ -38,6 +39,8 @@ function rowsForGame(gamePk: string, teamId = "121"): StatcastSearchRow[] {
   for (let index = 0; index < 10; index += 1) {
     rows.push({
       gamePk,
+      atBatNumber: index + 1,
+      pitchNumber: 4,
       gameDate: "2026-06-20",
       battingTeamId: teamId,
       events: index < 4 ? "single" : "field_out",
@@ -49,8 +52,12 @@ function rowsForGame(gamePk: string, teamId = "121"): StatcastSearchRow[] {
       wobaDenom: 1,
     });
   }
-  for (let index = 0; index < 5; index += 1) rows.push({ gamePk, battingTeamId: teamId, events: "walk", wobaDenom: 1 });
-  for (let index = 0; index < 5; index += 1) rows.push({ gamePk, battingTeamId: teamId, events: "strikeout", wobaDenom: 1 });
+  for (let index = 0; index < 5; index += 1) {
+    rows.push({ gamePk, atBatNumber: 11 + index, pitchNumber: 5, battingTeamId: teamId, events: "walk", wobaValue: 0.69, wobaDenom: 1 });
+  }
+  for (let index = 0; index < 5; index += 1) {
+    rows.push({ gamePk, atBatNumber: 16 + index, pitchNumber: 3, battingTeamId: teamId, events: "strikeout", wobaValue: 0, wobaDenom: 1 });
+  }
   return rows;
 }
 
@@ -79,6 +86,25 @@ assert.equal(mets.officialTeamId, "121");
 assert.equal(yankees.savantCode, "NYY");
 assert.notEqual(cubs.officialTeamId, whiteSox.officialTeamId);
 assert.notEqual(angels.officialTeamId, dodgers.officialTeamId);
+
+const duplicatedPitchRows: StatcastSearchRow[] = [
+  { gamePk: "900001", atBatNumber: 1, pitchNumber: 1, battingTeamId: "121" },
+  { gamePk: "900001", atBatNumber: 1, pitchNumber: 2, battingTeamId: "121" },
+  { gamePk: "900001", atBatNumber: 1, pitchNumber: 3, battingTeamId: "121" },
+  { gamePk: "900001", atBatNumber: 1, pitchNumber: 4, battingTeamId: "121" },
+  { gamePk: "900001", atBatNumber: 1, pitchNumber: 5, battingTeamId: "121", events: "single", launchSpeed: 95, launchSpeedAngle: 6 },
+];
+const normalizedPa = normalizeStatcastPlateAppearances(duplicatedPitchRows);
+assert.equal(normalizedPa.length, 1);
+assert.equal(normalizedPa[0]?.isHit, true);
+assert.equal(normalizedPa[0]?.launchSpeed, 95);
+
+const doubleTerminal = normalizeStatcastPlateAppearances([
+  { gamePk: "900002", atBatNumber: 1, pitchNumber: 3, battingTeamId: "121", events: "walk" },
+  { gamePk: "900002", atBatNumber: 1, pitchNumber: 4, battingTeamId: "121", events: "single" },
+]);
+assert.equal(doubleTerminal.length, 1);
+assert.match(doubleTerminal[0]?.warnings.join(" ") ?? "", /Multiple terminal/);
 
 const completedGames = Array.from({ length: 32 }, (_, index) => game(index));
 const officialGames = [
@@ -125,10 +151,29 @@ assert.equal(aggregate.barrelRate, 0.1);
 assert.equal(aggregate.walkRate, 0.25);
 assert.equal(aggregate.strikeoutRate, 0.25);
 assert.equal(aggregate.averageExitVelocity, 92.5);
-assert.equal(aggregate.xBA, 0.265);
-assert.equal(aggregate.xSLG, 0.455);
-assert.equal(aggregate.xwOBA, 0.345);
+assert.equal(aggregate.expectedBAOnContact, 0.265);
+assert.equal(aggregate.expectedSLGOnContact, 0.455);
+assert.equal(aggregate.expectedWOBAOnContact, 0.345);
+assert.equal(aggregate.xBA, undefined);
+assert.equal(aggregate.xSLG, undefined);
+assert.equal(aggregate.xwOBA, undefined);
 assert.equal(aggregate.sampleQuality, "LIMITED");
+
+const specialAggregate = aggregateStatcastRowsForTeam({
+  team: mets,
+  rows: [
+    { gamePk: "800004", atBatNumber: 1, pitchNumber: 5, battingTeamId: "121", events: "hit_by_pitch", wobaValue: 0.72, wobaDenom: 1 },
+    { gamePk: "800004", atBatNumber: 2, pitchNumber: 2, battingTeamId: "121", events: "sac_fly", launchSpeedAngle: 6 },
+    { gamePk: "800004", atBatNumber: 3, pitchNumber: 3, battingTeamId: "144", events: "home_run", launchSpeed: 110, launchSpeedAngle: 6 },
+  ],
+  games: last7,
+  window: "last7",
+});
+assert.equal(specialAggregate.plateAppearances, 2);
+assert.equal(specialAggregate.hitByPitches, 1);
+assert.equal(specialAggregate.sacrifices, 1);
+assert.equal(specialAggregate.battedBallEvents, 0);
+assert.equal(specialAggregate.untrackedBattedBallEvents, 1);
 
 const emptyAggregate = aggregateStatcastRowsForTeam({ team: mets, rows: [], games: [], window: "last7" });
 assert.equal(emptyAggregate.hardHitRate, undefined);
@@ -142,11 +187,15 @@ assert.equal(classifyOffensiveSampleQuality({
 }), "INSUFFICIENT");
 
 const csv = [
-  "game_date,game_pk,home_team,away_team,inning_topbot,events,launch_speed,launch_speed_angle,estimated_ba_using_speedangle,estimated_woba_using_speedangle,woba_denom",
-  "2026-06-20,1,NYM,ATL,Bot,single,99.1,6,0.777,0.888,1",
+  "game_date,game_pk,at_bat_number,pitch_number,home_team,away_team,inning_topbot,events,launch_speed,launch_speed_angle,estimated_ba_using_speedangle,estimated_slg_using_speedangle,estimated_woba_using_speedangle,woba_value,woba_denom",
+  "2026-06-20,1,1,5,NYM,ATL,Bot,single,99.1,6,0.777,1.234,0.888,0.9,1",
+  "2026-06-20,1,2,4,NYM,ATL,Top,walk,,,,,,0.69,1",
 ].join("\n");
 const parsedCsv = normalizeStatcastCsv(csv);
 assert.equal(parsedCsv[0]?.battingTeamId, "121");
+assert.equal(parsedCsv[1]?.battingTeamId, "144");
+assert.equal(parsedCsv[0]?.atBatNumber, 1);
+assert.equal(parsedCsv[0]?.pitchNumber, 5);
 assert.equal(parsedCsv[0]?.launchSpeed, 99.1);
 
 const strongWindow: VerifiedOffensiveRollingStats = {
@@ -169,9 +218,9 @@ const weakWindow: VerifiedOffensiveRollingStats = {
       exitVelocity: 86.1,
       walkRate: 0.06,
       strikeoutRate: 0.29,
-      expectedBattingAverage: 0.21,
-      expectedSlugging: 0.33,
-      expectedWeightedOnBaseAverage: 0.27,
+      expectedBAOnContact: 0.21,
+      expectedSLGOnContact: 0.33,
+      expectedWOBAOnContact: 0.27,
     },
   },
 };
