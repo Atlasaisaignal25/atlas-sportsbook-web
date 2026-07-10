@@ -50,6 +50,20 @@ import {
   teamStrengthAuditRanking,
 } from "@/app/lib/mlb-engine/sports-intelligence/team-strength/team-strength-repository";
 import { TEAM_STRENGTH_VERSION, teamStrengthDistribution } from "@/app/lib/mlb-engine/sports-intelligence/team-strength/team-strength-engine";
+import {
+  getTeamIntelligenceSnapshotStatus,
+  loadLatestCanonicalTeamIntelligenceSnapshots,
+  loadTeamStrengthV1AuditRows,
+  summarizeTeamIntelligence,
+  teamIntelligenceAuditRankings,
+} from "@/app/lib/mlb-engine/sports-intelligence/team-intelligence/team-intelligence-repository";
+import {
+  GAME_CONTEXT_CERTAINTY_VERSION,
+  GAME_READINESS_VERSION,
+  scoreDistribution,
+  TEAM_INTELLIGENCE_CONFIDENCE_VERSION,
+  TEAM_QUALITY_VERSION,
+} from "@/app/lib/mlb-engine/sports-intelligence/team-intelligence/team-intelligence-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -458,6 +472,8 @@ async function teamStrengthAudit(
   return {
     enabled,
     label: "Atlas Team Strength Audit",
+    deprecated: true,
+    deprecationReason: "Mixed team quality, readiness and data-confidence concepts.",
     description: "Internal audit-only independent team rating. Not a power ranking, prediction ranking, market rating, or public pick input.",
     scoreVersion: TEAM_STRENGTH_VERSION,
     scoreMode: enabled ? process.env.MLB_TEAM_STRENGTH_SCORE_MODE ?? "AUDIT_ONLY" : "DISABLED",
@@ -477,6 +493,62 @@ async function teamStrengthAudit(
     ),
     warnings: [
       ...(snapshots.length < 30 ? ["Fewer than 30 canonical team strength rows are available."] : []),
+      ...Array.from(new Set(snapshots.flatMap((snapshot) => snapshot.warnings))).slice(0, 20),
+    ],
+  };
+}
+
+async function teamIntelligenceAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getTeamIntelligenceSnapshotStatus>>,
+) {
+  const snapshots = await loadLatestCanonicalTeamIntelligenceSnapshots();
+  const deprecatedRows = await loadTeamStrengthV1AuditRows();
+  const rankings = teamIntelligenceAuditRankings(snapshots);
+  const detroitOld = deprecatedRows.find((row) => row.teamName === "Detroit Tigers");
+  const detroitNew = snapshots.find((row) => row.teamName === "Detroit Tigers");
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_TEAM_INTELLIGENCE_MODE ?? "AUDIT_ONLY" : "DISABLED",
+    teamStrengthV1Deprecated: true,
+    deprecationReason: "Mixed team quality, readiness and data-confidence concepts.",
+    qualityVersion: TEAM_QUALITY_VERSION,
+    readinessVersion: GAME_READINESS_VERSION,
+    contextCertaintyVersion: GAME_CONTEXT_CERTAINTY_VERSION,
+    confidenceVersion: TEAM_INTELLIGENCE_CONFIDENCE_VERSION,
+    storageHealth: status,
+    canonicalRows: status.canonicalSnapshots,
+    latestCapture: status.latestRefresh,
+    qualityDistribution: status.qualityDistribution,
+    partialQualityDistribution: status.partialQualityDistribution,
+    readinessDistribution: status.readinessDistribution,
+    contextCertaintyDistribution: status.contextCertaintyDistribution,
+    confidenceDistribution: status.confidenceCounts,
+    internalAuditRankings: {
+      completeQualityLabel: "Atlas Team Quality Audit",
+      partialQualityLabel: "Atlas Partial Team Quality Audit",
+      gameReadinessLabel: "Atlas Game Readiness Audit",
+    },
+    completeQualityTeams: rankings.completeQuality.rows,
+    partialQualityTeams: rankings.partialQuality.rows,
+    gameReadinessAudit: rankings.gameReadiness.rows.slice(0, 30),
+    detroitBeforeAfter: {
+      old: detroitOld,
+      new: summarizeTeamIntelligence(detroitNew),
+      explanation: [
+        "Starting Pitcher Availability no longer increases Team Quality; it is only part of Game Readiness.",
+        "Environment Readiness no longer increases Team Quality; weather/roof completeness is isolated in Context Certainty.",
+        "Missing offense reduces Team Quality coverage and confidence instead of being hidden by rebalanced readiness weights.",
+      ],
+    },
+    distributionsFromRows: {
+      completeQuality: scoreDistribution(snapshots.filter((row) => row.teamQuality.availability === "AVAILABLE").map((row) => row.teamQuality.score)),
+      partialQuality: scoreDistribution(snapshots.filter((row) => row.teamQuality.availability === "PARTIAL").map((row) => row.teamQuality.score)),
+      readiness: scoreDistribution(snapshots.map((row) => row.gameReadiness.score)),
+      contextCertainty: scoreDistribution(snapshots.map((row) => row.contextCertainty.score)),
+    },
+    warnings: [
+      ...(snapshots.length < 30 ? ["Fewer than 30 canonical team intelligence rows are available."] : []),
       ...Array.from(new Set(snapshots.flatMap((snapshot) => snapshot.warnings))).slice(0, 20),
     ],
   };
@@ -586,7 +658,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -596,6 +668,7 @@ export async function GET(request: Request) {
       getBullpenQualityBaselineStatus(),
       getWeatherParkSnapshotStatus(),
       getTeamStrengthSnapshotStatus(),
+      getTeamIntelligenceSnapshotStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -719,6 +792,14 @@ export async function GET(request: Request) {
       teamStrength: await teamStrengthAudit(
         sportsFlags.sportsIntelligenceEnabled && sportsFlags.teamStrengthEnabled && sportsFlags.teamStrengthScoreMode === "AUDIT_ONLY",
         teamStrengthStatus,
+      ),
+      teamIntelligence: await teamIntelligenceAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.teamQualityEnabled &&
+          sportsFlags.gameReadinessEnabled &&
+          sportsFlags.contextCertaintyEnabled &&
+          sportsFlags.teamIntelligenceMode === "AUDIT_ONLY",
+        teamIntelligenceStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,
