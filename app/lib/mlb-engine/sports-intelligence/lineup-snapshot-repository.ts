@@ -292,6 +292,21 @@ function isUniqueViolation(error: { code?: string; message?: string } | null) {
   return error?.code === "23505" || (error?.message ?? "").toLowerCase().includes("duplicate");
 }
 
+function repositoryErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return fallback;
+  }
+}
+
 export async function insertLineupSnapshotDeduped(snapshot: MlbLineupSnapshot): Promise<LineupSnapshotWriteResult> {
   const warnings: string[] = [];
   try {
@@ -309,7 +324,7 @@ export async function insertLineupSnapshotDeduped(snapshot: MlbLineupSnapshot): 
 
     return { inserted: true, duplicate: false, snapshotId: data?.id, warnings };
   } catch (error) {
-    warnings.push(error instanceof Error ? error.message : "Unable to insert lineup snapshot.");
+    warnings.push(repositoryErrorMessage(error, "Unable to insert lineup snapshot."));
     return { inserted: false, duplicate: false, warnings };
   }
 }
@@ -423,7 +438,7 @@ export async function insertStarterVerificationSnapshotDeduped(
 
     return { inserted: true, duplicate: false, snapshotId: data?.id, warnings };
   } catch (error) {
-    warnings.push(error instanceof Error ? error.message : "Unable to insert starter verification snapshot.");
+    warnings.push(repositoryErrorMessage(error, "Unable to insert starter verification snapshot."));
     return { inserted: false, duplicate: false, warnings };
   }
 }
@@ -449,6 +464,7 @@ export async function getLineupPersistenceStatus(): Promise<LineupPersistenceSta
       warnings: [],
     };
   } catch (error) {
+    const warning = repositoryErrorMessage(error, "Lineup snapshot status unavailable.");
     return {
       ok: false,
       storageHealth: "ERROR",
@@ -456,7 +472,7 @@ export async function getLineupPersistenceStatus(): Promise<LineupPersistenceSta
       gamesTracked: 0,
       teamsTracked: 0,
       duplicateCountAvailable: false,
-      warnings: [error instanceof Error ? error.message : "Lineup snapshot status unavailable."],
+      warnings: [warning],
     };
   }
 }
@@ -504,6 +520,7 @@ export async function getLineupChangeStatus(details = false): Promise<LineupChan
       warnings: [],
     };
   } catch (error) {
+    const warning = repositoryErrorMessage(error, "Lineup change status unavailable.");
     return {
       ok: false,
       totalVerifiedEvents: 0,
@@ -513,7 +530,7 @@ export async function getLineupChangeStatus(details = false): Promise<LineupChan
       battingOrderChanges: 0,
       lateScratches: 0,
       latestEvents: [],
-      warnings: [error instanceof Error ? error.message : "Lineup change status unavailable."],
+      warnings: [warning],
     };
   }
 }
@@ -542,6 +559,7 @@ export async function getStarterVerificationStatus(details = false): Promise<Sta
       warnings: [],
     };
   } catch (error) {
+    const warning = repositoryErrorMessage(error, "Starter verification status unavailable.");
     return {
       ok: false,
       probableOnlyCount: 0,
@@ -549,7 +567,7 @@ export async function getStarterVerificationStatus(details = false): Promise<Sta
       changedCount: 0,
       ambiguousCount: 0,
       latestChanges: [],
-      warnings: [error instanceof Error ? error.message : "Starter verification status unavailable."],
+      warnings: [warning],
     };
   }
 }
