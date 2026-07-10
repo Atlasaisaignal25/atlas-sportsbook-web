@@ -7200,7 +7200,7 @@ const subscriptionPlansBoard = (
   <main className="min-h-screen bg-[#050816] text-white">
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
       <header className={`sticky top-0 z-20 border-b border-white/5 bg-[#050816]/95 px-4 backdrop-blur ${
-        appSection === "signals" ? "pb-2 pt-4" : "pb-3 pt-5"
+        appSection === "signals" ? "pb-2 pt-4" : appSection === "news" ? "pb-2 pt-4" : "pb-3 pt-5"
       }`}>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -7218,13 +7218,17 @@ const subscriptionPlansBoard = (
 </div>
 </div>
             <h1 className={`mt-1 font-bold leading-none tracking-tight ${
-              appSection === "signals" ? "text-[36px]" : "text-[40px]"
+              appSection === "signals" ? "text-[36px]" : appSection === "news" ? "text-[30px]" : "text-[40px]"
             }`}>
               {sectionTitle}
             </h1>
             {appSection === "signals" ? (
               <p className="mt-1.5 text-[13px] font-semibold text-white/62">
                 Premium Intelligence. Real Time Edge.
+              </p>
+            ) : appSection === "news" ? (
+              <p className="mt-1 text-[12px] font-semibold text-white/58">
+                Real-time events moving betting markets.
               </p>
             ) : null}
           </div>
@@ -8214,30 +8218,22 @@ const subscriptionPlansBoard = (
             )}
           </>
         ) : appSection === "news" ? (
-          <div className="space-y-3">
-            <section className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-4 shadow-[0_0_22px_rgba(34,211,238,0.08)]">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
-                Atlas Pulse
-              </p>
-              <h2 className="mt-2 text-[24px] font-black tracking-tight text-white">
-                Market Impact
-              </h2>
-              <p className="mt-1.5 text-[12px] font-semibold leading-5 text-white/62">
-                Market-impact news for smarter signals. Filtered by Atlas AI.
-              </p>
-            </section>
-
-            <section className="space-y-2">
-              <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="space-y-2.5">
+            <section className="space-y-1.5">
+              <div
+                className="flex max-w-full gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                aria-label="Sport filters"
+              >
                 {pulseSportFilters.map((filter) => (
                   <button
                     key={`pulse-sport-${filter.value}`}
                     type="button"
+                    aria-pressed={pulseSportFilter === filter.value}
                     onClick={() => setPulseSportFilter(filter.value)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] ${
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.06em] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${
                       pulseSportFilter === filter.value
                         ? "border-cyan-300 bg-cyan-300 text-black"
-                        : "border-white/10 bg-white/[0.04] text-white/55"
+                        : "border-white/10 bg-white/[0.04] text-white/58"
                     }`}
                   >
                     {filter.label}
@@ -8245,21 +8241,44 @@ const subscriptionPlansBoard = (
                 ))}
               </div>
 
-              <div className="grid grid-cols-4 gap-1.5">
+              <div
+                className="flex max-w-full gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                aria-label="Impact filters"
+              >
                 {pulseImpactFilters.map((filter) => (
                   <button
                     key={`pulse-impact-${filter.value}`}
                     type="button"
+                    aria-pressed={pulseImpactFilter === filter.value}
                     onClick={() => setPulseImpactFilter(filter.value)}
-                    className={`rounded-[12px] border px-1.5 py-2 text-[8.5px] font-black uppercase tracking-[0.04em] ${
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[9.5px] font-black uppercase tracking-[0.04em] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${
                       pulseImpactFilter === filter.value
                         ? "border-cyan-300/70 bg-cyan-300/14 text-cyan-200"
-                        : "border-white/10 bg-white/[0.035] text-white/44"
+                        : "border-white/10 bg-white/[0.035] text-white/52"
                     }`}
                   >
+                    {filter.value !== "ALL" ? (
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          filter.value === "HIGH"
+                            ? "bg-red-400"
+                            : filter.value === "MEDIUM"
+                            ? "bg-amber-300"
+                            : "bg-emerald-300"
+                        }`}
+                      />
+                    ) : null}
                     {filter.label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  aria-label="Open impact filters"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1.5 text-[9.5px] font-black uppercase tracking-[0.04em] text-white/52 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300/70"
+                >
+                  <span aria-hidden="true">⌕</span>
+                  Filters
+                </button>
               </div>
             </section>
 
