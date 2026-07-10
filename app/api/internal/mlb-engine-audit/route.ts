@@ -21,7 +21,11 @@ import {
 } from "@/app/lib/mlb-engine/sports-intelligence";
 import { getOffensiveFormSnapshotStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-form-repository";
 import { getOffensiveBaselineStorageStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-baseline-repository";
-import { getBullpenFeatureSnapshotStatus } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-feature-repository";
+import {
+  getBullpenFeatureSnapshotStatus,
+  loadLatestCanonicalBullpenTeamFeatures,
+} from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-feature-repository";
+import { getMlbTeamIdentityByName } from "@/app/lib/mlb-engine/sports-intelligence/mlb-team-mapping";
 import {
   BULLPEN_FATIGUE_SCORE_VERSION_V2,
   BULLPEN_QUALITY_SCORE_VERSION,
@@ -294,6 +298,34 @@ function bullpenAudit(
   };
 }
 
+async function bullpenFeaturesFromSnapshots(context: MlbGameContext) {
+  const teams = await loadLatestCanonicalBullpenTeamFeatures();
+  const homeId = getMlbTeamIdentityByName(context.homeTeam)?.officialTeamId;
+  const awayId = getMlbTeamIdentityByName(context.awayTeam)?.officialTeamId;
+  const home = teams.find((team) => team.teamId === homeId);
+  const away = teams.find((team) => team.teamId === awayId);
+  const availability: "AVAILABLE" | "PARTIAL" | "UNAVAILABLE" = home && away ? "AVAILABLE" : home || away ? "PARTIAL" : "UNAVAILABLE";
+  return {
+    metadata: {
+      availability,
+      source: "MLB_OFFICIAL" as const,
+      observedAt: new Date().toISOString(),
+      updatedAt: [home?.metadata.updatedAt, away?.metadata.updatedAt].filter(Boolean).sort().at(-1),
+      warnings: availability === "UNAVAILABLE" ? ["No canonical bullpen snapshots matched audit teams."] : [],
+    },
+    home,
+    away,
+    fatigueAdvantage: home?.fatigueScore !== undefined && away?.fatigueScore !== undefined
+      ? home.fatigueScore < away.fatigueScore ? "HOME" as const : away.fatigueScore < home.fatigueScore ? "AWAY" as const : "NEUTRAL" as const
+      : undefined,
+    qualityAdvantage: home?.qualityScore !== undefined && away?.qualityScore !== undefined
+      ? home.qualityScore > away.qualityScore ? "HOME" as const : away.qualityScore > home.qualityScore ? "AWAY" as const : "NEUTRAL" as const
+      : undefined,
+    bullpenAdvantage: undefined,
+    overallAvailability: availability,
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -408,12 +440,22 @@ export async function GET(request: Request) {
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
-    const sportsProvider = getMlbOfficialSportsIntelligenceProviderWhenEnabled(sportsFlags);
-    const sportsFeatures =
+    const sportsProvider = getMlbOfficialSportsIntelligenceProviderWhenEnabled({
+      ...sportsFlags,
+      bullpenModelEnabled: false,
+      bullpenProviderEnabled: false,
+    });
+    let sportsFeatures =
       sportsFlags.sportsIntelligenceEnabled &&
       (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled)
         ? await getMlbSportsIntelligenceFeatures(sportsContext, sportsProvider)
         : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
+    if (sportsFlags.sportsIntelligenceEnabled && sportsFlags.bullpenModelEnabled) {
+      sportsFeatures = {
+        ...sportsFeatures,
+        bullpen: await bullpenFeaturesFromSnapshots(sportsContext),
+      };
+    }
     const pitcherDiagnostics =
       sportsFlags.sportsIntelligenceEnabled &&
       (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled)

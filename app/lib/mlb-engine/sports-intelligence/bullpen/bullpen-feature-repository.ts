@@ -164,3 +164,53 @@ export async function getBullpenFeatureSnapshotStatus() {
     errors: latestError ? [latestError.message] : [] as string[],
   };
 }
+
+export async function loadLatestCanonicalBullpenTeamFeatures(): Promise<MlbTeamBullpenFeatures[]> {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("mlb_bullpen_feature_snapshots")
+    .select("*")
+    .eq("canonical", true)
+    .order("captured_at", { ascending: false })
+    .limit(200);
+  if (error) return [];
+  const seen = new Set<string>();
+  return (data ?? []).filter((row: any) => {
+    if (seen.has(row.team_id)) return false;
+    seen.add(row.team_id);
+    return true;
+  }).map((row: any): MlbTeamBullpenFeatures => ({
+    teamId: row.team_id,
+    teamName: row.team_name,
+    relievers: row.reliever_workloads ?? [],
+    totalAppearancesLast3Days: row.total_appearances_last_3_days ?? 0,
+    totalPitchesLast3Days: row.total_pitches_last_3_days ?? undefined,
+    totalInningsLast3Days: row.total_innings_last_3_days ?? undefined,
+    relieversUsedLast1Day: row.relievers_used_last_1_day ?? 0,
+    relieversUsedLast2Days: row.relievers_used_last_2_days ?? 0,
+    relieversUsedLast3Days: row.relievers_used_last_3_days ?? 0,
+    relieversOnConsecutiveDays: row.relievers_on_consecutive_days ?? 0,
+    relieversWithHeavyWorkload: row.relievers_with_heavy_workload ?? 0,
+    closerCandidate: row.closer_candidate ?? undefined,
+    highLeverageRelievers: row.high_leverage_relievers ?? [],
+    fatigueScore: row.fatigue_score ?? undefined,
+    fatigueScoreV1: row.fatigue_score_v1 ?? undefined,
+    fatigueScoreV2: row.fatigue_score_v2 ?? undefined,
+    fatigueScoreVersion: row.fatigue_score_version ?? undefined,
+    fatigueComponents: row.fatigue_components ?? undefined,
+    qualityScore: row.quality_score ?? undefined,
+    qualityScoreVersion: row.quality_score_version ?? undefined,
+    qualityComponents: row.quality_components ?? undefined,
+    effectiveDepth: row.effective_depth ?? undefined,
+    qualitySample: row.quality_sample ?? undefined,
+    metadata: {
+      availability: row.availability,
+      source: row.source,
+      observedAt: row.as_of,
+      updatedAt: row.source_updated_at,
+      gamesIncluded: row.games_included,
+      warnings: [],
+    },
+    warnings: [],
+  }));
+}
