@@ -261,6 +261,10 @@ export async function insertTeamIntelligenceSnapshotsDeduped(snapshots: TeamInte
 }
 
 function rowToSnapshot(row: any): TeamIntelligenceSnapshot {
+  const gameReadinessComponents = row.game_readiness_components ?? {};
+  const readinessCoveragePercent = Object.values(gameReadinessComponents as Record<string, any>).reduce((sum, component: any) => (
+    component?.normalizedValue === undefined ? sum : sum + Number(component.weight ?? 0)
+  ), 0) * 100;
   return {
     officialGameId: row.official_game_id ?? undefined,
     oddsEventId: row.odds_event_id ?? undefined,
@@ -281,8 +285,8 @@ function rowToSnapshot(row: any): TeamIntelligenceSnapshot {
     gameReadiness: {
       score: row.game_readiness_score ?? undefined,
       version: row.game_readiness_version ?? GAME_READINESS_VERSION,
-      components: row.game_readiness_components ?? {},
-      readinessCoveragePercent: 0,
+      components: gameReadinessComponents,
+      readinessCoveragePercent: round(readinessCoveragePercent),
       availability: row.game_readiness_availability ?? "UNAVAILABLE",
       confidence: row.game_readiness_confidence ?? "UNAVAILABLE",
       warnings: [],
