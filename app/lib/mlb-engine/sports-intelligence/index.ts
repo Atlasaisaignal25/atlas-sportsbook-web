@@ -18,6 +18,8 @@ export * from "./weather/weather-provider";
 export * from "./weather/weather-feature-repository";
 export * from "./weather/venue-registry";
 export * from "./weather/park-factor-provider";
+export * from "./team-strength/team-strength-engine";
+export * from "./team-strength/team-strength-repository";
 export * from "./mlb-team-mapping";
 export * from "./projection";
 export * from "./provider";

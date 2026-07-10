@@ -43,6 +43,13 @@ import {
 } from "@/app/lib/mlb-engine/sports-intelligence/weather/weather-feature-repository";
 import { parkBaselineHealth } from "@/app/lib/mlb-engine/sports-intelligence/weather/park-factor-provider";
 import { venueRegistryHealth } from "@/app/lib/mlb-engine/sports-intelligence/weather/venue-registry";
+import {
+  getTeamStrengthSnapshotStatus,
+  loadLatestCanonicalTeamStrengthSnapshots,
+  summarizeExampleTeamStrength,
+  teamStrengthAuditRanking,
+} from "@/app/lib/mlb-engine/sports-intelligence/team-strength/team-strength-repository";
+import { TEAM_STRENGTH_VERSION, teamStrengthDistribution } from "@/app/lib/mlb-engine/sports-intelligence/team-strength/team-strength-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -442,6 +449,39 @@ async function bullpenFeaturesFromSnapshots(context: MlbGameContext) {
   };
 }
 
+async function teamStrengthAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getTeamStrengthSnapshotStatus>>,
+) {
+  const snapshots = await loadLatestCanonicalTeamStrengthSnapshots();
+  const ranking = teamStrengthAuditRanking(snapshots);
+  return {
+    enabled,
+    label: "Atlas Team Strength Audit",
+    description: "Internal audit-only independent team rating. Not a power ranking, prediction ranking, market rating, or public pick input.",
+    scoreVersion: TEAM_STRENGTH_VERSION,
+    scoreMode: enabled ? process.env.MLB_TEAM_STRENGTH_SCORE_MODE ?? "AUDIT_ONLY" : "DISABLED",
+    storageHealth: status,
+    canonicalRows: status.canonicalSnapshots,
+    teamsTracked: status.teamsTracked,
+    teamsScored: status.teamsScored,
+    latestCapture: status.latestRefresh,
+    distribution: teamStrengthDistribution(snapshots),
+    confidenceCounts: status.confidenceCounts,
+    top5InternalAuditTeams: ranking.top5,
+    bottom5InternalAuditTeams: ranking.bottom5,
+    example: summarizeExampleTeamStrength(
+      snapshots
+        .filter((snapshot) => snapshot.teamStrength !== undefined)
+        .sort((a, b) => (b.teamStrength ?? 0) - (a.teamStrength ?? 0))[0],
+    ),
+    warnings: [
+      ...(snapshots.length < 30 ? ["Fewer than 30 canonical team strength rows are available."] : []),
+      ...Array.from(new Set(snapshots.flatMap((snapshot) => snapshot.warnings))).slice(0, 20),
+    ],
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -546,7 +586,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -555,6 +595,7 @@ export async function GET(request: Request) {
       getBullpenFeatureSnapshotStatus(),
       getBullpenQualityBaselineStatus(),
       getWeatherParkSnapshotStatus(),
+      getTeamStrengthSnapshotStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -674,6 +715,10 @@ export async function GET(request: Request) {
         bullpenSnapshotStatus,
         bullpenBaselineStatus,
         sportsFlags.bullpenFatigueScoreEnabled && sportsFlags.bullpenScoreMode === "AUDIT_ONLY",
+      ),
+      teamStrength: await teamStrengthAudit(
+        sportsFlags.sportsIntelligenceEnabled && sportsFlags.teamStrengthEnabled && sportsFlags.teamStrengthScoreMode === "AUDIT_ONLY",
+        teamStrengthStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,

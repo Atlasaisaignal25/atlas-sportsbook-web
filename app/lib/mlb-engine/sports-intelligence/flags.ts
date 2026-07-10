@@ -23,6 +23,8 @@ export type MlbSportsIntelligenceFlags = {
   weatherRunEnvironmentEnabled: boolean;
   parkEnvironmentScoreEnabled: boolean;
   weatherScoreMode: "AUDIT_ONLY" | "DISABLED";
+  teamStrengthEnabled: boolean;
+  teamStrengthScoreMode: "AUDIT_ONLY" | "DISABLED";
   lineupSnapshotsEnabled: boolean;
   lineupChangeDetectionEnabled: boolean;
   starterVerificationSnapshotsEnabled: boolean;
@@ -58,6 +60,8 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     weatherRunEnvironmentEnabled: envFlag("MLB_WEATHER_RUN_ENVIRONMENT_ENABLED"),
     parkEnvironmentScoreEnabled: envFlag("MLB_PARK_ENVIRONMENT_SCORE_ENABLED"),
     weatherScoreMode: process.env.MLB_WEATHER_SCORE_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
+    teamStrengthEnabled: envFlag("MLB_TEAM_STRENGTH_ENABLED"),
+    teamStrengthScoreMode: process.env.MLB_TEAM_STRENGTH_SCORE_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
     lineupSnapshotsEnabled: envFlag("MLB_LINEUP_SNAPSHOTS_ENABLED"),
     lineupChangeDetectionEnabled: envFlag("MLB_LINEUP_CHANGE_DETECTION_ENABLED"),
     starterVerificationSnapshotsEnabled: envFlag("MLB_STARTER_VERIFICATION_SNAPSHOTS_ENABLED"),

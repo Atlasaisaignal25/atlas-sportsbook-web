@@ -15,6 +15,7 @@
     "validate:mlb-bullpen-calibration": "npx --yes tsx scripts/validate-mlb-bullpen-calibration.ts",
     "validate:mlb-bullpen-season-quality": "npx --yes tsx scripts/validate-mlb-bullpen-season-quality.ts",
     "validate:mlb-weather-park-provider": "npx --yes tsx scripts/validate-mlb-weather-park-provider.ts",
+    "validate:mlb-team-strength": "npx --yes tsx scripts/validate-mlb-team-strength.ts",
     "validate:mlb-sports-intelligence": "npx --yes tsx scripts/validate-mlb-sports-intelligence-phase1.ts",
     "validate:mlb-pitcher-provider": "npx --yes tsx scripts/validate-mlb-pitcher-provider.ts",
     "validate:mlb-lineup-provider": "npx --yes tsx scripts/validate-mlb-lineup-provider.ts",
