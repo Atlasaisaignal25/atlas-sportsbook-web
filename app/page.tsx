@@ -6389,7 +6389,7 @@ function extractKnownMatchupFromText(item: AtlasEvent) {
     return {
       awayTeam: teams[0],
       homeTeam: teams[1],
-      timeLabel: item.timestampLabel || "Today",
+      timeLabel: "",
     };
   }
 
@@ -6456,16 +6456,18 @@ function getTerminalStatusBadge(item: AtlasEvent) {
   const text = `${item.title} ${item.summary} ${item.whyItMatters}`.toLowerCase();
 
   if (item.marketMovement) return item.marketMovement.status;
-  if (item.category === "WEATHER") return "WEATHER";
-  if (item.category === "STARTING_PITCHER") return "PITCHER";
-  if (item.category === "LINEUP") return text.includes("scratched") ? "SCRATCH" : "LINEUP";
+  if (item.category === "WEATHER" || item.category === "STARTING_PITCHER") return null;
+  if (item.category === "LINEUP") return text.includes("scratched") ? "SCRATCH" : null;
   if (text.includes("probable")) return "PROBABLE";
   if (text.includes("questionable")) return "QUESTIONABLE";
   if (text.includes("day-to-day") || text.includes("dtd")) return "DTD";
   if (text.includes("fractured") || text.includes("out") || text.includes("scratched")) return "OUT";
-  if (item.category === "INJURY") return "MONITOR";
 
-  return item.impact;
+  return null;
+}
+
+function formatPossessiveTeam(team: string) {
+  return team.endsWith("s") ? `${team}'` : `${team}'s`;
 }
 
 function getTerminalGameContext(item: AtlasEvent) {
@@ -6493,7 +6495,7 @@ function getTerminalGameContext(item: AtlasEvent) {
     return {
       kind: "team" as const,
       team,
-      timeLabel: item.timestampLabel,
+      timeLabel: "",
     };
   }
 
@@ -6515,11 +6517,11 @@ function getTerminalAtlasSummary(item: AtlasEvent) {
 
   const subject = getTerminalEventSubject(item);
   const team = extractKnownTeamFromText(item);
-  const teamLabel = team ? getDisplayAbbr(team) : "the affected team";
+  const teamLabel = team ?? "the affected team";
   const detail = getTerminalEventDetail(item).toLowerCase();
 
   if (item.category === "STARTING_PITCHER") {
-    return `${subject} may materially influence Moneyline, First Five and Total markets.`;
+    return `${subject} is confirmed as the starting pitcher, which may affect Moneyline, First Five and Total markets.`;
   }
 
   if (item.category === "WEATHER") {
@@ -6535,7 +6537,15 @@ function getTerminalAtlasSummary(item: AtlasEvent) {
   }
 
   if (item.category === "SUSPENSION" || item.category === "INJURY") {
-    return `${subject} is flagged with ${detail}, which may affect ${teamLabel} production and market volatility.`;
+    if (detail === "upgraded to probable") {
+      return `${subject} has been upgraded to probable, which may improve ${formatPossessiveTeam(teamLabel)} offensive projection.`;
+    }
+
+    if (detail === "day-to-day") {
+      return `${subject} is listed as day-to-day, which may affect ${formatPossessiveTeam(teamLabel)} offensive outlook and market volatility.`;
+    }
+
+    return `${subject} is dealing with ${detail}, which may affect ${teamLabel} production and market volatility.`;
   }
 
   return item.whyItMatters || item.summary || "Atlas detected an event that may affect betting markets.";
@@ -8620,9 +8630,11 @@ const subscriptionPlansBoard = (
                             <h3 className="min-w-0 truncate text-[15px] font-black leading-tight text-white">
                               {subject}
                             </h3>
-                            <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-white/62">
-                              {statusBadge}
-                            </span>
+                            {statusBadge ? (
+                              <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-white/62">
+                                {statusBadge}
+                              </span>
+                            ) : null}
                           </div>
                           <p className="mt-0.5 truncate text-[11px] font-bold leading-4 text-white/66">
                             {eventDetail}
@@ -8656,9 +8668,11 @@ const subscriptionPlansBoard = (
                           </div>
                           <div className="text-center">
                             <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">vs</p>
-                            <p className="mt-0.5 whitespace-nowrap text-[9px] font-bold text-white/44">
-                              {gameContext.timeLabel}
-                            </p>
+                            {gameContext.timeLabel ? (
+                              <p className="mt-0.5 whitespace-nowrap text-[9px] font-bold text-white/44">
+                                {gameContext.timeLabel}
+                              </p>
+                            ) : null}
                           </div>
                           <div className="min-w-0">
                             <div className="flex flex-row-reverse items-center gap-1.5">
@@ -8677,9 +8691,11 @@ const subscriptionPlansBoard = (
                               {gameContext.team}
                             </p>
                           </div>
-                          <p className="shrink-0 text-[9px] font-bold uppercase tracking-[0.08em] text-white/42">
-                            {gameContext.timeLabel}
-                          </p>
+                          {gameContext.timeLabel ? (
+                            <p className="shrink-0 text-[9px] font-bold uppercase tracking-[0.08em] text-white/42">
+                              {gameContext.timeLabel}
+                            </p>
+                          ) : null}
                         </div>
                       ) : (
                         <div className="mt-1.5 rounded-[10px] border border-white/10 bg-black/18 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white/42">
@@ -8711,27 +8727,9 @@ const subscriptionPlansBoard = (
                             {item.marketMovement.elapsedMinutes} min
                           </p>
                         </div>
-                      ) : item.category === "STARTING_PITCHER" ? (
-                        <div className="mt-1.5 rounded-[12px] border border-white/10 bg-black/18 px-2.5 py-1.5">
-                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/38">
-                            Starter Update
-                          </p>
-                          <p className="mt-1 text-[12px] font-black leading-4 text-white">
-                            Starter Change Confirmed
-                          </p>
-                        </div>
                       ) : item.category === "WEATHER" ? (
-                        <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-center">
-                          {["Wind", "Temp", "Rain"].map((label) => (
-                            <div key={`${item.id}-${label}`} className="rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
-                              <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">
-                                {label}
-                              </p>
-                              <p className="mt-0.5 text-[10px] font-black text-white/72">
-                                Watch
-                              </p>
-                            </div>
-                          ))}
+                        <div className="mt-1.5 rounded-[10px] border border-white/10 bg-black/18 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white/42">
+                          Weather details pending
                         </div>
                       ) : null}
 
