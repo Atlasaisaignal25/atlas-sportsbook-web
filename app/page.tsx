@@ -6317,17 +6317,127 @@ function getTeamBadgeSport(sport: PulseSport): SportTab {
     : "TOP";
 }
 
-function getTerminalEventSubject(item: AtlasEvent) {
-  return item.player ?? item.team ?? item.marketMovement?.outcomeName ?? item.sport;
+function isGenericEventSubject(value?: string) {
+  if (!value) return true;
+
+  const normalized = value.toLowerCase().trim();
+
+  return [
+    "rotation player",
+    "starting qb",
+    "key batter",
+    "five-year player",
+    "player",
+    "starter",
+    "mlb slate",
+  ].some((pattern) => normalized === pattern || normalized.includes(pattern));
 }
 
-function getTerminalEventStatus(item: AtlasEvent) {
+function titleCaseTeamName(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((word) => (word.length <= 2 ? word.toUpperCase() : `${word[0]?.toUpperCase() ?? ""}${word.slice(1).toLowerCase()}`))
+    .join(" ");
+}
+
+function extractKnownTeamFromText(item: AtlasEvent) {
+  const text = `${item.title} ${item.summary} ${item.team ?? ""}`;
+  const knownTeams = [
+    "New York Mets",
+    "Kansas City Royals",
+    "Buffalo Bills",
+    "Miami Dolphins",
+    "Golden State Warriors",
+    "Los Angeles Lakers",
+    "Chicago Cubs",
+    "San Diego Padres",
+    "New York Yankees",
+    "Boston Red Sox",
+    "Los Angeles Dodgers",
+    "San Francisco Giants",
+  ];
+  const directMatch = knownTeams.find((team) => text.toLowerCase().includes(team.toLowerCase()));
+
+  if (directMatch) return directMatch;
+
+  const titleMatch = item.title.match(/\b([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,2})\s(?:Announce|Place|Scratch|Activate|Recall|Trade|Rule)\b/);
+
+  return titleMatch?.[1] ? titleCaseTeamName(titleMatch[1]) : item.team;
+}
+
+function extractKnownMatchupFromText(item: AtlasEvent) {
+  const text = `${item.title} ${item.summary} ${item.team ?? ""}`;
+  const knownTeams = [
+    "New York Mets",
+    "Kansas City Royals",
+    "Buffalo Bills",
+    "Miami Dolphins",
+    "Golden State Warriors",
+    "Los Angeles Lakers",
+    "Chicago Cubs",
+    "San Diego Padres",
+    "New York Yankees",
+    "Boston Red Sox",
+    "Los Angeles Dodgers",
+    "San Francisco Giants",
+  ];
+  const lowerText = text.toLowerCase();
+  const teams = knownTeams.filter((team) => lowerText.includes(team.toLowerCase()));
+
+  if (teams.length >= 2) {
+    return {
+      awayTeam: teams[0],
+      homeTeam: teams[1],
+      timeLabel: item.timestampLabel || "Today",
+    };
+  }
+
+  return null;
+}
+
+function getTerminalEventSubject(item: AtlasEvent) {
+  if (item.marketMovement) return `${item.marketMovement.awayTeam} vs ${item.marketMovement.homeTeam}`;
+  const matchup = extractKnownMatchupFromText(item);
+
+  if (item.category === "WEATHER" && matchup) return `${matchup.awayTeam} vs ${matchup.homeTeam}`;
+  if (item.player && !isGenericEventSubject(item.player)) return item.player;
+
+  const team = extractKnownTeamFromText(item);
+
+  if (item.category === "INJURY" || item.category === "LINEUP") {
+    if (team && !isGenericEventSubject(team)) return `Key ${getDisplayAbbr(team)} Player`;
+
+    return item.title || item.category.replaceAll("_", " ");
+  }
+
+  if (item.team && !isGenericEventSubject(item.team)) return item.team;
+  if (item.player && !isGenericEventSubject(item.player)) return item.player;
+
+  return item.title || item.sport;
+}
+
+function getTerminalEventDetail(item: AtlasEvent) {
   const text = `${item.title} ${item.summary} ${item.whyItMatters}`.toLowerCase();
 
-  if (item.marketMovement) return item.marketMovement.status;
+  if (item.marketMovement) {
+    return `${item.marketMovement.marketLabel} ${formatMarketMovementValue(
+      item.marketMovement.previousPoint,
+      item.marketMovement.previousPrice,
+    )} → ${formatMarketMovementValue(item.marketMovement.currentPoint, item.marketMovement.currentPrice)}`;
+  }
+  if (text.includes("fractured hand")) return "Fractured Hand";
+  if (text.includes("hamstring")) return "Hamstring Injury";
+  if (text.includes("limited in practice")) return "Limited In Practice";
+  if (text.includes("probable")) return "Upgraded To Probable";
+  if (text.includes("questionable")) return "Questionable";
+  if (text.includes("day-to-day") || text.includes("dtd")) return "Day-To-Day";
+  if (text.includes("ruled out")) return "Ruled Out";
+  if (text.includes("scratched")) return item.category === "LINEUP" ? "Late Scratch" : "Scratched";
+  if (item.category === "WEATHER" && text.includes("blowing out")) return "Wind Blowing Out";
   if (item.category === "STARTING_PITCHER") return "Starting Pitcher Changed";
   if (item.category === "WEATHER") return "Weather Watch";
-  if (item.category === "LINEUP") return text.includes("removed") || text.includes("scratched") ? "Removed From Lineup" : "Lineup Change";
+  if (item.category === "LINEUP") return text.includes("removed") ? "Removed From Starting Lineup" : "Lineup Change";
   if (item.category === "ROSTER" || item.category === "TRANSACTION") {
     if (text.includes("called up")) return "Called Up";
     if (text.includes("activated")) return "Activated";
@@ -6336,54 +6446,96 @@ function getTerminalEventStatus(item: AtlasEvent) {
     return "Roster Move";
   }
   if (item.category === "SUSPENSION" || text.includes("suspended")) return "Suspended";
-  if (text.includes("questionable")) return "Questionable";
-  if (text.includes("probable")) return "Probable";
-  if (text.includes("day-to-day") || text.includes("dtd")) return "DTD";
   if (text.includes("out") || text.includes("scratched") || text.includes("fractured") || text.includes("injured")) return "OUT";
   if (item.category === "INJURY") return "DTD";
 
   return item.category.replaceAll("_", " ");
 }
 
+function getTerminalStatusBadge(item: AtlasEvent) {
+  const text = `${item.title} ${item.summary} ${item.whyItMatters}`.toLowerCase();
+
+  if (item.marketMovement) return item.marketMovement.status;
+  if (item.category === "WEATHER") return "WEATHER";
+  if (item.category === "STARTING_PITCHER") return "PITCHER";
+  if (item.category === "LINEUP") return text.includes("scratched") ? "SCRATCH" : "LINEUP";
+  if (text.includes("probable")) return "PROBABLE";
+  if (text.includes("questionable")) return "QUESTIONABLE";
+  if (text.includes("day-to-day") || text.includes("dtd")) return "DTD";
+  if (text.includes("fractured") || text.includes("out") || text.includes("scratched")) return "OUT";
+  if (item.category === "INJURY") return "MONITOR";
+
+  return item.impact;
+}
+
 function getTerminalGameContext(item: AtlasEvent) {
   if (item.marketMovement) {
     return {
+      kind: "matchup" as const,
       awayTeam: item.marketMovement.awayTeam,
       homeTeam: item.marketMovement.homeTeam,
       timeLabel: formatTime(item.marketMovement.commenceTime),
     };
   }
 
+  const matchup = extractKnownMatchupFromText(item);
+
+  if (matchup) {
+    return {
+      kind: "matchup" as const,
+      ...matchup,
+    };
+  }
+
+  const team = extractKnownTeamFromText(item);
+
+  if (team && !isGenericEventSubject(team)) {
+    return {
+      kind: "team" as const,
+      team,
+      timeLabel: item.timestampLabel,
+    };
+  }
+
   return {
-    awayTeam: item.team ?? item.player ?? item.sport,
-    homeTeam: "Opponent TBD",
-    timeLabel: "Today",
+    kind: "none" as const,
+    label: "Matchup not yet resolved",
   };
 }
 
 function getTerminalAtlasSummary(item: AtlasEvent) {
   if (item.marketMovement) {
-    return "Rapid market movement detected. Possible reaction to newly available information.";
+    return `${item.marketMovement.marketLabel} moved from ${formatMarketMovementValue(
+      item.marketMovement.previousPoint,
+      item.marketMovement.previousPrice,
+    )} to ${formatMarketMovementValue(item.marketMovement.currentPoint, item.marketMovement.currentPrice)} across ${
+      item.marketMovement.sportsbookCount
+    } books, which may signal a pricing shift.`;
   }
 
+  const subject = getTerminalEventSubject(item);
+  const team = extractKnownTeamFromText(item);
+  const teamLabel = team ? getDisplayAbbr(team) : "the affected team";
+  const detail = getTerminalEventDetail(item).toLowerCase();
+
   if (item.category === "STARTING_PITCHER") {
-    return "Pitching change may influence Moneyline, First Five and Total markets.";
+    return `${subject} may materially influence Moneyline, First Five and Total markets.`;
   }
 
   if (item.category === "WEATHER") {
-    return "Weather conditions may affect expected scoring and total market volatility.";
+    return `${getTerminalEventDetail(item)} may affect expected scoring and total-market volatility.`;
   }
 
   if (item.category === "LINEUP") {
-    return "Lineup change may shift team projection and player prop exposure.";
+    return `${subject} is tied to a ${detail}; ${teamLabel} totals and player props may move.`;
   }
 
   if (item.category === "ROSTER" || item.category === "TRANSACTION") {
-    return "Roster move may change team depth, role expectation and market pricing.";
+    return `${subject} may affect team depth, lineup construction and relevant player props.`;
   }
 
   if (item.category === "SUSPENSION" || item.category === "INJURY") {
-    return "Player availability may reduce production and increase market volatility.";
+    return `${subject} is flagged with ${detail}, which may affect ${teamLabel} production and market volatility.`;
   }
 
   return item.whyItMatters || item.summary || "Atlas detected an event that may affect betting markets.";
@@ -6391,6 +6543,7 @@ function getTerminalAtlasSummary(item: AtlasEvent) {
 
 function TerminalTeamMark({ teamName, sport }: { teamName: string; sport: SportTab }) {
   const logo = getLogo(teamName, sport);
+  const [logoFailed, setLogoFailed] = useState(false);
   const normalizedTeamName = teamName.toLowerCase();
   const isPlaceholder =
     normalizedTeamName.includes("tbd") ||
@@ -6400,12 +6553,21 @@ function TerminalTeamMark({ teamName, sport }: { teamName: string; sport: SportT
     normalizedTeamName.includes("slate") ||
     normalizedTeamName.includes("market") ||
     normalizedTeamName.includes("qb");
-  const shouldUseLogo = Boolean(logo) && !isPlaceholder;
+  const shouldUseLogo = Boolean(logo) && !isPlaceholder && !logoFailed;
+
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [logo]);
 
   return (
     <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/10 bg-white/8 p-0.5 text-[8px] font-black text-white/70">
       {shouldUseLogo && logo ? (
-        <img src={logo} alt={teamName} className="h-full w-full object-contain" />
+        <img
+          src={logo}
+          alt={teamName}
+          className="h-full w-full object-contain"
+          onError={() => setLogoFailed(true)}
+        />
       ) : (
         getDisplayAbbr(teamName)
       )}
@@ -8415,7 +8577,8 @@ const subscriptionPlansBoard = (
                     ? "MARKET MOVEMENT"
                     : item.category.replaceAll("_", " ");
                   const subject = getTerminalEventSubject(item);
-                  const statusLabel = getTerminalEventStatus(item);
+                  const eventDetail = getTerminalEventDetail(item);
+                  const statusBadge = getTerminalStatusBadge(item);
                   const gameContext = getTerminalGameContext(item);
                   const atlasSummary = getTerminalAtlasSummary(item);
                   const badgeSport = getTeamBadgeSport(item.sport);
@@ -8423,14 +8586,15 @@ const subscriptionPlansBoard = (
                     item.primaryMarket,
                     ...(item.otherMarkets ?? item.markets).filter((market) => market !== item.primaryMarket),
                   ].slice(0, 4);
-                  const sourceDisplay =
-                    displaySourceCount > 1
-                      ? sources
-                          .slice(0, 2)
-                          .map((source) => source.name)
-                          .filter(Boolean)
-                          .join(" + ") || `${displaySourceCount} Sources`
-                      : sourceLabel;
+                  const sourceDisplay = isOddsOnlyEvent
+                    ? "Atlas Market Scan"
+                    : displaySourceCount > 1
+                    ? sources
+                        .slice(0, 2)
+                        .map((source) => source.name)
+                        .filter(Boolean)
+                        .join(" + ") || `${displaySourceCount} Sources`
+                    : sourceLabel;
 
                   return (
                     <article
@@ -8439,27 +8603,32 @@ const subscriptionPlansBoard = (
                     >
                       <div className="flex items-start justify-between gap-2.5">
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1">
-                            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-200">
-                              {item.sport}
-                            </span>
-                            <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${impactStyles.badge}`}>
-                              {item.impact}
-                            </span>
-                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-white/48">
-                              {eventTypeLabel}
-                            </span>
-                          </div>
-                          <div className="mt-1.5 flex items-baseline gap-2">
+                          {item.marketMovement ? (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-200">
+                                {item.sport}
+                              </span>
+                              <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${impactStyles.badge}`}>
+                                {item.impact}
+                              </span>
+                              <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-white/48">
+                                {eventTypeLabel}
+                              </span>
+                            </div>
+                          ) : null}
+                          <div className={item.marketMovement ? "mt-1.5 flex items-baseline gap-2" : "flex items-baseline gap-2"}>
                             <h3 className="min-w-0 truncate text-[15px] font-black leading-tight text-white">
-                              {item.marketMovement ? `${gameContext.awayTeam} vs ${gameContext.homeTeam}` : subject}
+                              {subject}
                             </h3>
                             <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-white/62">
-                              {statusLabel}
+                              {statusBadge}
                             </span>
                           </div>
+                          <p className="mt-0.5 truncate text-[11px] font-bold leading-4 text-white/66">
+                            {eventDetail}
+                          </p>
                           <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-[0.08em] text-white/38">
-                            Confidence {item.confidence}%
+                            {item.sport} · {item.impact} · {eventTypeLabel} · Confidence {item.confidence}%
                           </p>
                         </div>
                         <span
@@ -8475,30 +8644,48 @@ const subscriptionPlansBoard = (
                         </span>
                       </div>
 
-                      <div className="mt-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-y border-white/10 py-1.5">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <TerminalTeamMark teamName={gameContext.awayTeam} sport={badgeSport} />
-                            <p className="truncate text-[11px] font-black text-white">
-                              {getDisplayAbbr(gameContext.awayTeam)}
+                      {gameContext.kind === "matchup" ? (
+                        <div className="mt-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-y border-white/10 py-1.5">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <TerminalTeamMark teamName={gameContext.awayTeam} sport={badgeSport} />
+                              <p className="truncate text-[11px] font-black text-white">
+                                {getDisplayAbbr(gameContext.awayTeam)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">vs</p>
+                            <p className="mt-0.5 whitespace-nowrap text-[9px] font-bold text-white/44">
+                              {gameContext.timeLabel}
                             </p>
                           </div>
+                          <div className="min-w-0">
+                            <div className="flex flex-row-reverse items-center gap-1.5">
+                              <TerminalTeamMark teamName={gameContext.homeTeam} sport={badgeSport} />
+                              <p className="truncate text-right text-[11px] font-black text-white">
+                                {getDisplayAbbr(gameContext.homeTeam)}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">vs</p>
-                          <p className="mt-0.5 whitespace-nowrap text-[9px] font-bold text-white/44">
+                      ) : gameContext.kind === "team" ? (
+                        <div className="mt-1.5 flex items-center justify-between gap-2 border-y border-white/10 py-1.5">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <TerminalTeamMark teamName={gameContext.team} sport={badgeSport} />
+                            <p className="truncate text-[11px] font-black text-white">
+                              {gameContext.team}
+                            </p>
+                          </div>
+                          <p className="shrink-0 text-[9px] font-bold uppercase tracking-[0.08em] text-white/42">
                             {gameContext.timeLabel}
                           </p>
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex flex-row-reverse items-center gap-1.5">
-                            <TerminalTeamMark teamName={gameContext.homeTeam} sport={badgeSport} />
-                            <p className="truncate text-right text-[11px] font-black text-white">
-                              {getDisplayAbbr(gameContext.homeTeam)}
-                            </p>
-                          </div>
+                      ) : (
+                        <div className="mt-1.5 rounded-[10px] border border-white/10 bg-black/18 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white/42">
+                          {gameContext.label}
                         </div>
-                      </div>
+                      )}
 
                       {item.marketMovement ? (
                         <div className="mt-1.5 grid grid-cols-[1fr_auto] items-end gap-3">
@@ -8530,7 +8717,7 @@ const subscriptionPlansBoard = (
                             Starter Update
                           </p>
                           <p className="mt-1 text-[12px] font-black leading-4 text-white">
-                            Old Starter <span className="text-cyan-300">↓</span> New Starter
+                            Starter Change Confirmed
                           </p>
                         </div>
                       ) : item.category === "WEATHER" ? (
