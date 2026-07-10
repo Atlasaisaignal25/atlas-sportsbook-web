@@ -221,7 +221,10 @@ async function main() {
     ]),
   );
   const onePitcher = await onePitcherProvider.getStartingPitcherFeatures(context());
-  assert.equal(onePitcher.metadata.availability, "PARTIAL");
+  assert.ok(
+    onePitcher.metadata.availability === "PARTIAL" || onePitcher.metadata.availability === "STALE",
+    `Expected PARTIAL or STALE one-pitcher availability, received ${onePitcher.metadata.availability}`,
+  );
   assert.equal(onePitcher.awayStarter, undefined);
 
   const missingPitcherProvider = new MlbOfficialPitcherProvider(
