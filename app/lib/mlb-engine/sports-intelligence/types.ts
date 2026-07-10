@@ -404,6 +404,22 @@ export type MlbRelieverWorkload = {
   warnings: string[];
 };
 
+export type RelieverFatigueEstimate = {
+  playerId: string;
+  playerName: string;
+  fatigueScore?: number;
+  fatigueTier: "RESTED" | "NORMAL" | "ELEVATED" | "HIGH" | "UNKNOWN";
+  confidence?: number;
+  components: {
+    previousDayLoad?: number;
+    threeDayLoad?: number;
+    consecutiveDays?: number;
+    multiInningUsage?: number;
+    recencyRecovery?: number;
+  };
+  warnings: string[];
+};
+
 export type MlbBullpenRoleEvidence =
   | "SAVES"
   | "HOLDS"
@@ -416,6 +432,32 @@ export type BullpenFatigueComponent = {
   normalizedScore: number;
   weight: number;
   warnings?: string[];
+};
+
+export type BullpenQualityComponent = {
+  component: string;
+  rawValue?: number;
+  normalizedScore: number;
+  weight: number;
+  higherIsBetter: boolean;
+};
+
+export type BullpenQualitySample = {
+  availability: DataAvailability;
+  seasonReliefInnings?: number;
+  recentReliefInnings?: number;
+  battersFaced?: number;
+  warnings: string[];
+};
+
+export type EffectiveReliefDepth = {
+  restedRelieverCount: number;
+  normalRelieverCount: number;
+  elevatedFatigueCount: number;
+  highFatigueCount: number;
+  availableHighLeverageCandidates: number;
+  qualityRelieversWithLowFatigue?: number;
+  depthAvailability: "DEEP" | "ADEQUATE" | "THIN" | "UNKNOWN";
 };
 
 export type MlbTeamBullpenFeatures = {
@@ -443,9 +485,26 @@ export type MlbTeamBullpenFeatures = {
     workloadAvailability: MlbBullpenWorkloadAvailability;
   }>;
   fatigueScore?: number;
+  fatigueScoreV1?: number;
+  fatigueScoreV2?: number;
   fatigueScoreVersion?: string;
   fatigueComponents?: BullpenFatigueComponent[];
   qualityScore?: number;
+  qualityScoreVersion?: string;
+  qualityComponents?: BullpenQualityComponent[];
+  qualitySample?: BullpenQualitySample;
+  effectiveDepth?: EffectiveReliefDepth;
+  relieverFatigue?: RelieverFatigueEstimate[];
+  gamesPlayedLast1Day?: number;
+  gamesPlayedLast2Days?: number;
+  gamesPlayedLast3Days?: number;
+  gamesPlayedLast7Days?: number;
+  doubleheadersLast7Days?: number;
+  extraInningGamesLast7Days?: number;
+  offDaysLast3Days?: number;
+  bullpenPitchesPerGameLast3?: number;
+  bullpenInningsPerGameLast3?: number;
+  relieverUsagePerGameLast3?: number;
   inningsLast3Days?: number;
   pitchesLast3Days?: number;
   closerAvailable?: boolean;

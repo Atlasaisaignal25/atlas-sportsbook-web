@@ -194,6 +194,7 @@ export function applyBullpenFatigueScore(team: MlbTeamBullpenFeatures) {
   return {
     ...team,
     fatigueScore: round(Math.min(100, score + completenessPenalty), 1),
+    fatigueScoreV1: round(Math.min(100, score + completenessPenalty), 1),
     fatigueScoreVersion: BULLPEN_FATIGUE_SCORE_VERSION,
     fatigueComponents: components,
   };
@@ -210,16 +211,26 @@ export function buildTeamBullpenFeatures(input: {
   scoreEnabled?: boolean;
   warnings?: string[];
 }): MlbTeamBullpenFeatures {
-  const relievers = buildRelieverWorkloads({ appearances: input.appearances, asOf: input.asOf });
+  const recentAppearances = input.appearances.filter((appearance) => {
+    const age = daysAgo(input.asOf, appearance.gameDate);
+    return age >= 0 && age <= 7;
+  });
+  const relievers = buildRelieverWorkloads({ appearances: recentAppearances, asOf: input.asOf });
+  const uniqueGames = (days: number) => new Set(input.appearances
+    .filter((appearance) => {
+      const age = daysAgo(input.asOf, appearance.gameDate);
+      return age >= 0 && age <= days;
+    })
+    .map((appearance) => appearance.officialGameId)).size;
   const last1 = relievers.filter((reliever) => reliever.appearancesLast1Day > 0);
   const last2 = relievers.filter((reliever) => reliever.appearancesLast2Days > 0);
   const last3 = relievers.filter((reliever) => reliever.appearancesLast3Days > 0);
   const appearancesLast3 = input.appearances.filter((appearance) => daysAgo(input.asOf, appearance.gameDate) >= 0 && daysAgo(input.asOf, appearance.gameDate) < 3);
-  const missingPitchCounts = input.appearances.filter((appearance) => appearance.reliefAppearance && appearance.pitchesThrown === undefined).length;
-  const completeness = input.appearances.length === 0 ? 0 : (input.appearances.length - missingPitchCounts) / input.appearances.length;
+  const missingPitchCounts = recentAppearances.filter((appearance) => appearance.reliefAppearance && appearance.pitchesThrown === undefined).length;
+  const completeness = recentAppearances.length === 0 ? 0 : (recentAppearances.length - missingPitchCounts) / recentAppearances.length;
   const warnings = [...(input.warnings ?? [])];
   if (missingPitchCounts > 0) warnings.push(`${missingPitchCounts} relief appearances are missing official pitch counts.`);
-  const roleAppearances = input.appearances.filter((appearance) =>
+  const roleAppearances = recentAppearances.filter((appearance) =>
     appearance.save || appearance.hold || appearance.gameFinished,
   );
   const sortedRoleAppearances = [...roleAppearances].sort((a, b) =>
@@ -249,9 +260,9 @@ export function buildTeamBullpenFeatures(input: {
     observedAt: input.asOf,
     updatedAt: input.sourceUpdatedAt,
     gamesRequested: input.gamesRequested,
-    gamesIncluded: input.gamesIncluded,
+    gamesIncluded: uniqueGames(7) || input.gamesIncluded,
     missingGames: Math.max(0, input.gamesRequested - input.gamesIncluded),
-    appearancesIncluded: input.appearances.length,
+    appearancesIncluded: recentAppearances.length,
     appearancesMissingPitchCounts: missingPitchCounts,
     completenessPercentage: round(completeness, 3),
     warnings,
@@ -276,6 +287,21 @@ export function buildTeamBullpenFeatures(input: {
     } : undefined,
     highLeverageRelievers: highLeverage,
     qualityScore: undefined,
+    gamesPlayedLast1Day: uniqueGames(1),
+    gamesPlayedLast2Days: uniqueGames(2),
+    gamesPlayedLast3Days: uniqueGames(3),
+    gamesPlayedLast7Days: uniqueGames(7),
+    doubleheadersLast7Days: Array.from(input.appearances.reduce((dates, appearance) => {
+      const games = dates.get(appearance.gameDate.slice(0, 10)) ?? new Set<string>();
+      games.add(appearance.officialGameId);
+      dates.set(appearance.gameDate.slice(0, 10), games);
+      return dates;
+    }, new Map<string, Set<string>>()).values()).filter((games) => games.size > 1).length,
+    extraInningGamesLast7Days: 0,
+    offDaysLast3Days: Math.max(0, 3 - uniqueGames(3)),
+    bullpenPitchesPerGameLast3: uniqueGames(3) > 0 ? round((sum(appearancesLast3.map((appearance) => appearance.pitchesThrown)) ?? 0) / uniqueGames(3), 1) : undefined,
+    bullpenInningsPerGameLast3: uniqueGames(3) > 0 ? round((sum(appearancesLast3.map((appearance) => appearance.inningsPitched)) ?? 0) / uniqueGames(3), 2) : undefined,
+    relieverUsagePerGameLast3: uniqueGames(3) > 0 ? round(last3.length / uniqueGames(3), 2) : undefined,
     metadata,
     warnings,
     inningsLast3Days: sum(appearancesLast3.map((appearance) => appearance.inningsPitched)),

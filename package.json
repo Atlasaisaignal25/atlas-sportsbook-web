@@ -12,6 +12,7 @@
     "validate:mlb-offensive-form-provider": "npx --yes tsx scripts/validate-mlb-offensive-form-provider.ts",
     "validate:mlb-offensive-score": "npx --yes tsx scripts/validate-mlb-offensive-score.ts",
     "validate:mlb-bullpen-provider": "npx --yes tsx scripts/validate-mlb-bullpen-provider.ts",
+    "validate:mlb-bullpen-calibration": "npx --yes tsx scripts/validate-mlb-bullpen-calibration.ts",
     "validate:mlb-sports-intelligence": "npx --yes tsx scripts/validate-mlb-sports-intelligence-phase1.ts",
     "validate:mlb-pitcher-provider": "npx --yes tsx scripts/validate-mlb-pitcher-provider.ts",
     "validate:mlb-lineup-provider": "npx --yes tsx scripts/validate-mlb-lineup-provider.ts",

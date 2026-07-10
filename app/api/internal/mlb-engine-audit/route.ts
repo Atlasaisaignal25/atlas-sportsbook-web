@@ -23,9 +23,12 @@ import { getOffensiveFormSnapshotStatus } from "@/app/lib/mlb-engine/sports-inte
 import { getOffensiveBaselineStorageStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-baseline-repository";
 import { getBullpenFeatureSnapshotStatus } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-feature-repository";
 import {
-  BULLPEN_FATIGUE_SCORE_VERSION,
+  BULLPEN_FATIGUE_SCORE_VERSION_V2,
+  BULLPEN_QUALITY_SCORE_VERSION,
+  effectiveDepthDistribution,
   fatigueDistribution,
-} from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-workload";
+  qualityDistribution,
+} from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-calibration";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
 
 export const dynamic = "force-dynamic";
@@ -237,8 +240,20 @@ function bullpenTeamAudit(team: MlbSportsIntelligenceFeatures["bullpen"]["home"]
     closerCandidate: team.closerCandidate,
     highLeverageRelievers: team.highLeverageRelievers,
     fatigueScore: team.fatigueScore,
+    fatigueScoreV1: team.fatigueScoreV1,
+    fatigueScoreV2: team.fatigueScoreV2,
+    fatigueTier: team.fatigueScoreV2 === undefined ? undefined : team.fatigueScoreV2 <= 20 ? "VERY_LIGHT" : team.fatigueScoreV2 <= 40 ? "RESTED" : team.fatigueScoreV2 <= 60 ? "MODERATE" : team.fatigueScoreV2 <= 80 ? "ELEVATED" : "EXTREME",
     fatigueScoreVersion: team.fatigueScoreVersion,
     fatigueComponents: team.fatigueComponents,
+    qualityScore: team.qualityScore,
+    qualityScoreVersion: team.qualityScoreVersion,
+    qualityComponents: team.qualityComponents,
+    qualitySample: team.qualitySample,
+    effectiveDepth: team.effectiveDepth,
+    closerHighLeverageFatigueEvidence: team.relieverFatigue?.filter((reliever) =>
+      reliever.playerId === team.closerCandidate?.playerId ||
+      team.highLeverageRelievers.some((candidate) => candidate.playerId === reliever.playerId),
+    ),
     warnings: team.warnings,
   };
 }
@@ -260,8 +275,17 @@ function bullpenAudit(
     latestRefresh: snapshotStatus.latestRefresh,
     scoreEnabled,
     scoreMode: scoreEnabled ? process.env.MLB_BULLPEN_SCORE_MODE ?? "AUDIT_ONLY" : "DISABLED",
-    scoreVersion: BULLPEN_FATIGUE_SCORE_VERSION,
+    fatigueVersion: process.env.MLB_BULLPEN_FATIGUE_VERSION ?? "v1",
+    scoreVersion: BULLPEN_FATIGUE_SCORE_VERSION_V2,
     fatigueDistribution: fatigueDistribution(teams),
+    fatigueV1Distribution: fatigueDistribution(teams.map((team) => ({ ...team, fatigueScore: team.fatigueScoreV1 }))),
+    fatigueV2Distribution: fatigueDistribution(teams.map((team) => ({ ...team, fatigueScore: team.fatigueScoreV2 }))),
+    qualityVersion: BULLPEN_QUALITY_SCORE_VERSION,
+    qualityDistribution: qualityDistribution(teams),
+    teamsQualityAvailable: teams.filter((team) => team.qualitySample?.availability === "AVAILABLE").map((team) => team.teamName),
+    teamsQualityPartial: teams.filter((team) => team.qualitySample?.availability === "PARTIAL").map((team) => team.teamName),
+    teamsQualityUnavailable: teams.filter((team) => !team.qualitySample || team.qualitySample.availability === "UNAVAILABLE").map((team) => team.teamName),
+    effectiveDepthDistribution: effectiveDepthDistribution(teams),
     warnings: features.bullpen.metadata.warnings ?? [],
     home: bullpenTeamAudit(features.bullpen.home),
     away: bullpenTeamAudit(features.bullpen.away),

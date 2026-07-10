@@ -48,8 +48,13 @@ export function buildBullpenFeatureSnapshotRows(teams: MlbTeamBullpenFeatures[],
       totalInningsLast3Days: team.totalInningsLast3Days,
       closerCandidate: team.closerCandidate,
       highLeverageRelievers: stableHighLeverage,
+      fatigueScoreV1: team.fatigueScoreV1,
+      fatigueScoreV2: team.fatigueScoreV2,
       fatigueScore: team.fatigueScore,
       fatigueScoreVersion: team.fatigueScoreVersion,
+      qualityScore: team.qualityScore,
+      qualityScoreVersion: team.qualityScoreVersion,
+      effectiveDepth: team.effectiveDepth,
       availability: team.metadata.availability,
     };
     return {
@@ -69,8 +74,16 @@ export function buildBullpenFeatureSnapshotRows(teams: MlbTeamBullpenFeatures[],
       high_leverage_relievers: team.highLeverageRelievers,
       reliever_workloads: team.relievers,
       fatigue_score: team.fatigueScore,
+      fatigue_score_v1: team.fatigueScoreV1,
+      fatigue_score_v2: team.fatigueScoreV2,
       fatigue_score_version: team.fatigueScoreVersion,
       fatigue_components: team.fatigueComponents,
+      quality_score: team.qualityScore,
+      quality_score_version: team.qualityScoreVersion,
+      quality_components: team.qualityComponents,
+      effective_depth: team.effectiveDepth,
+      quality_sample: team.qualitySample,
+      data_version: "bullpen_features_v2",
       availability: team.metadata.availability,
       source: team.metadata.source ?? "MLB_OFFICIAL",
       source_updated_at: team.metadata.updatedAt,
@@ -99,14 +112,18 @@ export async function insertBullpenFeatureSnapshotsDeduped(input: {
   const hashes = rows.map((row) => row.feature_hash);
   const markOld = await supabase
     .from("mlb_bullpen_feature_snapshots")
-    .update({ canonical: false })
+    .update({
+      canonical: false,
+      superseded_at: new Date().toISOString(),
+      invalid_reason: "SUPERSEDED_BY_BULLPEN_PHASE_6_1_CANONICAL_CAPTURE",
+    })
     .not("feature_hash", "in", `(${hashes.join(",")})`)
     .eq("canonical", true);
   if (markOld.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markOld.error.message] };
 
   const markCurrent = await supabase
     .from("mlb_bullpen_feature_snapshots")
-    .update({ canonical: true })
+    .update({ canonical: true, superseded_at: null, invalid_reason: null })
     .in("feature_hash", hashes);
   if (markCurrent.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markCurrent.error.message] };
 
@@ -128,7 +145,7 @@ export async function getBullpenFeatureSnapshotStatus() {
     .eq("canonical", true);
   const { data, error: latestError } = await supabase
     .from("mlb_bullpen_feature_snapshots")
-    .select("team_id,captured_at,fatigue_score,availability")
+    .select("team_id,captured_at,fatigue_score,quality_score,availability")
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(200);
@@ -138,6 +155,7 @@ export async function getBullpenFeatureSnapshotStatus() {
     canonicalSnapshots: canonicalSnapshots ?? 0,
     teamsTracked: new Set((data ?? []).map((row: any) => row.team_id)).size,
     teamsScored: new Set((data ?? []).filter((row: any) => row.fatigue_score !== null).map((row: any) => row.team_id)).size,
+    teamsQualityScored: new Set((data ?? []).filter((row: any) => row.quality_score !== null).map((row: any) => row.team_id)).size,
     latestRefresh: data?.[0]?.captured_at as string | undefined,
     availabilityCounts: (data ?? []).reduce((acc: Record<string, number>, row: any) => {
       acc[row.availability] = (acc[row.availability] ?? 0) + 1;

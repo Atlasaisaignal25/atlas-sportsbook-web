@@ -15,6 +15,12 @@ import type {
   MlbTeamBullpenFeatures,
 } from "../types";
 import { buildTeamBullpenFeatures, fatigueDistribution } from "./bullpen-workload";
+import {
+  applyBullpenFatigueV2,
+  applyBullpenQualityScores,
+  qualityDistribution,
+  rawBullpenWorkloadDistribution,
+} from "./bullpen-calibration";
 
 type CacheEntry<T> = {
   expiresAt: number;
@@ -181,6 +187,8 @@ export class MlbOfficialBullpenProvider {
     private readonly options: {
       enabled: boolean;
       scoreEnabled?: boolean;
+      fatigueVersion?: "v1" | "v2";
+      qualityScoreEnabled?: boolean;
       officialClient?: MlbOfficialClient;
       gameClient?: MlbOfficialGameClient;
     },
@@ -193,7 +201,8 @@ export class MlbOfficialBullpenProvider {
   private async scheduleWindow(asOf: string) {
     const client = this.options.officialClient ?? cachedMlbOfficialClient;
     const anchor = new Date(asOf);
-    const dates = Array.from({ length: 8 }, (_, index) => dateKey(addDays(anchor, -index)));
+    const lookbackDays = this.options.qualityScoreEnabled ? 31 : 8;
+    const dates = Array.from({ length: lookbackDays }, (_, index) => dateKey(addDays(anchor, -index)));
     const started = Date.now();
     const gamesByDate = await Promise.all(dates.map((date) => client.getSchedule(date)));
     this.health.requests += dates.length;
@@ -261,28 +270,39 @@ export class MlbOfficialBullpenProvider {
         sourceUpdatedAt: sourceDates.sort().at(-1),
         scoreEnabled: this.options.scoreEnabled,
       });
-      teamFeatureCache.set(`${team.officialTeamId}:${dateKey(asOf)}:${Boolean(this.options.scoreEnabled)}`, {
-        value: feature,
-        expiresAt: Date.now() + 20 * 60 * 1000,
-      });
       return feature;
     });
+    const fatigueCalibrated = this.options.scoreEnabled && this.options.fatigueVersion === "v2"
+      ? teams.map(applyBullpenFatigueV2)
+      : teams;
+    const finalTeams = this.options.qualityScoreEnabled
+      ? applyBullpenQualityScores(fatigueCalibrated, appearancesByTeam)
+      : fatigueCalibrated;
     this.health.gamesProcessed = uniqueGames.length;
-    this.health.reliefAppearancesProcessed = teams.reduce((total, team) => total + team.relievers.reduce((sum, reliever) => sum + reliever.appearancesLast7Days, 0), 0);
-    this.health.teamsAvailable = teams.filter((team) => team.metadata.availability === "AVAILABLE").length;
-    this.health.teamsPartial = teams.filter((team) => team.metadata.availability === "PARTIAL").length;
-    this.health.teamsUnavailable = teams.filter((team) => team.metadata.availability === "UNAVAILABLE").length;
+    this.health.reliefAppearancesProcessed = finalTeams.reduce((total, team) => total + team.relievers.reduce((sum, reliever) => sum + reliever.appearancesLast7Days, 0), 0);
+    this.health.teamsAvailable = finalTeams.filter((team) => team.metadata.availability === "AVAILABLE").length;
+    this.health.teamsPartial = finalTeams.filter((team) => team.metadata.availability === "PARTIAL").length;
+    this.health.teamsUnavailable = finalTeams.filter((team) => team.metadata.availability === "UNAVAILABLE").length;
+    finalTeams.forEach((team) => {
+      teamFeatureCache.set(`${team.teamId}:${dateKey(asOf)}:${Boolean(this.options.scoreEnabled)}:${this.options.fatigueVersion ?? "v1"}:${Boolean(this.options.qualityScoreEnabled)}`, {
+        value: team,
+        expiresAt: Date.now() + 20 * 60 * 1000,
+      });
+    });
     return {
-      teams,
+      teams: finalTeams,
+      appearancesByTeam,
       gamesProcessed: uniqueGames.length,
       reliefAppearancesProcessed: this.health.reliefAppearancesProcessed,
       errors: this.health.errors,
-      fatigueDistribution: fatigueDistribution(teams),
+      fatigueDistribution: fatigueDistribution(finalTeams),
+      qualityDistribution: qualityDistribution(finalTeams),
+      rawWorkloadDistribution: rawBullpenWorkloadDistribution(finalTeams),
     };
   }
 
   async getTeamBullpen(teamId: string, asOf: string) {
-    const cached = teamFeatureCache.get(`${teamId}:${dateKey(asOf)}:${Boolean(this.options.scoreEnabled)}`);
+    const cached = teamFeatureCache.get(`${teamId}:${dateKey(asOf)}:${Boolean(this.options.scoreEnabled)}:${this.options.fatigueVersion ?? "v1"}:${Boolean(this.options.qualityScoreEnabled)}`);
     if (cached && cached.expiresAt > Date.now()) {
       this.health.cacheHits += 1;
       return cached.value;
@@ -320,6 +340,9 @@ export class MlbOfficialBullpenProvider {
       const fatigueAdvantage = home?.fatigueScore !== undefined && away?.fatigueScore !== undefined
         ? home.fatigueScore < away.fatigueScore ? "HOME" : away.fatigueScore < home.fatigueScore ? "AWAY" : "NEUTRAL"
         : undefined;
+      const qualityAdvantage = home?.qualityScore !== undefined && away?.qualityScore !== undefined
+        ? home.qualityScore > away.qualityScore ? "HOME" : away.qualityScore > home.qualityScore ? "AWAY" : "NEUTRAL"
+        : undefined;
       return {
         metadata: {
           availability,
@@ -332,7 +355,7 @@ export class MlbOfficialBullpenProvider {
         away: away as BullpenFeatures["away"],
         fatigueAdvantage,
         bullpenAdvantage: undefined,
-        qualityAdvantage: undefined,
+        qualityAdvantage,
         overallAvailability: availability,
       };
     } catch (error) {
@@ -356,6 +379,8 @@ export function getMlbOfficialBullpenProviderWhenEnabled(flags: {
   bullpenModelEnabled: boolean;
   bullpenProviderEnabled: boolean;
   bullpenFatigueScoreEnabled?: boolean;
+  bullpenFatigueVersion?: "v1" | "v2";
+  bullpenQualityScoreEnabled?: boolean;
 }) {
   if (!flags.sportsIntelligenceEnabled || !flags.bullpenModelEnabled || !flags.bullpenProviderEnabled) {
     return new MlbOfficialBullpenProvider({ enabled: false });
@@ -363,6 +388,7 @@ export function getMlbOfficialBullpenProviderWhenEnabled(flags: {
   return new MlbOfficialBullpenProvider({
     enabled: true,
     scoreEnabled: Boolean(flags.bullpenFatigueScoreEnabled),
+    fatigueVersion: flags.bullpenFatigueVersion ?? "v1",
+    qualityScoreEnabled: Boolean(flags.bullpenQualityScoreEnabled),
   });
 }
-

@@ -66,6 +66,8 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
       enableBullpen?: boolean;
       enableBullpenProvider?: boolean;
       enableBullpenFatigueScore?: boolean;
+      bullpenFatigueVersion?: "v1" | "v2";
+      enableBullpenQualityScore?: boolean;
       pitcherClient?: MlbOfficialClient;
       gameClient?: MlbOfficialGameClient;
     },
@@ -81,6 +83,8 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
     const provider = new MlbOfficialBullpenProvider({
       enabled: Boolean(this.options.enableBullpenProvider),
       scoreEnabled: Boolean(this.options.enableBullpenFatigueScore),
+      fatigueVersion: this.options.bullpenFatigueVersion ?? "v1",
+      qualityScoreEnabled: Boolean(this.options.enableBullpenQualityScore),
       officialClient: this.options.pitcherClient ?? cachedMlbOfficialClient,
       gameClient: this.options.gameClient ?? cachedMlbOfficialGameClient,
     });
@@ -355,6 +359,8 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
   bullpenModelEnabled?: boolean;
   bullpenProviderEnabled?: boolean;
   bullpenFatigueScoreEnabled?: boolean;
+  bullpenFatigueVersion?: "v1" | "v2";
+  bullpenQualityScoreEnabled?: boolean;
 }) {
   if (!flags.sportsIntelligenceEnabled) return unavailableProvider;
   if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled && !flags.offensiveFormModelEnabled && !flags.bullpenModelEnabled) {
@@ -370,5 +376,7 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
     enableBullpen: flags.bullpenModelEnabled,
     enableBullpenProvider: flags.bullpenProviderEnabled,
     enableBullpenFatigueScore: flags.bullpenFatigueScoreEnabled,
+    bullpenFatigueVersion: flags.bullpenFatigueVersion,
+    enableBullpenQualityScore: flags.bullpenQualityScoreEnabled,
   });
 }
