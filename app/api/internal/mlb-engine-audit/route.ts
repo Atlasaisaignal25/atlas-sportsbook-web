@@ -40,7 +40,7 @@ async function recentPublicRows() {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("mlb_public_signals")
-    .select("date,game_id,away_team,home_team,pick,market,line,odds,status,model_factors,start_time")
+    .select("date,game_id,away_team,home_team,pick,market,line,odds,status,start_time")
     .order("date", { ascending: false })
     .limit(10);
 
