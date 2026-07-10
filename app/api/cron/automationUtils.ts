@@ -1,4 +1,13 @@
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
+import {
+  americanOddsToImpliedProbability,
+  buildConsensusMovementFromSnapshots,
+  buildMarketMovementFeatureMap,
+  collectOutcomeMarketFeatures,
+  marketMovementFeatureKey,
+  type MarketMovementFeatures,
+} from "@/app/lib/mlb-engine/marketFeatures";
+import { getRecentSnapshots } from "@/lib/market-impact/odds/snapshotRepository";
 import { randomUUID } from "crypto";
 
 type Sport = "MLB" | "NBA" | "NHL" | "SOCCER";
@@ -33,6 +42,18 @@ type PublicSignalRow = {
 
 type AtlasCandidate = PublicSignalRow & {
   modelScore: number;
+};
+
+type CandidateContext = {
+  bestBook?: string | null;
+  bookCount?: number | null;
+  averagePrice?: number | null;
+  medianPrice?: number | null;
+  priceSpread?: number | null;
+  noVigProbabilityPct?: number | null;
+  latestUpdatedAt?: string | null;
+  isStale?: boolean | null;
+  movement?: MarketMovementFeatures | null;
 };
 
 const MIN_AUTOMATED_PICK_ODDS = -150;
@@ -123,8 +144,7 @@ function signalScore(row: any) {
   const odds = Number(row.odds);
   if (!isSelectableAutomatedOdds(odds)) return 0;
 
-  const impliedProbability =
-    odds < 0 ? Math.abs(odds) / (Math.abs(odds) + 100) : 100 / (odds + 100);
+  const impliedProbability = americanOddsToImpliedProbability(odds) ?? 0;
 
   const market = inferMarket(row);
   const marketBonus =
@@ -264,6 +284,7 @@ function bestPricedOutcomes(game: any, marketKey: "h2h" | "spreads" | "totals") 
   const outcomesByKey = new Map<string, any>();
   const priceSamplesByKey = new Map<string, number[]>();
   const booksByKey = new Map<string, Set<string>>();
+  const featuresByKey = collectOutcomeMarketFeatures(game.bookmakers ?? [], marketKey);
 
   for (const bookmaker of game.bookmakers ?? []) {
     const market = bookmaker.markets?.find((item: any) => item.key === marketKey);
@@ -303,21 +324,27 @@ function bestPricedOutcomes(game: any, marketKey: "h2h" | "spreads" | "totals") 
       prices.length > 0
         ? Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length)
         : Number(outcome.price);
+    const feature = featuresByKey.get(key);
 
     return {
       ...outcome,
-      bookCount: books.size,
-      averagePrice,
-      priceSpread: Number.isFinite(bestPrice) && Number.isFinite(worstPrice)
-        ? bestPrice - worstPrice
-        : null,
+      bookCount: feature?.bookCount ?? books.size,
+      averagePrice: feature?.averagePrice ?? averagePrice,
+      medianPrice: feature?.medianPrice ?? null,
+      priceSpread:
+        feature?.priceSpread ??
+        (Number.isFinite(bestPrice) && Number.isFinite(worstPrice)
+          ? bestPrice - worstPrice
+          : null),
+      noVigProbabilityPct: feature?.noVigProbabilityPct ?? null,
+      latestUpdatedAt: feature?.latestUpdatedAt ?? null,
+      isStale: feature?.isStale ?? false,
     };
   });
 }
 
 function impliedScore(odds: number) {
-  const impliedProbability =
-    odds < 0 ? Math.abs(odds) / (Math.abs(odds) + 100) : 100 / (odds + 100);
+  const impliedProbability = americanOddsToImpliedProbability(odds) ?? 0;
 
   return Math.round(impliedProbability * 10000);
 }
@@ -325,8 +352,7 @@ function impliedScore(odds: number) {
 function impliedProbabilityPct(odds: number) {
   if (!Number.isFinite(odds)) return null;
 
-  const impliedProbability =
-    odds < 0 ? Math.abs(odds) / (Math.abs(odds) + 100) : 100 / (odds + 100);
+  const impliedProbability = americanOddsToImpliedProbability(odds) ?? 0;
 
   return Number((impliedProbability * 100).toFixed(1));
 }
@@ -338,9 +364,21 @@ function formatOddsText(odds: unknown) {
   return value > 0 ? `+${value}` : `${value}`;
 }
 
-function candidateScore(candidate: PublicSignalRow) {
+function movementScoreAdjustment(movement?: MarketMovementFeatures | null) {
+  if (!movement) return 0;
+  if (movement.sportsbookCount <= 1 && movement.impact === "LOW") return 0;
+
+  const impactBonus =
+    movement.impact === "HIGH" ? 220 : movement.impact === "MEDIUM" ? 140 : 60;
+  const consensusBonus = Math.round(Math.min(movement.consensusPercent, 1) * 120);
+
+  return impactBonus + consensusBonus;
+}
+
+function candidateScore(candidate: PublicSignalRow, context?: CandidateContext) {
   const odds = Number(candidate.odds);
   if (!isSelectableAutomatedOdds(odds)) return 0;
+  if (context?.isStale) return 0;
 
   const marketBonus =
     candidate.market === "spreads"
@@ -351,8 +389,24 @@ function candidateScore(candidate: PublicSignalRow) {
   const priceSafety = odds < 0 ? Math.abs(odds) : 100;
   const safetyBonus = Math.min(priceSafety, 150);
   const valueBonus = odds > 0 ? 180 : Math.max(0, odds + 150);
+  const noVigScore = Number.isFinite(Number(context?.noVigProbabilityPct))
+    ? Math.round(Number(context?.noVigProbabilityPct) * 100)
+    : impliedScore(odds);
+  const coverageBonus =
+    Number(context?.bookCount ?? 0) >= 4
+      ? 150
+      : Number(context?.bookCount ?? 0) >= 2
+        ? 80
+        : 0;
 
-  return impliedScore(odds) + marketBonus + safetyBonus + valueBonus;
+  return (
+    noVigScore +
+    marketBonus +
+    safetyBonus +
+    valueBonus +
+    coverageBonus +
+    movementScoreAdjustment(context?.movement)
+  );
 }
 
 function confidenceLabel(score: number) {
@@ -379,12 +433,7 @@ function marketLabel(market: string) {
 function buildSignalAnalysis(
   row: PublicSignalRow,
   score: number,
-  context?: {
-    bestBook?: string | null;
-    bookCount?: number | null;
-    averagePrice?: number | null;
-    priceSpread?: number | null;
-  }
+  context?: CandidateContext
 ): Pick<PublicSignalRow, "analysis_summary" | "confidence_label" | "edge_label" | "risk_note" | "model_factors"> {
   const market = marketLabel(row.market);
   const odds = Number(row.odds);
@@ -400,6 +449,8 @@ function buildSignalAnalysis(
   const bookCount = Number(context?.bookCount ?? 0);
   const averagePrice = Number(context?.averagePrice);
   const priceSpread = Number(context?.priceSpread);
+  const noVig = Number(context?.noVigProbabilityPct);
+  const movement = context?.movement;
   const marketDepth =
     bookCount > 1
       ? `Compared across ${bookCount} books; best price ${oddsText}${
@@ -411,11 +462,19 @@ function buildSignalAnalysis(
       ? `Book spread showed ${priceSpread} cents of separation, which signals price shopping value.`
       : "Price passed Atlas value screening without requiring extra line adjustment.";
   const impliedText = implied !== null ? `implied probability near ${implied}%` : "qualified implied probability";
+  const noVigText = Number.isFinite(noVig)
+    ? `No-vig market consensus estimated the selection near ${noVig.toFixed(1)}%.`
+    : "No-vig consensus was unavailable, so Atlas used observed American price and market depth only.";
+  const movementText = movement
+    ? `Recent snapshot movement was detected across ${movement.sportsbookCount} sportsbook${movement.sportsbookCount === 1 ? "" : "s"} and was treated as market context, not a guaranteed edge.`
+    : "No confirmed odds movement snapshot was attached to this selection.";
 
   const factors = [
     `Qualified inside Atlas odds range (${MIN_AUTOMATED_PICK_ODDS} to +${MAX_AUTOMATED_PICK_ODDS}).`,
     `${market.charAt(0).toUpperCase()}${market.slice(1)} profile ranked highest for this matchup at ${oddsText}.`,
     marketDepth,
+    noVigText,
+    movementText,
     priceSpreadText,
     `Atlas score ${score} placed this pick above the available board for the game.`,
     row.market === "spreads" || row.market === "totals"
@@ -427,7 +486,7 @@ function buildSignalAnalysis(
     analysis_summary: `Atlas selected ${row.pick} because the ${market}${lineText} offered the strongest blend of price safety, ${impliedText}, model confidence and market value for ${row.away_team} vs ${row.home_team}${bestBook}. It qualified at ${oddsText}, ranked as a ${confidence.toLowerCase()} confidence signal, and cleared Atlas filters before Top 5 sorting.`,
     confidence_label: confidence,
     edge_label: edge,
-    risk_note: "Signals are model-driven probabilities, not guarantees. Line movement, lineup news and late market shifts can change risk before start time.",
+    risk_note: "Signals use verified market data available to Atlas. They are not guarantees, and lineup news, pitcher changes, weather and late market shifts can change risk before start time.",
     model_factors: factors,
   };
 }
@@ -461,10 +520,13 @@ function buildCandidate(
   game: any,
   sport: Sport,
   market: "h2h" | "spreads" | "totals",
-  outcome: any
+  outcome: any,
+  movement?: MarketMovementFeatures | null
 ): AtlasCandidate | null {
   const price = Number(outcome.price);
   if (!isSelectableAutomatedOdds(price)) return null;
+  if (sport === "MLB" && Number(outcome.bookCount ?? 0) < 2) return null;
+  if (sport === "MLB" && outcome.isStale) return null;
 
   let pick = "";
   let line: number | null = null;
@@ -507,26 +569,39 @@ function buildCandidate(
     start_time: game.commence_time ?? null,
     status: "PENDING",
   };
-  const modelScore = candidateScore(baseRow);
+  const context: CandidateContext = {
+    bestBook: outcome.bestBook,
+    bookCount: outcome.bookCount,
+    averagePrice: outcome.averagePrice,
+    medianPrice: outcome.medianPrice,
+    priceSpread: outcome.priceSpread,
+    noVigProbabilityPct: outcome.noVigProbabilityPct,
+    latestUpdatedAt: outcome.latestUpdatedAt,
+    isStale: outcome.isStale,
+    movement,
+  };
+  const modelScore = candidateScore(baseRow, context);
 
   return {
     ...baseRow,
-    ...buildSignalAnalysis(baseRow, modelScore, {
-      bestBook: outcome.bestBook,
-      bookCount: outcome.bookCount,
-      averagePrice: outcome.averagePrice,
-      priceSpread: outcome.priceSpread,
-    }),
+    ...buildSignalAnalysis(baseRow, modelScore, context),
     modelScore,
   };
 }
 
-function buildPublicSignalFromOddsGame(game: any, sport: Sport): PublicSignalRow | null {
+function buildPublicSignalFromOddsGame(
+  game: any,
+  sport: Sport,
+  movementFeatures?: Map<string, MarketMovementFeatures>,
+): PublicSignalRow | null {
   const candidates: AtlasCandidate[] = [];
 
   for (const market of ["h2h", "spreads", "totals"] as const) {
     for (const outcome of bestPricedOutcomes(game, market)) {
-      const candidate = buildCandidate(game, sport, market, outcome);
+      const movement = game.id
+        ? movementFeatures?.get(marketMovementFeatureKey(game.id, market, outcome.name ?? ""))
+        : null;
+      const candidate = buildCandidate(game, sport, market, outcome, movement);
       if (candidate) candidates.push(candidate);
     }
   }
@@ -542,9 +617,11 @@ function buildPublicSignalFromOddsGame(game: any, sport: Sport): PublicSignalRow
 
 async function buildAtlasPublicSignalRows(config: SportConfig) {
   const oddsGames = await fetchOdds(config.oddsKeys);
+  const movementFeatures =
+    config.sport === "MLB" ? await loadMlbMarketMovementFeatures().catch(() => new Map()) : undefined;
 
   return oddsGames
-    .map((game) => buildPublicSignalFromOddsGame(game, config.sport))
+    .map((game) => buildPublicSignalFromOddsGame(game, config.sport, movementFeatures))
     .filter((row): row is PublicSignalRow => Boolean(row))
     .filter((row: any) => {
       if (!row.start_time) return true;
@@ -554,6 +631,27 @@ async function buildAtlasPublicSignalRows(config: SportConfig) {
         }) === todayET()
       );
     });
+}
+
+async function loadMlbMarketMovementFeatures() {
+  const snapshots = await getRecentSnapshots("MLB", 180);
+  const booksByEvent = new Map<string, Set<string>>();
+
+  snapshots.forEach((snapshot) => {
+    const books = booksByEvent.get(snapshot.eventId) ?? new Set<string>();
+    books.add(snapshot.bookmaker);
+    booksByEvent.set(snapshot.eventId, books);
+  });
+  const monitoredSportsbookCountByEvent = new Map(
+    Array.from(booksByEvent.entries()).map(([eventId, books]) => [eventId, books.size]),
+  );
+
+  const consensus = buildConsensusMovementFromSnapshots(
+    snapshots,
+    monitoredSportsbookCountByEvent,
+  );
+
+  return buildMarketMovementFeatureMap(consensus);
 }
 
 export async function generatePublicSignalsForSport(config: SportConfig) {
