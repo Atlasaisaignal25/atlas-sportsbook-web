@@ -83,7 +83,7 @@ function fixture(overrides: Partial<Parameters<typeof buildTeamStrength>[0]> = {
       parkEnvironmentScore: 57,
       metadata: {
         availability: "AVAILABLE",
-        source: "NWS_FORECAST",
+        source: "NWS",
         updatedAt: "2026-07-10T18:00:00.000Z",
         warnings: [],
       },
