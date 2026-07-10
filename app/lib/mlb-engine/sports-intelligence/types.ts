@@ -242,14 +242,59 @@ export type MlbPlayerAvailabilityFeatures = {
   warnings: string[];
 };
 
+export type OffensiveRollingWindow = "last7" | "last14" | "last30";
+
+export type OffensiveMetricBreakdown = {
+  metric:
+    | "hardHitRate"
+    | "barrelRate"
+    | "exitVelocity"
+    | "walkRate"
+    | "strikeoutRate"
+    | "expectedBattingAverage"
+    | "expectedSlugging"
+    | "expectedWeightedOnBaseAverage";
+  rawValue: number;
+  normalizedScore: number;
+  weight: number;
+  higherIsBetter: boolean;
+};
+
+export type OffensiveRollingFormWindow = {
+  window: OffensiveRollingWindow;
+  games: number;
+  score?: number;
+  hardHitRate?: number;
+  barrelRate?: number;
+  exitVelocity?: number;
+  walkRate?: number;
+  strikeoutRate?: number;
+  expectedBattingAverage?: number;
+  expectedSlugging?: number;
+  expectedWeightedOnBaseAverage?: number;
+  componentBreakdown: OffensiveMetricBreakdown[];
+};
+
 export type OffensiveTeamForm = {
+  teamId?: string;
+  teamName?: string;
+  atlasOffensiveScore?: number;
+  currentScore?: number;
+  scoreTimestamp?: string;
+  source?: FeatureSource;
+  availability?: DataAvailability;
+  rollingWindows: Partial<Record<OffensiveRollingWindow, OffensiveRollingFormWindow>>;
+  componentBreakdown: OffensiveMetricBreakdown[];
   last7Score?: number;
   last14Score?: number;
   last30Score?: number;
   hardHitRate?: number;
   barrelRate?: number;
+  exitVelocity?: number;
   strikeoutRate?: number;
   walkRate?: number;
+  xBA?: number;
+  xSLG?: number;
   xWoba?: number;
 };
 

@@ -17,6 +17,7 @@ import {
   type MlbGameContext,
   type MlbOfficialPitcherProviderHealth,
   type MlbSportsIntelligenceFeatures,
+  type OffensiveTeamForm,
 } from "@/app/lib/mlb-engine/sports-intelligence";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
 
@@ -135,6 +136,36 @@ function sportsIntelligenceAuditSummary(input: {
       errors: [],
       cacheStatus: "DISABLED",
     },
+  };
+}
+
+function offensiveTeamAudit(team: OffensiveTeamForm | undefined) {
+  if (!team) return undefined;
+
+  return {
+    teamId: team.teamId,
+    teamName: team.teamName,
+    offensiveScore: team.atlasOffensiveScore,
+    currentScore: team.currentScore,
+    scoreTimestamp: team.scoreTimestamp,
+    source: team.source,
+    availability: team.availability,
+    rollingWindows: team.rollingWindows,
+    componentBreakdown: team.componentBreakdown,
+  };
+}
+
+function offensiveFormAudit(features: MlbSportsIntelligenceFeatures) {
+  return {
+    availability: features.offensiveForm.metadata.availability,
+    source: features.offensiveForm.metadata.source ?? "none",
+    observedAt: features.offensiveForm.metadata.observedAt,
+    updatedAt: features.offensiveForm.metadata.updatedAt,
+    freshnessMinutes: features.offensiveForm.metadata.freshnessMinutes,
+    warnings: features.offensiveForm.metadata.warnings ?? [],
+    home: offensiveTeamAudit(features.offensiveForm.home),
+    away: offensiveTeamAudit(features.offensiveForm.away),
+    formAdvantage: features.offensiveForm.formAdvantage,
   };
 }
 
@@ -339,6 +370,7 @@ export async function GET(request: Request) {
         source: sportsFeatures.playerAvailability.metadata.source ?? "none",
         warnings: sportsFeatures.playerAvailability.warnings,
       },
+      offensiveForm: offensiveFormAudit(sportsFeatures),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,
         count: pitcherDiagnostics.length,

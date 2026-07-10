@@ -4,6 +4,7 @@ export * from "./pitcher-normalizer";
 export * from "./lineup-normalizer";
 export * from "./lineup-change-service";
 export * from "./lineup-snapshot-repository";
+export * from "./offense/offensive-form-engine";
 export * from "./projection";
 export * from "./provider";
 export * from "./providers/mlb-official-client";

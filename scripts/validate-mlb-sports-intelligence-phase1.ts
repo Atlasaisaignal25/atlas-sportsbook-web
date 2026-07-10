@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   buildMlbSportsProjection,
+  buildOffensiveFormFeatures,
   getMlbSportsIntelligenceFeatures,
   getMlbSportsIntelligenceFlags,
   unavailableMlbSportsIntelligenceProvider,
@@ -97,6 +98,76 @@ async function main() {
   assert.equal(projection.awayWinProbability, undefined);
   assert.equal(projection.projectedTotalRuns, undefined);
 
+  const offensive = buildOffensiveFormFeatures({
+    observedAt: "2026-07-10T18:00:00Z",
+    home: {
+      teamId: "116",
+      teamName: "Detroit Tigers",
+      asOf: "2026-07-10T18:00:00Z",
+      source: "MLB_OFFICIAL",
+      windows: {
+        last7: {
+          games: 7,
+          hardHitRate: 44,
+          barrelRate: 9,
+          exitVelocity: 89.5,
+          walkRate: 9.5,
+          strikeoutRate: 20,
+          expectedBattingAverage: 0.265,
+          expectedSlugging: 0.455,
+          expectedWeightedOnBaseAverage: 0.345,
+        },
+        last14: {
+          games: 14,
+          hardHitRate: 41,
+          barrelRate: 8,
+          exitVelocity: 88.7,
+          walkRate: 8.2,
+          strikeoutRate: 22,
+          expectedBattingAverage: 0.252,
+          expectedSlugging: 0.425,
+          expectedWeightedOnBaseAverage: 0.328,
+        },
+        last30: {
+          games: 30,
+          hardHitRate: 39,
+          barrelRate: 7,
+          exitVelocity: 88.1,
+          walkRate: 7.6,
+          strikeoutRate: 23.5,
+          expectedBattingAverage: 0.244,
+          expectedSlugging: 0.405,
+          expectedWeightedOnBaseAverage: 0.318,
+        },
+      },
+    },
+    away: {
+      teamId: "143",
+      teamName: "Philadelphia Phillies",
+      asOf: "2026-07-10T18:00:00Z",
+      source: "MLB_OFFICIAL",
+      windows: {
+        last7: {
+          games: 7,
+          hardHitRate: 36,
+          barrelRate: 5.5,
+          exitVelocity: 87.2,
+          walkRate: 6,
+          strikeoutRate: 26,
+          expectedBattingAverage: 0.229,
+          expectedSlugging: 0.37,
+          expectedWeightedOnBaseAverage: 0.295,
+        },
+      },
+    },
+  });
+  assert.equal(offensive.metadata.availability, "AVAILABLE");
+  assert.equal(offensive.home?.atlasOffensiveScore, 50.8);
+  assert.equal(offensive.home?.rollingWindows.last7?.score, 61);
+  assert.equal(offensive.home?.componentBreakdown.length, 8);
+  assert.equal(offensive.away?.atlasOffensiveScore, 14.3);
+  assert.equal(offensive.formAdvantage, "HOME");
+
   process.env.MLB_SPORTS_INTELLIGENCE_ENABLED = "false";
   process.env.MLB_PITCHER_MODEL_ENABLED = "false";
   process.env.MLB_LINEUP_MODEL_ENABLED = "false";
@@ -122,6 +193,11 @@ async function main() {
     automationUtils.includes("sports-intelligence"),
     false,
     "Phase 1 must not connect Sports Intelligence to scoring or ranking.",
+  );
+  assert.equal(
+    automationUtils.includes("offensive-form-engine"),
+    false,
+    "Offensive Form Engine must not connect to scoring or ranking in Phase 5.",
   );
   assert.equal(
     automationUtils.includes("MLB_SPORTS_INTELLIGENCE_ENABLED"),

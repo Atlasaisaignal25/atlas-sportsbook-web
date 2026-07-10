@@ -11,9 +11,11 @@ import {
   normalizeTeamLineup,
   verifyOfficialStarter,
 } from "../lineup-normalizer";
+import { buildUnavailableOffensiveFormFeatures } from "../offense/offensive-form-engine";
 import type {
   LineupStrengthFeatures,
   MlbGameContext,
+  OffensiveFormFeatures,
   StartingPitcherFeatures,
   StarterVerificationResult,
 } from "../types";
@@ -49,11 +51,30 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
     private readonly options: {
       enablePitcher: boolean;
       enableLineup: boolean;
+      enableOffense?: boolean;
       pitcherClient?: MlbOfficialClient;
       gameClient?: MlbOfficialGameClient;
     },
   ) {
     super(options.pitcherClient);
+  }
+
+  override async getOffensiveFormFeatures(context: MlbGameContext): Promise<OffensiveFormFeatures> {
+    if (!this.options.enableOffense) {
+      return buildUnavailableOffensiveFormFeatures(context.currentTime);
+    }
+
+    return {
+      ...buildUnavailableOffensiveFormFeatures(context.currentTime),
+      metadata: {
+        availability: "UNAVAILABLE",
+        source: "MLB_OFFICIAL",
+        observedAt: context.currentTime,
+        warnings: [
+          "Offensive Form Engine is available for verified official rolling-stat inputs, but no official rolling Statcast feed is connected.",
+        ],
+      },
+    };
   }
 
   override async getStartingPitcherFeatures(context: MlbGameContext): Promise<StartingPitcherFeatures> {
@@ -280,6 +301,7 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
   sportsIntelligenceEnabled: boolean;
   pitcherModelEnabled: boolean;
   lineupModelEnabled: boolean;
+  offensiveFormModelEnabled?: boolean;
 }) {
   if (!flags.sportsIntelligenceEnabled) return unavailableProvider;
   if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled) return unavailableProvider;
@@ -287,5 +309,6 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
   return new MlbOfficialSportsIntelligenceProvider({
     enablePitcher: flags.pitcherModelEnabled,
     enableLineup: flags.lineupModelEnabled,
+    enableOffense: flags.offensiveFormModelEnabled,
   });
 }
