@@ -60,6 +60,9 @@ export type AtlasMarketMovement = {
   marketKey: OddsMarketKey;
   marketLabel: "Moneyline" | "Run Line" | "Total";
   outcomeName: string;
+  homeTeam: string;
+  awayTeam: string;
+  commenceTime: string;
   previousPoint?: number;
   currentPoint?: number;
   previousPrice?: number;

@@ -37,6 +37,14 @@ function sameEvent(a: AtlasEvent, b: AtlasEvent) {
   const aIsMarket = a.category === "MARKET" || Boolean(a.marketMovement);
   const bIsMarket = b.category === "MARKET" || Boolean(b.marketMovement);
 
+  if (a.marketMovement && b.marketMovement) {
+    return (
+      a.groupedEventKey !== undefined &&
+      b.groupedEventKey !== undefined &&
+      a.groupedEventKey === b.groupedEventKey
+    );
+  }
+
   if (aIsMarket !== bIsMarket) {
     const sharedTeam =
       (a.team && b.team && normalizeText(a.team) === normalizeText(b.team)) ||

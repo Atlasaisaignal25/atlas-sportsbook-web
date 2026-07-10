@@ -141,30 +141,38 @@ function marketLabel(marketKey: ConsensusMovement["marketKey"]): AtlasMarketMove
   return "Moneyline";
 }
 
+function matchupLabel(movement: ConsensusMovement) {
+  return `${movement.awayTeam} vs ${movement.homeTeam}`;
+}
+
 function movementTitle(movement: ConsensusMovement) {
   const label = marketLabel(movement.marketKey);
-  if (movement.marketKey === "totals") return `MLB Total Moves ${movement.direction === "UP" ? "Up" : "Down"}`;
-  return `${movement.outcomeName} ${label} Moving`;
+  const matchup = matchupLabel(movement);
+  if (movement.marketKey === "totals") return `${matchup}: Total Market Moving`;
+  if (movement.marketKey === "spreads") return `${matchup}: Run Line Moving`;
+  return `${matchup}: ${movement.outcomeName} ${label} Moving`;
 }
 
 function movementSummary(movement: ConsensusMovement) {
   const label = marketLabel(movement.marketKey);
+  const matchup = matchupLabel(movement);
   const pointText =
     movement.previousPoint !== undefined || movement.currentPoint !== undefined
       ? `${formatPoint(movement.previousPoint) ?? "N/A"} to ${formatPoint(movement.currentPoint) ?? "N/A"}`
       : `${formatAmericanPrice(movement.previousPrice)} to ${formatAmericanPrice(movement.currentPrice)}`;
 
-  return `Possible market reaction detected: ${movement.outcomeName} ${label} moved from ${pointText} across ${movement.sportsbookCount} sportsbook${movement.sportsbookCount === 1 ? "" : "s"}.`;
+  return `Possible market reaction detected for ${matchup}: ${movement.outcomeName} ${label} moved from ${pointText} across ${movement.sportsbookCount} sportsbook${movement.sportsbookCount === 1 ? "" : "s"}.`;
 }
 
 function timelineSummary(movement: ConsensusMovement) {
   const label = marketLabel(movement.marketKey).toLowerCase();
+  const matchup = matchupLabel(movement);
   const value =
     movement.previousPoint !== undefined || movement.currentPoint !== undefined
       ? `${formatPoint(movement.previousPoint) ?? "N/A"} to ${formatPoint(movement.currentPoint) ?? "N/A"}`
       : `${formatAmericanPrice(movement.previousPrice)} to ${formatAmericanPrice(movement.currentPrice)}`;
 
-  return `${movement.outcomeName} ${label} moved from ${value} across ${movement.sportsbookCount} sportsbook${movement.sportsbookCount === 1 ? "" : "s"} in ${movement.elapsedMinutes} minutes.`;
+  return `${matchup}: ${movement.outcomeName} ${label} moved from ${value} across ${movement.sportsbookCount} sportsbook${movement.sportsbookCount === 1 ? "" : "s"} in ${movement.elapsedMinutes} minutes.`;
 }
 
 export function atlasEventFromConsensusMovement(movement: ConsensusMovement): AtlasEvent {
@@ -179,8 +187,8 @@ export function atlasEventFromConsensusMovement(movement: ConsensusMovement): At
   const lastUpdated = movement.detectedAt;
   const sources = [
     {
-      name: "The Odds API",
-      url: "https://the-odds-api.com/",
+      name: "Atlas Market Scan",
+      url: "",
       publishedAt: movement.detectedAt,
       reliability: 96,
       provider: "OddsAPI" as const,
@@ -190,6 +198,9 @@ export function atlasEventFromConsensusMovement(movement: ConsensusMovement): At
     marketKey: movement.marketKey,
     marketLabel: markets[0],
     outcomeName: movement.outcomeName,
+    homeTeam: movement.homeTeam,
+    awayTeam: movement.awayTeam,
+    commenceTime: movement.commenceTime,
     previousPoint: movement.previousPoint,
     currentPoint: movement.currentPoint,
     previousPrice: movement.previousPrice,
@@ -242,8 +253,8 @@ export function atlasEventFromConsensusMovement(movement: ConsensusMovement): At
     isLiveData: true,
     markets: [...markets],
     otherMarkets: [],
-    source: "The Odds API",
-    sourceUrl: "https://the-odds-api.com/",
+    source: "Atlas Market Scan",
+    sourceUrl: "",
     publishedAt: lastUpdated,
     timestampLabel: "Just now",
     sourceCount: 1,

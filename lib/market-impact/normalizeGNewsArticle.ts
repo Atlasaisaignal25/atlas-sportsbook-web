@@ -25,6 +25,22 @@ const DEFAULT_FRESHNESS_HOURS = 48;
 const MIN_RELEVANCE_SCORE = 4;
 
 const irrelevantPatterns = [
+  /promo\s*code/i,
+  /bonus/i,
+  /deposit/i,
+  /free\s+bet/i,
+  /bet\s+\$?\d+/i,
+  /claim\s+bonus/i,
+  /odds\s+boost/i,
+  /boosted\s+odds/i,
+  /sign\s*up\s+offer/i,
+  /signup\s+offer/i,
+  /casino/i,
+  /sportsbook/i,
+  /affiliate/i,
+  /promotion/i,
+  /commercial/i,
+  /referral/i,
   /retrospective/i,
   /all-time/i,
   /history/i,
