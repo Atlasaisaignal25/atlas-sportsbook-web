@@ -6311,6 +6311,108 @@ function formatMarketMovementValue(point?: number, price?: number) {
   return formatAmericanOdds(price ?? null);
 }
 
+function getTeamBadgeSport(sport: PulseSport): SportTab {
+  return sport === "MLB" || sport === "NFL" || sport === "NBA" || sport === "NHL" || sport === "SOCCER"
+    ? sport
+    : "TOP";
+}
+
+function getTerminalEventSubject(item: AtlasEvent) {
+  return item.player ?? item.team ?? item.marketMovement?.outcomeName ?? item.sport;
+}
+
+function getTerminalEventStatus(item: AtlasEvent) {
+  const text = `${item.title} ${item.summary} ${item.whyItMatters}`.toLowerCase();
+
+  if (item.marketMovement) return item.marketMovement.status;
+  if (item.category === "STARTING_PITCHER") return "Starting Pitcher Changed";
+  if (item.category === "WEATHER") return "Weather Watch";
+  if (item.category === "LINEUP") return text.includes("removed") || text.includes("scratched") ? "Removed From Lineup" : "Lineup Change";
+  if (item.category === "ROSTER" || item.category === "TRANSACTION") {
+    if (text.includes("called up")) return "Called Up";
+    if (text.includes("activated")) return "Activated";
+    if (text.includes("sent down")) return "Sent Down";
+    if (text.includes("trade")) return "Trade";
+    return "Roster Move";
+  }
+  if (item.category === "SUSPENSION" || text.includes("suspended")) return "Suspended";
+  if (text.includes("questionable")) return "Questionable";
+  if (text.includes("probable")) return "Probable";
+  if (text.includes("day-to-day") || text.includes("dtd")) return "DTD";
+  if (text.includes("out") || text.includes("scratched") || text.includes("fractured") || text.includes("injured")) return "OUT";
+  if (item.category === "INJURY") return "DTD";
+
+  return item.category.replaceAll("_", " ");
+}
+
+function getTerminalGameContext(item: AtlasEvent) {
+  if (item.marketMovement) {
+    return {
+      awayTeam: item.marketMovement.awayTeam,
+      homeTeam: item.marketMovement.homeTeam,
+      timeLabel: formatTime(item.marketMovement.commenceTime),
+    };
+  }
+
+  return {
+    awayTeam: item.team ?? item.player ?? item.sport,
+    homeTeam: "Opponent TBD",
+    timeLabel: "Today",
+  };
+}
+
+function getTerminalAtlasSummary(item: AtlasEvent) {
+  if (item.marketMovement) {
+    return "Rapid market movement detected. Possible reaction to newly available information.";
+  }
+
+  if (item.category === "STARTING_PITCHER") {
+    return "Pitching change may influence Moneyline, First Five and Total markets.";
+  }
+
+  if (item.category === "WEATHER") {
+    return "Weather conditions may affect expected scoring and total market volatility.";
+  }
+
+  if (item.category === "LINEUP") {
+    return "Lineup change may shift team projection and player prop exposure.";
+  }
+
+  if (item.category === "ROSTER" || item.category === "TRANSACTION") {
+    return "Roster move may change team depth, role expectation and market pricing.";
+  }
+
+  if (item.category === "SUSPENSION" || item.category === "INJURY") {
+    return "Player availability may reduce production and increase market volatility.";
+  }
+
+  return item.whyItMatters || item.summary || "Atlas detected an event that may affect betting markets.";
+}
+
+function TerminalTeamMark({ teamName, sport }: { teamName: string; sport: SportTab }) {
+  const logo = getLogo(teamName, sport);
+  const normalizedTeamName = teamName.toLowerCase();
+  const isPlaceholder =
+    normalizedTeamName.includes("tbd") ||
+    normalizedTeamName.includes("player") ||
+    normalizedTeamName.includes("starter") ||
+    normalizedTeamName.includes("batter") ||
+    normalizedTeamName.includes("slate") ||
+    normalizedTeamName.includes("market") ||
+    normalizedTeamName.includes("qb");
+  const shouldUseLogo = Boolean(logo) && !isPlaceholder;
+
+  return (
+    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/10 bg-white/8 p-0.5 text-[8px] font-black text-white/70">
+      {shouldUseLogo && logo ? (
+        <img src={logo} alt={teamName} className="h-full w-full object-contain" />
+      ) : (
+        getDisplayAbbr(teamName)
+      )}
+    </span>
+  );
+}
+
 const homeMembershipPlans = [
   {
     plan: "exclusive" as const,
@@ -8300,28 +8402,27 @@ const subscriptionPlansBoard = (
               <section className="space-y-2.5">
                 {filteredPulseItems.map((item) => {
                   const impactStyles = getPulseImpactClasses(item.impact);
-                  const affected = item.player ?? item.team ?? item.sport;
                   const sourceCount = item.sourceCount ?? item.sources?.length ?? 1;
                   const sources = item.sources ?? [];
                   const isOddsOnlyEvent =
                     sources.length > 0 && sources.every((source) => source.provider === "OddsAPI");
                   const displaySourceCount = isOddsOnlyEvent ? 1 : sourceCount;
                   const sourceLabel = isOddsOnlyEvent ? "Atlas Market Scan" : item.source;
-                  const sourceMeta = isOddsOnlyEvent ? "Generated by Atlas AI" : item.timestampLabel;
                   const score = item.atlasImpactScore ?? 0;
                   const scoreClasses = getAtlasImpactScoreClasses(score);
                   const scoreProgress = Math.max(0, Math.min(100, score));
                   const eventTypeLabel = item.marketMovement
                     ? "MARKET MOVEMENT"
                     : item.category.replaceAll("_", " ");
-                  const matchupLabel = item.marketMovement
-                    ? `${item.marketMovement.awayTeam} vs ${item.marketMovement.homeTeam}`
-                    : affected;
-                  const eventTitle = item.marketMovement
-                    ? item.title.includes(":")
-                      ? item.title.split(":").slice(1).join(":").trim()
-                      : eventTypeLabel
-                    : item.title;
+                  const subject = getTerminalEventSubject(item);
+                  const statusLabel = getTerminalEventStatus(item);
+                  const gameContext = getTerminalGameContext(item);
+                  const atlasSummary = getTerminalAtlasSummary(item);
+                  const badgeSport = getTeamBadgeSport(item.sport);
+                  const markets = [
+                    item.primaryMarket,
+                    ...(item.otherMarkets ?? item.markets).filter((market) => market !== item.primaryMarket),
+                  ].slice(0, 4);
                   const sourceDisplay =
                     displaySourceCount > 1
                       ? sources
@@ -8334,7 +8435,7 @@ const subscriptionPlansBoard = (
                   return (
                     <article
                       key={item.id}
-                      className={`rounded-[18px] border px-3 py-3 ${impactStyles.card}`}
+                      className={`rounded-[16px] border px-3 py-2 ${impactStyles.card}`}
                     >
                       <div className="flex items-start justify-between gap-2.5">
                         <div className="min-w-0 flex-1">
@@ -8349,11 +8450,16 @@ const subscriptionPlansBoard = (
                               {eventTypeLabel}
                             </span>
                           </div>
-                          <h3 className="mt-1.5 truncate text-[15px] font-black leading-tight text-white">
-                            {matchupLabel}
-                          </h3>
-                          <p className="mt-0.5 line-clamp-2 text-[12px] font-bold leading-4 text-white/70">
-                            {eventTitle}
+                          <div className="mt-1.5 flex items-baseline gap-2">
+                            <h3 className="min-w-0 truncate text-[15px] font-black leading-tight text-white">
+                              {item.marketMovement ? `${gameContext.awayTeam} vs ${gameContext.homeTeam}` : subject}
+                            </h3>
+                            <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-white/62">
+                              {statusLabel}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-[0.08em] text-white/38">
+                            Confidence {item.confidence}%
                           </p>
                         </div>
                         <span
@@ -8369,81 +8475,103 @@ const subscriptionPlansBoard = (
                         </span>
                       </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-black uppercase tracking-[0.08em] text-white/45">
-                        <span>Atlas Impact</span>
-                        <span className="text-white/22">•</span>
-                        <span>Confidence {item.confidence}%</span>
+                      <div className="mt-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-y border-white/10 py-1.5">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <TerminalTeamMark teamName={gameContext.awayTeam} sport={badgeSport} />
+                            <p className="truncate text-[11px] font-black text-white">
+                              {getDisplayAbbr(gameContext.awayTeam)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">vs</p>
+                          <p className="mt-0.5 whitespace-nowrap text-[9px] font-bold text-white/44">
+                            {gameContext.timeLabel}
+                          </p>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-row-reverse items-center gap-1.5">
+                            <TerminalTeamMark teamName={gameContext.homeTeam} sport={badgeSport} />
+                            <p className="truncate text-right text-[11px] font-black text-white">
+                              {getDisplayAbbr(gameContext.homeTeam)}
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        {item.primaryMarket ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.04em] text-cyan-200">
-                            <span className="text-white/42">Primary Market</span>
-                            <span>{item.primaryMarket}</span>
-                          </span>
-                        ) : null}
-                        {(item.otherMarkets ?? item.markets).map((market) => (
+                      {item.marketMovement ? (
+                        <div className="mt-1.5 grid grid-cols-[1fr_auto] items-end gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/38">
+                              {item.marketMovement.marketLabel}
+                            </p>
+                            <p className="mt-0.5 text-[18px] font-black leading-none text-white">
+                              {formatMarketMovementValue(
+                                item.marketMovement.previousPoint,
+                                item.marketMovement.previousPrice,
+                              )}{" "}
+                              <span className="text-cyan-300">↓</span>{" "}
+                              {formatMarketMovementValue(
+                                item.marketMovement.currentPoint,
+                                item.marketMovement.currentPrice,
+                              )}
+                            </p>
+                          </div>
+                          <p className="text-right text-[9px] font-bold uppercase leading-4 tracking-[0.05em] text-white/45">
+                            {item.marketMovement.sportsbookCount} Books<br />
+                            {Math.round(item.marketMovement.consensusPercent * 100)}% Consensus<br />
+                            {item.marketMovement.elapsedMinutes} min
+                          </p>
+                        </div>
+                      ) : item.category === "STARTING_PITCHER" ? (
+                        <div className="mt-1.5 rounded-[12px] border border-white/10 bg-black/18 px-2.5 py-1.5">
+                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/38">
+                            Starter Update
+                          </p>
+                          <p className="mt-1 text-[12px] font-black leading-4 text-white">
+                            Old Starter <span className="text-cyan-300">↓</span> New Starter
+                          </p>
+                        </div>
+                      ) : item.category === "WEATHER" ? (
+                        <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-center">
+                          {["Wind", "Temp", "Rain"].map((label) => (
+                            <div key={`${item.id}-${label}`} className="rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
+                              <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">
+                                {label}
+                              </p>
+                              <p className="mt-0.5 text-[10px] font-black text-white/72">
+                                Watch
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-1.5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
+                          Atlas Summary
+                        </p>
+                        <p className="mt-0.5 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/62">
+                          {atlasSummary}
+                        </p>
+                      </div>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        {markets.map((market) => (
                           <span
                             key={`${item.id}-${market}`}
-                            className="rounded-full border border-white/10 bg-black/18 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.04em] text-white/48"
+                            className="rounded-full border border-cyan-300/18 bg-black/18 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.04em] text-white/52"
                           >
                             {market}
                           </span>
                         ))}
                       </div>
 
-                      {item.marketMovement ? (
-                        <div className="mt-2 border-t border-white/10 pt-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
-                              Current Movement
-                            </p>
-                            <p className="text-[11px] font-black text-white">
-                              {item.marketMovement.marketLabel}
-                            </p>
-                          </div>
-                          <p className="mt-1 text-[16px] font-black leading-none text-white">
-                            {formatMarketMovementValue(
-                              item.marketMovement.previousPoint,
-                              item.marketMovement.previousPrice,
-                            )}{" "}
-                            <span className="text-cyan-300">→</span>{" "}
-                            {formatMarketMovementValue(
-                              item.marketMovement.currentPoint,
-                              item.marketMovement.currentPrice,
-                            )}
-                          </p>
-                          <p className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] font-bold uppercase tracking-[0.05em] text-white/45">
-                            <span>{item.marketMovement.sportsbookCount} Books</span>
-                            <span>{Math.round(item.marketMovement.consensusPercent * 100)}% Consensus</span>
-                            <span>{item.marketMovement.status}</span>
-                            <span>{item.marketMovement.elapsedMinutes} min</span>
-                          </p>
-                        </div>
-                      ) : null}
-
-                      {item.whyItMatters ? (
-                        <div className="mt-2">
-                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
-                            Why it matters
-                          </p>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold leading-4 text-white/58">
-                            {item.whyItMatters}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="mt-2 line-clamp-2 text-[11px] font-semibold leading-4 text-white/52">
-                          {item.summary}
-                        </p>
-                      )}
-
-                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-2">
+                      <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5">
                         <div className="min-w-0">
                           <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-white/50">
                             {sourceDisplay}
-                          </p>
-                          <p className="mt-0.5 text-[10px] font-semibold text-white/42">
-                            {sourceMeta}
                           </p>
                         </div>
                         {!isOddsOnlyEvent && sourceCount > 1 && sources.length > 0 ? (
