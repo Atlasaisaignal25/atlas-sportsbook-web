@@ -4,6 +4,11 @@ import {
   type OffensiveCompletedGame,
 } from "./statcast-offense-provider";
 import { buildStatcastLeagueBaselineSummary } from "./statcast-baseline";
+import {
+  applyAuditOnlyOffensiveScores,
+  buildAndPersistOffensiveBaselines,
+  scoreDistribution,
+} from "./offensive-baseline-repository";
 import { cachedStatcastClient, type StatcastClient } from "./statcast-client";
 import { insertOffensiveFormSnapshotsDeduped } from "./offensive-form-repository";
 import { cachedMlbOfficialClient, type MlbOfficialClient } from "../providers/mlb-official-client";
@@ -101,6 +106,7 @@ export async function captureMlbOffensiveFormSnapshots(options: {
   officialClient?: Pick<MlbOfficialClient, "getSchedule">;
   statcastClient?: StatcastClient;
   persist?: boolean;
+  scoreEnabled?: boolean;
 } = {}) {
   const asOf = options.asOf ?? new Date().toISOString();
   const officialClient = options.officialClient ?? cachedMlbOfficialClient;
@@ -158,10 +164,20 @@ export async function captureMlbOffensiveFormSnapshots(options: {
   const storage = options.persist === false
     ? { attempted: 0, inserted: 0, skipped: 0, errors: [] as string[] }
     : await insertOffensiveFormSnapshotsDeduped({ teams: teamForms, asOf });
+  const baselinePersistence = options.persist === false
+    ? { inserted: 0, skipped: 0, errors: [] as string[], metrics: {}, asOf, season: new Date(asOf).getUTCFullYear() }
+    : await buildAndPersistOffensiveBaselines({ asOf, season: new Date(asOf).getUTCFullYear() });
+  const scoreEnabled = options.scoreEnabled ?? process.env.MLB_OFFENSIVE_SCORE_ENABLED === "true";
+  const scoredTeamForms = scoreEnabled
+    ? applyAuditOnlyOffensiveScores(teamForms, baselinePersistence as any)
+    : teamForms;
+  const scoreStorage = scoreEnabled && options.persist !== false
+    ? await insertOffensiveFormSnapshotsDeduped({ teams: scoredTeamForms, asOf })
+    : { attempted: 0, inserted: 0, skipped: 0, errors: [] as string[] };
   const baseline = buildStatcastLeagueBaselineSummary({ teamWindows: teamStats, asOf });
   const windows = ["last7", "last14", "last30"] as OffensiveRollingWindow[];
   const distribution = Object.fromEntries(windows.map((window) => [window, qualityDistribution(teamForms, window)]));
-  const sampleWindows = teamForms.flatMap((form) => Object.values(form.rollingWindows).filter(Boolean));
+  const sampleWindows = scoredTeamForms.flatMap((form) => Object.values(form.rollingWindows).filter(Boolean));
   const statcastRowsProcessed = sampleWindows.reduce((sum, window) => sum + (window.rawRows ?? 0), 0);
   const uniquePlateAppearances = sampleWindows.reduce((sum, window) => sum + (window.uniquePlateAppearances ?? 0), 0);
 
@@ -170,16 +186,27 @@ export async function captureMlbOffensiveFormSnapshots(options: {
     teamsInspected: teams.length,
     teamsMapped: teamForms.length,
     windowsCalculated: sampleWindows.length,
-    snapshotsInserted: storage.inserted,
-    duplicateSnapshotsSkipped: storage.skipped,
+    snapshotsInserted: storage.inserted + scoreStorage.inserted,
+    duplicateSnapshotsSkipped: storage.skipped + scoreStorage.skipped,
     sufficientWindows: sampleWindows.filter((window) => window.sampleQuality === "SUFFICIENT").length,
     limitedWindows: sampleWindows.filter((window) => window.sampleQuality === "LIMITED").length,
     insufficientWindows: sampleWindows.filter((window) => window.sampleQuality === "INSUFFICIENT").length,
     unavailableWindows: sampleWindows.filter((window) => window.sampleQuality === "UNAVAILABLE").length,
     statcastRowsProcessed,
     uniquePlateAppearances,
-    providerErrors: storage.errors,
-    storageHealth: { healthy: storage.errors.length === 0, ...storage },
+    providerErrors: [...storage.errors, ...scoreStorage.errors, ...baselinePersistence.errors],
+    storageHealth: {
+      healthy: storage.errors.length === 0 && scoreStorage.errors.length === 0,
+      raw: storage,
+      score: scoreStorage,
+    },
+    baselinesInserted: baselinePersistence.inserted,
+    duplicateBaselinesSkipped: baselinePersistence.skipped,
+    scoreEnabled,
+    scoreMode: scoreEnabled ? "AUDIT_ONLY" : "DISABLED",
+    teamsScored: scoredTeamForms.filter((form) => form.atlasOffensiveScore !== undefined).length,
+    teamsUnscored: scoredTeamForms.filter((form) => form.atlasOffensiveScore === undefined).length,
+    scoreDistribution: scoreDistribution(scoredTeamForms),
     baselineStatus: baseline,
     requestHealth: {
       scheduleRequests,
@@ -191,7 +218,7 @@ export async function captureMlbOffensiveFormSnapshots(options: {
       sourceUrls: statcastResults.map((result) => result.sourceUrl),
     },
     sampleQualityDistribution: distribution,
-    teamForms,
+    teamForms: scoredTeamForms,
   };
 }
 

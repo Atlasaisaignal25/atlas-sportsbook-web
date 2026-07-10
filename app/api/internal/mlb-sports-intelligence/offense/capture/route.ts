@@ -45,6 +45,12 @@ export async function POST(request: Request) {
       uniquePlateAppearances: result.uniquePlateAppearances,
       providerErrors: result.providerErrors,
       storageHealth: result.storageHealth,
+      baselinesInserted: result.baselinesInserted,
+      duplicateBaselinesSkipped: result.duplicateBaselinesSkipped,
+      teamsScored: result.teamsScored,
+      teamsUnscored: result.teamsUnscored,
+      scoreMode: result.scoreMode,
+      scoreDistribution: result.scoreDistribution,
       baselineStatus: result.baselineStatus,
       requestHealth: {
         scheduleRequests: result.requestHealth.scheduleRequests,
@@ -56,7 +62,7 @@ export async function POST(request: Request) {
       },
       sampleQualityDistribution: result.sampleQualityDistribution,
       examples: selectOffensiveDiagnosticExamples(result.teamForms),
-      offensiveScoreEnabled: false,
+      offensiveScoreEnabled: result.scoreEnabled,
       rawCsvRowsReturned: false,
     });
   } catch (error) {

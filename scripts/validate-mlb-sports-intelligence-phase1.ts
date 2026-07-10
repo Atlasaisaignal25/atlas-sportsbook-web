@@ -181,6 +181,7 @@ async function main() {
   process.env.MLB_OFFENSIVE_FORM_MODEL_ENABLED = "false";
   process.env.MLB_STATCAST_PROVIDER_ENABLED = "false";
   process.env.MLB_OFFENSIVE_SCORE_ENABLED = "false";
+  process.env.MLB_OFFENSIVE_SCORE_MODE = "DISABLED";
   process.env.MLB_BULLPEN_MODEL_ENABLED = "false";
   process.env.MLB_WEATHER_MODEL_ENABLED = "false";
   const flags = getMlbSportsIntelligenceFlags();
@@ -191,6 +192,7 @@ async function main() {
     offensiveFormModelEnabled: false,
     statcastProviderEnabled: false,
     offensiveScoreEnabled: false,
+    offensiveScoreMode: "DISABLED",
     bullpenModelEnabled: false,
     weatherModelEnabled: false,
     lineupSnapshotsEnabled: false,

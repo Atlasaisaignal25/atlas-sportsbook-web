@@ -5,6 +5,7 @@ export type MlbSportsIntelligenceFlags = {
   offensiveFormModelEnabled: boolean;
   statcastProviderEnabled: boolean;
   offensiveScoreEnabled: boolean;
+  offensiveScoreMode: "AUDIT_ONLY" | "DISABLED";
   bullpenModelEnabled: boolean;
   weatherModelEnabled: boolean;
   lineupSnapshotsEnabled: boolean;
@@ -24,6 +25,7 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     offensiveFormModelEnabled: envFlag("MLB_OFFENSIVE_FORM_MODEL_ENABLED"),
     statcastProviderEnabled: envFlag("MLB_STATCAST_PROVIDER_ENABLED"),
     offensiveScoreEnabled: envFlag("MLB_OFFENSIVE_SCORE_ENABLED"),
+    offensiveScoreMode: process.env.MLB_OFFENSIVE_SCORE_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
     bullpenModelEnabled: envFlag("MLB_BULLPEN_MODEL_ENABLED"),
     weatherModelEnabled: envFlag("MLB_WEATHER_MODEL_ENABLED"),
     lineupSnapshotsEnabled: envFlag("MLB_LINEUP_SNAPSHOTS_ENABLED"),

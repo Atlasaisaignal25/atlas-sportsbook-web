@@ -9,6 +9,7 @@ export * from "./offense/statcast-baseline";
 export * from "./offense/statcast-client";
 export * from "./offense/statcast-offense-provider";
 export * from "./offense/offensive-form-repository";
+export * from "./offense/offensive-baseline-repository";
 export * from "./mlb-team-mapping";
 export * from "./projection";
 export * from "./provider";

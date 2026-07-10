@@ -312,6 +312,9 @@ export type OffensiveRollingFormWindow = {
   xSLG?: number;
   xwOBA?: number;
   sampleQuality?: OffensiveSampleQuality;
+  scoreVersion?: string;
+  baselineAsOf?: string;
+  baselineVersion?: string;
   warnings?: string[];
   componentBreakdown: OffensiveMetricBreakdown[];
 };
@@ -324,6 +327,9 @@ export type OffensiveTeamForm = {
   scoreTimestamp?: string;
   source?: FeatureSource;
   availability?: DataAvailability;
+  scoreVersion?: string;
+  baselineAsOf?: string;
+  baselineVersion?: string;
   rollingWindows: Partial<Record<OffensiveRollingWindow, OffensiveRollingFormWindow>>;
   componentBreakdown: OffensiveMetricBreakdown[];
   last7Score?: number;

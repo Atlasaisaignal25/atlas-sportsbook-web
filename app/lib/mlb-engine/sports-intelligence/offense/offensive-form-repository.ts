@@ -37,6 +37,8 @@ export function buildOffensiveFormSnapshotRows(team: OffensiveTeamForm | undefin
         expectedWOBAOnContact: window.expectedWOBAOnContact,
         atlasExpectedOffenseRate: window.atlasExpectedOffenseRate,
         atlasOffensiveScore: window.score,
+        scoreVersion: window.scoreVersion,
+        baselineVersion: window.baselineVersion,
         sampleQuality: window.sampleQuality,
       },
     };
@@ -64,9 +66,15 @@ export function buildOffensiveFormSnapshotRows(team: OffensiveTeamForm | undefin
       expected_woba_on_contact: window.expectedWOBAOnContact,
       atlas_expected_offense_rate: window.atlasExpectedOffenseRate,
       atlas_offensive_score: window.score,
+      score_version: window.scoreVersion,
+      score_components: window.componentBreakdown,
+      baseline_as_of: window.baselineAsOf,
+      baseline_version: window.baselineVersion,
       sample_quality: window.sampleQuality,
       source: team.source,
       source_updated_at: team.scoreTimestamp,
+      data_version: "offensive_form_v1",
+      canonical: true,
       feature_hash: featureHash(payload),
       captured_at: new Date().toISOString(),
     };
@@ -93,6 +101,34 @@ export async function insertOffensiveFormSnapshotsDeduped(input: {
     return { attempted: rows.length, inserted: 0, skipped: 0, errors: [error.message] };
   }
 
+  const currentHashes = rows.map((row) => row.feature_hash);
+  if (currentHashes.length > 0) {
+    const now = new Date().toISOString();
+    const notCurrent = await supabase
+      .from("mlb_offensive_form_snapshots")
+      .update({
+        canonical: false,
+        superseded_at: now,
+        invalid_reason: "SUPERSEDED_BY_NEWER_CANONICAL_CAPTURE",
+      })
+      .not("feature_hash", "in", `(${currentHashes.join(",")})`)
+      .eq("canonical", true);
+    if (notCurrent.error) {
+      return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [notCurrent.error.message] };
+    }
+    const markCurrent = await supabase
+      .from("mlb_offensive_form_snapshots")
+      .update({
+        canonical: true,
+        superseded_at: null,
+        invalid_reason: null,
+      })
+      .in("feature_hash", currentHashes);
+    if (markCurrent.error) {
+      return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markCurrent.error.message] };
+    }
+  }
+
   const inserted = data?.length ?? 0;
   return { attempted: rows.length, inserted, skipped: rows.length - inserted, errors: [] };
 }
@@ -113,9 +149,18 @@ export async function getOffensiveFormSnapshotStatus() {
     };
   }
 
+  const { count: canonicalCount } = await supabase
+    .from("mlb_offensive_form_snapshots")
+    .select("id", { count: "exact", head: true })
+    .eq("canonical", true);
+  const { count: noncanonicalCount } = await supabase
+    .from("mlb_offensive_form_snapshots")
+    .select("id", { count: "exact", head: true })
+    .eq("canonical", false);
   const { data, error: latestError } = await supabase
     .from("mlb_offensive_form_snapshots")
-    .select("team_id,window_games,captured_at")
+    .select("team_id,window_games,captured_at,atlas_offensive_score")
+    .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(500);
 
@@ -133,8 +178,11 @@ export async function getOffensiveFormSnapshotStatus() {
   return {
     healthy: true,
     totalSnapshots: count ?? 0,
+    canonicalSnapshots: canonicalCount ?? 0,
+    noncanonicalSnapshots: noncanonicalCount ?? 0,
     teamsTracked: new Set((data ?? []).map((row: any) => row.team_id)).size,
     windowsTracked: new Set((data ?? []).map((row: any) => row.window_games)).size,
+    teamsScored: new Set((data ?? []).filter((row: any) => row.atlas_offensive_score !== null).map((row: any) => row.team_id)).size,
     latestRefresh: data?.[0]?.captured_at as string | undefined,
     errors: [] as string[],
   };
