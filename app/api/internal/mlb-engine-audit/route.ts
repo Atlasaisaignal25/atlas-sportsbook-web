@@ -7,7 +7,7 @@ import {
 import {
   buildMlbSportsProjection,
   buildUnavailableMlbSportsIntelligenceFeatures,
-  getMlbOfficialPitcherProviderWhenEnabled,
+  getMlbOfficialSportsIntelligenceProviderWhenEnabled,
   getMlbSportsIntelligenceFeatures,
   getMlbSportsIntelligenceFlags,
   unavailableMlbSportsIntelligenceProvider,
@@ -135,7 +135,23 @@ function sportsIntelligenceAuditSummary(input: {
   };
 }
 
-function pitcherAuditItem(context: MlbGameContext, features: MlbSportsIntelligenceFeatures) {
+function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
+  const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
+  if (!lineup) return undefined;
+
+  return {
+    teamId: lineup.teamId,
+    teamName: lineup.teamName,
+    confirmed: lineup.confirmed,
+    actualPlayerCount: lineup.actualPlayerCount,
+    expectedPlayerCount: lineup.expectedPlayerCount,
+    battingOrderComplete: lineup.battingOrderComplete,
+    warnings: lineup.warnings,
+    players: details ? lineup.players : undefined,
+  };
+}
+
+function pitcherAuditItem(context: MlbGameContext, features: MlbSportsIntelligenceFeatures, details: boolean) {
   return {
     oddsEventId: context.eventId,
     homeTeam: context.homeTeam,
@@ -180,6 +196,14 @@ function pitcherAuditItem(context: MlbGameContext, features: MlbSportsIntelligen
         }
       : undefined,
     warnings: features.startingPitcher.metadata.warnings ?? [],
+    lineup: {
+      availability: features.lineup.metadata.availability,
+      homeConfirmed: features.lineup.homeConfirmed,
+      awayConfirmed: features.lineup.awayConfirmed,
+      home: lineupAudit("home", features, details),
+      away: lineupAudit("away", features, details),
+      warnings: features.lineup.metadata.warnings ?? [],
+    },
   };
 }
 
@@ -191,6 +215,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const requestedEventId = url.searchParams.get("eventId");
+    const details = url.searchParams.get("details") === "1";
     const [publicSignals, liveTop5, snapshotStatus, snapshots] = await Promise.all([
       recentPublicRows(),
       recentTop5Rows(),
@@ -216,23 +241,26 @@ export async function GET(request: Request) {
     const sportsFlags = getMlbSportsIntelligenceFlags();
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
-    const sportsProvider = getMlbOfficialPitcherProviderWhenEnabled(sportsFlags);
+    const sportsProvider = getMlbOfficialSportsIntelligenceProviderWhenEnabled(sportsFlags);
     const sportsFeatures =
-      sportsFlags.sportsIntelligenceEnabled && sportsFlags.pitcherModelEnabled
+      sportsFlags.sportsIntelligenceEnabled &&
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled)
         ? await getMlbSportsIntelligenceFeatures(sportsContext, sportsProvider)
         : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
     const pitcherDiagnostics =
-      sportsFlags.sportsIntelligenceEnabled && sportsFlags.pitcherModelEnabled
+      sportsFlags.sportsIntelligenceEnabled &&
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled)
         ? await Promise.all(
             pitcherContexts.map(async (context) =>
               pitcherAuditItem(
                 context,
                 await getMlbSportsIntelligenceFeatures(context, sportsProvider),
+                details,
               ),
             ),
           )
         : pitcherContexts.map((context) =>
-            pitcherAuditItem(context, buildUnavailableMlbSportsIntelligenceFeatures(context)),
+            pitcherAuditItem(context, buildUnavailableMlbSportsIntelligenceFeatures(context), details),
           );
     const providerHealth =
       "getHealth" in sportsProvider && typeof sportsProvider.getHealth === "function"
@@ -279,7 +307,9 @@ export async function GET(request: Request) {
         examples: consensusMovement.slice(0, 3),
       },
       sportsIntelligence: sportsIntelligenceAuditSummary({
-        enabled: sportsFlags.sportsIntelligenceEnabled && sportsFlags.pitcherModelEnabled,
+        enabled:
+          sportsFlags.sportsIntelligenceEnabled &&
+          (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled),
         provider: sportsProvider.name ?? unavailableMlbSportsIntelligenceProvider.name,
         features: sportsFeatures,
         health: providerHealth,

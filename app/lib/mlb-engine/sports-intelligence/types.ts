@@ -54,6 +54,8 @@ export type LineupStrengthFeatures = {
   metadata: SportsFeatureMetadata;
   homeConfirmed?: boolean;
   awayConfirmed?: boolean;
+  homeLineup?: NormalizedTeamLineup;
+  awayLineup?: NormalizedTeamLineup;
   homeLineupStrength?: number;
   awayLineupStrength?: number;
   homeMissingImpactPlayers?: number;
@@ -62,6 +64,52 @@ export type LineupStrengthFeatures = {
   awayPlatoonAdvantage?: number;
   homeLineupChangeScore?: number;
   awayLineupChangeScore?: number;
+};
+
+export type NormalizedLineupPlayer = {
+  playerId: string;
+  name: string;
+  battingOrder?: number;
+  positionCode?: string;
+  positionName?: string;
+  battingSide?: "L" | "R" | "S";
+  status?: "ACTIVE" | "STARTING" | "BENCH" | "UNKNOWN";
+};
+
+export type NormalizedTeamLineup = {
+  teamId?: string;
+  teamName: string;
+  confirmed: boolean;
+  confirmationSource?: string;
+  confirmedAt?: string;
+  players: NormalizedLineupPlayer[];
+  battingOrderComplete: boolean;
+  expectedPlayerCount: number;
+  actualPlayerCount: number;
+  warnings: string[];
+};
+
+export type StarterVerificationResult = {
+  team: "HOME" | "AWAY";
+  probablePitcherId?: string;
+  probablePitcherName?: string;
+  confirmedPitcherId?: string;
+  confirmedPitcherName?: string;
+  status: "MATCHED" | "CHANGED" | "PROBABLE_ONLY" | "UNAVAILABLE" | "AMBIGUOUS";
+  verifiedAt?: string;
+  warnings: string[];
+};
+
+export type LineupComparisonResult = {
+  addedPlayerIds: string[];
+  removedPlayerIds: string[];
+  battingOrderChanges: Array<{
+    playerId: string;
+    previousOrder?: number;
+    currentOrder?: number;
+  }>;
+  changed: boolean;
+  detectedAt: string;
 };
 
 export type OffensiveTeamForm = {

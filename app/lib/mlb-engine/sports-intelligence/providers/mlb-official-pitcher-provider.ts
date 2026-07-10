@@ -227,4 +227,3 @@ export function getMlbOfficialPitcherProviderWhenEnabled(flags: {
 }
 
 export type { ProviderHealth as MlbOfficialPitcherProviderHealth, MlbGameMappingResult };
-
