@@ -13,7 +13,12 @@ import {
 } from "../lineup-normalizer";
 import { buildUnavailableOffensiveFormFeatures } from "../offense/offensive-form-engine";
 import { StatcastOffenseProvider, type StatcastOffenseProviderHealth } from "../offense/statcast-offense-provider";
+import {
+  MlbOfficialBullpenProvider,
+  type MlbOfficialBullpenProviderHealth,
+} from "../bullpen/mlb-official-bullpen-provider";
 import type {
+  BullpenFeatures,
   LineupStrengthFeatures,
   MlbGameContext,
   OffensiveFormFeatures,
@@ -33,6 +38,7 @@ export type MlbOfficialLineupProviderHealth = MlbOfficialPitcherProviderHealth &
   confirmedStarters: number;
   changedStarters: number;
   offense?: StatcastOffenseProviderHealth;
+  bullpen?: MlbOfficialBullpenProviderHealth;
 };
 
 const unavailableProvider = new UnavailableMlbSportsIntelligenceProvider();
@@ -57,11 +63,33 @@ export class MlbOfficialSportsIntelligenceProvider extends MlbOfficialPitcherPro
       enableOffense?: boolean;
       enableStatcastProvider?: boolean;
       enableOffensiveScore?: boolean;
+      enableBullpen?: boolean;
+      enableBullpenProvider?: boolean;
+      enableBullpenFatigueScore?: boolean;
       pitcherClient?: MlbOfficialClient;
       gameClient?: MlbOfficialGameClient;
     },
   ) {
     super(options.pitcherClient);
+  }
+
+  override async getBullpenFeatures(context: MlbGameContext): Promise<BullpenFeatures> {
+    if (!this.options.enableBullpen) {
+      return unavailableProvider.getBullpenFeatures(context);
+    }
+
+    const provider = new MlbOfficialBullpenProvider({
+      enabled: Boolean(this.options.enableBullpenProvider),
+      scoreEnabled: Boolean(this.options.enableBullpenFatigueScore),
+      officialClient: this.options.pitcherClient ?? cachedMlbOfficialClient,
+      gameClient: this.options.gameClient ?? cachedMlbOfficialGameClient,
+    });
+    const features = await provider.getBullpenFeatures(context);
+    this.lineupHealth = {
+      ...this.lineupHealth,
+      bullpen: provider.getHealth(),
+    };
+    return features;
   }
 
   override async getOffensiveFormFeatures(context: MlbGameContext): Promise<OffensiveFormFeatures> {
@@ -324,9 +352,12 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
   offensiveFormModelEnabled?: boolean;
   statcastProviderEnabled?: boolean;
   offensiveScoreEnabled?: boolean;
+  bullpenModelEnabled?: boolean;
+  bullpenProviderEnabled?: boolean;
+  bullpenFatigueScoreEnabled?: boolean;
 }) {
   if (!flags.sportsIntelligenceEnabled) return unavailableProvider;
-  if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled && !flags.offensiveFormModelEnabled) {
+  if (!flags.pitcherModelEnabled && !flags.lineupModelEnabled && !flags.offensiveFormModelEnabled && !flags.bullpenModelEnabled) {
     return unavailableProvider;
   }
 
@@ -336,5 +367,8 @@ export function getMlbOfficialSportsIntelligenceProviderWhenEnabled(flags: {
     enableOffense: flags.offensiveFormModelEnabled,
     enableStatcastProvider: flags.statcastProviderEnabled,
     enableOffensiveScore: flags.offensiveScoreEnabled,
+    enableBullpen: flags.bullpenModelEnabled,
+    enableBullpenProvider: flags.bullpenProviderEnabled,
+    enableBullpenFatigueScore: flags.bullpenFatigueScoreEnabled,
   });
 }

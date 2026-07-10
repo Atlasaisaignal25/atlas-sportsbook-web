@@ -21,6 +21,11 @@ import {
 } from "@/app/lib/mlb-engine/sports-intelligence";
 import { getOffensiveFormSnapshotStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-form-repository";
 import { getOffensiveBaselineStorageStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-baseline-repository";
+import { getBullpenFeatureSnapshotStatus } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-feature-repository";
+import {
+  BULLPEN_FATIGUE_SCORE_VERSION,
+  fatigueDistribution,
+} from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-workload";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
 
 export const dynamic = "force-dynamic";
@@ -210,6 +215,61 @@ function offensiveFormAudit(
   };
 }
 
+function bullpenTeamAudit(team: MlbSportsIntelligenceFeatures["bullpen"]["home"] | undefined) {
+  if (!team) return undefined;
+  return {
+    teamId: team.teamId,
+    teamName: team.teamName,
+    availability: team.metadata.availability,
+    freshness: team.metadata.freshnessMinutes,
+    gamesIncluded: team.metadata.gamesIncluded,
+    appearancesIncluded: team.metadata.appearancesIncluded,
+    appearancesMissingPitchCounts: team.metadata.appearancesMissingPitchCounts,
+    completenessPercentage: team.metadata.completenessPercentage,
+    totalAppearancesLast3Days: team.totalAppearancesLast3Days,
+    totalPitchesLast3Days: team.totalPitchesLast3Days,
+    totalInningsLast3Days: team.totalInningsLast3Days,
+    relieversUsedLast1Day: team.relieversUsedLast1Day,
+    relieversUsedLast2Days: team.relieversUsedLast2Days,
+    relieversUsedLast3Days: team.relieversUsedLast3Days,
+    relieversOnConsecutiveDays: team.relieversOnConsecutiveDays,
+    relieversWithHeavyWorkload: team.relieversWithHeavyWorkload,
+    closerCandidate: team.closerCandidate,
+    highLeverageRelievers: team.highLeverageRelievers,
+    fatigueScore: team.fatigueScore,
+    fatigueScoreVersion: team.fatigueScoreVersion,
+    fatigueComponents: team.fatigueComponents,
+    warnings: team.warnings,
+  };
+}
+
+function bullpenAudit(
+  features: MlbSportsIntelligenceFeatures,
+  snapshotStatus: Awaited<ReturnType<typeof getBullpenFeatureSnapshotStatus>>,
+  scoreEnabled: boolean,
+) {
+  const teams = [features.bullpen.home, features.bullpen.away].filter(Boolean) as NonNullable<MlbSportsIntelligenceFeatures["bullpen"]["home"]>[];
+  return {
+    enabled: features.bullpen.metadata.availability !== "UNAVAILABLE",
+    provider: features.bullpen.metadata.source ?? "none",
+    providerHealth: "See sportsIntelligence.providerHealth.bullpen when the official bullpen provider is active.",
+    storageHealth: snapshotStatus,
+    teamsAvailable: teams.filter((team) => team.metadata.availability === "AVAILABLE").map((team) => team.teamName),
+    teamsPartial: teams.filter((team) => team.metadata.availability === "PARTIAL").map((team) => team.teamName),
+    teamsUnavailable: teams.filter((team) => team.metadata.availability === "UNAVAILABLE").map((team) => team.teamName),
+    latestRefresh: snapshotStatus.latestRefresh,
+    scoreEnabled,
+    scoreMode: scoreEnabled ? process.env.MLB_BULLPEN_SCORE_MODE ?? "AUDIT_ONLY" : "DISABLED",
+    scoreVersion: BULLPEN_FATIGUE_SCORE_VERSION,
+    fatigueDistribution: fatigueDistribution(teams),
+    warnings: features.bullpen.metadata.warnings ?? [],
+    home: bullpenTeamAudit(features.bullpen.home),
+    away: bullpenTeamAudit(features.bullpen.away),
+    fatigueAdvantage: features.bullpen.fatigueAdvantage,
+    qualityAdvantage: features.bullpen.qualityAdvantage,
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -314,24 +374,25 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
       getOffensiveFormSnapshotStatus(),
       getOffensiveBaselineStorageStatus(),
+      getBullpenFeatureSnapshotStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
     const sportsProvider = getMlbOfficialSportsIntelligenceProviderWhenEnabled(sportsFlags);
     const sportsFeatures =
       sportsFlags.sportsIntelligenceEnabled &&
-      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled)
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled)
         ? await getMlbSportsIntelligenceFeatures(sportsContext, sportsProvider)
         : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
     const pitcherDiagnostics =
       sportsFlags.sportsIntelligenceEnabled &&
-      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled)
+      (sportsFlags.pitcherModelEnabled || sportsFlags.lineupModelEnabled || sportsFlags.offensiveFormModelEnabled || sportsFlags.bullpenModelEnabled)
         ? await Promise.all(
             pitcherContexts.map(async (context) =>
               pitcherAuditItem(
@@ -418,6 +479,11 @@ export async function GET(request: Request) {
         offensiveSnapshotStatus,
         offensiveBaselineStatus,
         sportsFlags.offensiveScoreEnabled,
+      ),
+      bullpen: bullpenAudit(
+        sportsFeatures,
+        bullpenSnapshotStatus,
+        sportsFlags.bullpenFatigueScoreEnabled && sportsFlags.bullpenScoreMode === "AUDIT_ONLY",
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,

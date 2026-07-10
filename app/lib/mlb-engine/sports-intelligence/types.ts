@@ -352,20 +352,130 @@ export type OffensiveFormFeatures = {
   formAdvantage?: MlbTeamSide;
 };
 
-export type BullpenSideFeatures = {
+export type MlbBullpenWorkloadAvailability =
+  | "FRESH"
+  | "AVAILABLE"
+  | "LIMITED"
+  | "HEAVY"
+  | "UNKNOWN";
+
+export type MlbRelieverAppearance = {
+  officialGameId: string;
+  gameDate: string;
+  playerId: string;
+  playerName: string;
+  teamId: string;
+  teamName: string;
+  inningsPitched?: number;
+  pitchesThrown?: number;
+  battersFaced?: number;
+  hitsAllowed?: number;
+  walksAllowed?: number;
+  strikeouts?: number;
+  runsAllowed?: number;
+  earnedRunsAllowed?: number;
+  save?: boolean;
+  hold?: boolean;
+  blownSave?: boolean;
+  gameFinished?: boolean;
+  startedGame: boolean;
+  reliefAppearance: boolean;
+  source: "MLB_OFFICIAL";
+  warnings: string[];
+};
+
+export type MlbRelieverWorkload = {
+  playerId: string;
+  playerName: string;
+  appearancesLast1Day: number;
+  appearancesLast2Days: number;
+  appearancesLast3Days: number;
+  appearancesLast7Days: number;
+  pitchesLast1Day?: number;
+  pitchesLast2Days?: number;
+  pitchesLast3Days?: number;
+  pitchesLast7Days?: number;
+  inningsLast3Days?: number;
+  inningsLast7Days?: number;
+  consecutiveDaysUsed: number;
+  lastAppearanceAt?: string;
+  workloadAvailability: MlbBullpenWorkloadAvailability;
+  workloadScore?: number;
+  warnings: string[];
+};
+
+export type MlbBullpenRoleEvidence =
+  | "SAVES"
+  | "HOLDS"
+  | "GAME_FINISHES"
+  | "LATE_INNING_USAGE";
+
+export type BullpenFatigueComponent = {
+  component: string;
+  rawValue?: number;
+  normalizedScore: number;
+  weight: number;
+  warnings?: string[];
+};
+
+export type MlbTeamBullpenFeatures = {
+  teamId: string;
+  teamName: string;
+  relievers: MlbRelieverWorkload[];
+  totalAppearancesLast3Days: number;
+  totalPitchesLast3Days?: number;
+  totalInningsLast3Days?: number;
+  relieversUsedLast1Day: number;
+  relieversUsedLast2Days: number;
+  relieversUsedLast3Days: number;
+  relieversOnConsecutiveDays: number;
+  relieversWithHeavyWorkload: number;
+  closerCandidate?: {
+    playerId: string;
+    playerName: string;
+    identificationMethod: "RECENT_SAVES" | "RECENT_GAME_FINISHES" | "ROLE_FEED" | "UNKNOWN";
+    workloadAvailability: MlbBullpenWorkloadAvailability;
+  };
+  highLeverageRelievers: Array<{
+    playerId: string;
+    playerName: string;
+    roleEvidence: MlbBullpenRoleEvidence;
+    workloadAvailability: MlbBullpenWorkloadAvailability;
+  }>;
   fatigueScore?: number;
+  fatigueScoreVersion?: string;
+  fatigueComponents?: BullpenFatigueComponent[];
+  qualityScore?: number;
   inningsLast3Days?: number;
   pitchesLast3Days?: number;
   closerAvailable?: boolean;
   highLeverageArmsAvailable?: number;
-  qualityScore?: number;
+  metadata: SportsFeatureMetadata & {
+    gamesRequested?: number;
+    gamesIncluded?: number;
+    missingGames?: number;
+    appearancesIncluded?: number;
+    appearancesMissingPitchCounts?: number;
+    completenessPercentage?: number;
+  };
+  warnings: string[];
+};
+
+export type BullpenSideFeatures = MlbTeamBullpenFeatures & {
+  inningsLast3Days?: number;
+  pitchesLast3Days?: number;
+  closerAvailable?: boolean;
+  highLeverageArmsAvailable?: number;
 };
 
 export type BullpenFeatures = {
   metadata: SportsFeatureMetadata;
   home?: BullpenSideFeatures;
   away?: BullpenSideFeatures;
+  fatigueAdvantage?: MlbTeamSide;
+  qualityAdvantage?: MlbTeamSide;
   bullpenAdvantage?: MlbTeamSide;
+  overallAvailability?: DataAvailability;
 };
 
 export type WeatherParkFeatures = {

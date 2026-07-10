@@ -25,7 +25,11 @@ export type MlbOfficialGamePlayer = {
   allPositions?: Array<{
     code?: string;
     name?: string;
+    abbreviation?: string;
   }>;
+  stats?: {
+    pitching?: Record<string, unknown>;
+  };
 };
 
 export type MlbOfficialBoxscoreTeam = {
@@ -76,6 +80,16 @@ export type MlbOfficialLiveFeed = {
         name?: string;
       };
     };
+  };
+};
+
+export type MlbOfficialBoxscoreGameInfo = {
+  gameStatus?: string;
+  gameDate?: string;
+  officialDate?: string;
+  teams?: {
+    home?: { id?: number; name?: string };
+    away?: { id?: number; name?: string };
   };
 };
 
@@ -137,4 +151,3 @@ export class CachedMlbOfficialGameClient implements MlbOfficialGameClient {
 }
 
 export const cachedMlbOfficialGameClient = new CachedMlbOfficialGameClient();
-
