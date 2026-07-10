@@ -199,6 +199,8 @@ async function main() {
   process.env.MLB_WEATHER_RUN_ENVIRONMENT_ENABLED = "false";
   process.env.MLB_PARK_ENVIRONMENT_SCORE_ENABLED = "false";
   process.env.MLB_WEATHER_SCORE_MODE = "DISABLED";
+  process.env.MLB_TEAM_STRENGTH_ENABLED = "false";
+  process.env.MLB_TEAM_STRENGTH_SCORE_MODE = "DISABLED";
   const flags = getMlbSportsIntelligenceFlags();
   assert.deepEqual(flags, {
     sportsIntelligenceEnabled: false,
@@ -225,6 +227,8 @@ async function main() {
     weatherRunEnvironmentEnabled: false,
     parkEnvironmentScoreEnabled: false,
     weatherScoreMode: "DISABLED",
+    teamStrengthEnabled: false,
+    teamStrengthScoreMode: "DISABLED",
     lineupSnapshotsEnabled: false,
     lineupChangeDetectionEnabled: false,
     starterVerificationSnapshotsEnabled: false,
