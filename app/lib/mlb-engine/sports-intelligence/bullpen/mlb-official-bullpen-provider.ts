@@ -95,6 +95,20 @@ function playerKey(playerId: number | string) {
   return `ID${playerId}`;
 }
 
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>) {
+  const results: R[] = [];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 function pitcherStats(team: MlbOfficialBoxscoreTeam, pitcherId: number) {
   return team.players?.[playerKey(pitcherId)]?.stats?.pitching ?? {};
 }
@@ -256,7 +270,7 @@ export class MlbOfficialBullpenProvider {
     const gamesByTeam = new Map<string, Set<string>>();
     const sourceDates: string[] = [];
 
-    await Promise.all(uniqueGames.map(async (game) => {
+    await mapWithConcurrency(uniqueGames, this.options.seasonArchiveEnabled ? 8 : 12, async (game) => {
       if (!game.gamePk) return;
       try {
         const boxscore = await this.getBoxscore(String(game.gamePk));
@@ -275,7 +289,7 @@ export class MlbOfficialBullpenProvider {
       } catch (error) {
         this.health.errors.push(error instanceof Error ? error.message : "Unknown bullpen boxscore error");
       }
-    }));
+    });
 
     const teams = MLB_TEAM_IDENTITIES.map((team) => {
       const appearances = appearancesByTeam.get(team.officialTeamId) ?? [];

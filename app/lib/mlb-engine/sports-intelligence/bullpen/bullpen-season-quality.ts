@@ -110,6 +110,16 @@ function stableHash(payload: unknown) {
 
 export function parseBaseballInningsToOuts(value: unknown) {
   if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const whole = Math.trunc(value);
+    const fraction = value - whole;
+    if (Math.abs(fraction - 0.1) < 0.001) return whole * 3 + 1;
+    if (Math.abs(fraction - 0.2) < 0.001) return whole * 3 + 2;
+    if (Math.abs(fraction - 1 / 3) < 0.02) return whole * 3 + 1;
+    if (Math.abs(fraction - 2 / 3) < 0.02) return whole * 3 + 2;
+    if (Math.abs(fraction) < 0.001) return whole * 3;
+    return undefined;
+  }
   const raw = typeof value === "number" ? value.toFixed(1) : String(value);
   const [wholeRaw, outsRaw = "0"] = raw.split(".");
   const whole = Number(wholeRaw);
