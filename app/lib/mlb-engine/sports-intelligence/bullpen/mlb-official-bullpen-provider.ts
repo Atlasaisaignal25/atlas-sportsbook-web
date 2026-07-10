@@ -21,6 +21,7 @@ import {
   qualityDistribution,
   rawBullpenWorkloadDistribution,
 } from "./bullpen-calibration";
+import { applyBullpenQualityV2, outsToBaseballInnings, parseBaseballInningsToOuts } from "./bullpen-season-quality";
 
 type CacheEntry<T> = {
   expiresAt: number;
@@ -82,13 +83,7 @@ function toNumber(value: unknown) {
 }
 
 function inningsToNumber(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return undefined;
-  const [wholeRaw, outsRaw] = value.split(".");
-  const whole = Number(wholeRaw);
-  const outs = outsRaw === undefined ? 0 : Number(outsRaw);
-  if (!Number.isFinite(whole) || !Number.isFinite(outs)) return undefined;
-  return Math.round((whole + outs / 3) * 100) / 100;
+  return outsToBaseballInnings(parseBaseballInningsToOuts(value));
 }
 
 function boolStat(value: unknown) {
@@ -153,6 +148,7 @@ function sideAppearances(input: {
       strikeouts: toNumber(stat.strikeOuts ?? stat.strikeouts),
       runsAllowed: toNumber(stat.runs),
       earnedRunsAllowed: toNumber(stat.earnedRuns),
+      homeRunsAllowed: toNumber(stat.homeRuns),
       save: boolStat(stat.saves),
       hold: boolStat(stat.holds),
       blownSave: boolStat(stat.blownSaves),
@@ -189,6 +185,8 @@ export class MlbOfficialBullpenProvider {
       scoreEnabled?: boolean;
       fatigueVersion?: "v1" | "v2";
       qualityScoreEnabled?: boolean;
+      qualityVersion?: "v1" | "v2";
+      seasonArchiveEnabled?: boolean;
       officialClient?: MlbOfficialClient;
       gameClient?: MlbOfficialGameClient;
     },
@@ -212,6 +210,24 @@ export class MlbOfficialBullpenProvider {
     return gamesByDate.flat().filter((game) => isCompleted(game, asOf));
   }
 
+  private async seasonScheduleWindow(asOf: string) {
+    const season = new Date(asOf).getUTCFullYear();
+    const startDate = `${season}-03-01`;
+    const endDate = dateKey(asOf);
+    const started = Date.now();
+    const response = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+      { cache: "no-store" },
+    );
+    this.health.requests += 1;
+    this.health.cacheMisses += 1;
+    this.health.latencyMs += Date.now() - started;
+    if (!response.ok) throw new Error(`MLB Stats API returned ${response.status} for season bullpen schedule.`);
+    const data = (await response.json()) as { dates?: Array<{ games?: MlbOfficialScheduleGame[] }> };
+    this.health.reachable = true;
+    return (data.dates?.flatMap((date) => date.games ?? []) ?? []).filter((game) => isCompleted(game, asOf));
+  }
+
   private async getBoxscore(gamePk: string) {
     const cached = gameBoxscoreCache.get(gamePk);
     if (cached && cached.expiresAt > Date.now()) {
@@ -231,7 +247,10 @@ export class MlbOfficialBullpenProvider {
     if (!this.options.enabled) {
       return { teams: [] as MlbTeamBullpenFeatures[], gamesProcessed: 0, reliefAppearancesProcessed: 0, errors: [] as string[] };
     }
-    const games = await this.scheduleWindow(asOf);
+    const season = new Date(asOf).getUTCFullYear();
+    const games = this.options.seasonArchiveEnabled && this.options.qualityVersion === "v2"
+      ? await this.seasonScheduleWindow(asOf)
+      : await this.scheduleWindow(asOf);
     const uniqueGames = Array.from(new Map(games.map((game) => [String(game.gamePk), game])).values());
     const appearancesByTeam = new Map<string, MlbRelieverAppearance[]>();
     const gamesByTeam = new Map<string, Set<string>>();
@@ -275,9 +294,22 @@ export class MlbOfficialBullpenProvider {
     const fatigueCalibrated = this.options.scoreEnabled && this.options.fatigueVersion === "v2"
       ? teams.map(applyBullpenFatigueV2)
       : teams;
-    const finalTeams = this.options.qualityScoreEnabled
-      ? applyBullpenQualityScores(fatigueCalibrated, appearancesByTeam)
+    const qualityV1Teams = this.options.qualityScoreEnabled
+      ? applyBullpenQualityScores(fatigueCalibrated, appearancesByTeam).map((team) => ({
+          ...team,
+          qualityScoreV1: team.qualityScore,
+        }))
       : fatigueCalibrated;
+    const seasonQuality = this.options.qualityScoreEnabled && this.options.qualityVersion === "v2"
+      ? applyBullpenQualityV2({
+          teams: qualityV1Teams,
+          appearancesByTeam,
+          asOf,
+          seasonStart: `${season}-03-01`,
+          season,
+        })
+      : undefined;
+    const finalTeams = seasonQuality?.teams ?? qualityV1Teams;
     this.health.gamesProcessed = uniqueGames.length;
     this.health.reliefAppearancesProcessed = finalTeams.reduce((total, team) => total + team.relievers.reduce((sum, reliever) => sum + reliever.appearancesLast7Days, 0), 0);
     this.health.teamsAvailable = finalTeams.filter((team) => team.metadata.availability === "AVAILABLE").length;
@@ -298,6 +330,12 @@ export class MlbOfficialBullpenProvider {
       fatigueDistribution: fatigueDistribution(finalTeams),
       qualityDistribution: qualityDistribution(finalTeams),
       rawWorkloadDistribution: rawBullpenWorkloadDistribution(finalTeams),
+      seasonGamesProcessed: this.options.seasonArchiveEnabled ? uniqueGames.length : 0,
+      historicalBoxscoreCacheHits: this.health.cacheHits,
+      historicalBoxscoreCacheMisses: this.health.cacheMisses,
+      qualityBaselines: seasonQuality?.baselines ?? [],
+      qualitySampleDistributions: seasonQuality?.sampleDistributions,
+      qualityV1V2Summary: seasonQuality?.v1V2Summary ?? [],
     };
   }
 
@@ -381,6 +419,8 @@ export function getMlbOfficialBullpenProviderWhenEnabled(flags: {
   bullpenFatigueScoreEnabled?: boolean;
   bullpenFatigueVersion?: "v1" | "v2";
   bullpenQualityScoreEnabled?: boolean;
+  bullpenQualityVersion?: "v1" | "v2";
+  bullpenSeasonArchiveEnabled?: boolean;
 }) {
   if (!flags.sportsIntelligenceEnabled || !flags.bullpenModelEnabled || !flags.bullpenProviderEnabled) {
     return new MlbOfficialBullpenProvider({ enabled: false });
@@ -390,5 +430,7 @@ export function getMlbOfficialBullpenProviderWhenEnabled(flags: {
     scoreEnabled: Boolean(flags.bullpenFatigueScoreEnabled),
     fatigueVersion: flags.bullpenFatigueVersion ?? "v1",
     qualityScoreEnabled: Boolean(flags.bullpenQualityScoreEnabled),
+    qualityVersion: flags.bullpenQualityVersion ?? "v1",
+    seasonArchiveEnabled: Boolean(flags.bullpenSeasonArchiveEnabled),
   });
 }

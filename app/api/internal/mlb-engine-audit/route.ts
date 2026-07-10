@@ -22,6 +22,7 @@ import {
 import { getOffensiveFormSnapshotStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-form-repository";
 import { getOffensiveBaselineStorageStatus } from "@/app/lib/mlb-engine/sports-intelligence/offense/offensive-baseline-repository";
 import {
+  getBullpenQualityBaselineStatus,
   getBullpenFeatureSnapshotStatus,
   loadLatestCanonicalBullpenTeamFeatures,
 } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-feature-repository";
@@ -33,6 +34,7 @@ import {
   fatigueDistribution,
   qualityDistribution,
 } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-calibration";
+import { BULLPEN_QUALITY_SCORE_VERSION_V2 } from "@/app/lib/mlb-engine/sports-intelligence/bullpen/bullpen-season-quality";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
 
 export const dynamic = "force-dynamic";
@@ -250,8 +252,17 @@ function bullpenTeamAudit(team: MlbSportsIntelligenceFeatures["bullpen"]["home"]
     fatigueScoreVersion: team.fatigueScoreVersion,
     fatigueComponents: team.fatigueComponents,
     qualityScore: team.qualityScore,
+    qualityScoreV1: team.qualityScoreV1,
+    qualityScoreV2: team.qualityScoreV2,
     qualityScoreVersion: team.qualityScoreVersion,
     qualityComponents: team.qualityComponents,
+    qualityConfidence: team.qualityConfidence,
+    seasonQualityComponent: team.seasonQualityComponent,
+    last30QualityComponent: team.last30QualityComponent,
+    last14QualityComponent: team.last14QualityComponent,
+    last7QualityComponent: team.last7QualityComponent,
+    reliefWindows: team.reliefWindows,
+    baselineVersion: team.baselineVersion,
     qualitySample: team.qualitySample,
     effectiveDepth: team.effectiveDepth,
     closerHighLeverageFatigueEvidence: team.relieverFatigue?.filter((reliever) =>
@@ -265,10 +276,32 @@ function bullpenTeamAudit(team: MlbSportsIntelligenceFeatures["bullpen"]["home"]
 async function bullpenAudit(
   features: MlbSportsIntelligenceFeatures,
   snapshotStatus: Awaited<ReturnType<typeof getBullpenFeatureSnapshotStatus>>,
+  baselineStatus: Awaited<ReturnType<typeof getBullpenQualityBaselineStatus>>,
   scoreEnabled: boolean,
 ) {
   const teams = [features.bullpen.home, features.bullpen.away].filter(Boolean) as NonNullable<MlbSportsIntelligenceFeatures["bullpen"]["home"]>[];
   const allTeams = await loadLatestCanonicalBullpenTeamFeatures();
+  const qualityV1Teams = allTeams.map((team) => ({ ...team, qualityScore: team.qualityScoreV1 }));
+  const qualityV2Teams = allTeams.map((team) => ({ ...team, qualityScore: team.qualityScoreV2 }));
+  const confidenceDistribution = allTeams.reduce((acc: Record<string, number>, team) => {
+    const key = team.qualityConfidence?.tier ?? "UNAVAILABLE";
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+  const v1v2Rows = allTeams.map((team) => ({
+    teamId: team.teamId,
+    teamName: team.teamName,
+    qualityV1: team.qualityScoreV1,
+    qualityV2: team.qualityScoreV2,
+    delta: team.qualityScoreV1 !== undefined && team.qualityScoreV2 !== undefined
+      ? Math.round((team.qualityScoreV2 - team.qualityScoreV1) * 10) / 10
+      : undefined,
+    seasonComponent: team.seasonQualityComponent,
+    last30Component: team.last30QualityComponent,
+    last14Component: team.last14QualityComponent,
+    last7Component: team.last7QualityComponent,
+    confidence: team.qualityConfidence,
+  }));
   return {
     enabled: features.bullpen.metadata.availability !== "UNAVAILABLE",
     provider: features.bullpen.metadata.source ?? "none",
@@ -287,6 +320,31 @@ async function bullpenAudit(
     fatigueV2Distribution: fatigueDistribution(allTeams.map((team) => ({ ...team, fatigueScore: team.fatigueScoreV2 }))),
     qualityVersion: BULLPEN_QUALITY_SCORE_VERSION,
     qualityDistribution: qualityDistribution(allTeams),
+    bullpenQuality: {
+      version: process.env.MLB_BULLPEN_QUALITY_VERSION === "v2" ? BULLPEN_QUALITY_SCORE_VERSION_V2 : BULLPEN_QUALITY_SCORE_VERSION,
+      seasonArchiveHealth: {
+        enabled: process.env.MLB_BULLPEN_SEASON_ARCHIVE_ENABLED === "true",
+        teamsWithSeasonWindow: allTeams.filter((team) => team.reliefWindows?.SEASON).length,
+      },
+      baselineHealth: baselineStatus,
+      teamsScored: allTeams.filter((team) => team.qualityScoreV2 !== undefined).length,
+      teamsUnscored: allTeams.filter((team) => team.qualityScoreV2 === undefined).length,
+      distribution: qualityDistribution(qualityV2Teams),
+      confidenceDistribution,
+      v1V2Summary: {
+        distributionV1: qualityDistribution(qualityV1Teams),
+        distributionV2: qualityDistribution(qualityV2Teams),
+        largestChanges: v1v2Rows
+          .filter((row) => row.delta !== undefined)
+          .sort((a, b) => Math.abs(b.delta ?? 0) - Math.abs(a.delta ?? 0))
+          .slice(0, 8),
+      },
+      latestRefresh: snapshotStatus.latestRefresh,
+      warnings: [
+        ...(baselineStatus.errors ?? []),
+        ...(allTeams.length < 30 ? ["Fewer than 30 canonical bullpen teams loaded."] : []),
+      ],
+    },
     teamsQualityAvailable: allTeams.filter((team) => team.qualitySample?.availability === "AVAILABLE").map((team) => team.teamName),
     teamsQualityPartial: allTeams.filter((team) => team.qualitySample?.availability === "PARTIAL").map((team) => team.teamName),
     teamsQualityUnavailable: allTeams.filter((team) => !team.qualitySample || team.qualitySample.availability === "UNAVAILABLE").map((team) => team.teamName),
@@ -431,13 +489,14 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
       getOffensiveFormSnapshotStatus(),
       getOffensiveBaselineStorageStatus(),
       getBullpenFeatureSnapshotStatus(),
+      getBullpenQualityBaselineStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -550,6 +609,7 @@ export async function GET(request: Request) {
       bullpen: await bullpenAudit(
         sportsFeatures,
         bullpenSnapshotStatus,
+        bullpenBaselineStatus,
         sportsFlags.bullpenFatigueScoreEnabled && sportsFlags.bullpenScoreMode === "AUDIT_ONLY",
       ),
       startingPitchers: {

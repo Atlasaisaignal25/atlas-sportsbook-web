@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
 import type { MlbTeamBullpenFeatures } from "../types";
+import type { BullpenQualityBaseline } from "./bullpen-season-quality";
 
 export type BullpenSnapshotInsertResult = {
   attempted: number;
@@ -53,7 +54,14 @@ export function buildBullpenFeatureSnapshotRows(teams: MlbTeamBullpenFeatures[],
       fatigueScore: team.fatigueScore,
       fatigueScoreVersion: team.fatigueScoreVersion,
       qualityScore: team.qualityScore,
+      qualityScoreV1: team.qualityScoreV1,
+      qualityScoreV2: team.qualityScoreV2,
       qualityScoreVersion: team.qualityScoreVersion,
+      seasonQualityComponent: team.seasonQualityComponent,
+      last30QualityComponent: team.last30QualityComponent,
+      last14QualityComponent: team.last14QualityComponent,
+      last7QualityComponent: team.last7QualityComponent,
+      qualityConfidence: team.qualityConfidence,
       effectiveDepth: team.effectiveDepth,
       availability: team.metadata.availability,
     };
@@ -79,11 +87,26 @@ export function buildBullpenFeatureSnapshotRows(teams: MlbTeamBullpenFeatures[],
       fatigue_score_version: team.fatigueScoreVersion,
       fatigue_components: team.fatigueComponents,
       quality_score: team.qualityScore,
+      quality_score_v1: team.qualityScoreV1,
+      quality_score_v2: team.qualityScoreV2,
       quality_score_version: team.qualityScoreVersion,
       quality_components: team.qualityComponents,
+      quality_confidence: team.qualityConfidence,
+      season_quality_component: team.seasonQualityComponent,
+      last30_quality_component: team.last30QualityComponent,
+      last14_quality_component: team.last14QualityComponent,
+      last7_quality_component: team.last7QualityComponent,
       effective_depth: team.effectiveDepth,
       quality_sample: team.qualitySample,
-      data_version: "bullpen_features_v2",
+      season_sample: team.reliefWindows?.SEASON,
+      recent_samples: {
+        last30: team.reliefWindows?.LAST_30_DAYS,
+        last14: team.reliefWindows?.LAST_14_DAYS,
+        last7: team.reliefWindows?.LAST_7_DAYS,
+      },
+      relief_windows: team.reliefWindows,
+      baseline_version: team.baselineVersion,
+      data_version: "bullpen_features_v3",
       availability: team.metadata.availability,
       source: team.metadata.source ?? "MLB_OFFICIAL",
       source_updated_at: team.metadata.updatedAt,
@@ -199,8 +222,17 @@ export async function loadLatestCanonicalBullpenTeamFeatures(): Promise<MlbTeamB
     fatigueScoreVersion: row.fatigue_score_version ?? undefined,
     fatigueComponents: row.fatigue_components ?? undefined,
     qualityScore: row.quality_score ?? undefined,
+    qualityScoreV1: row.quality_score_v1 ?? undefined,
+    qualityScoreV2: row.quality_score_v2 ?? undefined,
     qualityScoreVersion: row.quality_score_version ?? undefined,
     qualityComponents: row.quality_components ?? undefined,
+    qualityConfidence: row.quality_confidence ?? undefined,
+    seasonQualityComponent: row.season_quality_component ?? undefined,
+    last30QualityComponent: row.last30_quality_component ?? undefined,
+    last14QualityComponent: row.last14_quality_component ?? undefined,
+    last7QualityComponent: row.last7_quality_component ?? undefined,
+    reliefWindows: row.relief_windows ?? undefined,
+    baselineVersion: row.baseline_version ?? undefined,
     effectiveDepth: row.effective_depth ?? undefined,
     qualitySample: row.quality_sample ?? undefined,
     metadata: {
@@ -213,4 +245,73 @@ export async function loadLatestCanonicalBullpenTeamFeatures(): Promise<MlbTeamB
     },
     warnings: [],
   }));
+}
+
+export async function insertBullpenQualityBaselinesDeduped(baselines: BullpenQualityBaseline[]) {
+  if (baselines.length === 0) return { attempted: 0, inserted: 0, skipped: 0, errors: [] as string[] };
+  const rows = baselines.map((baseline) => ({
+    season: baseline.season,
+    window: baseline.window,
+    metric: baseline.metric,
+    team_count: baseline.teamCount,
+    mean: baseline.mean,
+    standard_deviation: baseline.standardDeviation,
+    median: baseline.median,
+    minimum: baseline.minimum,
+    maximum: baseline.maximum,
+    sample_quality_policy: baseline.sampleQualityPolicy,
+    source: baseline.source,
+    as_of: baseline.asOf,
+    baseline_hash: baseline.baselineHash,
+    data_version: baseline.dataVersion,
+    canonical: true,
+  }));
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("mlb_bullpen_quality_baseline_snapshots")
+    .upsert(rows, { onConflict: "baseline_hash", ignoreDuplicates: true })
+    .select("id");
+  if (error) return { attempted: rows.length, inserted: 0, skipped: 0, errors: [error.message] };
+  const hashes = rows.map((row) => row.baseline_hash);
+  const markOld = await supabase
+    .from("mlb_bullpen_quality_baseline_snapshots")
+    .update({ canonical: false })
+    .not("baseline_hash", "in", `(${hashes.join(",")})`)
+    .eq("canonical", true);
+  if (markOld.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markOld.error.message] };
+  const markCurrent = await supabase
+    .from("mlb_bullpen_quality_baseline_snapshots")
+    .update({ canonical: true })
+    .in("baseline_hash", hashes);
+  if (markCurrent.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markCurrent.error.message] };
+  const inserted = data?.length ?? 0;
+  return { attempted: rows.length, inserted, skipped: rows.length - inserted, errors: [] as string[] };
+}
+
+export async function getBullpenQualityBaselineStatus() {
+  const supabase = getSupabaseAdmin();
+  const { count, error } = await supabase
+    .from("mlb_bullpen_quality_baseline_snapshots")
+    .select("id", { count: "exact", head: true });
+  if (error) return { healthy: false, totalBaselines: 0, canonicalBaselines: 0, latestRefresh: undefined as string | undefined, errors: [error.message] };
+  const { count: canonicalBaselines } = await supabase
+    .from("mlb_bullpen_quality_baseline_snapshots")
+    .select("id", { count: "exact", head: true })
+    .eq("canonical", true);
+  const { data, error: latestError } = await supabase
+    .from("mlb_bullpen_quality_baseline_snapshots")
+    .select("window,metric,team_count,captured_at")
+    .eq("canonical", true)
+    .order("captured_at", { ascending: false })
+    .limit(100);
+  return {
+    healthy: !latestError,
+    totalBaselines: count ?? 0,
+    canonicalBaselines: canonicalBaselines ?? 0,
+    latestRefresh: data?.[0]?.captured_at as string | undefined,
+    windows: Array.from(new Set((data ?? []).map((row: any) => row.window))),
+    metrics: Array.from(new Set((data ?? []).map((row: any) => row.metric))),
+    minimumTeamCount: Math.min(...(data ?? []).map((row: any) => Number(row.team_count)).filter(Number.isFinite)),
+    errors: latestError ? [latestError.message] : [] as string[],
+  };
 }

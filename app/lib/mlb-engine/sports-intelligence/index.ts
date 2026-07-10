@@ -11,6 +11,7 @@ export * from "./offense/statcast-offense-provider";
 export * from "./offense/offensive-form-repository";
 export * from "./offense/offensive-baseline-repository";
 export * from "./bullpen/bullpen-workload";
+export * from "./bullpen/bullpen-season-quality";
 export * from "./bullpen/bullpen-feature-repository";
 export * from "./bullpen/mlb-official-bullpen-provider";
 export * from "./mlb-team-mapping";

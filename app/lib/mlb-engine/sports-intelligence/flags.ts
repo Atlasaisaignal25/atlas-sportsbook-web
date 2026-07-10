@@ -13,6 +13,9 @@ export type MlbSportsIntelligenceFlags = {
   bullpenFatigueVersion: "v1" | "v2";
   bullpenQualityScoreEnabled: boolean;
   bullpenQualityScoreMode: "AUDIT_ONLY" | "DISABLED";
+  bullpenQualityVersion: "v1" | "v2";
+  bullpenSeasonArchiveEnabled: boolean;
+  bullpenQualityBaselineEnabled: boolean;
   weatherModelEnabled: boolean;
   lineupSnapshotsEnabled: boolean;
   lineupChangeDetectionEnabled: boolean;
@@ -39,6 +42,9 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     bullpenFatigueVersion: process.env.MLB_BULLPEN_FATIGUE_VERSION === "v2" ? "v2" : "v1",
     bullpenQualityScoreEnabled: envFlag("MLB_BULLPEN_QUALITY_SCORE_ENABLED"),
     bullpenQualityScoreMode: process.env.MLB_BULLPEN_QUALITY_SCORE_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
+    bullpenQualityVersion: process.env.MLB_BULLPEN_QUALITY_VERSION === "v2" ? "v2" : "v1",
+    bullpenSeasonArchiveEnabled: envFlag("MLB_BULLPEN_SEASON_ARCHIVE_ENABLED"),
+    bullpenQualityBaselineEnabled: envFlag("MLB_BULLPEN_QUALITY_BASELINE_ENABLED"),
     weatherModelEnabled: envFlag("MLB_WEATHER_MODEL_ENABLED"),
     lineupSnapshotsEnabled: envFlag("MLB_LINEUP_SNAPSHOTS_ENABLED"),
     lineupChangeDetectionEnabled: envFlag("MLB_LINEUP_CHANGE_DETECTION_ENABLED"),

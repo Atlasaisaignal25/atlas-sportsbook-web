@@ -374,6 +374,7 @@ export type MlbRelieverAppearance = {
   strikeouts?: number;
   runsAllowed?: number;
   earnedRunsAllowed?: number;
+  homeRunsAllowed?: number;
   save?: boolean;
   hold?: boolean;
   blownSave?: boolean;
@@ -442,6 +443,60 @@ export type BullpenQualityComponent = {
   higherIsBetter: boolean;
 };
 
+export type BullpenQualityWindow =
+  | "SEASON"
+  | "LAST_30_DAYS"
+  | "LAST_14_DAYS"
+  | "LAST_7_DAYS";
+
+export type BullpenWindowSampleQuality =
+  | "SUFFICIENT"
+  | "LIMITED"
+  | "INSUFFICIENT"
+  | "UNAVAILABLE";
+
+export type MlbTeamReliefWindow = {
+  teamId: string;
+  teamName: string;
+  window: BullpenQualityWindow;
+  startDate: string;
+  endDate: string;
+  gamesIncluded: number;
+  reliefAppearances: number;
+  reliefInnings?: number;
+  battersFaced?: number;
+  earnedRuns?: number;
+  runsAllowed?: number;
+  hitsAllowed?: number;
+  walksAllowed?: number;
+  strikeouts?: number;
+  homeRunsAllowed?: number;
+  saves?: number;
+  holds?: number;
+  blownSaves?: number;
+  gamesFinished?: number;
+  era?: number;
+  whip?: number;
+  strikeoutRate?: number;
+  walkRate?: number;
+  kMinusBbRate?: number;
+  hitsPerBatterFaced?: number;
+  homeRunsPerBatterFaced?: number;
+  runsAllowedPerInning?: number;
+  sampleQuality: BullpenWindowSampleQuality;
+  metadata: SportsFeatureMetadata;
+  warnings: string[];
+};
+
+export type BullpenQualityConfidence = {
+  score?: number;
+  tier: "HIGH" | "MEDIUM" | "LOW" | "UNAVAILABLE";
+  seasonSampleQuality: string;
+  recentSampleQuality: string;
+  windowCoverage: number;
+  warnings: string[];
+};
+
 export type BullpenQualitySample = {
   availability: DataAvailability;
   seasonReliefInnings?: number;
@@ -490,8 +545,17 @@ export type MlbTeamBullpenFeatures = {
   fatigueScoreVersion?: string;
   fatigueComponents?: BullpenFatigueComponent[];
   qualityScore?: number;
+  qualityScoreV1?: number;
+  qualityScoreV2?: number;
   qualityScoreVersion?: string;
   qualityComponents?: BullpenQualityComponent[];
+  qualityConfidence?: BullpenQualityConfidence;
+  seasonQualityComponent?: number;
+  last30QualityComponent?: number;
+  last14QualityComponent?: number;
+  last7QualityComponent?: number;
+  reliefWindows?: Partial<Record<BullpenQualityWindow, MlbTeamReliefWindow>>;
+  baselineVersion?: string;
   qualitySample?: BullpenQualitySample;
   effectiveDepth?: EffectiveReliefDepth;
   relieverFatigue?: RelieverFatigueEstimate[];
