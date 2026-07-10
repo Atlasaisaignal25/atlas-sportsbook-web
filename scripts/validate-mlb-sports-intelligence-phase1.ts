@@ -193,6 +193,12 @@ async function main() {
   process.env.MLB_BULLPEN_SEASON_ARCHIVE_ENABLED = "false";
   process.env.MLB_BULLPEN_QUALITY_BASELINE_ENABLED = "false";
   process.env.MLB_WEATHER_MODEL_ENABLED = "false";
+  process.env.MLB_NWS_PROVIDER_ENABLED = "false";
+  process.env.MLB_PARK_FACTOR_MODEL_ENABLED = "false";
+  process.env.MLB_WEATHER_DELAY_RISK_ENABLED = "false";
+  process.env.MLB_WEATHER_RUN_ENVIRONMENT_ENABLED = "false";
+  process.env.MLB_PARK_ENVIRONMENT_SCORE_ENABLED = "false";
+  process.env.MLB_WEATHER_SCORE_MODE = "DISABLED";
   const flags = getMlbSportsIntelligenceFlags();
   assert.deepEqual(flags, {
     sportsIntelligenceEnabled: false,
@@ -213,6 +219,12 @@ async function main() {
     bullpenSeasonArchiveEnabled: false,
     bullpenQualityBaselineEnabled: false,
     weatherModelEnabled: false,
+    nwsProviderEnabled: false,
+    parkFactorModelEnabled: false,
+    weatherDelayRiskEnabled: false,
+    weatherRunEnvironmentEnabled: false,
+    parkEnvironmentScoreEnabled: false,
+    weatherScoreMode: "DISABLED",
     lineupSnapshotsEnabled: false,
     lineupChangeDetectionEnabled: false,
     starterVerificationSnapshotsEnabled: false,
