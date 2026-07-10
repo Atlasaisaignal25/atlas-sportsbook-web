@@ -4,6 +4,15 @@ import {
   buildConsensusMovementFromSnapshots,
   buildMarketMovementFeatureMap,
 } from "@/app/lib/mlb-engine/marketFeatures";
+import {
+  buildMlbSportsProjection,
+  buildUnavailableMlbSportsIntelligenceFeatures,
+  getMlbSportsIntelligenceFeatures,
+  getMlbSportsIntelligenceFlags,
+  unavailableMlbSportsIntelligenceProvider,
+  type MlbGameContext,
+  type MlbSportsIntelligenceFeatures,
+} from "@/app/lib/mlb-engine/sports-intelligence";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +61,42 @@ async function recentTop5Rows() {
   return data ?? [];
 }
 
+function auditContextFromRows(publicSignals: any[], liveTop5: any[]): MlbGameContext {
+  const row = publicSignals[0] ?? liveTop5[0] ?? {};
+
+  return {
+    eventId: String(row.game_id ?? "audit-context-unavailable"),
+    homeTeam: String(row.home_team ?? ""),
+    awayTeam: String(row.away_team ?? ""),
+    commenceTime: String(row.start_time ?? new Date().toISOString()),
+    currentTime: new Date().toISOString(),
+    marketKeys: ["h2h", "spreads", "totals"],
+  };
+}
+
+function sportsIntelligenceAuditSummary(input: {
+  enabled: boolean;
+  provider: string;
+  features: MlbSportsIntelligenceFeatures;
+}) {
+  const projection = buildMlbSportsProjection(input.features);
+
+  return {
+    enabled: input.enabled,
+    provider: input.provider,
+    overallAvailability: input.features.overallAvailability,
+    availableModuleCount: input.features.availableModuleCount,
+    totalModuleCount: input.features.totalModuleCount,
+    pitcherAvailability: input.features.startingPitcher.metadata.availability,
+    lineupAvailability: input.features.lineup.metadata.availability,
+    offensiveFormAvailability: input.features.offensiveForm.metadata.availability,
+    bullpenAvailability: input.features.bullpen.metadata.availability,
+    weatherAvailability: input.features.weatherPark.metadata.availability,
+    warnings: input.features.warnings,
+    projectionAvailability: projection.projectionAvailability,
+  };
+}
+
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -80,6 +125,14 @@ export async function GET(request: Request) {
       monitoredSportsbookCountByEvent,
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
+    const sportsFlags = getMlbSportsIntelligenceFlags();
+    const sportsContext = auditContextFromRows(publicSignals, liveTop5);
+    const sportsFeatures = sportsFlags.sportsIntelligenceEnabled
+      ? await getMlbSportsIntelligenceFeatures(
+          sportsContext,
+          unavailableMlbSportsIntelligenceProvider,
+        )
+      : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
 
     return NextResponse.json({
       ok: true,
@@ -120,6 +173,11 @@ export async function GET(request: Request) {
         featureKeys: movementFeatures.size,
         examples: consensusMovement.slice(0, 3),
       },
+      sportsIntelligence: sportsIntelligenceAuditSummary({
+        enabled: sportsFlags.sportsIntelligenceEnabled,
+        provider: unavailableMlbSportsIntelligenceProvider.name,
+        features: sportsFeatures,
+      }),
       recentPublicSignals: publicSignals,
       recentTop5: liveTop5,
     });

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "validate:mlb-engine": "npx --yes tsx scripts/validate-mlb-engine.ts",
-    "validate:odds-movement": "npx --yes tsx scripts/validate-odds-movement.ts"
+    "validate:odds-movement": "npx --yes tsx scripts/validate-odds-movement.ts",
+    "validate:mlb-sports-intelligence": "npx --yes tsx scripts/validate-mlb-sports-intelligence-phase1.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
