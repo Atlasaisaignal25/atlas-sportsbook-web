@@ -7,10 +7,12 @@ import {
 import {
   buildMlbSportsProjection,
   buildUnavailableMlbSportsIntelligenceFeatures,
+  getMlbOfficialPitcherProviderWhenEnabled,
   getMlbSportsIntelligenceFeatures,
   getMlbSportsIntelligenceFlags,
   unavailableMlbSportsIntelligenceProvider,
   type MlbGameContext,
+  type MlbOfficialPitcherProviderHealth,
   type MlbSportsIntelligenceFeatures,
 } from "@/app/lib/mlb-engine/sports-intelligence";
 import { getRecentSnapshots, getSnapshotStatus } from "@/lib/market-impact/odds/snapshotRepository";
@@ -74,10 +76,34 @@ function auditContextFromRows(publicSignals: any[], liveTop5: any[]): MlbGameCon
   };
 }
 
+function auditContextsFromRows(publicSignals: any[], liveTop5: any[], eventId?: string | null) {
+  const rowsById = new Map<string, any>();
+
+  [...publicSignals, ...liveTop5].forEach((row) => {
+    const gameId = String(row.game_id ?? "");
+    if (!gameId || rowsById.has(gameId)) return;
+    rowsById.set(gameId, row);
+  });
+
+  const rows = eventId
+    ? Array.from(rowsById.values()).filter((row) => String(row.game_id ?? "") === eventId)
+    : Array.from(rowsById.values()).slice(0, 3);
+
+  return rows.map((row): MlbGameContext => ({
+    eventId: String(row.game_id ?? "audit-context-unavailable"),
+    homeTeam: String(row.home_team ?? ""),
+    awayTeam: String(row.away_team ?? ""),
+    commenceTime: String(row.start_time ?? new Date().toISOString()),
+    currentTime: new Date().toISOString(),
+    marketKeys: ["h2h", "spreads", "totals"],
+  }));
+}
+
 function sportsIntelligenceAuditSummary(input: {
   enabled: boolean;
   provider: string;
   features: MlbSportsIntelligenceFeatures;
+  health?: MlbOfficialPitcherProviderHealth | null;
 }) {
   const projection = buildMlbSportsProjection(input.features);
 
@@ -94,6 +120,66 @@ function sportsIntelligenceAuditSummary(input: {
     weatherAvailability: input.features.weatherPark.metadata.availability,
     warnings: input.features.warnings,
     projectionAvailability: projection.projectionAvailability,
+    providerHealth: input.health ?? {
+      source: "MLB_STATS_API",
+      reachable: false,
+      gamesMapped: 0,
+      gamesUnmatched: 0,
+      bothPitchersAvailable: 0,
+      onePitcherAvailable: 0,
+      zeroPitchersAvailable: 0,
+      staleRecords: 0,
+      errors: [],
+      cacheStatus: "DISABLED",
+    },
+  };
+}
+
+function pitcherAuditItem(context: MlbGameContext, features: MlbSportsIntelligenceFeatures) {
+  return {
+    oddsEventId: context.eventId,
+    homeTeam: context.homeTeam,
+    awayTeam: context.awayTeam,
+    commenceTime: context.commenceTime,
+    featureAvailability: features.startingPitcher.metadata.availability,
+    dataSource: features.startingPitcher.metadata.source,
+    sourceTimestamp: features.startingPitcher.metadata.updatedAt,
+    mappingConfidence: features.startingPitcher.metadata.confidence,
+    homePitcher: features.startingPitcher.homeStarter
+      ? {
+          playerId: features.startingPitcher.homeStarter.playerId,
+          name: features.startingPitcher.homeStarter.name,
+          status: features.startingPitcher.homeStarter.status,
+          confirmed: features.startingPitcher.homeStarter.confirmed,
+          throwingHand: features.startingPitcher.homeStarter.throwingHand,
+          restDays: features.startingPitcher.homeStarter.restDays,
+          recentPitchCount: features.startingPitcher.homeStarter.recentPitchCount,
+          season: {
+            era: features.startingPitcher.homeStarter.era,
+            whip: features.startingPitcher.homeStarter.whip,
+            strikeoutRate: features.startingPitcher.homeStarter.strikeoutRate,
+            walkRate: features.startingPitcher.homeStarter.walkRate,
+          },
+        }
+      : undefined,
+    awayPitcher: features.startingPitcher.awayStarter
+      ? {
+          playerId: features.startingPitcher.awayStarter.playerId,
+          name: features.startingPitcher.awayStarter.name,
+          status: features.startingPitcher.awayStarter.status,
+          confirmed: features.startingPitcher.awayStarter.confirmed,
+          throwingHand: features.startingPitcher.awayStarter.throwingHand,
+          restDays: features.startingPitcher.awayStarter.restDays,
+          recentPitchCount: features.startingPitcher.awayStarter.recentPitchCount,
+          season: {
+            era: features.startingPitcher.awayStarter.era,
+            whip: features.startingPitcher.awayStarter.whip,
+            strikeoutRate: features.startingPitcher.awayStarter.strikeoutRate,
+            walkRate: features.startingPitcher.awayStarter.walkRate,
+          },
+        }
+      : undefined,
+    warnings: features.startingPitcher.metadata.warnings ?? [],
   };
 }
 
@@ -103,6 +189,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    const url = new URL(request.url);
+    const requestedEventId = url.searchParams.get("eventId");
     const [publicSignals, liveTop5, snapshotStatus, snapshots] = await Promise.all([
       recentPublicRows(),
       recentTop5Rows(),
@@ -127,12 +215,29 @@ export async function GET(request: Request) {
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
-    const sportsFeatures = sportsFlags.sportsIntelligenceEnabled
-      ? await getMlbSportsIntelligenceFeatures(
-          sportsContext,
-          unavailableMlbSportsIntelligenceProvider,
-        )
-      : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
+    const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
+    const sportsProvider = getMlbOfficialPitcherProviderWhenEnabled(sportsFlags);
+    const sportsFeatures =
+      sportsFlags.sportsIntelligenceEnabled && sportsFlags.pitcherModelEnabled
+        ? await getMlbSportsIntelligenceFeatures(sportsContext, sportsProvider)
+        : buildUnavailableMlbSportsIntelligenceFeatures(sportsContext);
+    const pitcherDiagnostics =
+      sportsFlags.sportsIntelligenceEnabled && sportsFlags.pitcherModelEnabled
+        ? await Promise.all(
+            pitcherContexts.map(async (context) =>
+              pitcherAuditItem(
+                context,
+                await getMlbSportsIntelligenceFeatures(context, sportsProvider),
+              ),
+            ),
+          )
+        : pitcherContexts.map((context) =>
+            pitcherAuditItem(context, buildUnavailableMlbSportsIntelligenceFeatures(context)),
+          );
+    const providerHealth =
+      "getHealth" in sportsProvider && typeof sportsProvider.getHealth === "function"
+        ? sportsProvider.getHealth()
+        : null;
 
     return NextResponse.json({
       ok: true,
@@ -174,10 +279,16 @@ export async function GET(request: Request) {
         examples: consensusMovement.slice(0, 3),
       },
       sportsIntelligence: sportsIntelligenceAuditSummary({
-        enabled: sportsFlags.sportsIntelligenceEnabled,
-        provider: unavailableMlbSportsIntelligenceProvider.name,
+        enabled: sportsFlags.sportsIntelligenceEnabled && sportsFlags.pitcherModelEnabled,
+        provider: sportsProvider.name ?? unavailableMlbSportsIntelligenceProvider.name,
         features: sportsFeatures,
+        health: providerHealth,
       }),
+      startingPitchers: {
+        requestedEventId: requestedEventId ?? null,
+        count: pitcherDiagnostics.length,
+        items: pitcherDiagnostics,
+      },
       recentPublicSignals: publicSignals,
       recentTop5: liveTop5,
     });

@@ -29,6 +29,7 @@ export type MlbStartingPitcher = {
   playerId?: string;
   name?: string;
   throwingHand?: "L" | "R";
+  status?: "CONFIRMED" | "PROBABLE" | "EXPECTED" | "UNKNOWN";
   confirmed?: boolean;
   restDays?: number;
   recentPitchCount?: number;
@@ -164,4 +165,3 @@ export type MlbCandidateEvaluationContext<MarketFeatures = unknown> = {
   sportsFeatures: MlbSportsIntelligenceFeatures;
   sportsProjection: MlbSportsProjection;
 };
-

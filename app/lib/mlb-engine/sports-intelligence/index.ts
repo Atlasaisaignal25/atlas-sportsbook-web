@@ -1,6 +1,9 @@
 export * from "./flags";
+export * from "./mlb-game-mapper";
+export * from "./pitcher-normalizer";
 export * from "./projection";
 export * from "./provider";
+export * from "./providers/mlb-official-client";
+export * from "./providers/mlb-official-pitcher-provider";
 export * from "./service";
 export * from "./types";
-
