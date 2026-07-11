@@ -144,6 +144,8 @@ async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin
     performance,
     learning,
     validation,
+    activeSubscriptions,
+    todayPurchases,
   ] = await Promise.all([
     supabase
       .from("atlas_core_mlb_signals")
@@ -174,13 +176,25 @@ async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin
       .eq("canonical", true)
       .order("created_at", { ascending: false })
       .limit(300),
+    supabase
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active"),
+    supabase
+      .from("product_purchases")
+      .select("id,product_code,status,amount_total,currency,created_at,access_date")
+      .or(`access_date.eq.${date},created_at.gte.${date}T00:00:00.000Z`)
+      .limit(1000),
   ]);
 
   const signalRows = signals.data ?? [];
   const pickRows = picks.data ?? [];
   const topSignal = pickRows.find((row: any) => row.is_top_signal) ?? null;
-  const gamesRemaining = signalRows.filter((row: any) => row.start_time && row.start_time > now).length;
+  const futureGames = signalRows.filter((row: any) => row.start_time && row.start_time > now);
+  const nextGame = futureGames[0] ?? null;
+  const gamesRemaining = futureGames.length;
   const confirmed = pickRows.filter((row: any) => String(row.status).toUpperCase() === "CONFIRMED").length;
+  const pending = pickRows.filter((row: any) => String(row.status).toUpperCase() === "PENDING").length;
   const downgraded = pickRows.filter((row: any) => String(row.status).toUpperCase() === "DOWNGRADED").length;
   const removed = pickRows.filter((row: any) => String(row.status).toUpperCase() === "REMOVED").length;
   const validationRows = validation.data ?? [];
@@ -237,7 +251,19 @@ async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin
     performance.error?.message,
     learning.error?.message,
     validation.error?.message,
+    activeSubscriptions.error?.message,
+    todayPurchases.error?.message,
   ].filter(Boolean) as string[];
+  const todayPurchaseRows = todayPurchases.data ?? [];
+  const revenuePurchases = todayPurchaseRows.filter((row: any) => typeof row.amount_total === "number");
+  const revenueCents = revenuePurchases.length
+    ? revenuePurchases.reduce((sum: number, row: any) => sum + Number(row.amount_total ?? 0), 0)
+    : null;
+  const healthStatus = errors.length
+    ? "ERROR"
+    : performance.data && learning.data
+      ? "HEALTHY"
+      : "PARTIAL";
 
   return {
     errors,
@@ -248,7 +274,23 @@ async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin
     validatedPicks: pickRows.length,
     topSignalPublished: Boolean(topSignal),
     gamesRemaining,
+    nextGame: nextGame
+      ? {
+          startTime: nextGame.start_time ?? null,
+          awayTeam: nextGame.away_team ?? null,
+          homeTeam: nextGame.home_team ?? null,
+          status: nextGame.status ?? "SCHEDULED",
+        }
+      : null,
+    atlasCore: {
+      overall: healthStatus,
+      research: performance.data ? "HEALTHY" : "PARTIAL",
+      validation: validation.error ? "ERROR" : "HEALTHY",
+      publishing: pickRows.length ? "HEALTHY" : "PARTIAL",
+      learning: learning.data ? "HEALTHY" : "PARTIAL",
+    },
     confirmed,
+    pending,
     downgraded,
     removed,
     topSignal,
@@ -262,6 +304,15 @@ async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin
       { label: "Post Game", detail: graded.length ? "Active" : "Pending", status: graded.length ? "complete" : "pending" },
     ],
     recentActivity,
+    businessSnapshot: {
+      activeSubscribers: activeSubscriptions.error ? null : activeSubscriptions.count ?? 0,
+      topSignalPurchasesToday: todayPurchases.error
+        ? null
+        : todayPurchaseRows.filter((row: any) => String(row.product_code ?? "").startsWith("top_signal_")).length,
+      dailyPurchasesToday: todayPurchases.error ? null : todayPurchaseRows.length,
+      revenueToday: todayPurchases.error || revenueCents === null ? null : revenueCents / 100,
+      currency: todayPurchaseRows.find((row: any) => row.currency)?.currency ?? "usd",
+    },
     performance: {
       sampleSize: performance.data?.sample_size ?? validationRows.length,
       totalPicks: performance.data?.total_picks ?? validationRows.length,

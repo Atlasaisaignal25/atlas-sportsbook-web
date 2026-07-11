@@ -57,7 +57,16 @@ type AdminOperations = {
   validatedPicks: number;
   topSignalPublished: boolean;
   gamesRemaining: number;
+  nextGame: { startTime?: string | null; awayTeam?: string | null; homeTeam?: string | null; status?: string | null } | null;
+  atlasCore: {
+    overall: "HEALTHY" | "PARTIAL" | "WARNING" | "ERROR";
+    research: "HEALTHY" | "PARTIAL" | "WARNING" | "ERROR";
+    validation: "HEALTHY" | "PARTIAL" | "WARNING" | "ERROR";
+    publishing: "HEALTHY" | "PARTIAL" | "WARNING" | "ERROR";
+    learning: "HEALTHY" | "PARTIAL" | "WARNING" | "ERROR";
+  };
   confirmed: number;
+  pending: number;
   downgraded: number;
   removed: number;
   topSignal: any | null;
@@ -84,6 +93,13 @@ type AdminOperations = {
   };
   learning: any[];
   database: { health: string; snapshots: number; cron: string; storage: string; warnings: string[] };
+  businessSnapshot?: {
+    activeSubscribers: number | null;
+    topSignalPurchasesToday: number | null;
+    dailyPurchasesToday: number | null;
+    revenueToday: number | null;
+    currency: string;
+  };
 };
 
 type PerformanceSport = "MLB" | "NBA" | "NFL" | "NHL" | "SOCCER";
@@ -1279,7 +1295,7 @@ function AdminTopSignalCard({ operations }: { operations?: AdminOperations }) {
     <AdminShellCard className="border-purple-400/55 p-2.5 shadow-[0_0_0_1px_rgba(168,85,247,0.15)]">
       <div className="flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="text-[17px] font-black uppercase tracking-[-0.01em] text-white">Top Signal</h2>
-        <button className="text-[12px] font-black uppercase text-sky-400">View Details ›</button>
+        <button className="text-[12px] font-black uppercase text-sky-400">Open Analysis →</button>
       </div>
       {top ? (
         <>
@@ -1291,11 +1307,15 @@ function AdminTopSignalCard({ operations }: { operations?: AdminOperations }) {
             </div>
             <AdminStatusPill status={top.status} />
           </div>
-          <div className="grid grid-cols-4 gap-2 pt-2">
+          <div className="grid grid-cols-4 gap-2 border-b border-white/10 py-2">
             <MiniAdminStat label="Confidence" value={numberPct(top.confidence)} />
             <MiniAdminStat label="Edge" value={formatAdminEdge(top.edge)} />
             <MiniAdminStat label="Published" value={formatAdminTime(top.published_at)} />
             <MiniAdminStat label="Market" value={adminMarketLabel(top.market)} />
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-[9px] font-black uppercase text-white/40">Atlas Confidence</span>
+            <span className="text-[14px] font-black tracking-[0.08em] text-yellow-300">{adminConfidenceStars(top.confidence)}</span>
           </div>
         </>
       ) : (
@@ -1314,26 +1334,86 @@ function MiniAdminStat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function adminConfidenceStars(value: unknown) {
+  const confidence = adminNumber(value) ?? 0;
+  const count = confidence >= 90 ? 5 : confidence >= 80 ? 4 : confidence >= 70 ? 3 : confidence >= 60 ? 2 : 1;
+  return "★★★★★".slice(0, count).padEnd(5, "☆");
+}
+
+function adminMarketTag(value: unknown) {
+  const label = adminMarketLabel(value);
+  if (label === "ML") return { label: "ML", className: "border-cyan-300/20 bg-cyan-300/10 text-cyan-300" };
+  if (label === "TOTALS") return { label: "TOTAL", className: "border-yellow-300/20 bg-yellow-300/10 text-yellow-300" };
+  return { label: "SPREAD", className: "border-purple-300/20 bg-purple-300/10 text-purple-300" };
+}
+
+function AtlasCoreHealth({ operations }: { operations?: AdminOperations }) {
+  const core = operations?.atlasCore;
+  const tone = (status?: string) =>
+    status === "HEALTHY"
+      ? "text-emerald-300"
+      : status === "ERROR"
+        ? "text-red-300"
+        : status === "WARNING"
+          ? "text-yellow-300"
+          : "text-white/55";
+  const dot = (status?: string) =>
+    status === "HEALTHY"
+      ? "bg-emerald-400"
+      : status === "ERROR"
+        ? "bg-red-400"
+        : status === "WARNING"
+          ? "bg-yellow-400"
+          : "bg-white/35";
+  const items = [
+    ["Research", core?.research],
+    ["Validation", core?.validation],
+    ["Publishing", core?.publishing],
+    ["Learning", core?.learning],
+  ];
+  return (
+    <AdminShellCard className="flex items-center justify-between gap-2 px-2.5 py-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="text-[11px] font-black uppercase text-white">Atlas Core</span>
+        <span className={`text-[10px] font-black uppercase ${tone(core?.overall)}`}>{core?.overall ?? "UNAVAILABLE"}</span>
+      </div>
+      <div className="flex shrink-0 items-center gap-2.5">
+        {items.map(([label, status]) => (
+          <span key={label} className="flex items-center gap-1 text-[8px] font-black uppercase text-white/58 sm:text-[9px]">
+            <span className={`h-1.5 w-1.5 rounded-full ${dot(status)}`} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </AdminShellCard>
+  );
+}
+
 function AdminTop5Card({ operations }: { operations?: AdminOperations }) {
   const rows = operations?.topPicks ?? [];
   return (
     <AdminShellCard className="p-2.5">
       <div className="flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="text-[17px] font-black uppercase tracking-[-0.01em] text-white">Top 5 Picks</h2>
-        <button className="text-[12px] font-black uppercase text-sky-400">View All ›</button>
+        <button className="text-[12px] font-black uppercase text-sky-400">Open Picks →</button>
       </div>
       <div>
-        {rows.slice(0, 5).map((pick, index) => (
-          <div key={pick.id ?? `${pick.game_id}-${index}`} className="grid grid-cols-[18px_28px_minmax(0,1fr)_43px_62px_48px_10px] items-center gap-1 border-b border-white/8 py-1.5 last:border-b-0 sm:grid-cols-[22px_32px_minmax(0,1fr)_58px_70px_58px_12px] sm:gap-1.5">
-            <span className="text-[12px] font-black text-white sm:text-[13px]">{pick.rank ?? index + 1}</span>
-            <AdminTeamLogo team={adminPickTeamName(pick)} className="h-7 w-7 rounded-lg sm:h-8 sm:w-8" />
-            <span className="truncate text-[12px] font-semibold text-white sm:text-[14px]">{adminPickTeamName(pick)}</span>
-            <span className="text-[11px] font-black text-white sm:text-[12px]">{pick.line ? `${Number(pick.line) > 0 ? "+" : ""}${pick.line}` : adminMarketLabel(pick.market)}</span>
-            <AdminStatusPill status={pick.status} />
-            <span className="text-right text-[12px] font-black text-emerald-300 sm:text-[13px]">{formatAdminEdge(pick.edge)}</span>
-            <span className="text-base text-white/50">›</span>
-          </div>
-        ))}
+        {rows.slice(0, 5).map((pick, index) => {
+          const tag = adminMarketTag(pick.market);
+          return (
+            <div key={pick.id ?? `${pick.game_id}-${index}`} className="grid grid-cols-[16px_26px_minmax(0,1fr)_38px_40px_58px_40px_38px_10px] items-center gap-1 border-b border-white/8 py-1.5 last:border-b-0 sm:grid-cols-[22px_32px_minmax(0,1fr)_58px_54px_70px_58px_44px_12px] sm:gap-1.5">
+              <span className="text-[12px] font-black text-white sm:text-[13px]">{pick.rank ?? index + 1}</span>
+              <AdminTeamLogo team={adminPickTeamName(pick)} className="h-[26px] w-[26px] rounded-lg sm:h-8 sm:w-8" />
+              <span className="truncate text-[11px] font-semibold text-white sm:text-[14px]">{adminPickTeamName(pick)}</span>
+              <span className="text-[10px] font-black text-white sm:text-[12px]">{pick.line ? `${Number(pick.line) > 0 ? "+" : ""}${pick.line}` : adminMarketLabel(pick.market)}</span>
+              <span className={`rounded px-1 py-0.5 text-center text-[7px] font-black uppercase sm:text-[8px] ${tag.className}`}>{tag.label}</span>
+              <AdminStatusPill status={pick.status} />
+              <span className="text-right text-[11px] font-black text-emerald-300 sm:text-[13px]">{formatAdminEdge(pick.edge)}</span>
+              <span className="text-right text-[10px] font-black text-white/58">{numberPct(pick.confidence)}</span>
+              <span className="text-base text-white/50">›</span>
+            </div>
+          );
+        })}
         {!rows.length ? <p className="py-6 text-center text-sm text-white/45">No validated picks yet.</p> : null}
       </div>
     </AdminShellCard>
@@ -1344,11 +1424,15 @@ function PipelineStatus({ operations }: { operations?: AdminOperations }) {
   const steps = operations?.pipeline ?? [];
   const icons = ["⌕", "◎", "▥", "★", "♛", "♜"];
   const details = ["7:00 AM", "Frozen", "Live", "Active", "Published", "Pending"];
+  const pipelineStatus = operations?.atlasCore?.overall === "HEALTHY" ? "Running Normally" : operations?.atlasCore?.overall ?? "Unavailable";
   return (
     <AdminShellCard className="p-2.5">
       <div className="flex items-center justify-between">
-        <h2 className="text-[16px] font-black uppercase text-white">Pipeline Status</h2>
-        <button className="text-[12px] font-black uppercase text-sky-400">View Pipeline ›</button>
+        <div>
+          <h2 className="text-[16px] font-black uppercase text-white">Atlas Pipeline</h2>
+          <p className="text-[10px] font-black uppercase text-emerald-300">{pipelineStatus}</p>
+        </div>
+        <button className="text-[12px] font-black uppercase text-sky-400">Open Pipeline →</button>
       </div>
       <div className="mt-2.5 grid grid-cols-6 items-start gap-0">
         {steps.map((step, index) => {
@@ -1375,18 +1459,30 @@ function RecentActivity({ operations }: { operations?: AdminOperations }) {
     green: "bg-emerald-400",
     purple: "bg-purple-400",
     yellow: "bg-yellow-400",
+    red: "bg-red-400",
+  };
+  const iconFor = (title: string) => {
+    const key = title.toLowerCase();
+    if (key.includes("morning")) return "⌕";
+    if (key.includes("signal") && key.includes("published")) return "♛";
+    if (key.includes("published") || key.includes("updated")) return "★";
+    if (key.includes("confirmed")) return "✓";
+    if (key.includes("downgraded")) return "!";
+    if (key.includes("removed")) return "×";
+    if (key.includes("graded")) return "=";
+    return "•";
   };
   return (
     <AdminShellCard className="p-2.5">
       <div className="flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="text-[16px] font-black uppercase text-white">Recent Activity</h2>
-        <button className="text-[12px] font-black uppercase text-sky-400">View All ›</button>
+        <button className="text-[12px] font-black uppercase text-sky-400">Open Activity →</button>
       </div>
       <div className="pt-1">
         {rows.map((item, index) => (
-          <div key={`${item.title}-${index}`} className="grid grid-cols-[60px_14px_1fr_10px] items-center border-b border-white/8 py-1.5 last:border-b-0">
+          <div key={`${item.title}-${index}`} className="grid grid-cols-[54px_20px_1fr_10px] items-center border-b border-white/8 py-1.5 last:border-b-0">
             <span className="text-[11px] font-medium text-white/60">{formatAdminTime(item.time)}</span>
-            <span className={`h-2.5 w-2.5 rounded-full ${tone[item.tone] ?? "bg-sky-400"} shadow-[0_0_0_3px_rgba(255,255,255,0.05)]`} />
+            <span className={`grid h-4 w-4 place-items-center rounded-full text-[9px] font-black text-black ${tone[item.tone] ?? "bg-sky-400"} shadow-[0_0_0_3px_rgba(255,255,255,0.05)]`}>{iconFor(item.title)}</span>
             <span>
               <p className="text-[13px] font-semibold leading-tight text-white">{item.title}</p>
               <p className="text-[11px] leading-tight text-white/45">{item.detail}</p>
@@ -1395,6 +1491,57 @@ function RecentActivity({ operations }: { operations?: AdminOperations }) {
           </div>
         ))}
         {!rows.length ? <p className="py-5 text-center text-sm text-white/45">No activity yet.</p> : null}
+      </div>
+    </AdminShellCard>
+  );
+}
+
+function TodaysStatus({ operations }: { operations?: AdminOperations }) {
+  const rows = [
+    ["Games", operations?.signalsDetected ?? 0],
+    ["Signals", operations?.signalsDetected ?? 0],
+    ["Validated", operations?.validatedPicks ?? 0],
+    ["Confirmed", operations?.confirmed ?? 0],
+    ["Pending", operations?.pending ?? 0],
+    ["Downgraded", operations?.downgraded ?? 0],
+    ["Removed", operations?.removed ?? 0],
+  ];
+  return (
+    <AdminShellCard className="p-2.5">
+      <h2 className="mb-2 text-[16px] font-black uppercase text-white">Today’s Status</h2>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between border-b border-white/8 py-1 last:border-b-0">
+            <span className="text-[10px] font-black uppercase text-white/45">{label}</span>
+            <span className="text-[13px] font-black text-white">{value}</span>
+          </div>
+        ))}
+      </div>
+    </AdminShellCard>
+  );
+}
+
+function BusinessSnapshot({ operations }: { operations?: AdminOperations }) {
+  const snapshot = operations?.businessSnapshot;
+  const money = typeof snapshot?.revenueToday === "number"
+    ? new Intl.NumberFormat("en-US", { style: "currency", currency: snapshot.currency?.toUpperCase() || "USD" }).format(snapshot.revenueToday)
+    : "Unavailable";
+  const rows = [
+    ["Active Subscribers", snapshot?.activeSubscribers ?? "Unavailable"],
+    ["Top Signal Purchases Today", snapshot?.topSignalPurchasesToday ?? "Unavailable"],
+    ["Daily Purchases Today", snapshot?.dailyPurchasesToday ?? "Unavailable"],
+    ["Revenue Today", money],
+  ];
+  return (
+    <AdminShellCard className="p-2.5">
+      <h2 className="mb-2 text-[16px] font-black uppercase text-white">Business Snapshot</h2>
+      <div className="grid gap-1.5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between border-b border-white/8 py-1 last:border-b-0">
+            <span className="text-[10px] font-black uppercase text-white/45">{label}</span>
+            <span className="text-[12px] font-black text-white">{value}</span>
+          </div>
+        ))}
       </div>
     </AdminShellCard>
   );
@@ -1914,16 +2061,24 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           ▣ {formatAdminDate(operations?.date ?? overview?.today)}
         </div>
       </div>
+      <AtlasCoreHealth operations={operations} />
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
         <OperationMetricCard label="Signals Detected" value={operations?.signalsDetected ?? 0} sub="Free View" />
         <OperationMetricCard label="Validated Picks" value={operations?.validatedPicks ?? 0} sub="Subscribers" tone="green" />
         <OperationMetricCard label="Top Signal" value={operations?.topSignalPublished ? 1 : 0} sub={operations?.topSignalPublished ? "Published" : "Pending"} tone="purple" />
-        <OperationMetricCard label="Games Remaining" value={operations?.gamesRemaining ?? 0} sub="Today" tone="white" />
+        <OperationMetricCard
+          label="Next Game"
+          value={operations?.nextGame?.startTime ? formatAdminTime(operations.nextGame.startTime) : "No Games"}
+          sub={operations?.nextGame?.awayTeam && operations?.nextGame?.homeTeam ? `${shortTeam(operations.nextGame.awayTeam)} @ ${shortTeam(operations.nextGame.homeTeam)} · ${operations.nextGame.status ?? "Scheduled"}` : "Remaining"}
+          tone="white"
+        />
       </div>
       <AdminTopSignalCard operations={operations} />
       <AdminTop5Card operations={operations} />
       <PipelineStatus operations={operations} />
+      <TodaysStatus operations={operations} />
       <RecentActivity operations={operations} />
+      <BusinessSnapshot operations={operations} />
     </section>
   );
 
