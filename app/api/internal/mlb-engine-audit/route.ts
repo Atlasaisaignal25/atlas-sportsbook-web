@@ -77,6 +77,10 @@ import {
   getProjectionResearchStatus,
 } from "@/app/lib/mlb-engine/sports-intelligence/projection-research/projection-research-repository";
 import { MLB_PROJECTION_RESEARCH_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/projection-research/projection-research-engine";
+import {
+  getDecisionResearchStatus,
+} from "@/app/lib/mlb-engine/sports-intelligence/decision-research/decision-research-repository";
+import { MLB_DECISION_RESEARCH_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/decision-research/decision-research-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -677,6 +681,36 @@ function projectionResearchAudit(
   };
 }
 
+function decisionResearchAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getDecisionResearchStatus>>,
+) {
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_DECISION_RESEARCH_MODE ?? "RESEARCH_ONLY" : "DISABLED",
+    version: MLB_DECISION_RESEARCH_VERSION,
+    researchOnly: true,
+    publicScoringImpact: "NONE",
+    storageHealth: status,
+    canonicalRows: status.canonicalSnapshots,
+    totalSnapshots: status.totalSnapshots,
+    latestCapture: status.latestCapture,
+    gamesDecided: status.gamesDecided,
+    consensusDistribution: status.consensusDistribution,
+    convictionDistribution: status.convictionDistribution,
+    decisionDistribution: status.decisionDistribution,
+    noPickCount: status.noPickCount,
+    noPickReasons: status.noPickReasons,
+    examples: status.examples,
+    noPickExamples: status.noPickExamples,
+    warnings: [
+      "Atlas Decision Engine v1 is research-only and is not connected to candidateScore, buildCandidate, Top 5, Top Signal, Top Play, closing, grading, public_signals, or UI.",
+      ...(status.canonicalSnapshots === 0 ? ["No canonical MLB Decision Research snapshots are available yet."] : []),
+      ...(status.errors ?? []),
+    ],
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -781,7 +815,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -795,6 +829,7 @@ export async function GET(request: Request) {
       getTeamQualityResearchStatus(),
       getStartingPitcherQualitySnapshotStatus(),
       getProjectionResearchStatus(),
+      getDecisionResearchStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -945,6 +980,12 @@ export async function GET(request: Request) {
           sportsFlags.projectionResearchEnabled &&
           sportsFlags.projectionResearchMode === "RESEARCH_ONLY",
         projectionResearchStatus,
+      ),
+      atlasDecisionResearch: decisionResearchAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.decisionResearchEnabled &&
+          sportsFlags.decisionResearchMode === "RESEARCH_ONLY",
+        decisionResearchStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,

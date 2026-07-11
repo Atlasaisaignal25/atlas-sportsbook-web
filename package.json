@@ -24,7 +24,8 @@
     "validate:mlb-pitcher-provider": "npx --yes tsx scripts/validate-mlb-pitcher-provider.ts",
     "validate:mlb-lineup-provider": "npx --yes tsx scripts/validate-mlb-lineup-provider.ts",
     "validate:mlb-lineup-snapshots": "npx --yes tsx scripts/validate-mlb-lineup-snapshots.ts",
-    "validate:mlb-projection-research": "npx --yes tsx scripts/validate-mlb-projection-research.ts"
+    "validate:mlb-projection-research": "npx --yes tsx scripts/validate-mlb-projection-research.ts",
+    "validate:mlb-decision-research": "npx --yes tsx scripts/validate-mlb-decision-research.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",

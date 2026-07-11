@@ -250,6 +250,8 @@ async function main() {
     teamQualityResearchWeightVersion: "tq_research_v1",
     projectionResearchEnabled: false,
     projectionResearchMode: "DISABLED",
+    decisionResearchEnabled: false,
+    decisionResearchMode: "DISABLED",
     pitcherQualityEnabled: false,
     pitcherReadinessEnabled: false,
     pitcherQualityMode: "DISABLED",

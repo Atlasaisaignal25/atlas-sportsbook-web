@@ -34,6 +34,8 @@ export type MlbSportsIntelligenceFlags = {
   teamQualityResearchWeightVersion: "tq_research_v1";
   projectionResearchEnabled: boolean;
   projectionResearchMode: "RESEARCH_ONLY" | "DISABLED";
+  decisionResearchEnabled: boolean;
+  decisionResearchMode: "RESEARCH_ONLY" | "DISABLED";
   pitcherQualityEnabled: boolean;
   pitcherReadinessEnabled: boolean;
   pitcherQualityMode: "AUDIT_ONLY" | "DISABLED";
@@ -85,6 +87,8 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     teamQualityResearchWeightVersion: "tq_research_v1",
     projectionResearchEnabled: envFlag("MLB_PROJECTION_RESEARCH_ENABLED"),
     projectionResearchMode: process.env.MLB_PROJECTION_RESEARCH_MODE === "RESEARCH_ONLY" ? "RESEARCH_ONLY" : "DISABLED",
+    decisionResearchEnabled: envFlag("MLB_DECISION_RESEARCH_ENABLED"),
+    decisionResearchMode: process.env.MLB_DECISION_RESEARCH_MODE === "RESEARCH_ONLY" ? "RESEARCH_ONLY" : "DISABLED",
     pitcherQualityEnabled: envFlag("MLB_PITCHER_QUALITY_ENABLED"),
     pitcherReadinessEnabled: envFlag("MLB_PITCHER_READINESS_ENABLED"),
     pitcherQualityMode: process.env.MLB_PITCHER_QUALITY_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
