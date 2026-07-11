@@ -42,6 +42,8 @@ export type MlbSportsIntelligenceFlags = {
   validationHistoryMode: "RESEARCH_ONLY" | "DISABLED";
   performanceAnalyticsEnabled: boolean;
   performanceAnalyticsMode: "RESEARCH_ONLY" | "DISABLED";
+  learningEngineEnabled: boolean;
+  learningEngineMode: "RESEARCH_ONLY" | "DISABLED";
   pitcherQualityEnabled: boolean;
   pitcherReadinessEnabled: boolean;
   pitcherQualityMode: "AUDIT_ONLY" | "DISABLED";
@@ -101,6 +103,8 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     validationHistoryMode: process.env.MLB_VALIDATION_HISTORY_MODE === "RESEARCH_ONLY" ? "RESEARCH_ONLY" : "DISABLED",
     performanceAnalyticsEnabled: envFlag("MLB_PERFORMANCE_ANALYTICS_ENABLED"),
     performanceAnalyticsMode: process.env.MLB_PERFORMANCE_ANALYTICS_MODE === "RESEARCH_ONLY" ? "RESEARCH_ONLY" : "DISABLED",
+    learningEngineEnabled: envFlag("MLB_LEARNING_ENGINE_ENABLED"),
+    learningEngineMode: process.env.MLB_LEARNING_ENGINE_MODE === "RESEARCH_ONLY" ? "RESEARCH_ONLY" : "DISABLED",
     pitcherQualityEnabled: envFlag("MLB_PITCHER_QUALITY_ENABLED"),
     pitcherReadinessEnabled: envFlag("MLB_PITCHER_READINESS_ENABLED"),
     pitcherQualityMode: process.env.MLB_PITCHER_QUALITY_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",

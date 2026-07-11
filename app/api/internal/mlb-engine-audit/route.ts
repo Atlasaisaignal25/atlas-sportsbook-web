@@ -93,6 +93,10 @@ import {
   getPerformanceAnalyticsStatus,
 } from "@/app/lib/mlb-engine/sports-intelligence/performance/performance-analytics-repository";
 import { MLB_PERFORMANCE_ANALYTICS_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/performance/performance-analytics-engine";
+import {
+  getLearningEngineStatus,
+} from "@/app/lib/mlb-engine/sports-intelligence/learning/learning-repository";
+import { MLB_LEARNING_ENGINE_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/learning/learning-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -821,6 +825,37 @@ function performanceAnalyticsAudit(
   };
 }
 
+function learningEngineAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getLearningEngineStatus>>,
+) {
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_LEARNING_ENGINE_MODE ?? "RESEARCH_ONLY" : "DISABLED",
+    version: MLB_LEARNING_ENGINE_VERSION,
+    researchOnly: true,
+    publicScoringImpact: "NONE",
+    storageHealth: status,
+    insightsFound: status.insightsFound,
+    sampleSize: status.sampleSize,
+    lowSampleSize: status.lowSampleSize,
+    bestEdge: status.bestEdge,
+    worstEdge: status.worstEdge,
+    bestConviction: status.bestConviction,
+    bestConfidence: status.bestConfidence,
+    calibrationError: status.calibrationError,
+    projectionError: status.projectionError,
+    byMetric: status.byMetric,
+    examples: status.examples,
+    warnings: [
+      "Atlas Learning Engine v1 is research-only and only discovers observational patterns. It does not recalibrate weights or modify decisions.",
+      ...(status.warnings ?? []),
+      ...(status.totalInsights === 0 ? ["No MLB Learning Engine insights are available yet."] : []),
+      ...(status.errors ?? []),
+    ],
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -925,7 +960,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus, performanceAnalyticsStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus, performanceAnalyticsStatus, learningEngineStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -943,6 +978,7 @@ export async function GET(request: Request) {
       getMarketEdgeResearchStatus(),
       getValidationHistoryStatus(),
       getPerformanceAnalyticsStatus(),
+      getLearningEngineStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -1117,6 +1153,12 @@ export async function GET(request: Request) {
           sportsFlags.performanceAnalyticsEnabled &&
           sportsFlags.performanceAnalyticsMode === "RESEARCH_ONLY",
         performanceAnalyticsStatus,
+      ),
+      learningEngine: learningEngineAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.learningEngineEnabled &&
+          sportsFlags.learningEngineMode === "RESEARCH_ONLY",
+        learningEngineStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,

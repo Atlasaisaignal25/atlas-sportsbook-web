@@ -34,6 +34,11 @@ export {
   MLB_PERFORMANCE_LOW_SAMPLE_THRESHOLD,
   buildPerformanceAnalyticsSnapshot,
 } from "./performance/performance-analytics-engine";
+export {
+  MLB_LEARNING_ENGINE_VERSION,
+  MLB_LEARNING_LOW_SAMPLE_THRESHOLD,
+  buildLearningAnalysis,
+} from "./learning/learning-engine";
 export * from "./projection";
 export * from "./provider";
 export * from "./providers/mlb-official-client";
