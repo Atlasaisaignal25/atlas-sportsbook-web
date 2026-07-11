@@ -22,6 +22,14 @@ export type MlbOfficialStatsResponse = {
       game?: {
         gamePk?: number;
       };
+      player?: {
+        id?: number;
+        fullName?: string;
+      };
+      team?: {
+        id?: number;
+        name?: string;
+      };
     }>;
   }>;
 };
@@ -29,6 +37,7 @@ export type MlbOfficialStatsResponse = {
 export interface MlbOfficialClient {
   getSchedule(date: string): Promise<MlbOfficialScheduleGame[]>;
   getPerson(playerId: string): Promise<MlbOfficialPerson | null>;
+  getPitcherSeasonSplits?(season: string): Promise<NonNullable<MlbOfficialStatsResponse["stats"]>[number]["splits"]>;
   getPitcherSeasonStats(playerId: string, season: string): Promise<Record<string, unknown> | undefined>;
   getPitcherGameLog(playerId: string, season: string): Promise<NonNullable<MlbOfficialStatsResponse["stats"]>[number]["splits"]>;
 }
@@ -36,6 +45,7 @@ export interface MlbOfficialClient {
 const MLB_STATS_API_BASE_URL = "https://statsapi.mlb.com/api/v1";
 const scheduleCache = new Map<string, CacheEntry<MlbOfficialScheduleGame[]>>();
 const personCache = new Map<string, CacheEntry<MlbOfficialPerson | null>>();
+const pitchingSeasonSplitsCache = new Map<string, CacheEntry<NonNullable<MlbOfficialStatsResponse["stats"]>[number]["splits"]>>();
 const seasonStatsCache = new Map<string, CacheEntry<Record<string, unknown> | undefined>>();
 const gameLogCache = new Map<string, CacheEntry<NonNullable<MlbOfficialStatsResponse["stats"]>[number]["splits"]>>();
 
@@ -89,6 +99,19 @@ export class CachedMlbOfficialClient implements MlbOfficialClient {
     const person = data.people?.[0] ?? null;
     setCached(personCache, key, person, PERSON_TTL_MS);
     return person;
+  }
+
+  async getPitcherSeasonSplits(season: string) {
+    const key = `pitching-season-splits:${season}`;
+    const cached = getCached(pitchingSeasonSplitsCache, key);
+    if (cached !== undefined) return cached;
+
+    const data = await fetchJson<MlbOfficialStatsResponse>(
+      `/stats?stats=season&group=pitching&playerPool=ALL&season=${encodeURIComponent(season)}&sportIds=1&limit=10000`,
+    );
+    const splits = data.stats?.[0]?.splits ?? [];
+    setCached(pitchingSeasonSplitsCache, key, splits, SEASON_STATS_TTL_MS);
+    return splits;
   }
 
   async getPitcherSeasonStats(playerId: string, season: string) {

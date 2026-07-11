@@ -1,9 +1,11 @@
 export const STARTING_PITCHER_QUALITY_VERSION = "starting_pitcher_quality_v1";
 export const STARTING_PITCHER_READINESS_VERSION = "starting_pitcher_readiness_v1";
+export const STARTING_PITCHER_BASELINE_VERSION = "starting_pitcher_baseline_v1";
 
 export type PitcherWindow = "SEASON" | "LAST_30_DAYS" | "LAST_5_STARTS" | "LAST_3_STARTS";
 export type PitcherSampleQuality = "SUFFICIENT" | "LIMITED" | "INSUFFICIENT" | "UNAVAILABLE";
 export type PitcherConfidenceTier = "HIGH" | "MEDIUM" | "LOW" | "UNAVAILABLE";
+export type PitcherBaselineSource = "PRODUCTION_BASELINE" | "INITIAL_PRIOR_FALLBACK";
 
 export type PitcherGameLogEntry = {
   date?: string;
@@ -32,6 +34,10 @@ export type PitcherQualityWindow = {
   homeRunsPerBatterFaced?: number;
   runsAllowedPerInning?: number;
   sampleQuality: PitcherSampleQuality;
+  dateRange?: {
+    start?: string;
+    end?: string;
+  };
   warnings: string[];
 };
 
@@ -67,6 +73,9 @@ export type StartingPitcherQualitySnapshot = {
   handedness?: "L" | "R";
   qualityScore?: number;
   qualityVersion: typeof STARTING_PITCHER_QUALITY_VERSION;
+  baselineVersion: string;
+  baselineSource: PitcherBaselineSource;
+  baselineAsOf?: string;
   qualityComponents: PitcherQualityComponent[];
   qualityConfidence: StartingPitcherQualityConfidence;
   readinessScore?: number;
@@ -81,6 +90,36 @@ export type StartingPitcherQualitySnapshot = {
   sourceVersions: Record<string, string | undefined>;
   warnings: string[];
   capturedAt: string;
+};
+
+export type PitcherQualityBaseline = {
+  season: number;
+  window: PitcherWindow;
+  metric: string;
+  pitcherCount: number;
+  sampleQualityPolicy: string;
+  mean: number;
+  standardDeviation: number;
+  median: number;
+  minimum: number;
+  maximum: number;
+  asOf: string;
+  source: "MLB_OFFICIAL";
+  sourceUpdatedAt?: string;
+  baselineVersion: typeof STARTING_PITCHER_BASELINE_VERSION;
+  baselineHash: string;
+  ready: boolean;
+  warnings: string[];
+};
+
+export type PitcherQualityBaselineSet = {
+  season: number;
+  asOf: string;
+  baselineVersion: typeof STARTING_PITCHER_BASELINE_VERSION;
+  source: "MLB_OFFICIAL";
+  ready: boolean;
+  metrics: Record<string, PitcherQualityBaseline>;
+  warnings: string[];
 };
 
 export type StartingPitcherQualityInput = {
@@ -98,6 +137,7 @@ export type StartingPitcherQualityInput = {
   commenceTime?: string;
   asOf?: string;
   advancedMetrics?: Record<string, number | undefined>;
+  baselineSet?: PitcherQualityBaselineSet;
 };
 
 type Baseline = {
@@ -113,7 +153,7 @@ export const PITCHER_WINDOW_WEIGHTS: Record<PitcherWindow, number> = {
   LAST_3_STARTS: 0.1,
 };
 
-const METRIC_WEIGHTS: Record<string, number> = {
+export const PITCHER_QUALITY_METRIC_WEIGHTS: Record<string, number> = {
   era: 0.16,
   whip: 0.14,
   strikeoutRate: 0.16,
@@ -124,7 +164,7 @@ const METRIC_WEIGHTS: Record<string, number> = {
   runsAllowedPerInning: 0.06,
 };
 
-const BASELINES: Record<string, Baseline> = {
+export const INITIAL_PITCHER_QUALITY_PRIORS: Record<string, Baseline> = {
   era: { mean: 4.2, sd: 1.0, higherIsBetter: false },
   whip: { mean: 1.3, sd: 0.22, higherIsBetter: false },
   strikeoutRate: { mean: 0.22, sd: 0.055, higherIsBetter: true },
@@ -222,6 +262,10 @@ function aggregateStats(stats: Array<Record<string, unknown> | undefined>, windo
     strikeouts: 0,
     homeRunsAllowed: 0,
   });
+  const dates = stats
+    .map((stat) => String(stat?.__atlasDate ?? ""))
+    .filter(Boolean)
+    .sort();
   const innings = totals.inningsOuts / 3;
   const bf = totals.battersFaced;
   const warnings: string[] = [];
@@ -250,6 +294,7 @@ function aggregateStats(stats: Array<Record<string, unknown> | undefined>, windo
     homeRunsPerBatterFaced: bf > 0 ? round(totals.homeRunsAllowed / bf, 4) : undefined,
     runsAllowedPerInning: innings > 0 ? round(totals.runsAllowed / innings, 4) : undefined,
     sampleQuality,
+    dateRange: dates.length > 0 ? { start: dates[0], end: dates[dates.length - 1] } : undefined,
     warnings,
   };
 }
@@ -289,10 +334,11 @@ export function buildPitcherWindows(input: { seasonStats?: Record<string, unknow
   const asOf = input.asOf ?? new Date().toISOString();
   const starts = starterOnly(input.gameLog ?? []).sort((a, b) => dateMs(b) - dateMs(a));
   const since30 = new Date(new Date(asOf).getTime() - 30 * 86_400_000).getTime();
-  const seasonWindow = input.seasonStats ? aggregateStats([input.seasonStats], "SEASON") : aggregateStats(starts.map((entry) => entry.stat), "SEASON");
-  const last30Window = aggregateStats(starts.filter((entry) => dateMs(entry) >= since30).map((entry) => entry.stat), "LAST_30_DAYS");
-  const last5Starts = aggregateStats(starts.slice(0, 5).map((entry) => entry.stat), "LAST_5_STARTS");
-  const last3Starts = aggregateStats(starts.slice(0, 3).map((entry) => entry.stat), "LAST_3_STARTS");
+  const withDate = (entry: PitcherGameLogEntry) => ({ ...(entry.stat ?? {}), __atlasDate: entry.date });
+  const seasonWindow = input.seasonStats ? aggregateStats([input.seasonStats], "SEASON") : aggregateStats(starts.map(withDate), "SEASON");
+  const last30Window = aggregateStats(starts.filter((entry) => dateMs(entry) >= since30).map(withDate), "LAST_30_DAYS");
+  const last5Starts = aggregateStats(starts.slice(0, 5).map(withDate), "LAST_5_STARTS");
+  const last3Starts = aggregateStats(starts.slice(0, 3).map(withDate), "LAST_3_STARTS");
   const reliefExcluded = Math.max(0, (input.gameLog ?? []).length - starts.length);
   const warnings = [
     ...(reliefExcluded > 0 ? [`Excluded ${reliefExcluded} relief appearance(s) from starter-quality windows.`] : []),
@@ -301,27 +347,39 @@ export function buildPitcherWindows(input: { seasonStats?: Record<string, unknow
   return { seasonWindow, last30Window, last5Starts, last3Starts, warnings };
 }
 
-function normalizeMetric(metric: string, value: number | undefined) {
-  const baseline = BASELINES[metric];
+function baselineForMetric(window: PitcherWindow, metric: string, baselineSet?: PitcherQualityBaselineSet): Baseline | undefined {
+  const production = baselineSet?.ready ? baselineSet.metrics[`${window}:${metric}`] : undefined;
+  if (production?.ready && production.standardDeviation > 0.000001) {
+    return { mean: production.mean, sd: production.standardDeviation, higherIsBetter: INITIAL_PITCHER_QUALITY_PRIORS[metric]?.higherIsBetter ?? true };
+  }
+  return INITIAL_PITCHER_QUALITY_PRIORS[metric];
+}
+
+function normalizeMetric(window: PitcherWindow, metric: string, value: number | undefined, baselineSet?: PitcherQualityBaselineSet) {
+  const baseline = baselineForMetric(window, metric, baselineSet);
   if (!baseline || !isNumber(value) || baseline.sd <= 0.000001) return undefined;
   const z = Math.max(-2.5, Math.min(2.5, (value - baseline.mean) / baseline.sd));
   const directional = baseline.higherIsBetter ? z : -z;
   return round(clamp(50 + directional * 12));
 }
 
-function metricComponents(window: PitcherQualityWindow) {
-  return Object.entries(METRIC_WEIGHTS).map(([metric, weight]) => {
+function metricComponents(window: PitcherQualityWindow, baselineSet?: PitcherQualityBaselineSet) {
+  return Object.entries(PITCHER_QUALITY_METRIC_WEIGHTS).map(([metric, weight]) => {
     const raw = (window as unknown as Record<string, number | undefined>)[metric];
+    const baseline = baselineSet?.ready ? baselineSet.metrics[`${window.window}:${metric}`] : undefined;
     return {
       component: "pitcherQualityMetric",
       metric,
       window: window.window,
       rawValue: raw,
-      normalizedValue: normalizeMetric(metric, raw),
+      normalizedValue: normalizeMetric(window.window, metric, raw, baselineSet),
       weight,
       effectiveWeight: 0,
-      higherIsBetter: BASELINES[metric]?.higherIsBetter ?? true,
-      warnings: raw === undefined ? [`${metric} unavailable for ${window.window}.`] : [],
+      higherIsBetter: INITIAL_PITCHER_QUALITY_PRIORS[metric]?.higherIsBetter ?? true,
+      warnings: [
+        ...(raw === undefined ? [`${metric} unavailable for ${window.window}.`] : []),
+        ...(baselineSet && !baseline?.ready ? [`${metric} ${window.window} used initial-prior fallback.`] : []),
+      ],
     };
   });
 }
@@ -339,8 +397,8 @@ function scoreComponents(components: PitcherQualityComponent[]) {
   return { score, components: scored };
 }
 
-function windowScore(window: PitcherQualityWindow) {
-  const components = metricComponents(window);
+function windowScore(window: PitcherQualityWindow, baselineSet?: PitcherQualityBaselineSet) {
+  const components = metricComponents(window, baselineSet);
   const scored = scoreComponents(components);
   const confidenceMultiplier = window.sampleQuality === "SUFFICIENT" ? 1 : window.sampleQuality === "LIMITED" ? 0.85 : window.sampleQuality === "INSUFFICIENT" ? 0.65 : 0;
   return {
@@ -349,7 +407,12 @@ function windowScore(window: PitcherQualityWindow) {
   };
 }
 
-function confidenceScore(windows: PitcherQualityWindow[], advancedMetrics: Record<string, number | undefined>, warnings: string[]) {
+function confidenceScore(
+  windows: PitcherQualityWindow[],
+  advancedMetrics: Record<string, number | undefined>,
+  warnings: string[],
+  baselineSource: PitcherBaselineSource,
+) {
   const samplePoints = windows.reduce((sum, window) => {
     if (window.sampleQuality === "SUFFICIENT") return sum + 25;
     if (window.sampleQuality === "LIMITED") return sum + 16;
@@ -358,7 +421,8 @@ function confidenceScore(windows: PitcherQualityWindow[], advancedMetrics: Recor
   }, 0);
   const advancedKeys = ["xEra", "xWobaAllowed", "hardHitRateAllowed", "barrelRateAllowed", "averageExitVelocityAllowed", "fastballVelocity"];
   const advancedMetricCoverage = round(advancedKeys.filter((key) => advancedMetrics[key] !== undefined).length / advancedKeys.length, 3);
-  const score = clamp(samplePoints * 0.75 + advancedMetricCoverage * 20 - Math.min(20, warnings.length * 2));
+  const baselinePoints = baselineSource === "PRODUCTION_BASELINE" ? 8 : 0;
+  const score = clamp(samplePoints * 0.68 + baselinePoints + advancedMetricCoverage * 18 - Math.min(20, warnings.length * 2));
   const recent = [windows[1], windows[2], windows[3]].some((window) => window.sampleQuality === "SUFFICIENT")
     ? "SUFFICIENT"
     : [windows[1], windows[2], windows[3]].some((window) => window.sampleQuality === "LIMITED")
@@ -393,12 +457,13 @@ function readiness(input: StartingPitcherQualityInput, latestStart?: PitcherGame
 export function buildStartingPitcherQuality(input: StartingPitcherQualityInput): StartingPitcherQualitySnapshot {
   const capturedAt = input.asOf ?? new Date().toISOString();
   const windows = buildPitcherWindows({ seasonStats: input.seasonStats, gameLog: input.gameLog, asOf: capturedAt });
+  const baselineSource: PitcherBaselineSource = input.baselineSet?.ready ? "PRODUCTION_BASELINE" : "INITIAL_PRIOR_FALLBACK";
   const scoredWindows = [
     { window: windows.seasonWindow, weight: PITCHER_WINDOW_WEIGHTS.SEASON },
     { window: windows.last30Window, weight: PITCHER_WINDOW_WEIGHTS.LAST_30_DAYS },
     { window: windows.last5Starts, weight: PITCHER_WINDOW_WEIGHTS.LAST_5_STARTS },
     { window: windows.last3Starts, weight: PITCHER_WINDOW_WEIGHTS.LAST_3_STARTS },
-  ].map((item) => ({ ...item, ...windowScore(item.window) }));
+  ].map((item) => ({ ...item, ...windowScore(item.window, input.baselineSet) }));
   const usableWindows = scoredWindows.filter((item) => item.score !== undefined && item.window.sampleQuality !== "UNAVAILABLE");
   const totalWindowWeight = usableWindows.reduce((sum, item) => sum + item.weight, 0);
   const qualityScore = totalWindowWeight > 0
@@ -409,7 +474,15 @@ export function buildStartingPitcherQuality(input: StartingPitcherQualityInput):
     ...windows.warnings,
     ...[windows.seasonWindow, windows.last30Window, windows.last5Starts, windows.last3Starts].flatMap((window) => window.warnings),
   ]));
-  const qualityConfidence = confidenceScore([windows.seasonWindow, windows.last30Window, windows.last5Starts, windows.last3Starts], advancedMetrics, allWarnings);
+  const qualityConfidence = confidenceScore(
+    [windows.seasonWindow, windows.last30Window, windows.last5Starts, windows.last3Starts],
+    advancedMetrics,
+    [
+      ...allWarnings,
+      ...(baselineSource === "INITIAL_PRIOR_FALLBACK" ? ["Production starter baseline unavailable; using initial priors."] : []),
+    ],
+    baselineSource,
+  );
   const latestStart = starterOnly(input.gameLog ?? []).sort((a, b) => dateMs(b) - dateMs(a))[0];
   const readinessScore = readiness(input, latestStart);
   return {
@@ -423,6 +496,9 @@ export function buildStartingPitcherQuality(input: StartingPitcherQualityInput):
     handedness: input.handedness,
     qualityScore,
     qualityVersion: STARTING_PITCHER_QUALITY_VERSION,
+    baselineVersion: input.baselineSet?.baselineVersion ?? STARTING_PITCHER_BASELINE_VERSION,
+    baselineSource,
+    baselineAsOf: input.baselineSet?.ready ? input.baselineSet.asOf : undefined,
     qualityComponents: scoredWindows.flatMap((item) => item.components.map((component) => ({
       ...component,
       component: `${item.window.window}:${component.metric}`,
@@ -448,6 +524,7 @@ export function buildStartingPitcherQuality(input: StartingPitcherQualityInput):
       baseballSavant: "not_connected_phase_9",
       quality: STARTING_PITCHER_QUALITY_VERSION,
       readiness: STARTING_PITCHER_READINESS_VERSION,
+      baseline: input.baselineSet?.ready ? input.baselineSet.baselineVersion : "initial_prior_constants",
     },
     warnings: allWarnings,
     capturedAt,

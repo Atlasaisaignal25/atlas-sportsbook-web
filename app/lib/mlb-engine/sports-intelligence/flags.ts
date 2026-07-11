@@ -32,6 +32,8 @@ export type MlbSportsIntelligenceFlags = {
   pitcherQualityEnabled: boolean;
   pitcherReadinessEnabled: boolean;
   pitcherQualityMode: "AUDIT_ONLY" | "DISABLED";
+  pitcherProductionBaselinesEnabled: boolean;
+  pitcherBaselineVersion: "starting_pitcher_baseline_v1";
   lineupSnapshotsEnabled: boolean;
   lineupChangeDetectionEnabled: boolean;
   starterVerificationSnapshotsEnabled: boolean;
@@ -76,6 +78,8 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     pitcherQualityEnabled: envFlag("MLB_PITCHER_QUALITY_ENABLED"),
     pitcherReadinessEnabled: envFlag("MLB_PITCHER_READINESS_ENABLED"),
     pitcherQualityMode: process.env.MLB_PITCHER_QUALITY_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
+    pitcherProductionBaselinesEnabled: envFlag("MLB_PITCHER_PRODUCTION_BASELINES_ENABLED"),
+    pitcherBaselineVersion: "starting_pitcher_baseline_v1",
     lineupSnapshotsEnabled: envFlag("MLB_LINEUP_SNAPSHOTS_ENABLED"),
     lineupChangeDetectionEnabled: envFlag("MLB_LINEUP_CHANGE_DETECTION_ENABLED"),
     starterVerificationSnapshotsEnabled: envFlag("MLB_STARTER_VERIFICATION_SNAPSHOTS_ENABLED"),
