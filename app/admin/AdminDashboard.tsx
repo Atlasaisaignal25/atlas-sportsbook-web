@@ -1092,11 +1092,11 @@ type AdminSection = "operations" | "research" | "performance" | "more";
 
 function AtlasAdminLogo() {
   return (
-    <div className="flex items-center justify-center gap-2">
-      <img src="/icon.png" alt="" className="h-9 w-9 object-contain drop-shadow-[0_0_14px_rgba(56,189,248,0.35)]" />
+    <div className="flex items-center justify-center gap-1.5">
+      <img src="/icon.png" alt="" className="h-7 w-7 object-contain drop-shadow-[0_0_10px_rgba(56,189,248,0.30)]" />
       <div className="leading-none">
-        <p className="text-[28px] font-black uppercase tracking-[0.26em] text-white">Atlas</p>
-        <p className="-mt-0.5 text-center text-[11px] font-black uppercase tracking-[0.28em] text-white/76">Admin</p>
+        <p className="text-[23px] font-black uppercase tracking-[0.24em] text-white">Atlas</p>
+        <p className="-mt-0.5 text-center text-[9px] font-black uppercase tracking-[0.26em] text-white/72">Admin</p>
       </div>
     </div>
   );
@@ -1160,19 +1160,19 @@ function adminMarketLabel(value: unknown) {
 
 function AdminShellCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[13px] border border-slate-600/50 bg-[linear-gradient(145deg,rgba(12,27,48,0.88),rgba(5,12,24,0.94))] ${className}`}>
+    <section className={`rounded-[12px] border border-slate-600/45 bg-[linear-gradient(145deg,rgba(10,25,44,0.86),rgba(4,10,21,0.94))] ${className}`}>
       {children}
     </section>
   );
 }
 
-function OperationMetricCard({ label, value, sub, tone = "cyan" }: { label: string; value: string | number; sub: string; tone?: "cyan" | "green" | "purple" | "white" }) {
+function OperationMetricCard({ label, value, sub, tone = "cyan" }: { label: string; value: string | number; sub?: string; tone?: "cyan" | "green" | "purple" | "white" }) {
   const color = tone === "green" ? "text-emerald-300" : tone === "purple" ? "text-purple-300" : tone === "white" ? "text-white" : "text-sky-400";
   return (
-    <AdminShellCard className="min-h-[92px] px-3 py-3 text-center">
-      <p className="text-[12px] font-black uppercase tracking-[-0.01em] text-white">{label}</p>
-      <p className={`mt-2 text-[34px] font-black leading-none ${color}`}>{value}</p>
-      <p className={`mt-2 text-[11px] font-black uppercase ${color}`}>{sub}</p>
+    <AdminShellCard className="min-h-[58px] px-2.5 py-2 text-center">
+      <p className="text-[10px] font-black uppercase leading-tight text-white/88">{label}</p>
+      <p className={`mt-1 text-[25px] font-black leading-none ${color}`}>{value}</p>
+      {sub ? <p className={`mt-1 text-[9px] font-black uppercase ${color}`}>{sub}</p> : null}
     </AdminShellCard>
   );
 }
@@ -1185,34 +1185,33 @@ function AdminStatusPill({ status }: { status?: string | null }) {
       : value === "DOWNGRADED" || value === "REMOVED"
         ? "border-orange-400/20 bg-orange-400/14 text-orange-300"
         : "border-yellow-400/20 bg-yellow-400/12 text-yellow-300";
-  return <span className={`rounded-md border px-2 py-1 text-[11px] font-black uppercase ${classes}`}>{value}</span>;
+  return <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase ${classes}`}>{value}</span>;
 }
 
 function AdminTopSignalCard({ operations }: { operations?: AdminOperations }) {
   const top = operations?.topSignal;
   return (
-    <AdminShellCard className="border-purple-400/50 p-4 shadow-[0_0_0_1px_rgba(168,85,247,0.18)]">
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
-        <h2 className="text-[16px] font-black uppercase text-white">Top Signal</h2>
-        <button className="text-[13px] font-black uppercase text-sky-400">View Details ›</button>
+    <AdminShellCard className="border-cyan-300/35 p-3 shadow-[0_0_0_1px_rgba(56,189,248,0.10)]">
+      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <h2 className="text-[17px] font-black uppercase tracking-[-0.01em] text-white">Top Signal</h2>
+        <button className="text-[12px] font-black uppercase text-sky-400">View Details ›</button>
       </div>
       {top ? (
         <>
-          <div className="grid grid-cols-[72px_1fr_auto] items-center gap-3 border-b border-white/10 py-4">
-            <div className="grid h-14 w-14 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-[26px] font-black text-sky-300">
+          <div className="grid grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-white/10 py-3">
+            <div className="grid h-12 w-12 place-items-center rounded-xl border border-cyan-300/18 bg-cyan-300/[0.055] text-[20px] font-black text-sky-300">
               {shortTeam(top.home_team).slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <p className="text-[19px] font-black text-white">{top.pick?.replace(/\s\([^)]+\)/, "") ?? shortTeam(top.home_team)}</p>
-              <p className="mt-0.5 text-[18px] font-black text-sky-400">{top.line ? `${Number(top.line) > 0 ? "+" : ""}${top.line}` : formatAdminOdds(top.odds)}</p>
+              <p className="text-[22px] font-black leading-tight text-white">{top.pick?.replace(/\s\([^)]+\)/, "") ?? shortTeam(top.home_team)}</p>
+              <p className="mt-0.5 text-[13px] font-black uppercase text-sky-400">{adminMarketLabel(top.market)} {top.line ? `${Number(top.line) > 0 ? "+" : ""}${top.line}` : formatAdminOdds(top.odds)}</p>
             </div>
             <AdminStatusPill status={top.status} />
           </div>
-          <div className="grid grid-cols-4 gap-3 pt-3">
+          <div className="grid grid-cols-3 gap-3 pt-2.5">
             <MiniAdminStat label="Confidence" value={numberPct(top.confidence)} />
             <MiniAdminStat label="Edge" value={formatAdminEdge(top.edge)} />
             <MiniAdminStat label="Published" value={formatAdminTime(top.published_at)} />
-            <MiniAdminStat label="Market" value={adminMarketLabel(top.market)} />
           </div>
         </>
       ) : (
@@ -1225,8 +1224,8 @@ function AdminTopSignalCard({ operations }: { operations?: AdminOperations }) {
 function MiniAdminStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[11px] font-black uppercase text-white/42">{label}</p>
-      <p className="mt-1 text-[15px] font-black text-white">{value}</p>
+      <p className="text-[9px] font-black uppercase text-white/38">{label}</p>
+      <p className="mt-0.5 text-[14px] font-black text-white">{value}</p>
     </div>
   );
 }
@@ -1234,20 +1233,20 @@ function MiniAdminStat({ label, value }: { label: string; value: string }) {
 function AdminTop5Card({ operations }: { operations?: AdminOperations }) {
   const rows = operations?.topPicks ?? [];
   return (
-    <AdminShellCard className="p-4">
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
-        <h2 className="text-[16px] font-black uppercase text-white">Top 5 Picks</h2>
-        <button className="text-[13px] font-black uppercase text-sky-400">View All ›</button>
+    <AdminShellCard className="p-3">
+      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <h2 className="text-[17px] font-black uppercase tracking-[-0.01em] text-white">Top 5 Picks</h2>
+        <button className="text-[12px] font-black uppercase text-sky-400">View All ›</button>
       </div>
       <div>
         {rows.slice(0, 5).map((pick, index) => (
-          <div key={pick.id ?? `${pick.game_id}-${index}`} className="grid grid-cols-[28px_1fr_80px_86px_64px_14px] items-center gap-2 border-b border-white/8 py-2.5 last:border-b-0">
-            <span className="text-[15px] font-black text-white">{pick.rank ?? index + 1}</span>
-            <span className="truncate text-[15px] font-bold text-white">{pick.pick?.replace(/\sML$|\s\([^)]+\)$/g, "") ?? shortTeam(pick.home_team)}</span>
-            <span className="text-[13px] font-black text-white">{pick.line ? `${Number(pick.line) > 0 ? "+" : ""}${pick.line}` : adminMarketLabel(pick.market)}</span>
+          <div key={pick.id ?? `${pick.game_id}-${index}`} className="grid grid-cols-[22px_1fr_58px_70px_58px_12px] items-center gap-1.5 border-b border-white/8 py-1.5 last:border-b-0">
+            <span className="text-[13px] font-black text-white">{pick.rank ?? index + 1}</span>
+            <span className="truncate text-[14px] font-semibold text-white">{pick.pick?.replace(/\sML$|\s\([^)]+\)$/g, "") ?? shortTeam(pick.home_team)}</span>
+            <span className="text-[12px] font-black text-white">{pick.line ? `${Number(pick.line) > 0 ? "+" : ""}${pick.line}` : adminMarketLabel(pick.market)}</span>
             <AdminStatusPill status={pick.status} />
-            <span className="text-right text-[15px] font-black text-emerald-300">{formatAdminEdge(pick.edge)}</span>
-            <span className="text-xl text-white/60">›</span>
+            <span className="text-right text-[13px] font-black text-emerald-300">{formatAdminEdge(pick.edge)}</span>
+            <span className="text-lg text-white/50">›</span>
           </div>
         ))}
         {!rows.length ? <p className="py-6 text-center text-sm text-white/45">No validated picks yet.</p> : null}
@@ -1260,21 +1259,19 @@ function PipelineStatus({ operations }: { operations?: AdminOperations }) {
   const steps = operations?.pipeline ?? [];
   const icons = ["⌕", "◎", "▥", "★", "♛", "🏆"];
   return (
-    <AdminShellCard className="p-4">
+    <AdminShellCard className="p-3">
       <div className="flex items-center justify-between">
         <h2 className="text-[16px] font-black uppercase text-white">Pipeline Status</h2>
-        <button className="text-[13px] font-black uppercase text-sky-400">View Pipeline ›</button>
+        <button className="text-[12px] font-black uppercase text-sky-400">View Pipeline ›</button>
       </div>
-      <div className="mt-4 grid grid-cols-6 items-start gap-0">
+      <div className="mt-3 grid grid-cols-6 items-start gap-0">
         {steps.map((step, index) => {
           const complete = step.status === "complete";
           return (
             <div key={step.label} className="relative text-center">
-              {index < steps.length - 1 ? <span className={`absolute left-1/2 right-[-50%] top-8 h-1 ${complete ? "bg-emerald-400" : "bg-white/14"}`} /> : null}
-              <span className={`relative z-10 mx-auto grid h-16 w-16 place-items-center rounded-full border text-2xl ${complete ? "border-emerald-400/70 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-400"}`}>{icons[index]}</span>
-              <span className={`relative z-10 mx-auto -mt-2 grid h-5 w-5 place-items-center rounded-full text-[11px] font-black ${complete ? "bg-emerald-400 text-black" : "bg-slate-500 text-white/60"}`}>✓</span>
-              <p className="mt-2 text-[10px] font-black uppercase leading-4 text-white">{step.label}</p>
-              <p className="text-[10px] font-bold uppercase text-white/60">{step.detail}</p>
+              {index < steps.length - 1 ? <span className={`absolute left-1/2 right-[-50%] top-5 h-0.5 ${complete ? "bg-emerald-400" : "bg-white/14"}`} /> : null}
+              <span className={`relative z-10 mx-auto grid h-10 w-10 place-items-center rounded-full border text-[17px] ${complete ? "border-emerald-400/70 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-400"}`}>{icons[index]}</span>
+              <p className="mt-1.5 text-[9px] font-black uppercase leading-3 text-white">{step.label}</p>
             </div>
           );
         })}
@@ -1292,21 +1289,21 @@ function RecentActivity({ operations }: { operations?: AdminOperations }) {
     yellow: "bg-yellow-400",
   };
   return (
-    <AdminShellCard className="p-4">
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+    <AdminShellCard className="p-3">
+      <div className="flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="text-[16px] font-black uppercase text-white">Recent Activity</h2>
-        <button className="text-[13px] font-black uppercase text-sky-400">View All ›</button>
+        <button className="text-[12px] font-black uppercase text-sky-400">View All ›</button>
       </div>
-      <div className="pt-2">
+      <div className="pt-1.5">
         {rows.map((item, index) => (
-          <div key={`${item.title}-${index}`} className="grid grid-cols-[78px_20px_1fr_14px] items-center border-b border-white/8 py-2.5 last:border-b-0">
-            <span className="text-[13px] font-medium text-white/65">{formatAdminTime(item.time)}</span>
-            <span className={`h-3 w-3 rounded-full ${tone[item.tone] ?? "bg-sky-400"} shadow-[0_0_0_4px_rgba(255,255,255,0.06)]`} />
+          <div key={`${item.title}-${index}`} className="grid grid-cols-[66px_16px_1fr_12px] items-center border-b border-white/8 py-1.5 last:border-b-0">
+            <span className="text-[12px] font-medium text-white/60">{formatAdminTime(item.time)}</span>
+            <span className={`h-2.5 w-2.5 rounded-full ${tone[item.tone] ?? "bg-sky-400"} shadow-[0_0_0_3px_rgba(255,255,255,0.05)]`} />
             <span>
-              <p className="text-[15px] font-semibold leading-tight text-white">{item.title}</p>
-              <p className="text-[13px] leading-tight text-white/48">{item.detail}</p>
+              <p className="text-[14px] font-semibold leading-tight text-white">{item.title}</p>
+              <p className="text-[12px] leading-tight text-white/45">{item.detail}</p>
             </span>
-            <span className="text-xl text-white/60">›</span>
+            <span className="text-lg text-white/50">›</span>
           </div>
         ))}
         {!rows.length ? <p className="py-5 text-center text-sm text-white/45">No activity yet.</p> : null}
@@ -1519,23 +1516,23 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   );
 
   const operationsPanel = (
-    <section className="grid gap-3">
-      <div className="flex items-center justify-between gap-3">
+    <section className="grid gap-2.5">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="text-[25px] font-black uppercase tracking-[-0.02em] text-white">Operations</h1>
-          <span className="flex items-center gap-1 text-[12px] font-black uppercase text-emerald-300">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Live
+          <h1 className="text-[24px] font-black uppercase tracking-[-0.03em] text-white">Operations</h1>
+          <span className="flex items-center gap-1 text-[11px] font-black uppercase text-emerald-300">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" /> Live
           </span>
         </div>
-        <div className="rounded-xl border border-slate-600/70 bg-[#071322] px-3 py-2 text-[13px] font-black uppercase text-white">
+        <div className="rounded-lg border border-slate-600/70 bg-[#071322] px-2.5 py-1.5 text-[11px] font-black uppercase text-white">
           ▣ {formatAdminDate(operations?.date ?? overview?.today)}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <OperationMetricCard label="Signals Detected" value={operations?.signalsDetected ?? 0} sub="Free View" />
-        <OperationMetricCard label="Validated Picks" value={operations?.validatedPicks ?? 0} sub="Subscribers" tone="green" />
-        <OperationMetricCard label="Top Signal" value={operations?.topSignalPublished ? 1 : 0} sub={operations?.topSignalPublished ? "Published" : "Pending"} tone="purple" />
-        <OperationMetricCard label="Games Remaining" value={operations?.gamesRemaining ?? 0} sub="Today" tone="white" />
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <OperationMetricCard label="Signals Detected" value={operations?.signalsDetected ?? 0} />
+        <OperationMetricCard label="Validated Picks" value={operations?.validatedPicks ?? 0} tone="green" />
+        <OperationMetricCard label="Top Signal" value={operations?.topSignalPublished ? 1 : 0} tone="purple" />
+        <OperationMetricCard label="Games Remaining" value={operations?.gamesRemaining ?? 0} tone="white" />
       </div>
       <AdminTopSignalCard operations={operations} />
       <AdminTop5Card operations={operations} />
@@ -1570,28 +1567,28 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         </div>
       </aside>
 
-      <div className="min-h-screen pb-24 lg:ml-[210px] lg:pb-8">
-        <header className="sticky top-0 z-20 border-b border-white/10 bg-[#020915]/95 px-4 py-4 backdrop-blur lg:static lg:px-8">
+      <div className="min-h-screen pb-20 lg:ml-[210px] lg:pb-6">
+        <header className="sticky top-0 z-20 border-b border-white/10 bg-[#020915]/95 px-4 py-2.5 backdrop-blur lg:static lg:px-8 lg:py-3">
           <div className="mx-auto flex max-w-5xl items-center justify-between">
-            <button className="grid h-10 w-10 place-items-center text-3xl text-white/85 lg:hidden">≡</button>
+            <button className="grid h-8 w-8 place-items-center text-2xl text-white/85 lg:hidden">≡</button>
             <AtlasAdminLogo />
-            <button className="relative grid h-10 w-10 place-items-center text-2xl text-white/85">
+            <button className="relative grid h-8 w-8 place-items-center text-xl text-white/85">
               ♧
-              <span className="absolute right-0 top-0 grid h-5 w-5 place-items-center rounded-full bg-sky-500 text-[10px] font-black text-white">3</span>
+              <span className="absolute right-0 top-0 grid h-4 w-4 place-items-center rounded-full bg-sky-500 text-[9px] font-black text-white">3</span>
             </button>
           </div>
         </header>
 
-        <div className="mx-auto grid max-w-5xl gap-3 px-4 py-4 lg:px-8">
+        <div className="mx-auto grid max-w-5xl gap-2.5 px-4 py-3 lg:px-8">
           <div className="hidden items-center justify-between lg:flex">
             <div>
-              <h1 className="text-[27px] font-black uppercase text-white">Admin Dashboard</h1>
-              <p className="text-sm text-white/50">Atlas Admin Command Center · {adminEmail}</p>
+              <h1 className="text-[22px] font-black uppercase text-white">Admin Dashboard</h1>
+              <p className="text-xs text-white/45">Atlas Admin Command Center · {adminEmail}</p>
             </div>
             <button
               onClick={loadOverview}
               disabled={loading}
-              className="rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-black text-cyan-200"
+              className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 py-1.5 text-xs font-black text-cyan-200"
             >
               {loading ? "Loading" : "Refresh"}
             </button>
