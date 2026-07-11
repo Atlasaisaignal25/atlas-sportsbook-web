@@ -52,6 +52,7 @@ import {
 import { TEAM_STRENGTH_VERSION, teamStrengthDistribution } from "@/app/lib/mlb-engine/sports-intelligence/team-strength/team-strength-engine";
 import {
   getTeamIntelligenceSnapshotStatus,
+  getTeamQualityResearchStatus,
   loadLatestCanonicalTeamIntelligenceSnapshots,
   loadTeamStrengthV1AuditRows,
   summarizeTeamIntelligence,
@@ -562,6 +563,44 @@ async function teamIntelligenceAudit(
   };
 }
 
+async function teamQualityResearchAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getTeamQualityResearchStatus>>,
+) {
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_TEAM_QUALITY_RESEARCH_MODE ?? "RESEARCH_ONLY" : "DISABLED",
+    version: "team_quality_v2_research",
+    weightVersion: "tq_research_v1",
+    researchOnly: true,
+    publicScoringImpact: "NONE",
+    storageHealth: status,
+    canonicalRows: status.canonicalSnapshots,
+    latestCapture: status.latestCapture,
+    completeCount: status.completeCount,
+    partialCount: status.partialCount,
+    limitedCount: status.limitedCount,
+    unavailableCount: status.unavailableCount,
+    distribution: status.distribution,
+    partialDistribution: status.partialDistribution,
+    limitedDistribution: status.limitedDistribution,
+    confidenceDistribution: status.confidenceDistribution,
+    v1VsV2Summary: status.v1VsV2Summary,
+    sensitivitySummary: status.sensitivitySummary,
+    baselineCompatibility: status.baselineCompatibility,
+    starterMismatchCount: status.starterMismatchCount,
+    examples: {
+      complete: status.completeRows?.slice(0, 5) ?? [],
+      partial: status.partialRows?.slice(0, 5) ?? [],
+    },
+    warnings: [
+      "Research-only Team Quality v2 is not connected to candidateScore, buildCandidate, Top 5, Top Signal, Top Play, closing, grading, or public UI.",
+      ...(status.completeCount === 0 ? ["No complete Team Quality Research rows are available yet."] : []),
+      ...(status.errors ?? []),
+    ],
+  };
+}
+
 function startingPitcherQualityAudit(
   enabled: boolean,
   status: Awaited<ReturnType<typeof getStartingPitcherQualitySnapshotStatus>>,
@@ -709,7 +748,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, pitcherQualityStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -720,6 +759,7 @@ export async function GET(request: Request) {
       getWeatherParkSnapshotStatus(),
       getTeamStrengthSnapshotStatus(),
       getTeamIntelligenceSnapshotStatus(),
+      getTeamQualityResearchStatus(),
       getStartingPitcherQualitySnapshotStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
@@ -852,6 +892,12 @@ export async function GET(request: Request) {
           sportsFlags.contextCertaintyEnabled &&
           sportsFlags.teamIntelligenceMode === "AUDIT_ONLY",
         teamIntelligenceStatus,
+      ),
+      teamQualityResearch: await teamQualityResearchAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.teamQualityResearchEnabled &&
+          sportsFlags.teamQualityResearchMode === "RESEARCH_ONLY",
+        teamQualityResearchStatus,
       ),
       startingPitcherQuality: startingPitcherQualityAudit(
         sportsFlags.sportsIntelligenceEnabled &&

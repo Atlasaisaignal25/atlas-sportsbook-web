@@ -29,6 +29,9 @@ export type MlbSportsIntelligenceFlags = {
   gameReadinessEnabled: boolean;
   contextCertaintyEnabled: boolean;
   teamIntelligenceMode: "AUDIT_ONLY" | "DISABLED";
+  teamQualityResearchEnabled: boolean;
+  teamQualityResearchMode: "RESEARCH_ONLY" | "DISABLED";
+  teamQualityResearchWeightVersion: "tq_research_v1";
   pitcherQualityEnabled: boolean;
   pitcherReadinessEnabled: boolean;
   pitcherQualityMode: "AUDIT_ONLY" | "DISABLED";
@@ -75,6 +78,9 @@ export function getMlbSportsIntelligenceFlags(): MlbSportsIntelligenceFlags {
     gameReadinessEnabled: envFlag("MLB_GAME_READINESS_ENABLED"),
     contextCertaintyEnabled: envFlag("MLB_CONTEXT_CERTAINTY_ENABLED"),
     teamIntelligenceMode: process.env.MLB_TEAM_INTELLIGENCE_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",
+    teamQualityResearchEnabled: envFlag("MLB_TEAM_QUALITY_RESEARCH_ENABLED"),
+    teamQualityResearchMode: process.env.MLB_TEAM_QUALITY_RESEARCH_MODE === "RESEARCH_ONLY" ? "RESEARCH_ONLY" : "DISABLED",
+    teamQualityResearchWeightVersion: "tq_research_v1",
     pitcherQualityEnabled: envFlag("MLB_PITCHER_QUALITY_ENABLED"),
     pitcherReadinessEnabled: envFlag("MLB_PITCHER_READINESS_ENABLED"),
     pitcherQualityMode: process.env.MLB_PITCHER_QUALITY_MODE === "AUDIT_ONLY" ? "AUDIT_ONLY" : "DISABLED",

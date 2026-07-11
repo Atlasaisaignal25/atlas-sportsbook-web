@@ -17,6 +17,17 @@ import {
   TEAM_QUALITY_VERSION,
   type TeamIntelligenceSnapshot,
 } from "./team-intelligence-engine";
+import {
+  buildTeamQualityResearch,
+  compareTeamQualityV1V2,
+  DEFAULT_TEAM_QUALITY_RESEARCH_WEIGHTS,
+  researchScoreDistribution,
+  TEAM_QUALITY_RESEARCH_VERSION,
+  TEAM_QUALITY_RESEARCH_WEIGHT_VERSION,
+  TEAM_QUALITY_RESEARCH_WEIGHTS,
+  type TeamQualityResearchSnapshot,
+  type TeamQualityResearchWeights,
+} from "./team-quality-research-engine";
 
 const TABLE = "mlb_team_intelligence_snapshots";
 
@@ -25,6 +36,18 @@ export type TeamIntelligenceInsertResult = {
   inserted: number;
   skipped: number;
   errors: string[];
+};
+
+export type TeamQualityResearchCaptureResult = {
+  asOf: string;
+  gamesInspected: number;
+  teamSidesInspected: number;
+  snapshots: TeamQualityResearchSnapshot[];
+  v1ByKey: Map<string, TeamIntelligenceSnapshot>;
+  starterMismatches: number;
+  baselineMismatches: number;
+  providerErrors: string[];
+  sensitivity: Record<string, unknown>;
 };
 
 function canonicalize(value: unknown): unknown {
@@ -42,6 +65,10 @@ function canonicalize(value: unknown): unknown {
 
 function featureHash(payload: unknown) {
   return crypto.createHash("sha256").update(JSON.stringify(canonicalize(payload))).digest("hex");
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function round(value: number, digits = 3) {
@@ -186,6 +213,182 @@ export async function buildLatestTeamIntelligenceSnapshots(asOf = new Date().toI
   });
 }
 
+function keyForGameTeam(input: { officialGameId?: string; teamId?: string; side?: string }) {
+  return `${input.officialGameId ?? "none"}:${input.teamId ?? "none"}:${input.side ?? "none"}`;
+}
+
+function keyForTeam(input: { teamId?: string }) {
+  return input.teamId ?? "none";
+}
+
+async function loadLatestCanonicalPitcherQualityRows() {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("mlb_starting_pitcher_quality_snapshots")
+    .select("official_game_id,team_id,team_name,side,player_id,player_name,quality_score,quality_version,baseline_version,baseline_source,quality_confidence,readiness_score,readiness_version,captured_at")
+    .eq("canonical", true)
+    .not("official_game_id", "is", null)
+    .order("captured_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  const seen = new Set<string>();
+  return (data ?? []).filter((row: any) => {
+    const key = keyForGameTeam({ officialGameId: row.official_game_id, teamId: row.team_id, side: row.side });
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function offensiveResearchScore(form: Awaited<ReturnType<typeof loadLatestCanonicalOffensiveTeamForms>>[number] | undefined) {
+  if (!form) return undefined;
+  if (isNumber(form.atlasOffensiveScore)) return form.atlasOffensiveScore;
+  if (isNumber(form.currentScore)) return form.currentScore;
+  return undefined;
+}
+
+function v1ByTeam(snapshots: TeamIntelligenceSnapshot[]) {
+  const byGame = new Map<string, TeamIntelligenceSnapshot>();
+  const byTeam = new Map<string, TeamIntelligenceSnapshot>();
+  snapshots.forEach((snapshot) => {
+    if (snapshot.officialGameId && snapshot.side) byGame.set(keyForGameTeam(snapshot), snapshot);
+    if (!byTeam.has(snapshot.teamId)) byTeam.set(keyForTeam(snapshot), snapshot);
+  });
+  return { byGame, byTeam };
+}
+
+function buildResearchSensitivity(baseInputs: Array<Parameters<typeof buildTeamQualityResearch>[0]>) {
+  const built = Object.fromEntries(Object.entries(TEAM_QUALITY_RESEARCH_WEIGHTS).map(([label, weights]) => [
+    label,
+    baseInputs.map((input) => buildTeamQualityResearch({ ...input, weights, weightVersion: `${TEAM_QUALITY_RESEARCH_WEIGHT_VERSION}_${label}` })),
+  ]));
+  const base = built.A ?? [];
+  const rank = (rows: TeamQualityResearchSnapshot[]) => rows
+    .filter((row) => row.score !== undefined)
+    .toSorted((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .map((row) => keyForGameTeam(row));
+  const baseRank = rank(base);
+  function rankCorrelation(rows: TeamQualityResearchSnapshot[]) {
+    const otherRank = rank(rows);
+    const pairs = otherRank
+      .map((key, index) => ({ key, other: index + 1, base: baseRank.indexOf(key) + 1 }))
+      .filter((item) => item.base > 0);
+    if (pairs.length < 2) return undefined;
+    const n = pairs.length;
+    const d2 = pairs.reduce((sum, item) => sum + (item.base - item.other) ** 2, 0);
+    return round(1 - (6 * d2) / (n * (n ** 2 - 1)), 3);
+  }
+  return Object.fromEntries(Object.entries(built).map(([label, rows]) => {
+    const deltas = rows.map((row) => {
+      const original = base.find((item) => keyForGameTeam(item) === keyForGameTeam(row));
+      return {
+        teamName: row.teamName,
+        officialGameId: row.officialGameId,
+        side: row.side,
+        score: row.score,
+        deltaFromA: row.score !== undefined && original?.score !== undefined ? round(row.score - original.score) : undefined,
+      };
+    });
+    return [label, {
+      weights: TEAM_QUALITY_RESEARCH_WEIGHTS[label as keyof typeof TEAM_QUALITY_RESEARCH_WEIGHTS],
+      rankingCorrelationToA: label === "A" ? 1 : rankCorrelation(rows),
+      distribution: researchScoreDistribution(rows.filter((row) => row.availability === "AVAILABLE").map((row) => row.score)),
+      meanScoreChangeFromA: label === "A" ? 0 : round(deltas.filter((item) => isNumber(item.deltaFromA)).reduce((sum, item) => sum + Math.abs(item.deltaFromA ?? 0), 0) / Math.max(1, deltas.filter((item) => isNumber(item.deltaFromA)).length)),
+      largestDeltasFromA: deltas.filter((item) => isNumber(item.deltaFromA)).toSorted((a, b) => Math.abs(b.deltaFromA ?? 0) - Math.abs(a.deltaFromA ?? 0)).slice(0, 5),
+    }];
+  }));
+}
+
+function buildResearchSensitivityFromRows(rows: any[]) {
+  const inputs = rows.map((row) => ({
+    officialGameId: row.official_game_id,
+    teamId: String(row.team_id),
+    teamName: row.team_name ?? String(row.team_id),
+    side: row.side,
+    offenseScore: row.offense_score ?? undefined,
+    offenseConfidence: row.quality_confidence?.moduleConfidence?.offense,
+    startingPitcherQualityScore: row.starting_pitcher_quality_score ?? undefined,
+    startingPitcherQualityVersion: row.starting_pitcher_quality_version ?? undefined,
+    startingPitcherBaselineVersion: row.starting_pitcher_baseline_version ?? undefined,
+    startingPitcherBaselineSource: row.quality_confidence?.baselineCompatibility ? "PRODUCTION_BASELINE" : undefined,
+    startingPitcherId: row.player_id ?? undefined,
+    startingPitcherConfidence: row.quality_confidence?.moduleConfidence?.startingPitcher,
+    bullpenQualityScore: row.bullpen_quality_score ?? undefined,
+    bullpenConfidence: row.quality_confidence?.moduleConfidence?.bullpen,
+    weightVersion: TEAM_QUALITY_RESEARCH_WEIGHT_VERSION,
+    asOf: row.captured_at,
+    warnings: [],
+  } satisfies Parameters<typeof buildTeamQualityResearch>[0]));
+  return buildResearchSensitivity(inputs);
+}
+
+export async function buildTeamQualityResearchSnapshots(input: {
+  asOf?: string;
+  weights?: TeamQualityResearchWeights;
+} = {}): Promise<TeamQualityResearchCaptureResult> {
+  const asOf = input.asOf ?? new Date().toISOString();
+  const [offense, bullpen, v1Snapshots, pitcherRows] = await Promise.all([
+    loadLatestCanonicalOffensiveTeamForms(),
+    loadLatestCanonicalBullpenTeamFeatures(),
+    loadLatestCanonicalTeamIntelligenceSnapshots(),
+    loadLatestCanonicalPitcherQualityRows(),
+  ]);
+  const offenseByTeam = new Map(offense.filter((team) => team.teamId).map((team) => [String(team.teamId), team]));
+  const bullpenByTeam = new Map(bullpen.map((team) => [team.teamId, team]));
+  const v1Maps = v1ByTeam(v1Snapshots);
+  let baselineMismatches = 0;
+  const providerErrors: string[] = [];
+  const baseInputs: Array<Parameters<typeof buildTeamQualityResearch>[0]> = pitcherRows.map((pitcher: any) => {
+    const teamId = String(pitcher.team_id);
+    const teamName = pitcher.team_name ?? teamId;
+    const offenseForm = offenseByTeam.get(teamId);
+    const bullpenTeam = bullpenByTeam.get(teamId);
+    const gameKey = keyForGameTeam({ officialGameId: pitcher.official_game_id, teamId, side: pitcher.side });
+    const v1 = v1Maps.byGame.get(gameKey) ?? v1Maps.byTeam.get(teamId);
+    if (pitcher.baseline_source !== "PRODUCTION_BASELINE" || pitcher.baseline_version !== "starting_pitcher_baseline_v1") baselineMismatches += 1;
+    return {
+      officialGameId: pitcher.official_game_id,
+      teamId,
+      teamName,
+      side: pitcher.side,
+      offenseScore: offensiveResearchScore(offenseForm),
+      offenseVersion: offenseForm?.scoreVersion,
+      offenseConfidence: offenseForm?.availability === "AVAILABLE" ? 85 : offenseForm ? 45 : undefined,
+      startingPitcherQualityScore: pitcher.quality_score ?? undefined,
+      startingPitcherQualityVersion: pitcher.quality_version,
+      startingPitcherBaselineVersion: pitcher.baseline_version,
+      startingPitcherBaselineSource: pitcher.baseline_source,
+      startingPitcherId: pitcher.player_id,
+      startingPitcherName: pitcher.player_name,
+      startingPitcherConfidence: pitcher.quality_confidence?.score,
+      bullpenQualityScore: bullpenTeam?.qualityScoreV2 ?? bullpenTeam?.qualityScore,
+      bullpenQualityVersion: bullpenTeam?.qualityScoreVersion,
+      bullpenConfidence: bullpenTeam?.qualityConfidence?.score,
+      gameReadiness: v1?.gameReadiness,
+      weights: input.weights ?? DEFAULT_TEAM_QUALITY_RESEARCH_WEIGHTS,
+      weightVersion: TEAM_QUALITY_RESEARCH_WEIGHT_VERSION,
+      asOf,
+      warnings: [],
+    } satisfies Parameters<typeof buildTeamQualityResearch>[0];
+  });
+  const snapshots = baseInputs.map((item) => buildTeamQualityResearch(item));
+  const v1Entries = snapshots.flatMap((snapshot) => {
+    const v1 = v1Maps.byGame.get(keyForGameTeam(snapshot)) ?? v1Maps.byTeam.get(snapshot.teamId);
+    return v1 ? [[keyForGameTeam(snapshot), v1] as [string, TeamIntelligenceSnapshot]] : [];
+  });
+  return {
+    asOf,
+    gamesInspected: new Set(snapshots.map((snapshot) => snapshot.officialGameId).filter(Boolean)).size,
+    teamSidesInspected: snapshots.length,
+    snapshots,
+    v1ByKey: new Map(v1Entries),
+    starterMismatches: 0,
+    baselineMismatches,
+    providerErrors,
+    sensitivity: buildResearchSensitivity(baseInputs),
+  };
+}
+
 export function buildTeamIntelligenceSnapshotRows(snapshots: TeamIntelligenceSnapshot[]) {
   return snapshots.map((snapshot) => {
     const payload = {
@@ -248,6 +451,112 @@ export async function insertTeamIntelligenceSnapshotsDeduped(snapshots: TeamInte
       superseded_at: new Date().toISOString(),
       invalid_reason: "SUPERSEDED_BY_TEAM_INTELLIGENCE_CANONICAL_CAPTURE",
     })
+    .eq("team_quality_version", TEAM_QUALITY_VERSION)
+    .not("feature_hash", "in", `(${hashes.join(",")})`)
+    .eq("canonical", true);
+  if (markOld.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markOld.error.message] };
+  const markCurrent = await supabase
+    .from(TABLE)
+    .update({ canonical: true, superseded_at: null, invalid_reason: null })
+    .in("feature_hash", hashes);
+  if (markCurrent.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markCurrent.error.message] };
+  const inserted = data?.length ?? 0;
+  return { attempted: rows.length, inserted, skipped: rows.length - inserted, errors: [] };
+}
+
+export function buildTeamQualityResearchRows(snapshots: TeamQualityResearchSnapshot[], v1ByKey = new Map<string, TeamIntelligenceSnapshot>()) {
+  return snapshots.map((snapshot) => {
+    const v1 = v1ByKey.get(keyForGameTeam(snapshot));
+    const payload = {
+      officialGameId: snapshot.officialGameId,
+      teamId: snapshot.teamId,
+      side: snapshot.side,
+      playerId: snapshot.startingPitcherId,
+      offenseScore: snapshot.offenseScore,
+      offenseVersion: snapshot.offenseVersion,
+      pitcherQualityScore: snapshot.startingPitcherQualityScore,
+      pitcherQualityVersion: snapshot.startingPitcherQualityVersion,
+      pitcherBaselineVersion: snapshot.startingPitcherBaselineVersion,
+      bullpenQualityScore: snapshot.bullpenQualityScore,
+      bullpenQualityVersion: snapshot.bullpenQualityVersion,
+      researchWeightVersion: snapshot.weightVersion,
+      weights: snapshot.weights,
+      coverage: snapshot.qualityCoveragePercent,
+      confidence: snapshot.confidence,
+      warnings: snapshot.warnings,
+    };
+    return {
+      official_game_id: snapshot.officialGameId,
+      team_id: snapshot.teamId,
+      team_name: snapshot.teamName,
+      side: snapshot.side,
+      team_quality_score: snapshot.score,
+      team_quality_version: snapshot.version,
+      team_quality_availability: snapshot.availability === "AVAILABLE" ? "AVAILABLE" : snapshot.availability === "UNAVAILABLE" ? "UNAVAILABLE" : "PARTIAL",
+      team_quality_confidence: snapshot.confidence.tier,
+      team_quality_coverage: snapshot.qualityCoveragePercent,
+      team_quality_components: snapshot.components,
+      game_readiness_score: snapshot.gameReadiness?.score,
+      game_readiness_version: snapshot.gameReadiness?.version ?? GAME_READINESS_VERSION,
+      game_readiness_availability: snapshot.gameReadiness?.availability ?? "UNAVAILABLE",
+      game_readiness_confidence: snapshot.gameReadiness?.confidence ?? "UNAVAILABLE",
+      game_readiness_components: snapshot.gameReadiness?.components ?? {},
+      context_certainty_score: null,
+      context_certainty_version: GAME_CONTEXT_CERTAINTY_VERSION,
+      context_certainty_components: [],
+      intelligence_confidence_score: snapshot.confidence.score,
+      intelligence_confidence_tier: snapshot.confidence.tier,
+      confidence_components: [],
+      source_versions: {
+        teamQualityV1: v1?.teamQuality.version,
+        teamQualityResearch: snapshot.version,
+        offense: snapshot.offenseVersion,
+        startingPitcherQuality: snapshot.startingPitcherQualityVersion,
+        startingPitcherBaseline: snapshot.startingPitcherBaselineVersion,
+        bullpenQuality: snapshot.bullpenQualityVersion,
+      },
+      warnings: snapshot.warnings,
+      team_quality_v1_score: v1?.teamQuality.score,
+      team_quality_v2_research_score: snapshot.score,
+      research_weight_version: snapshot.weightVersion,
+      starting_pitcher_quality_score: snapshot.startingPitcherQualityScore,
+      starting_pitcher_quality_version: snapshot.startingPitcherQualityVersion,
+      starting_pitcher_baseline_version: snapshot.startingPitcherBaselineVersion,
+      starting_pitcher_id: snapshot.startingPitcherId,
+      player_id: snapshot.startingPitcherId,
+      offense_score: snapshot.offenseScore,
+      bullpen_quality_score: snapshot.bullpenQualityScore,
+      quality_coverage: snapshot.qualityCoveragePercent,
+      quality_confidence: snapshot.confidence,
+      quality_components: snapshot.components,
+      feature_hash: featureHash(payload),
+      canonical: true,
+      captured_at: snapshot.capturedAt,
+    };
+  });
+}
+
+export async function insertTeamQualityResearchSnapshotsDeduped(
+  snapshots: TeamQualityResearchSnapshot[],
+  v1ByKey = new Map<string, TeamIntelligenceSnapshot>(),
+): Promise<TeamIntelligenceInsertResult> {
+  const rows = buildTeamQualityResearchRows(snapshots, v1ByKey);
+  if (rows.length === 0) return { attempted: 0, inserted: 0, skipped: 0, errors: [] };
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .upsert(rows, { onConflict: "feature_hash", ignoreDuplicates: true })
+    .select("id");
+  if (error) return { attempted: rows.length, inserted: 0, skipped: 0, errors: [error.message] };
+  const hashes = rows.map((row) => row.feature_hash);
+  const markOld = await supabase
+    .from(TABLE)
+    .update({
+      canonical: false,
+      superseded_at: new Date().toISOString(),
+      invalid_reason: "SUPERSEDED_BY_TEAM_QUALITY_RESEARCH_CANONICAL_CAPTURE",
+    })
+    .eq("team_quality_version", TEAM_QUALITY_RESEARCH_VERSION)
     .not("feature_hash", "in", `(${hashes.join(",")})`)
     .eq("canonical", true);
   if (markOld.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markOld.error.message] };
@@ -319,6 +628,7 @@ export async function loadLatestCanonicalTeamIntelligenceSnapshots(): Promise<Te
     .from(TABLE)
     .select("*")
     .eq("canonical", true)
+    .eq("team_quality_version", TEAM_QUALITY_VERSION)
     .order("captured_at", { ascending: false })
     .limit(500);
   if (error) return [];
@@ -335,13 +645,21 @@ export async function loadLatestCanonicalTeamIntelligenceSnapshots(): Promise<Te
 
 export async function getTeamIntelligenceSnapshotStatus() {
   const supabase = getSupabaseAdmin();
-  const { count, error } = await supabase.from(TABLE).select("id", { count: "exact", head: true });
+  const { count, error } = await supabase
+    .from(TABLE)
+    .select("id", { count: "exact", head: true })
+    .eq("team_quality_version", TEAM_QUALITY_VERSION);
   if (error) return { healthy: false, totalSnapshots: 0, canonicalSnapshots: 0, teamsTracked: 0, latestRefresh: undefined as string | undefined, errors: [error.message] };
-  const { count: canonicalSnapshots } = await supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("canonical", true);
+  const { count: canonicalSnapshots } = await supabase
+    .from(TABLE)
+    .select("id", { count: "exact", head: true })
+    .eq("team_quality_version", TEAM_QUALITY_VERSION)
+    .eq("canonical", true);
   const { data, error: latestError } = await supabase
     .from(TABLE)
     .select("team_id,captured_at,team_quality_score,team_quality_availability,game_readiness_score,game_readiness_availability,context_certainty_score,intelligence_confidence_tier")
     .eq("canonical", true)
+    .eq("team_quality_version", TEAM_QUALITY_VERSION)
     .order("captured_at", { ascending: false })
     .limit(500);
   const rows = data ?? [];
@@ -405,6 +723,94 @@ export function teamIntelligenceAuditRankings(snapshots: TeamIntelligenceSnapsho
     completeQuality: { label: "Atlas Team Quality Audit", rows: completeQuality },
     partialQuality: { label: "Atlas Partial Team Quality Audit", rows: partialQuality },
     gameReadiness: { label: "Atlas Game Readiness Audit", rows: readiness },
+  };
+}
+
+export async function getTeamQualityResearchStatus() {
+  const supabase = getSupabaseAdmin();
+  const { count, error } = await supabase
+    .from(TABLE)
+    .select("id", { count: "exact", head: true })
+    .eq("team_quality_version", TEAM_QUALITY_RESEARCH_VERSION);
+  if (error) return { healthy: false, totalSnapshots: 0, canonicalSnapshots: 0, errors: [error.message] };
+  const { count: canonicalSnapshots } = await supabase
+    .from(TABLE)
+    .select("id", { count: "exact", head: true })
+    .eq("team_quality_version", TEAM_QUALITY_RESEARCH_VERSION)
+    .eq("canonical", true);
+  const { data, error: latestError } = await supabase
+    .from(TABLE)
+    .select("official_game_id,team_id,team_name,side,team_quality_v1_score,team_quality_v2_research_score,research_weight_version,team_quality_availability,quality_coverage,quality_confidence,quality_components,starting_pitcher_quality_score,starting_pitcher_quality_version,starting_pitcher_baseline_version,player_id,offense_score,bullpen_quality_score,game_readiness_score,captured_at")
+    .eq("team_quality_version", TEAM_QUALITY_RESEARCH_VERSION)
+    .eq("canonical", true)
+    .order("captured_at", { ascending: false })
+    .limit(300);
+  const rows = data ?? [];
+  const complete = rows.filter((row: any) => row.team_quality_availability === "AVAILABLE");
+  const partial = rows.filter((row: any) => row.team_quality_availability === "PARTIAL" && Number(row.quality_coverage) >= 66);
+  const limited = rows.filter((row: any) => row.team_quality_availability === "PARTIAL" && Number(row.quality_coverage) < 66);
+  const v1v2 = compareTeamQualityV1V2(rows.map((row: any) => ({
+    teamId: row.team_id,
+    teamName: row.team_name,
+    officialGameId: row.official_game_id,
+    side: row.side,
+    v1Score: row.team_quality_v1_score ?? undefined,
+    v2Score: row.team_quality_v2_research_score ?? undefined,
+  })));
+  return {
+    healthy: !latestError,
+    totalSnapshots: count ?? 0,
+    canonicalSnapshots: canonicalSnapshots ?? 0,
+    latestCapture: rows[0]?.captured_at as string | undefined,
+    completeCount: complete.length,
+    partialCount: partial.length,
+    limitedCount: limited.length,
+    unavailableCount: rows.filter((row: any) => row.team_quality_availability === "UNAVAILABLE").length,
+    distribution: researchScoreDistribution(complete.map((row: any) => row.team_quality_v2_research_score ?? undefined)),
+    partialDistribution: researchScoreDistribution(partial.map((row: any) => row.team_quality_v2_research_score ?? undefined)),
+    limitedDistribution: researchScoreDistribution(limited.map((row: any) => row.team_quality_v2_research_score ?? undefined)),
+    confidenceDistribution: rows.reduce((acc: Record<string, number>, row: any) => {
+      const tier = row.quality_confidence?.tier ?? "UNAVAILABLE";
+      acc[tier] = (acc[tier] ?? 0) + 1;
+      return acc;
+    }, {}),
+    v1VsV2Summary: v1v2,
+    sensitivitySummary: buildResearchSensitivityFromRows(rows),
+    baselineCompatibility: rows.every((row: any) => row.starting_pitcher_baseline_version === "starting_pitcher_baseline_v1"),
+    starterMismatchCount: rows.filter((row: any) => !row.player_id).length,
+    completeRows: complete.slice(0, 20),
+    partialRows: partial.slice(0, 20),
+    errors: latestError ? [latestError.message] : [] as string[],
+  };
+}
+
+export function teamQualityResearchAuditRankings(rows: TeamQualityResearchSnapshot[]) {
+  const mapped = rows.map((row) => ({
+    teamId: row.teamId,
+    teamName: row.teamName,
+    officialGameId: row.officialGameId,
+    side: row.side,
+    score: row.score,
+    availability: row.availability,
+    confidence: row.confidence.tier,
+    coverage: row.qualityCoveragePercent,
+    offense: row.offenseScore,
+    startingPitcherQuality: row.startingPitcherQualityScore,
+    bullpenQuality: row.bullpenQualityScore,
+  }));
+  return {
+    complete: {
+      label: "Atlas Complete Team Quality Research Audit",
+      rows: mapped.filter((row) => row.availability === "AVAILABLE" && row.score !== undefined).toSorted((a, b) => (b.score ?? 0) - (a.score ?? 0)),
+    },
+    partial: {
+      label: "Atlas Partial Team Quality Research Audit",
+      rows: mapped.filter((row) => row.availability === "PARTIAL" && row.score !== undefined).toSorted((a, b) => (b.score ?? 0) - (a.score ?? 0)),
+    },
+    limited: {
+      label: "Atlas Limited Team Quality Research Diagnostics",
+      rows: mapped.filter((row) => row.availability === "LIMITED" && row.score !== undefined).toSorted((a, b) => (b.score ?? 0) - (a.score ?? 0)),
+    },
   };
 }
 
