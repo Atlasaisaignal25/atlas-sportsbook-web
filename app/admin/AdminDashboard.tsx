@@ -86,6 +86,45 @@ type AdminOperations = {
   database: { health: string; snapshots: number; cron: string; storage: string; warnings: string[] };
 };
 
+type PerformanceSport = "MLB" | "NBA" | "NFL" | "NHL" | "SOCCER";
+type PerformanceView = "overview" | "top-signal-history" | "top5-performance" | "market-performance";
+type PerformancePeriod = "this-week" | "last-7-days" | "this-month" | "last-30-days" | "season" | "year" | "all-time";
+
+type PerformanceMetricSet = {
+  graded: number;
+  won: number;
+  lost: number;
+  push: number;
+  winRate: number | null;
+  units: number | null;
+  roi: number | null;
+  averageClv: number | null;
+  averageOdds: number | null;
+  lastGraded: string | null;
+  sampleStatus: string;
+};
+
+type PerformanceCenterData = {
+  sport: PerformanceSport;
+  period: PerformancePeriod;
+  lastUpdated: string;
+  tables: { top5History: string | null; topSignalHistory: string | null };
+  errors: string[];
+  overview: PerformanceMetricSet;
+  topSignalHistory: PerformanceMetricSet;
+  top5Performance: PerformanceMetricSet & { byRank: Array<PerformanceMetricSet & { rank: number }> };
+  marketPerformance: {
+    global: Array<PerformanceMetricSet & { market: string }>;
+    byProduct: {
+      top5: Array<PerformanceMetricSet & { market: string }>;
+      topSignal: Array<PerformanceMetricSet & { market: string }>;
+    };
+    marketsConfigured: string[];
+    futureMarkets: string[];
+  };
+  totals: { top5Graded: number; topSignalGraded: number; globalGraded: number };
+};
+
 type ResearchGame = {
   id: string;
   header: { awayTeam: string; homeTeam: string; time: string; status: string; league: string };
@@ -1361,6 +1400,162 @@ function RecentActivity({ operations }: { operations?: AdminOperations }) {
   );
 }
 
+const performanceSports: Array<{ id: PerformanceSport; label: string; icon: string }> = [
+  { id: "MLB", label: "MLB", icon: "⚾" },
+  { id: "NBA", label: "NBA", icon: "🏀" },
+  { id: "NFL", label: "NFL", icon: "🏈" },
+  { id: "NHL", label: "NHL", icon: "🏒" },
+  { id: "SOCCER", label: "SOCCER", icon: "⚽" },
+];
+
+const performanceViews: Array<{ id: PerformanceView; label: string; icon: string }> = [
+  { id: "overview", label: "Overview", icon: "◔" },
+  { id: "top-signal-history", label: "Top Signal History", icon: "☯" },
+  { id: "top5-performance", label: "Top 5 Performance", icon: "★" },
+  { id: "market-performance", label: "Market Performance", icon: "▥" },
+];
+
+const performancePeriods: Array<{ id: PerformancePeriod; label: string }> = [
+  { id: "this-week", label: "This Week" },
+  { id: "last-7-days", label: "Last 7 Days" },
+  { id: "this-month", label: "This Month" },
+  { id: "last-30-days", label: "Last 30 Days" },
+  { id: "season", label: "Season" },
+  { id: "year", label: "Year" },
+  { id: "all-time", label: "All Time" },
+];
+
+function perfPct(value: unknown) {
+  if (typeof value !== "number") return "UNAVAILABLE";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function perfNumber(value: unknown, prefix = "") {
+  if (typeof value !== "number") return "UNAVAILABLE";
+  return `${value >= 0 && prefix ? prefix : ""}${value.toFixed(2)}`;
+}
+
+function perfDate(value: string | null | undefined) {
+  if (!value) return "UNAVAILABLE";
+  return formatAdminTime(value);
+}
+
+function sampleTone(status: string) {
+  if (status === "RELIABLE") return "text-emerald-300";
+  if (status === "DEVELOPING") return "text-yellow-300";
+  return "text-white/45";
+}
+
+function PerformanceMetricStrip({ metric }: { metric?: PerformanceMetricSet }) {
+  const items = [
+    { label: "Top Signals Graded", value: metric?.graded ?? 0, tone: "text-sky-400" },
+    { label: "Won", value: metric?.won ?? 0, tone: "text-emerald-300" },
+    { label: "Lost", value: metric?.lost ?? 0, tone: "text-red-300" },
+    { label: "Push", value: metric?.push ?? 0, tone: "text-white" },
+    { label: "Win Rate", value: perfPct(metric?.winRate), tone: "text-emerald-300" },
+  ];
+  const lower = [
+    { label: "Units", value: perfNumber(metric?.units, "+"), tone: "text-emerald-300" },
+    { label: "ROI", value: perfPct(metric?.roi), tone: "text-emerald-300" },
+    { label: "Avg CLV", value: perfNumber(metric?.averageClv, "+"), tone: "text-emerald-300" },
+    { label: "Last Graded", value: perfDate(metric?.lastGraded), tone: "text-white" },
+    { label: "Sample Status", value: metric?.sampleStatus ?? "NO DATA", tone: sampleTone(metric?.sampleStatus ?? "") },
+  ];
+
+  return (
+    <div className="grid gap-2">
+      <AdminShellCard className="grid grid-cols-5 divide-x divide-white/10 p-0">
+        {items.map((item) => (
+          <div key={item.label} className="min-h-[70px] px-2 py-3 text-center">
+            <p className="text-[9px] font-black uppercase leading-tight text-white/60">{item.label}</p>
+            <p className={`mt-2 text-[21px] font-black leading-none ${item.tone}`}>{item.value}</p>
+          </div>
+        ))}
+      </AdminShellCard>
+      <AdminShellCard className="grid grid-cols-5 divide-x divide-white/10 p-0">
+        {lower.map((item) => (
+          <div key={item.label} className="min-h-[64px] px-2 py-3 text-center">
+            <p className="text-[9px] font-black uppercase leading-tight text-white/60">{item.label}</p>
+            <p className={`mt-2 text-[15px] font-black leading-none ${item.tone}`}>{item.value}</p>
+          </div>
+        ))}
+      </AdminShellCard>
+    </div>
+  );
+}
+
+function PerformanceSection({ title, icon, action, children }: { title: string; icon: string; action?: string; children: React.ReactNode }) {
+  return (
+    <AdminShellCard className="p-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-[17px] font-black uppercase text-white">
+          <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-300">{icon}</span>
+          {title}
+        </h2>
+        {action ? <button className="text-[11px] font-black uppercase text-sky-400">{action} ›</button> : null}
+      </div>
+      {children}
+    </AdminShellCard>
+  );
+}
+
+function MetricTable({ rows, type }: { rows: Array<PerformanceMetricSet & { label?: string; market?: string; rank?: number }>; type: "history" | "rank" | "market" }) {
+  if (!rows.length) return <p className="rounded-xl border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No graded data yet.</p>;
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/10">
+      <div className="hidden grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_0.65fr_0.8fr_0.8fr_0.8fr] border-b border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase text-white/45 md:grid">
+        <span>{type === "rank" ? "Rank" : type === "market" ? "Market" : "Date Range"}</span>
+        <span>Graded</span>
+        <span>Won</span>
+        <span>Lost</span>
+        <span>Push</span>
+        <span>Win Rate</span>
+        <span>ROI</span>
+        <span>Avg CLV</span>
+      </div>
+      {rows.map((row) => (
+        <div key={`${row.label ?? row.market ?? row.rank}`} className="grid gap-2 border-b border-white/8 px-3 py-2 last:border-b-0 md:grid-cols-[1.2fr_0.65fr_0.65fr_0.65fr_0.65fr_0.8fr_0.8fr_0.8fr] md:items-center md:gap-0">
+          <div className="flex items-center justify-between gap-2 md:block">
+            <span className="text-sm font-black text-white">{row.label ?? row.market ?? `Rank ${row.rank}`}</span>
+            <span className={`rounded-md bg-white/5 px-2 py-1 text-[9px] font-black uppercase md:hidden ${sampleTone(row.sampleStatus)}`}>{row.sampleStatus}</span>
+          </div>
+          <span className="text-xs font-bold text-white/70 md:text-sm">{row.graded}</span>
+          <span className="text-xs font-black text-emerald-300 md:text-sm">{row.won}</span>
+          <span className="text-xs font-black text-red-300 md:text-sm">{row.lost}</span>
+          <span className="text-xs font-black text-white md:text-sm">{row.push}</span>
+          <span className="text-xs font-black text-emerald-300 md:text-sm">{perfPct(row.winRate)}</span>
+          <span className="text-xs font-black text-emerald-300 md:text-sm">{perfPct(row.roi)}</span>
+          <span className="text-xs font-black text-emerald-300 md:text-sm">{perfNumber(row.averageClv, "+")}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MarketCards({ rows }: { rows: Array<PerformanceMetricSet & { market: string }> }) {
+  if (!rows.length) return <p className="rounded-xl border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">NO DATA</p>;
+  return (
+    <div className="grid gap-2 md:grid-cols-3">
+      {rows.map((row) => (
+        <div key={row.market} className="rounded-xl border border-white/10 bg-black/20 p-3">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase text-cyan-300">{row.market}</h3>
+            <span className={`rounded-md bg-white/5 px-2 py-1 text-[9px] font-black uppercase ${sampleTone(row.sampleStatus)}`}>{row.sampleStatus}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <MiniMetric label="Picks" value={row.graded} />
+            <MiniMetric label="W-L-P" value={`${row.won}-${row.lost}-${row.push}`} />
+            <MiniMetric label="Win Rate" value={perfPct(row.winRate)} />
+            <MiniMetric label="Units" value={perfNumber(row.units, "+")} />
+            <MiniMetric label="ROI" value={perfPct(row.roi)} />
+            <MiniMetric label="Avg CLV" value={perfNumber(row.averageClv, "+")} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1369,6 +1564,12 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [researchView, setResearchView] = useState<"summary" | "system">("summary");
   const [selectedSystemGameId, setSelectedSystemGameId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSection>("operations");
+  const [performanceSport, setPerformanceSport] = useState<PerformanceSport>("MLB");
+  const [performanceView, setPerformanceView] = useState<PerformanceView>("overview");
+  const [performancePeriod, setPerformancePeriod] = useState<PerformancePeriod>("this-month");
+  const [performanceProduct, setPerformanceProduct] = useState<"global" | "by-product">("global");
+  const [performanceCenter, setPerformanceCenter] = useState<PerformanceCenterData | null>(null);
+  const [performanceLoading, setPerformanceLoading] = useState(false);
 
   const totals = useMemo(() => {
     const sports = overview?.sports ?? [];
@@ -1427,15 +1628,36 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     await loadOverview();
   }
 
+  async function loadPerformanceCenter(sport = performanceSport, period = performancePeriod) {
+    setPerformanceLoading(true);
+    const response = await fetch(`/api/admin/performance-center?sport=${sport}&period=${period}`, { cache: "no-store" });
+    const data = await response.json();
+    setPerformanceCenter(response.ok ? data : null);
+    setPerformanceLoading(false);
+  }
+
   useEffect(() => {
     const savedView = window.sessionStorage.getItem("atlas-admin-research-view");
     if (savedView === "summary" || savedView === "system") setResearchView(savedView);
+    const savedSport = window.sessionStorage.getItem("atlas-admin-performance-sport") as PerformanceSport | null;
+    const savedPeriod = window.sessionStorage.getItem("atlas-admin-performance-period") as PerformancePeriod | null;
+    const savedPerfView = window.sessionStorage.getItem("atlas-admin-performance-view") as PerformanceView | null;
+    if (savedSport && performanceSports.some((item) => item.id === savedSport)) setPerformanceSport(savedSport);
+    if (savedPeriod && performancePeriods.some((item) => item.id === savedPeriod)) setPerformancePeriod(savedPeriod);
+    if (savedPerfView && performanceViews.some((item) => item.id === savedPerfView)) setPerformanceView(savedPerfView);
     loadOverview();
   }, []);
 
   useEffect(() => {
     window.sessionStorage.setItem("atlas-admin-research-view", researchView);
   }, [researchView]);
+
+  useEffect(() => {
+    window.sessionStorage.setItem("atlas-admin-performance-sport", performanceSport);
+    window.sessionStorage.setItem("atlas-admin-performance-period", performancePeriod);
+    window.sessionStorage.setItem("atlas-admin-performance-view", performanceView);
+    if (activeSection === "performance") void loadPerformanceCenter(performanceSport, performancePeriod);
+  }, [activeSection, performanceSport, performancePeriod, performanceView]);
 
   const operations = overview?.operations;
   const adminNav: Array<{ id: AdminSection; label: string; icon: string }> = [
@@ -1495,30 +1717,145 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     </section>
   );
 
-  const performance = operations?.performance;
+  const currentPeriodLabel = performancePeriods.find((item) => item.id === performancePeriod)?.label ?? "This Month";
+  const currentSportLabel = performanceSports.find((item) => item.id === performanceSport)?.label ?? "MLB";
+  const performanceData = performanceCenter;
   const performancePanel = (
-    <section className="grid gap-3">
-      <div>
-        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">Performance</p>
-        <h1 className="text-[26px] font-black text-white">Atlas Performance</h1>
-      </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <OperationMetricCard label="ROI" value={performance?.roi === null || performance?.roi === undefined ? "N/A" : `${Number(performance.roi).toFixed(2)}%`} sub="Research" tone="green" />
-        <OperationMetricCard label="CLV" value={performance?.averageClv === null || performance?.averageClv === undefined ? "N/A" : `${Number(performance.averageClv).toFixed(2)}%`} sub="Average" />
-        <OperationMetricCard label="Win Rate" value={performance?.winRate === null || performance?.winRate === undefined ? "N/A" : pct(performance.winRate)} sub="Graded" tone="white" />
-        <OperationMetricCard label="Sample Size" value={performance?.sampleSize ?? 0} sub={performance?.lowSampleSize ? "Low Sample" : "Ready"} tone="purple" />
-      </div>
-      <AdminShellCard className="p-4">
-        <h2 className="text-[16px] font-black uppercase text-white">Research Summary</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <MiniMetric label="Best Market" value={performance?.bestMarket ?? "N/A"} />
-          <MiniMetric label="Best Edge" value={performance?.bestEdgeClassification ?? "N/A"} />
-          <MiniMetric label="Best Conviction" value={performance?.bestConviction ?? "N/A"} />
-          <MiniMetric label="Best Confidence" value={performance?.bestConfidenceBucket ?? "N/A"} />
-          <MiniMetric label="Wins / Losses" value={`${performance?.wins ?? 0} / ${performance?.losses ?? 0}`} />
-          <MiniMetric label="Learning Status" value={operations?.learning?.length ? "Active" : "Waiting"} />
+    <section className="grid gap-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-[25px] font-black uppercase tracking-[-0.03em] text-white">Performance</h1>
+          <span className="flex items-center gap-1 text-[10px] font-black uppercase text-emerald-300">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" /> Live
+          </span>
         </div>
-      </AdminShellCard>
+        <div className="rounded-lg border border-slate-600/70 bg-[#071322] px-2 py-1.5 text-[10px] font-black uppercase text-white">
+          ▣ {formatAdminDate(operations?.date ?? overview?.today)}
+        </div>
+      </div>
+
+      <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
+        {performanceSports.map((sport) => (
+          <button
+            key={sport.id}
+            type="button"
+            onClick={() => setPerformanceSport(sport.id)}
+            className={`flex min-w-[126px] flex-1 items-center justify-center gap-2 border-r border-white/8 px-3 py-3 text-sm font-black uppercase last:border-r-0 ${performanceSport === sport.id ? "border-cyan-400/45 bg-cyan-400/10 text-white shadow-[inset_0_0_0_1px_rgba(34,211,238,0.28)]" : "text-white/72"}`}
+          >
+            <span className="text-[22px]">{sport.icon}</span>
+            {sport.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="scrollbar-hide flex gap-3 overflow-x-auto border-b border-white/10">
+        {performanceViews.map((view) => (
+          <button
+            key={view.id}
+            type="button"
+            onClick={() => setPerformanceView(view.id)}
+            className={`flex min-w-max items-center gap-2 border-b-2 px-1 py-2 text-[11px] font-black uppercase ${performanceView === view.id ? "border-cyan-400 text-cyan-300" : "border-transparent text-white/58"}`}
+          >
+            <span>{view.icon}</span>
+            {view.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
+        {performancePeriods.map((period) => (
+          <button
+            key={period.id}
+            type="button"
+            onClick={() => setPerformancePeriod(period.id)}
+            className={`min-w-[118px] border-r border-white/8 px-3 py-2 text-[10px] font-black uppercase last:border-r-0 ${performancePeriod === period.id ? "bg-cyan-400/12 text-cyan-300 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.32)]" : "text-white/55"}`}
+          >
+            {period.label}
+          </button>
+        ))}
+      </div>
+
+      {performanceLoading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">Loading performance center...</p> : null}
+      {!performanceLoading && !performanceData ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">No graded data yet.</p> : null}
+
+      {performanceData ? (
+        <>
+          {performanceView === "overview" ? (
+            <>
+              <PerformanceMetricStrip metric={performanceData.overview} />
+              <PerformanceSection title="Top Signal History" icon="☯" action="View Full History">
+                <MetricTable rows={[{ label: currentPeriodLabel, ...performanceData.topSignalHistory }]} type="history" />
+              </PerformanceSection>
+              <PerformanceSection title="Top 5 Performance" icon="★" action="View Full Analysis">
+                <div className="grid gap-3 md:grid-cols-[0.9fr_1.6fr]">
+                  <div className="rounded-xl border border-white/10 bg-black/15 p-3">
+                    <h3 className="mb-2 text-xs font-black uppercase text-white/70">Summary</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <MiniMetric label="Total Picks" value={performanceData.top5Performance.graded} />
+                      <MiniMetric label="Won" value={performanceData.top5Performance.won} />
+                      <MiniMetric label="Lost" value={performanceData.top5Performance.lost} />
+                      <MiniMetric label="Push" value={performanceData.top5Performance.push} />
+                      <MiniMetric label="Units" value={perfNumber(performanceData.top5Performance.units, "+")} />
+                      <MiniMetric label="ROI" value={perfPct(performanceData.top5Performance.roi)} />
+                    </div>
+                  </div>
+                  <MetricTable rows={performanceData.top5Performance.byRank} type="rank" />
+                </div>
+              </PerformanceSection>
+              <PerformanceSection title="Market Performance" icon="▥" action="View Full Analysis">
+                <MarketCards rows={performanceData.marketPerformance.global} />
+              </PerformanceSection>
+            </>
+          ) : null}
+
+          {performanceView === "top-signal-history" ? (
+            <PerformanceSection title={`${currentSportLabel} Top Signal History`} icon="☯">
+              <MetricTable rows={[{ label: currentPeriodLabel, ...performanceData.topSignalHistory }]} type="history" />
+            </PerformanceSection>
+          ) : null}
+
+          {performanceView === "top5-performance" ? (
+            <PerformanceSection title={`${currentSportLabel} Top 5 Performance`} icon="★">
+              <PerformanceMetricStrip metric={performanceData.top5Performance} />
+              <div className="mt-3">
+                <MetricTable rows={performanceData.top5Performance.byRank} type="rank" />
+              </div>
+            </PerformanceSection>
+          ) : null}
+
+          {performanceView === "market-performance" ? (
+            <PerformanceSection title={`${currentSportLabel} Market Performance`} icon="▥">
+              <div className="mb-3 grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-black/20 md:w-[320px]">
+                <button type="button" onClick={() => setPerformanceProduct("global")} className={`px-4 py-2 text-[11px] font-black uppercase ${performanceProduct === "global" ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}>Global</button>
+                <button type="button" onClick={() => setPerformanceProduct("by-product")} className={`px-4 py-2 text-[11px] font-black uppercase ${performanceProduct === "by-product" ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}>By Product</button>
+              </div>
+              {performanceProduct === "global" ? (
+                <MarketCards rows={performanceData.marketPerformance.global} />
+              ) : (
+                <div className="grid gap-3">
+                  <details open className="rounded-xl border border-white/10 bg-black/15 p-3">
+                    <summary className="cursor-pointer text-sm font-black uppercase text-white">Top 5</summary>
+                    <div className="mt-3"><MarketCards rows={performanceData.marketPerformance.byProduct.top5} /></div>
+                  </details>
+                  <details className="rounded-xl border border-white/10 bg-black/15 p-3">
+                    <summary className="cursor-pointer text-sm font-black uppercase text-white">Top Signal</summary>
+                    <div className="mt-3"><MarketCards rows={performanceData.marketPerformance.byProduct.topSignal} /></div>
+                  </details>
+                </div>
+              )}
+            </PerformanceSection>
+          ) : null}
+
+          <AdminShellCard className="p-3">
+            <div className="grid gap-1 text-[10px] font-bold text-white/45">
+              <p>Win Rate = Won / (Won + Lost). Pushes no entran en Win Rate.</p>
+              <p>ROI = Units / Risked Units. Solo se incluyen picks oficiales.</p>
+              <p>Pending, Removed y Void están excluidos. Datos por deporte no se mezclan.</p>
+              <p>Tables: {performanceData.tables.top5History ?? "NO TOP 5 TABLE"} · {performanceData.tables.topSignalHistory ?? "NO TOP SIGNAL TABLE"}</p>
+            </div>
+          </AdminShellCard>
+        </>
+      ) : null}
     </section>
   );
 
