@@ -1253,7 +1253,7 @@ function formatDisplayedPick(rawPick: string, sport: string) {
   const pick = String(rawPick ?? "").trim();
 
   if (!pick) return "N/A";
-  if (pick === "Signal Detected") return "Signal Detected";
+  if (pick === "Signal Detected") return "Pending";
 
   const totalMatch = pick.match(
     /^(over|under)\s*[\(\s]?([0-9]+(?:\.[0-9]+)?)\)?$/i
@@ -1524,7 +1524,7 @@ function buildSignalInsight(
       sport,
       awayTeam: getDisplayName(game.away_team),
       homeTeam: getDisplayName(game.home_team),
-      pick: "Signal Detected",
+      pick: "Pending",
       analysisSummary: "Atlas found a possible opportunity in the morning scan and is monitoring it internally.",
       confidenceLabel: "Monitoring",
       edgeLabel: "Hidden",
@@ -3271,7 +3271,7 @@ function SignalDetectedRow({
           {getDisplayName(game.away_team)} vs {getDisplayName(game.home_team)}
         </p>
         <p className="truncate text-[13px] font-semibold text-cyan-300">
-          {pickLabel === "N/A" ? "Signal Detected" : pickLabel}
+          {pickLabel === "N/A" ? "Pending" : pickLabel}
         </p>
       </div>
 
@@ -7799,7 +7799,7 @@ const subscriptionPlansBoard = (
     ? "Signal Lost"
     : pick.status === "PUSH"
     ? "Signal Push"
-    : "Signal Detected"}
+    : "Pending"}
 </div>
 
                       <p className="text-[20px] font-semibold leading-tight tracking-tight text-white">
@@ -8233,7 +8233,7 @@ const subscriptionPlansBoard = (
           ? "Signal Lost"
           : finalResult === "PUSH"
           ? "Signal Push"
-          : "Signal Detected";
+          : "Pending";
 
       const resultClass =
         finalResult === "WON"
