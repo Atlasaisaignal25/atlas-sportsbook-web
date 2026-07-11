@@ -151,9 +151,10 @@ function sourceDateFromStart(startTime?: string | null) {
   return date.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 }
 
-function rankScore(params: { edge: number | null; conviction: number | null; consensus: number | null; confidence: number | null }) {
+function rankScore(params: { probability: number | null; edge: number | null; conviction: number | null; consensus: number | null; confidence: number | null }) {
   return Math.round(
-    (params.edge ?? 0) * 1000 +
+    (params.probability ?? 0) * 10000 +
+      (params.edge ?? 0) * 100 +
       (params.conviction ?? 0) * 1.2 +
       (params.consensus ?? 0) * 0.9 +
       (params.confidence ?? 0) * 0.8,
@@ -214,6 +215,30 @@ function gameStart(edge: MarketEdgeRow, oddsByTeams: Map<string, OddsRow>) {
 
 function isOpportunity(edge: MarketEdgeRow) {
   return edge.direction !== "NONE" && (numberValue(edge.edge) ?? 0) > 0 && edge.classification !== "NO_EDGE";
+}
+
+function atlasProbability(edge: MarketEdgeRow) {
+  return numberValue(edge.atlas_probability);
+}
+
+function probabilityRank(edges: MarketEdgeRow[]) {
+  return edges.toSorted((a, b) => {
+    const probabilityDiff = (atlasProbability(b) ?? -1) - (atlasProbability(a) ?? -1);
+    if (probabilityDiff !== 0) return probabilityDiff;
+    return (numberValue(b.edge) ?? -1) - (numberValue(a.edge) ?? -1);
+  });
+}
+
+function selectHighestProbabilityMarketByGame(edges: MarketEdgeRow[]) {
+  const grouped = new Map<string, MarketEdgeRow[]>();
+  for (const edge of edges) {
+    if (!grouped.has(edge.official_game_id)) grouped.set(edge.official_game_id, []);
+    grouped.get(edge.official_game_id)?.push(edge);
+  }
+
+  return Array.from(grouped.values())
+    .map((gameEdges) => probabilityRank(gameEdges).find((edge) => atlasProbability(edge) !== null))
+    .filter((edge): edge is MarketEdgeRow => Boolean(edge));
 }
 
 function selectMorningOpportunities(edges: MarketEdgeRow[]) {
@@ -289,14 +314,18 @@ function gate(edge: MarketEdgeRow, decision?: DecisionRow, projection?: Projecti
   const config = getAtlasCoreMlbConfig();
   const reasons: string[] = [];
   const warnings: string[] = [];
+  const probability = atlasProbability(edge);
   const edgeValue = numberValue(edge.edge) ?? 0;
   const conviction = numberValue(decision?.conviction_score) ?? 0;
   const consensus = numberValue(decision?.consensus_score) ?? 0;
   const confidence = numberValue(decision?.decision_confidence_score) ?? 0;
+  if (probability === null) warnings.push("Atlas probability unavailable.");
+  else reasons.push(`Highest probability market selected (${Math.round(probability * 10000) / 100}%).`);
   if (projection?.projection_availability !== "AVAILABLE") warnings.push("Projection unavailable or partial.");
   else reasons.push("Projection AVAILABLE");
   if (!decision || decision.no_pick || String(decision.decision ?? "").includes("NO_PICK")) warnings.push("Decision is NO_PICK or unavailable.");
   else reasons.push("Decision passed");
+  if (edge.direction === "NONE") warnings.push("Selected probability market has no positive market edge direction.");
   if (edgeValue < config.minFinalPickEdge) warnings.push("Edge below Final Pick Gate.");
   else reasons.push("Edge sufficient");
   if (conviction < config.minFinalPickConvictionScore) warnings.push("Conviction below Final Pick Gate.");
@@ -304,15 +333,15 @@ function gate(edge: MarketEdgeRow, decision?: DecisionRow, projection?: Projecti
   if (consensus < config.minFinalPickConsensusScore) warnings.push("Consensus below Final Pick Gate.");
   else reasons.push("Consensus sufficient");
   const passed = warnings.length === 0;
-  return { passed, reasons, warnings, edgeValue, conviction, consensus, confidence, ranking: rankScore({ edge: edgeValue, conviction, consensus, confidence }) };
+  return { passed, reasons, warnings, probability, edgeValue, conviction, consensus, confidence, ranking: rankScore({ probability, edge: edgeValue, conviction, consensus, confidence }) };
 }
 
 export async function runAtlasCoreLiveValidation() {
   const config = getAtlasCoreMlbConfig();
   if (!config.enabled || config.legacyRollbackEnabled) return { enabled: false, skipped: true, reason: "Atlas Core MLB disabled or rollback enabled." };
   const { edges, decisionByGame, projectionByGame, oddsByTeams, oddsRows } = await loadCanonicalRows();
-  const candidates = edges
-    .filter(isOpportunity)
+  const selectedMarkets = selectHighestProbabilityMarketByGame(edges);
+  const candidates = selectedMarkets
     .map((edge) => {
       const decision = decisionByGame.get(edge.official_game_id);
       const projection = projectionByGame.get(edge.official_game_id);

@@ -1,4 +1,4 @@
-export const ATLAS_CORE_MLB_VERSION = "atlas_core_mlb_v1";
+export const ATLAS_CORE_MLB_VERSION = "atlas_core_mlb_v1_1_probability_first";
 export const ATLAS_CORE_MLB_ROLLBACK_ENGINE = "legacy_top5_engine";
 
 function envFlag(name: string) {
@@ -33,4 +33,3 @@ export function currentHourET() {
     hour12: false,
   }).format(new Date()));
 }
-
