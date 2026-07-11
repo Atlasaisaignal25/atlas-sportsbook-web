@@ -2537,7 +2537,7 @@ function ProfileSectionTitle({
   );
 }
 
-function ProfileMiniIcon({ type }: { type: "pulse" | "target" | "bars" | "shield" | "star" | "five" | "crown" | "ball" | "diamond" | "clock" }) {
+function ProfileMiniIcon({ type }: { type: "pulse" | "target" | "bars" | "shield" | "star" | "five" | "crown" | "ball" | "diamond" | "clock" | "box" }) {
   if (type === "pulse") {
     return <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none"><path d="M3 13h4l2-6 4 12 2-6h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   }
@@ -2562,6 +2562,9 @@ function ProfileMiniIcon({ type }: { type: "pulse" | "target" | "bars" | "shield
   }
   if (type === "diamond") {
     return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M12 3 21 9l-9 12L3 9l9-6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M3 9h18M8 9l4 12 4-12" stroke="currentColor" strokeWidth="1.2" /></svg>;
+  }
+  if (type === "box") {
+    return <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none"><path d="m4 7.5 8-4 8 4-8 4-8-4Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M4 7.5v9l8 4 8-4v-9M12 11.5v9" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /></svg>;
   }
   return <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.7" /><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>;
 }
@@ -2596,6 +2599,7 @@ function MyProfileScreen({
   const [data, setData] = useState<ProfileOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [productsOpen, setProductsOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -2625,35 +2629,53 @@ function MyProfileScreen({
 
   const profile = data?.profile;
   const summary = data?.summary;
+  const readySignals = data?.signals.filter((signal) => signal.status === "READY").length ?? 0;
+  const underReviewSignals = data?.signals.filter((signal) => signal.status === "DETECTED" || signal.status === "UNDER REVIEW").length ?? 0;
+  const confirmedSignals = data?.signals.filter((signal) => signal.status === "CONFIRMED").length ?? 0;
+  const topSignalRecommendation = data?.recommendations.find((item) => item.code === "top_signal_mlb");
   const summaryItems = [
-    ["Signals", summary?.signalsReceived ?? "Unavailable", "This month", <ProfileMiniIcon key="pulse" type="pulse" />],
-    ["Win Rate", summary?.winRate ?? "Unavailable", "Verified", <ProfileMiniIcon key="target" type="target" />],
-    ["ROI", summary?.roi ?? "Unavailable", "Verified", <ProfileMiniIcon key="bars" type="bars" />],
-    ["Accuracy", summary?.accuracy ?? "Unavailable", "Verified", <ProfileMiniIcon key="shield" type="shield" />],
+    ["Signals", summary?.signalsReceived ?? "Unavailable", <ProfileMiniIcon key="pulse" type="pulse" />],
+    ["Win Rate", summary?.winRate ?? "Unavailable", <ProfileMiniIcon key="target" type="target" />],
+    ["ROI", summary?.roi ?? "Unavailable", <ProfileMiniIcon key="bars" type="bars" />],
+    ["Accuracy", summary?.accuracy ?? "Unavailable", <ProfileMiniIcon key="shield" type="shield" />],
   ];
 
   return (
     <main className="min-h-screen bg-[#020814] text-white">
       <div className="mx-auto min-h-screen w-full max-w-md overflow-x-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-3.5 pb-[88px] pt-4">
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <img src="/icon.png" alt="Atlas Signals" className="h-8 w-8 object-contain" />
-              <div className="text-[9px] font-black uppercase leading-tight tracking-[0.30em] text-white">
-                Atlas<br /><span className="text-cyan-300">Signals</span>
-              </div>
+        <header>
+          <div className="flex items-center gap-2.5">
+            <img src="/icon.png" alt="Atlas Signals" className="h-8 w-8 object-contain" />
+            <div className="text-[9px] font-black uppercase leading-tight tracking-[0.30em] text-white">
+              Atlas<br /><span className="text-cyan-300">Signals</span>
             </div>
-            <h1 className="mt-2.5 text-[27px] font-black leading-none tracking-[-0.035em]">My Profile</h1>
-            <p className="mt-1 text-[12px] font-medium text-white/62">Everything about your account and signals.</p>
           </div>
-          <button type="button" className="relative grid h-10 w-10 place-items-center rounded-[12px] border border-white/12 bg-white/[0.035] text-white/80">
-            <HeaderBellIcon className="h-5 w-5" />
-            {data?.unreadCount ? (
-              <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-black">
-                {data.unreadCount}
-              </span>
-            ) : null}
-          </button>
+          <h1 className="mt-2 text-[27px] font-black leading-none tracking-[-0.035em]">My Profile</h1>
+          <p className="mt-1 max-w-[320px] text-[12px] font-medium leading-snug text-white/62">Everything about your account and signals.</p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setProductsOpen(true)}
+              className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-cyan-300/20 bg-cyan-400/[0.07] px-2 text-[10px] font-black uppercase tracking-[0.04em] text-cyan-300"
+              aria-label="Open products"
+            >
+              <ProfileMiniIcon type="box" />
+              <span className="truncate">Products</span>
+            </button>
+            <button
+              type="button"
+              className="relative inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-white/12 bg-white/[0.035] px-2 text-[10px] font-black uppercase tracking-[0.04em] text-white/78"
+              aria-label="Notifications"
+            >
+              <HeaderBellIcon className="h-4 w-4" />
+              <span className="truncate">Notifications</span>
+              {data?.unreadCount ? (
+                <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-black">
+                  {data.unreadCount}
+                </span>
+              ) : null}
+            </button>
+          </div>
         </header>
 
         {loading ? (
@@ -2669,39 +2691,32 @@ function MyProfileScreen({
             </button>
           </div>
         ) : data && profile ? (
-          <div className="mt-3.5 space-y-3.5">
-            <section className="rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-3 shadow-[0_0_24px_rgba(0,0,0,0.20)]">
-              <div className="grid gap-2.5">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-[62px] w-[62px] shrink-0 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/10 text-[22px] font-black text-cyan-300">
+          <div className="mt-3 space-y-3">
+            <section className="rounded-[16px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-2.5 shadow-[0_0_20px_rgba(0,0,0,0.18)]">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-[50px] w-[50px] shrink-0 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/10 text-[18px] font-black text-cyan-300">
                     {profile.initials}
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-[19px] font-black leading-tight tracking-[-0.03em]">{profile.name}</h2>
-                    <p className="text-[12px] font-semibold text-white/55">{profile.username}</p>
-                    <span className="mt-1.5 inline-flex rounded-full border border-cyan-300/70 bg-cyan-400/12 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-300">
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h2 className="truncate text-[17px] font-black leading-tight tracking-[-0.025em]">{profile.name}</h2>
+                    <span className="shrink-0 rounded-full border border-cyan-300/65 bg-cyan-400/12 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-300">
                       {profile.membershipTier}
                     </span>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 rounded-[13px] bg-black/12 p-2.5">
-                  <div>
-                    <p className="text-[10px] font-semibold text-white/45">Member since</p>
-                    <p className="mt-0.5 text-[12px] font-black text-white">{profile.memberSince}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-white/45">Time zone</p>
-                    <p className="mt-0.5 text-[12px] font-black text-white">{profile.timeZone}</p>
+                  <p className="text-[11px] font-semibold text-white/55">{profile.username}</p>
+                  <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-[9px] font-semibold text-white/45">
+                    <span>Member since <b className="font-black text-white/78">{profile.memberSince}</b></span>
+                    <span>Time zone <b className="font-black text-white/78">{profile.timeZone}</b></span>
                   </div>
                 </div>
               </div>
-              <div className="mt-2.5 grid grid-cols-4 rounded-[14px] border border-white/6 bg-white/[0.035]">
-                {summaryItems.map(([label, value, sub, icon]) => (
-                  <div key={String(label)} className="min-w-0 border-r border-white/7 px-1.5 py-2 last:border-r-0">
-                    <div className="mx-auto mb-1 grid h-5 w-5 place-items-center text-cyan-300 [&_svg]:h-4 [&_svg]:w-4">{icon}</div>
-                    <p className="truncate text-center text-[8.5px] font-semibold text-white/48">{label}</p>
-                    <p className={`mt-0.5 truncate text-center font-black leading-none text-white ${String(value).length > 7 ? "text-[10px] uppercase tracking-[0.02em] text-cyan-200" : "text-[16px]"}`}>{String(value)}</p>
-                    <p className="mt-0.5 truncate text-center text-[8px] font-medium text-white/42">{sub}</p>
+              <div className="mt-2 grid grid-cols-4 rounded-[12px] border border-white/6 bg-white/[0.03]">
+                {summaryItems.map(([label, value, icon]) => (
+                  <div key={String(label)} className="min-w-0 border-r border-white/7 px-1 py-1.5 last:border-r-0">
+                    <div className="mx-auto mb-0.5 grid h-4 w-4 place-items-center text-cyan-300 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</div>
+                    <p className="truncate text-center text-[8px] font-semibold text-white/45">{label}</p>
+                    <p className={`mt-0.5 truncate text-center font-black leading-none text-white ${String(value).length > 7 ? "text-[9px] uppercase tracking-[0.015em] text-cyan-200" : "text-[14px]"}`}>{String(value)}</p>
                   </div>
                 ))}
               </div>
@@ -2714,9 +2729,23 @@ function MyProfileScreen({
                 action="View all signals"
                 icon={<ProfileMiniIcon type="target" />}
               />
+              <div className="mb-2 grid grid-cols-4 overflow-hidden rounded-[14px] border border-cyan-300/16 bg-cyan-400/[0.045]">
+                {[
+                  ["Today's Signals", data.signals.length],
+                  ["Ready", readySignals],
+                  ["Under Review", underReviewSignals],
+                  ["Confirmed", confirmedSignals],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="border-r border-white/8 px-1.5 py-2 text-center last:border-r-0">
+                    <p className="truncate text-[8px] font-black uppercase tracking-[0.04em] text-white/45">{label}</p>
+                    <p className="mt-0.5 text-[15px] font-black leading-none text-cyan-200">{String(value)}</p>
+                  </div>
+                ))}
+              </div>
               <div className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(9,18,34,0.96),rgba(3,9,20,0.98))]">
                 {data.signals.length ? data.signals.map((signal) => {
                   const tone = profileTone(signal.productCode);
+                  const isTopSignal = signal.productCode === "top_signal_mlb";
                   return (
                     <button key={signal.id} type="button" className={`grid w-full grid-cols-[48px_minmax(0,1fr)_86px_14px] items-center gap-2.5 border-b border-white/8 border-l-[4px] ${tone.accent} px-2.5 py-2.5 text-left last:border-b-0`}>
                       <div className={`grid h-10 w-10 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
@@ -2732,9 +2761,9 @@ function MyProfileScreen({
                       <div className="min-w-0">
                         <p className="text-[9px] font-semibold text-white/48">Status</p>
                         <span className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${statusTone(signal.status)}`}>
-                          {signal.status}
+                          {isTopSignal ? "READY" : signal.status}
                         </span>
-                        <p className="mt-0.5 truncate text-[9px] font-medium text-white/42">{signal.publishedAt}</p>
+                        <p className="mt-0.5 truncate text-[9px] font-medium text-white/42">{isTopSignal ? "Ready to Bet" : signal.publishedAt}</p>
                         <p className="mt-1 text-[9px] font-semibold text-white/48">Game Time</p>
                         <p className="text-[11px] font-black text-white">{signal.gameTime}</p>
                       </div>
@@ -2749,86 +2778,97 @@ function MyProfileScreen({
 
             <section>
               <ProfileSectionTitle
-                title="MY PRODUCTS"
-                subtitle="Your active subscriptions and packs."
-                action="Manage subscriptions"
-                icon={<ProfileMiniIcon type="diamond" />}
-              />
-              <div className="-mx-3.5 flex snap-x gap-2.5 overflow-x-auto px-3.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {data.products.length ? data.products.map((product) => {
-                  const tone = profileTone(product.code);
-                  return (
-                    <button key={product.code} type="button" className="min-w-[154px] snap-start rounded-[16px] border border-white/12 bg-white/[0.035] p-2.5 text-left">
-                      <div className={`grid h-8 w-8 place-items-center rounded-full border border-current ${tone.bg} ${tone.text} [&_svg]:h-5 [&_svg]:w-5`}>
-                        <ProfileMiniIcon type={tone.icon} />
-                      </div>
-                      <p className="mt-2 text-[13px] font-black text-white">{product.name}</p>
-                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase ${statusTone(product.status)}`}>{product.status}</span>
-                      <p className="mt-1 line-clamp-1 text-[10px] font-medium text-white/45">{product.detail}</p>
-                      <div className="mt-2 grid h-6 place-items-center rounded-[10px] bg-white/[0.03] text-[16px] leading-none text-cyan-300">⌄</div>
-                    </button>
-                  );
-                }) : <div className="min-w-[220px] rounded-[16px] border border-white/10 p-3 text-[13px] text-white/55">No active products.</div>}
-              </div>
-            </section>
-
-            {data.recommendations.length ? (
-              <section>
-                <ProfileSectionTitle
-                  title="RECOMMENDED FOR YOU"
-                  subtitle="Unlock more Atlas Signals intelligence."
-                  action="View all products"
-                  icon={<ProfileMiniIcon type="diamond" />}
-                />
-                <div className="-mx-3.5 flex snap-x gap-2.5 overflow-x-auto px-3.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {data.recommendations.slice(0, 3).map((item) => {
-                    const tone = profileTone(item.code);
-                    return (
-                      <button key={item.code} type="button" className="min-w-[188px] snap-start rounded-[16px] border border-white/12 bg-white/[0.035] p-3 text-left">
-                        <div className={`grid h-9 w-9 place-items-center rounded-full border border-current ${tone.bg} ${tone.text} [&_svg]:h-6 [&_svg]:w-6`}>
-                          <ProfileMiniIcon type={tone.icon} />
-                        </div>
-                        <p className="mt-2 text-[14px] font-black text-white">{item.title}</p>
-                        <p className="mt-1 line-clamp-2 min-h-[30px] text-[11px] font-medium leading-[15px] text-white/62">{item.description}</p>
-                        <span className={`mt-2 inline-flex rounded-full px-3 py-1.5 text-[10px] font-black ${tone.bg} ${tone.text}`}>
-                          {item.cta}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            ) : null}
-
-            <section>
-              <ProfileSectionTitle
                 title="ACTIVITY"
                 subtitle="Your recent account activity."
                 action="View all activity"
                 icon={<ProfileMiniIcon type="clock" />}
               />
-              <div className="rounded-[18px] border border-white/12 bg-white/[0.035] p-2.5">
+              <div className="rounded-[16px] border border-white/12 bg-white/[0.035] p-2">
                 {data.activity.length ? (
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-1">
                     {data.activity.slice(0, 3).map((item) => (
-                      <div key={item.id} className="flex items-center gap-2.5 rounded-[13px] bg-black/16 px-2.5 py-2">
-                        <span className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/50 bg-emerald-400/10 text-emerald-300 [&_svg]:h-5 [&_svg]:w-5">
+                      <div key={item.id} className="flex items-center gap-2 rounded-[12px] bg-black/16 px-2 py-1.5">
+                        <span className="grid h-7 w-7 place-items-center rounded-full border border-emerald-300/50 bg-emerald-400/10 text-emerald-300 [&_svg]:h-4 [&_svg]:w-4">
                           <ProfileMiniIcon type="shield" />
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-[11.5px] font-black text-white">{item.type}</p>
-                          <p className="truncate text-[10px] text-white/50">{item.description}</p>
+                          <p className="truncate text-[11px] font-black text-white">{item.type}</p>
+                          <p className="truncate text-[9.5px] text-white/50">{item.description}</p>
                         </div>
-                        <span className="ml-auto shrink-0 text-[10px] font-semibold text-white/45">{item.time}</span>
+                        <span className="ml-auto shrink-0 text-[9.5px] font-semibold text-white/45">{item.time}</span>
                       </div>
                     ))}
                   </div>
-                ) : <p className="flex min-h-[54px] items-center px-2 text-[13px] font-bold text-white/55">No recent activity.</p>}
+                ) : <p className="flex min-h-[46px] items-center px-2 text-[12px] font-bold text-white/55">No recent activity.</p>}
               </div>
             </section>
+
+            {topSignalRecommendation ? (
+              <section>
+                <ProfileSectionTitle
+                  title="RECOMMENDED FOR YOU"
+                  subtitle="Unlock more Atlas Signals intelligence."
+                  action="View product"
+                  icon={<ProfileMiniIcon type="diamond" />}
+                />
+                <button type="button" className="flex w-full items-center gap-3 rounded-[16px] border border-violet-300/25 bg-violet-500/[0.06] p-3 text-left">
+                  <span className="grid h-10 w-10 place-items-center rounded-full border border-violet-300/50 bg-violet-400/10 text-violet-300">
+                    <ProfileMiniIcon type="star" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-black text-white">{topSignalRecommendation.title}</span>
+                    <span className="line-clamp-1 text-[11px] font-medium text-white/58">{topSignalRecommendation.description}</span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-violet-400/18 px-3 py-1.5 text-[10px] font-black text-violet-200">
+                    {topSignalRecommendation.cta} →
+                  </span>
+                </button>
+              </section>
+            ) : null}
           </div>
         ) : null}
       </div>
+      {data && productsOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/64 px-3 pb-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="My Products">
+          <div className="w-full max-w-md rounded-[20px] border border-white/12 bg-[#06101f] p-3 shadow-[0_0_36px_rgba(0,0,0,0.42)]">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/30 bg-cyan-400/10 text-cyan-300">
+                  <ProfileMiniIcon type="box" />
+                </span>
+                <div>
+                  <h2 className="text-[15px] font-black uppercase tracking-[0.07em] text-white">My Products</h2>
+                  <p className="text-[10px] font-semibold text-white/45">Subscriptions and packs</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setProductsOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-white/8 text-[18px] font-light text-white/70" aria-label="Close products">
+                ×
+              </button>
+            </div>
+
+            <div className="grid gap-2">
+              {data.products.length ? data.products.map((product) => {
+                const tone = profileTone(product.code);
+                return (
+                  <div key={product.code} className="flex items-center gap-3 rounded-[14px] border border-white/9 bg-white/[0.035] p-2.5">
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-current ${tone.bg} ${tone.text} [&_svg]:h-5 [&_svg]:w-5`}>
+                      <ProfileMiniIcon type={tone.icon} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-black text-white">{product.name}</span>
+                      <span className="block truncate text-[10px] font-semibold text-white/45">{product.detail}</span>
+                    </span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase ${statusTone(product.status)}`}>{product.status}</span>
+                  </div>
+                );
+              }) : <div className="rounded-[14px] border border-white/10 p-3 text-[13px] text-white/55">No Active Products.</div>}
+            </div>
+            <button type="button" className="mt-3 w-full rounded-full bg-cyan-300 px-4 py-2.5 text-[12px] font-black text-black">
+              Manage Subscription
+            </button>
+          </div>
+        </div>
+      ) : null}
       <BottomNav activeSection="alerts" onNavigate={onNavigate} />
     </main>
   );
