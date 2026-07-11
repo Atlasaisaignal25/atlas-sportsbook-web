@@ -4,7 +4,6 @@ import { cachedMlbOfficialClient, type MlbOfficialClient } from "../providers/ml
 import {
   buildStartingPitcherQuality,
   buildPitcherWindows,
-  INITIAL_PITCHER_QUALITY_PRIORS,
   PITCHER_QUALITY_METRIC_WEIGHTS,
   pitcherScoreDistribution,
   STARTING_PITCHER_BASELINE_VERSION,
@@ -44,7 +43,7 @@ export type PitcherQualityCaptureResult = {
   providerErrors: string[];
 };
 
-type StarterArchiveRow = {
+export type StarterArchiveRow = {
   playerId: string;
   playerName: string;
   teamId?: string;
@@ -495,6 +494,7 @@ export function buildStartingPitcherQualityRows(snapshots: StartingPitcherQualit
       sample_quality: snapshot.sampleQuality,
       source_versions: snapshot.sourceVersions,
       warnings: snapshot.warnings,
+      data_version: snapshot.qualityVersion,
       feature_hash: featureHash(payload),
       canonical: true,
       captured_at: snapshot.capturedAt,
@@ -577,24 +577,57 @@ export async function getStartingPitcherQualitySnapshotStatus() {
   const { count, error } = await supabase.from(TABLE).select("id", { count: "exact", head: true });
   if (error) return { healthy: false, totalSnapshots: 0, canonicalSnapshots: 0, pitchersScored: 0, latestRefresh: undefined as string | undefined, errors: [error.message] };
   const { count: canonicalSnapshots } = await supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("canonical", true);
+  const { count: noncanonicalSnapshots } = await supabase.from(TABLE).select("id", { count: "exact", head: true }).eq("canonical", false);
   const { data, error: latestError } = await supabase
     .from(TABLE)
-    .select("player_id,player_name,team_name,quality_score,quality_confidence,readiness_score,captured_at")
+    .select("player_id,player_name,team_name,quality_score,quality_confidence,readiness_score,baseline_version,baseline_source,baseline_as_of,season_window,last30_window,last5_starts,last3_starts,quality_components,captured_at")
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(200);
   const rows = data ?? [];
+  const baselineHealth = await getPitcherQualityBaselineStatus();
   return {
     healthy: !latestError,
     totalSnapshots: count ?? 0,
     canonicalSnapshots: canonicalSnapshots ?? 0,
+    noncanonicalSnapshots: noncanonicalSnapshots ?? 0,
     pitchersScored: rows.filter((row: any) => row.quality_score !== null).length,
     pitchersUnavailable: rows.filter((row: any) => row.quality_score === null).length,
+    priorFallbackCount: rows.filter((row: any) => row.baseline_source !== "PRODUCTION_BASELINE").length,
+    baselineHealth,
+    baselineSourceDistribution: countBy(rows, (row) => row.baseline_source),
     latestRefresh: rows[0]?.captured_at as string | undefined,
     qualityDistribution: pitcherScoreDistribution(rows.map((row: any) => row.quality_score ?? undefined)),
     readinessDistribution: pitcherScoreDistribution(rows.map((row: any) => row.readiness_score ?? undefined)),
     confidenceDistribution: countBy(rows, (row) => row.quality_confidence?.tier),
     examples: rows.slice(0, 6),
+    errors: latestError ? [latestError.message] : [] as string[],
+  };
+}
+
+export async function getPitcherQualityBaselineStatus() {
+  const supabase = getSupabaseAdmin();
+  const { count, error } = await supabase.from(BASELINE_TABLE).select("id", { count: "exact", head: true });
+  if (error) return { healthy: false, totalBaselines: 0, canonicalBaselines: 0, errors: [error.message] };
+  const { count: canonicalBaselines } = await supabase.from(BASELINE_TABLE).select("id", { count: "exact", head: true }).eq("canonical", true);
+  const { data, error: latestError } = await supabase
+    .from(BASELINE_TABLE)
+    .select("season,baseline_window,metric,pitcher_count,mean,standard_deviation,median,minimum,maximum,as_of,baseline_version,canonical")
+    .eq("canonical", true)
+    .order("as_of", { ascending: false })
+    .limit(64);
+  const rows = data ?? [];
+  return {
+    healthy: !latestError,
+    totalBaselines: count ?? 0,
+    canonicalBaselines: canonicalBaselines ?? 0,
+    baselineVersion: rows[0]?.baseline_version as string | undefined,
+    latestAsOf: rows[0]?.as_of as string | undefined,
+    windows: Array.from(new Set(rows.map((row: any) => row.baseline_window))),
+    metrics: Array.from(new Set(rows.map((row: any) => row.metric))),
+    minPitcherCount: rows.length ? Math.min(...rows.map((row: any) => Number(row.pitcher_count) || 0)) : 0,
+    maxPitcherCount: rows.length ? Math.max(...rows.map((row: any) => Number(row.pitcher_count) || 0)) : 0,
+    examples: rows.slice(0, 8),
     errors: latestError ? [latestError.message] : [] as string[],
   };
 }

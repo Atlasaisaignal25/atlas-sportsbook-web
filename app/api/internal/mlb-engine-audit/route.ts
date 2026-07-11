@@ -68,6 +68,7 @@ import {
   getStartingPitcherQualitySnapshotStatus,
 } from "@/app/lib/mlb-engine/sports-intelligence/pitcher-quality/pitcher-quality-repository";
 import {
+  STARTING_PITCHER_BASELINE_VERSION,
   STARTING_PITCHER_QUALITY_VERSION,
   STARTING_PITCHER_READINESS_VERSION,
 } from "@/app/lib/mlb-engine/sports-intelligence/pitcher-quality/pitcher-quality-engine";
@@ -568,7 +569,10 @@ function startingPitcherQualityAudit(
   return {
     enabled,
     mode: enabled ? process.env.MLB_PITCHER_QUALITY_MODE ?? "AUDIT_ONLY" : "DISABLED",
+    qualityVersion: STARTING_PITCHER_QUALITY_VERSION,
     version: STARTING_PITCHER_QUALITY_VERSION,
+    baselineVersion: STARTING_PITCHER_BASELINE_VERSION,
+    baselineSource: status.baselineSourceDistribution?.PRODUCTION_BASELINE ? "PRODUCTION_BASELINE" : "INITIAL_PRIOR_FALLBACK",
     readinessVersion: STARTING_PITCHER_READINESS_VERSION,
     providerHealth: {
       source: "MLB_STATS_API",
@@ -578,11 +582,16 @@ function startingPitcherQualityAudit(
         "/api/v1/people/{playerId}/stats?stats=season&group=pitching",
         "/api/v1/people/{playerId}/stats?stats=gameLog&group=pitching",
       ],
-      statcastAdvancedMetrics: "Not connected in Phase 9; fields remain unavailable rather than fabricated.",
+      statcastAdvancedMetrics: "Not connected in Phase 9.1; fields remain unavailable rather than fabricated.",
     },
+    baselineHealth: status.baselineHealth,
     storageHealth: status,
+    populationCount: status.baselineHealth?.maxPitcherCount,
+    eligiblePopulation: status.baselineHealth?.minPitcherCount,
     pitchersScored: status.pitchersScored,
     pitchersUnavailable: status.pitchersUnavailable,
+    priorFallbackCount: status.priorFallbackCount,
+    baselineSourceDistribution: status.baselineSourceDistribution,
     qualityDistribution: status.qualityDistribution,
     readinessDistribution: status.readinessDistribution,
     confidenceDistribution: status.confidenceDistribution,
@@ -590,7 +599,8 @@ function startingPitcherQualityAudit(
     examples: status.examples,
     warnings: [
       ...(status.canonicalSnapshots === 0 ? ["No canonical pitcher quality snapshots are available yet."] : []),
-      "Pitcher Quality is audit-only and is not connected to Team Quality in Phase 9.",
+      ...(status.baselineHealth?.canonicalBaselines === 0 ? ["No canonical production pitcher baselines are available yet; scores may fall back to initial priors."] : []),
+      "Pitcher Quality is audit-only and is not connected to Team Quality in Phase 9.1.",
     ],
   };
 }

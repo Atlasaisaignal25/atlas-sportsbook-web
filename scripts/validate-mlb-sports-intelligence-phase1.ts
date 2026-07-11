@@ -208,6 +208,8 @@ async function main() {
   process.env.MLB_PITCHER_QUALITY_ENABLED = "false";
   process.env.MLB_PITCHER_READINESS_ENABLED = "false";
   process.env.MLB_PITCHER_QUALITY_MODE = "DISABLED";
+  process.env.MLB_PITCHER_PRODUCTION_BASELINES_ENABLED = "false";
+  process.env.MLB_PITCHER_BASELINE_VERSION = "starting_pitcher_baseline_v1";
   const flags = getMlbSportsIntelligenceFlags();
   assert.deepEqual(flags, {
     sportsIntelligenceEnabled: false,
@@ -243,6 +245,8 @@ async function main() {
     pitcherQualityEnabled: false,
     pitcherReadinessEnabled: false,
     pitcherQualityMode: "DISABLED",
+    pitcherProductionBaselinesEnabled: false,
+    pitcherBaselineVersion: "starting_pitcher_baseline_v1",
     lineupSnapshotsEnabled: false,
     lineupChangeDetectionEnabled: false,
     starterVerificationSnapshotsEnabled: false,

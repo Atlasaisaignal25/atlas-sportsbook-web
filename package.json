@@ -18,6 +18,7 @@
     "validate:mlb-team-strength": "npx --yes tsx scripts/validate-mlb-team-strength.ts",
     "validate:mlb-team-intelligence": "npx --yes tsx scripts/validate-mlb-team-intelligence.ts",
     "validate:mlb-pitcher-quality": "npx --yes tsx scripts/validate-mlb-pitcher-quality.ts",
+    "validate:mlb-pitcher-baselines": "npx --yes tsx scripts/validate-mlb-pitcher-baselines.ts",
     "validate:mlb-sports-intelligence": "npx --yes tsx scripts/validate-mlb-sports-intelligence-phase1.ts",
     "validate:mlb-pitcher-provider": "npx --yes tsx scripts/validate-mlb-pitcher-provider.ts",
     "validate:mlb-lineup-provider": "npx --yes tsx scripts/validate-mlb-lineup-provider.ts",
