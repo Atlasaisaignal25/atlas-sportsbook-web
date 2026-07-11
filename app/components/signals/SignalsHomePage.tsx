@@ -1740,7 +1740,7 @@ function BottomNav({
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-3 text-[11px]">
+      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 text-[10px]">
         {items.map((item) => {
           const active = activeSection === item.section;
 
@@ -1751,7 +1751,7 @@ function BottomNav({
               onClick={() => onNavigate?.(item.section)}
               aria-label={`Open ${item.label}`}
               className={`flex flex-col items-center rounded-2xl px-2 font-semibold transition-all ${
-                item.section === "signals" ? "-mt-2 gap-0.5 py-1" : "gap-1 py-2"
+                item.section === "signals" ? "-mt-1.5 gap-0.5 py-0.5" : "gap-0.5 py-1.5"
               } ${
                 active
                   ? "bg-cyan-400/10 text-cyan-300"
@@ -1761,10 +1761,10 @@ function BottomNav({
               <span
                 className={`flex items-center justify-center overflow-hidden rounded-full text-[10px] font-black ${
                   item.section === "signals"
-                    ? `h-12 w-12 border border-cyan-300/30 bg-[#020916] shadow-[0_0_20px_rgba(34,211,238,0.22)] ${
+                    ? `h-11 w-11 border border-cyan-300/30 bg-[#020916] shadow-[0_0_20px_rgba(34,211,238,0.22)] ${
                         active ? "ring-2 ring-cyan-300/40" : ""
                       }`
-                    : `h-6 w-6 ${active ? "bg-cyan-400 text-black" : "bg-white/10"}`
+                    : `h-5 w-5 ${active ? "bg-cyan-400 text-black" : "bg-white/10"}`
                 }`}
               >
                 <BottomNavIcon section={item.section} />
@@ -2519,18 +2519,18 @@ function ProfileSectionTitle({
   action?: string;
 }) {
   return (
-    <div className="mb-2.5 flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <span className="grid h-7 w-7 shrink-0 place-items-center text-cyan-300">{icon}</span>
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="grid h-6 w-6 shrink-0 place-items-center text-cyan-300">{icon}</span>
         <div className="min-w-0">
-          <h2 className="text-[16px] font-black uppercase tracking-[0.08em] text-white">{title}</h2>
-          <p className="truncate text-[11px] font-semibold text-white/48">{subtitle}</p>
+          <h2 className="text-[14px] font-black uppercase tracking-[0.075em] text-white">{title}</h2>
+          <p className="truncate text-[10px] font-semibold text-white/48">{subtitle}</p>
         </div>
       </div>
       {action ? (
-        <button type="button" className="inline-flex shrink-0 items-center gap-1 text-[12px] font-black text-cyan-300">
+        <button type="button" className="inline-flex shrink-0 items-center gap-1 text-[11px] font-black text-cyan-300">
           {action}
-          <span className="text-xl font-light">›</span>
+          <span className="text-lg font-light">›</span>
         </button>
       ) : null}
     </div>
@@ -2583,9 +2583,9 @@ function statusTone(status: string) {
 function TeamSignalLogo({ team }: { team: string }) {
   const brand = teamBranding[team];
   if (brand?.logo) {
-    return <img src={brand.logo} alt="" className="h-9 w-9 object-contain" />;
+    return <img src={brand.logo} alt="" className="h-8 w-8 object-contain" />;
   }
-  return <span className="text-[14px] font-black text-white/70">{team.slice(0, 2).toUpperCase()}</span>;
+  return <span className="text-[12px] font-black text-white/70">{team.slice(0, 2).toUpperCase()}</span>;
 }
 
 function MyProfileScreen({
@@ -2626,30 +2626,30 @@ function MyProfileScreen({
   const profile = data?.profile;
   const summary = data?.summary;
   const summaryItems = [
-    ["Signals Received", summary?.signalsReceived ?? "Unavailable", "This month", <ProfileMiniIcon key="pulse" type="pulse" />],
-    ["Win Rate", summary?.winRate ?? "Unavailable", "Official signals", <ProfileMiniIcon key="target" type="target" />],
-    ["ROI", summary?.roi ?? "Unavailable", "Official signals", <ProfileMiniIcon key="bars" type="bars" />],
-    ["Accuracy", summary?.accuracy ?? "Unavailable", "Official signals", <ProfileMiniIcon key="shield" type="shield" />],
+    ["Signals", summary?.signalsReceived ?? "Unavailable", "This month", <ProfileMiniIcon key="pulse" type="pulse" />],
+    ["Win Rate", summary?.winRate ?? "Unavailable", "Verified", <ProfileMiniIcon key="target" type="target" />],
+    ["ROI", summary?.roi ?? "Unavailable", "Verified", <ProfileMiniIcon key="bars" type="bars" />],
+    ["Accuracy", summary?.accuracy ?? "Unavailable", "Verified", <ProfileMiniIcon key="shield" type="shield" />],
   ];
 
   return (
     <main className="min-h-screen bg-[#020814] text-white">
-      <div className="mx-auto min-h-screen w-full max-w-md bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-4 pb-[104px] pt-6">
-        <header className="flex items-start justify-between gap-4">
+      <div className="mx-auto min-h-screen w-full max-w-md overflow-x-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-3.5 pb-[88px] pt-4">
+        <header className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-3">
-              <img src="/icon.png" alt="Atlas Signals" className="h-10 w-10 object-contain" />
-              <div className="text-[11px] font-black uppercase leading-tight tracking-[0.32em] text-white">
+            <div className="flex items-center gap-2.5">
+              <img src="/icon.png" alt="Atlas Signals" className="h-8 w-8 object-contain" />
+              <div className="text-[9px] font-black uppercase leading-tight tracking-[0.30em] text-white">
                 Atlas<br /><span className="text-cyan-300">Signals</span>
               </div>
             </div>
-            <h1 className="mt-4 text-[32px] font-black leading-none tracking-[-0.04em]">My Profile</h1>
-            <p className="mt-2 text-[14px] font-medium text-white/62">Everything about your account and signals.</p>
+            <h1 className="mt-2.5 text-[27px] font-black leading-none tracking-[-0.035em]">My Profile</h1>
+            <p className="mt-1 text-[12px] font-medium text-white/62">Everything about your account and signals.</p>
           </div>
-          <button type="button" className="relative grid h-12 w-12 place-items-center rounded-[13px] border border-white/12 bg-white/[0.035] text-white/80">
-            <HeaderBellIcon className="h-6 w-6" />
+          <button type="button" className="relative grid h-10 w-10 place-items-center rounded-[12px] border border-white/12 bg-white/[0.035] text-white/80">
+            <HeaderBellIcon className="h-5 w-5" />
             {data?.unreadCount ? (
-              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-cyan-300 px-1 text-[10px] font-black text-black">
+              <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-black">
                 {data.unreadCount}
               </span>
             ) : null}
@@ -2657,51 +2657,51 @@ function MyProfileScreen({
         </header>
 
         {loading ? (
-          <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.035] p-5">
-            <div className="h-20 animate-pulse rounded-2xl bg-white/8" />
-            <div className="mt-4 h-20 animate-pulse rounded-2xl bg-white/8" />
+          <div className="mt-3.5 rounded-[18px] border border-white/10 bg-white/[0.035] p-3">
+            <div className="h-16 animate-pulse rounded-2xl bg-white/8" />
+            <div className="mt-2 h-12 animate-pulse rounded-2xl bg-white/8" />
           </div>
         ) : error ? (
-          <div className="mt-5 rounded-[22px] border border-red-400/20 bg-red-950/20 p-5">
-            <p className="text-[16px] font-black text-white">{error}</p>
-            <button type="button" onClick={() => onNavigate?.("signals")} className="mt-4 rounded-full bg-cyan-300 px-4 py-2 text-[12px] font-black text-black">
+          <div className="mt-3.5 rounded-[18px] border border-red-400/20 bg-red-950/20 p-4">
+            <p className="text-[14px] font-black text-white">{error}</p>
+            <button type="button" onClick={() => onNavigate?.("signals")} className="mt-3 rounded-full bg-cyan-300 px-4 py-2 text-[11px] font-black text-black">
               Go Home
             </button>
           </div>
         ) : data && profile ? (
-          <div className="mt-5 space-y-5">
-            <section className="rounded-[22px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-4 shadow-[0_0_28px_rgba(0,0,0,0.22)]">
-              <div className="grid gap-4 sm:grid-cols-[1.2fr_1fr]">
-                <div className="flex items-center gap-4">
-                  <div className="grid h-[82px] w-[82px] shrink-0 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/10 text-[28px] font-black text-cyan-300">
+          <div className="mt-3.5 space-y-3.5">
+            <section className="rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-3 shadow-[0_0_24px_rgba(0,0,0,0.20)]">
+              <div className="grid gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-[62px] w-[62px] shrink-0 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/10 text-[22px] font-black text-cyan-300">
                     {profile.initials}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="truncate text-[22px] font-black tracking-[-0.03em]">{profile.name}</h2>
-                    <p className="text-[13px] font-semibold text-white/55">{profile.username}</p>
-                    <span className="mt-2 inline-flex rounded-full border border-cyan-300/70 bg-cyan-400/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.10em] text-cyan-300">
+                    <h2 className="truncate text-[19px] font-black leading-tight tracking-[-0.03em]">{profile.name}</h2>
+                    <p className="text-[12px] font-semibold text-white/55">{profile.username}</p>
+                    <span className="mt-1.5 inline-flex rounded-full border border-cyan-300/70 bg-cyan-400/12 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-300">
                       {profile.membershipTier}
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 rounded-[16px] bg-black/12 p-3">
+                <div className="grid grid-cols-2 gap-2 rounded-[13px] bg-black/12 p-2.5">
                   <div>
-                    <p className="text-[11px] font-semibold text-white/45">Member since</p>
-                    <p className="mt-1 text-[13px] font-black text-white">{profile.memberSince}</p>
+                    <p className="text-[10px] font-semibold text-white/45">Member since</p>
+                    <p className="mt-0.5 text-[12px] font-black text-white">{profile.memberSince}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold text-white/45">Time zone</p>
-                    <p className="mt-1 text-[13px] font-black text-white">{profile.timeZone}</p>
+                    <p className="text-[10px] font-semibold text-white/45">Time zone</p>
+                    <p className="mt-0.5 text-[12px] font-black text-white">{profile.timeZone}</p>
                   </div>
                 </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 rounded-[18px] bg-white/[0.035] p-2 sm:grid-cols-4">
+              <div className="mt-2.5 grid grid-cols-4 rounded-[14px] border border-white/6 bg-white/[0.035]">
                 {summaryItems.map(([label, value, sub, icon]) => (
-                  <div key={String(label)} className="rounded-[14px] border border-white/6 bg-black/12 p-3">
-                    <div className="mb-2 text-cyan-300">{icon}</div>
-                    <p className="text-[11px] font-semibold text-white/48">{label}</p>
-                    <p className="mt-1 text-[21px] font-black leading-none text-white">{String(value)}</p>
-                    <p className="mt-1 text-[11px] font-medium text-white/45">{sub}</p>
+                  <div key={String(label)} className="min-w-0 border-r border-white/7 px-1.5 py-2 last:border-r-0">
+                    <div className="mx-auto mb-1 grid h-5 w-5 place-items-center text-cyan-300 [&_svg]:h-4 [&_svg]:w-4">{icon}</div>
+                    <p className="truncate text-center text-[8.5px] font-semibold text-white/48">{label}</p>
+                    <p className={`mt-0.5 truncate text-center font-black leading-none text-white ${String(value).length > 7 ? "text-[10px] uppercase tracking-[0.02em] text-cyan-200" : "text-[16px]"}`}>{String(value)}</p>
+                    <p className="mt-0.5 truncate text-center text-[8px] font-medium text-white/42">{sub}</p>
                   </div>
                 ))}
               </div>
@@ -2714,35 +2714,35 @@ function MyProfileScreen({
                 action="View all signals"
                 icon={<ProfileMiniIcon type="target" />}
               />
-              <div className="overflow-hidden rounded-[22px] border border-white/12 bg-[linear-gradient(180deg,rgba(9,18,34,0.96),rgba(3,9,20,0.98))]">
+              <div className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(9,18,34,0.96),rgba(3,9,20,0.98))]">
                 {data.signals.length ? data.signals.map((signal) => {
                   const tone = profileTone(signal.productCode);
                   return (
-                    <button key={signal.id} type="button" className={`grid w-full grid-cols-[58px_minmax(0,1fr)_92px_22px] items-center gap-3 border-b border-white/8 border-l-[4px] ${tone.accent} px-3 py-3 text-left last:border-b-0`}>
-                      <div className={`grid h-12 w-12 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
+                    <button key={signal.id} type="button" className={`grid w-full grid-cols-[48px_minmax(0,1fr)_86px_14px] items-center gap-2.5 border-b border-white/8 border-l-[4px] ${tone.accent} px-2.5 py-2.5 text-left last:border-b-0`}>
+                      <div className={`grid h-10 w-10 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
                         <TeamSignalLogo team={signal.team} />
                       </div>
                       <div className="min-w-0">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${tone.bg} ${tone.text}`}>
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${tone.bg} ${tone.text}`}>
                           {signal.product}
                         </span>
-                        <p className="mt-1 truncate text-[15px] font-black text-white">{signal.selection}</p>
-                        <p className="truncate text-[12px] font-medium text-white/50">vs {signal.opponent}</p>
+                        <p className="mt-1 truncate text-[13px] font-black text-white">{signal.selection}</p>
+                        <p className="truncate text-[10.5px] font-medium text-white/50">vs {signal.opponent}</p>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[10px] font-semibold text-white/48">Status</p>
-                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusTone(signal.status)}`}>
+                        <p className="text-[9px] font-semibold text-white/48">Status</p>
+                        <span className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${statusTone(signal.status)}`}>
                           {signal.status}
                         </span>
-                        <p className="mt-1 truncate text-[10px] font-medium text-white/42">Published {signal.publishedAt}</p>
-                        <p className="mt-2 text-[10px] font-semibold text-white/48">Game Time</p>
-                        <p className="text-[12px] font-black text-white">{signal.gameTime}</p>
+                        <p className="mt-0.5 truncate text-[9px] font-medium text-white/42">{signal.publishedAt}</p>
+                        <p className="mt-1 text-[9px] font-semibold text-white/48">Game Time</p>
+                        <p className="text-[11px] font-black text-white">{signal.gameTime}</p>
                       </div>
-                      <span className="text-[26px] font-light text-white/55">›</span>
+                      <span className="text-[21px] font-light text-white/55">›</span>
                     </button>
                   );
                 }) : (
-                  <div className="p-5 text-[14px] font-bold text-white/55">No active signals yet.</div>
+                  <div className="flex min-h-[76px] items-center px-4 text-[13px] font-bold text-white/55">No active signals yet.</div>
                 )}
               </div>
             </section>
@@ -2754,21 +2754,21 @@ function MyProfileScreen({
                 action="Manage subscriptions"
                 icon={<ProfileMiniIcon type="diamond" />}
               />
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="-mx-3.5 flex snap-x gap-2.5 overflow-x-auto px-3.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {data.products.length ? data.products.map((product) => {
                   const tone = profileTone(product.code);
                   return (
-                    <button key={product.code} type="button" className="rounded-[16px] border border-white/12 bg-white/[0.035] p-3 text-left">
-                      <div className={`grid h-10 w-10 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
+                    <button key={product.code} type="button" className="min-w-[154px] snap-start rounded-[16px] border border-white/12 bg-white/[0.035] p-2.5 text-left">
+                      <div className={`grid h-8 w-8 place-items-center rounded-full border border-current ${tone.bg} ${tone.text} [&_svg]:h-5 [&_svg]:w-5`}>
                         <ProfileMiniIcon type={tone.icon} />
                       </div>
-                      <p className="mt-3 text-[14px] font-black text-white">{product.name}</p>
-                      <p className={`mt-1 text-[10px] font-black uppercase ${statusTone(product.status)}`}>{product.status}</p>
-                      <p className="mt-1 text-[11px] font-medium text-white/45">{product.detail}</p>
-                      <div className="mt-3 grid h-8 place-items-center rounded-[12px] bg-white/[0.035] text-cyan-300">⌄</div>
+                      <p className="mt-2 text-[13px] font-black text-white">{product.name}</p>
+                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase ${statusTone(product.status)}`}>{product.status}</span>
+                      <p className="mt-1 line-clamp-1 text-[10px] font-medium text-white/45">{product.detail}</p>
+                      <div className="mt-2 grid h-6 place-items-center rounded-[10px] bg-white/[0.03] text-[16px] leading-none text-cyan-300">⌄</div>
                     </button>
                   );
-                }) : <div className="col-span-2 rounded-[16px] border border-white/10 p-4 text-white/55">No active products.</div>}
+                }) : <div className="min-w-[220px] rounded-[16px] border border-white/10 p-3 text-[13px] text-white/55">No active products.</div>}
               </div>
             </section>
 
@@ -2780,17 +2780,17 @@ function MyProfileScreen({
                   action="View all products"
                   icon={<ProfileMiniIcon type="diamond" />}
                 />
-                <div className="grid gap-2.5 sm:grid-cols-3">
+                <div className="-mx-3.5 flex snap-x gap-2.5 overflow-x-auto px-3.5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {data.recommendations.slice(0, 3).map((item) => {
                     const tone = profileTone(item.code);
                     return (
-                      <button key={item.code} type="button" className="rounded-[16px] border border-white/12 bg-white/[0.035] p-4 text-left">
-                        <div className={`grid h-12 w-12 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
+                      <button key={item.code} type="button" className="min-w-[188px] snap-start rounded-[16px] border border-white/12 bg-white/[0.035] p-3 text-left">
+                        <div className={`grid h-9 w-9 place-items-center rounded-full border border-current ${tone.bg} ${tone.text} [&_svg]:h-6 [&_svg]:w-6`}>
                           <ProfileMiniIcon type={tone.icon} />
                         </div>
-                        <p className="mt-3 text-[15px] font-black text-white">{item.title}</p>
-                        <p className="mt-1 min-h-[36px] text-[12px] font-medium leading-[18px] text-white/62">{item.description}</p>
-                        <span className={`mt-3 inline-flex rounded-full px-4 py-2 text-[11px] font-black ${tone.bg} ${tone.text}`}>
+                        <p className="mt-2 text-[14px] font-black text-white">{item.title}</p>
+                        <p className="mt-1 line-clamp-2 min-h-[30px] text-[11px] font-medium leading-[15px] text-white/62">{item.description}</p>
+                        <span className={`mt-2 inline-flex rounded-full px-3 py-1.5 text-[10px] font-black ${tone.bg} ${tone.text}`}>
                           {item.cta}
                         </span>
                       </button>
@@ -2807,23 +2807,23 @@ function MyProfileScreen({
                 action="View all activity"
                 icon={<ProfileMiniIcon type="clock" />}
               />
-              <div className="rounded-[18px] border border-white/12 bg-white/[0.035] p-3">
+              <div className="rounded-[18px] border border-white/12 bg-white/[0.035] p-2.5">
                 {data.activity.length ? (
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid gap-1.5">
                     {data.activity.slice(0, 3).map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 rounded-[14px] bg-black/16 p-3">
-                        <span className="grid h-10 w-10 place-items-center rounded-full border border-emerald-300/50 bg-emerald-400/10 text-emerald-300">
+                      <div key={item.id} className="flex items-center gap-2.5 rounded-[13px] bg-black/16 px-2.5 py-2">
+                        <span className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/50 bg-emerald-400/10 text-emerald-300 [&_svg]:h-5 [&_svg]:w-5">
                           <ProfileMiniIcon type="shield" />
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-[12px] font-black text-white">{item.type}</p>
-                          <p className="truncate text-[11px] text-white/50">{item.description}</p>
+                          <p className="truncate text-[11.5px] font-black text-white">{item.type}</p>
+                          <p className="truncate text-[10px] text-white/50">{item.description}</p>
                         </div>
-                        <span className="ml-auto shrink-0 text-[11px] font-semibold text-white/45">{item.time}</span>
+                        <span className="ml-auto shrink-0 text-[10px] font-semibold text-white/45">{item.time}</span>
                       </div>
                     ))}
                   </div>
-                ) : <p className="p-2 text-[14px] font-bold text-white/55">No recent activity.</p>}
+                ) : <p className="flex min-h-[54px] items-center px-2 text-[13px] font-bold text-white/55">No recent activity.</p>}
               </div>
             </section>
           </div>
