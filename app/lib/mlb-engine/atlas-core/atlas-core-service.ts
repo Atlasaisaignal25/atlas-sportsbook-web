@@ -95,10 +95,40 @@ function pickLine(edge: MarketEdgeRow) {
   return null;
 }
 
-function pickOdds(edge: MarketEdgeRow) {
+function selectedOutcomeName(edge: MarketEdgeRow) {
+  if (edge.market === "TOTALS") return edge.direction === "UNDER" ? "under" : "over";
+  if (edge.direction === "HOME") return edge.home_team_name;
+  if (edge.direction === "AWAY") return edge.away_team_name;
+  return "";
+}
+
+function pickOdds(edge: MarketEdgeRow, oddsRows: OddsRow[] = []) {
   const context = edge.market_context ?? {};
-  if (edge.market !== "MONEYLINE") return null;
-  return edge.direction === "HOME" ? numberValue(context.homePrice) : edge.direction === "AWAY" ? numberValue(context.awayPrice) : null;
+  const contextPrice =
+    edge.direction === "HOME"
+      ? numberValue(context.homePrice)
+      : edge.direction === "AWAY"
+        ? numberValue(context.awayPrice)
+        : edge.direction === "OVER"
+          ? numberValue(context.overPrice)
+          : edge.direction === "UNDER"
+            ? numberValue(context.underPrice)
+            : null;
+  if (contextPrice !== null) return contextPrice;
+
+  const market = pickMarket(edge.market);
+  const line = pickLine(edge);
+  const teamKey = teamsKey(edge.home_team_name, edge.away_team_name);
+  const outcome = normalizeName(selectedOutcomeName(edge));
+  const row = oddsRows.find((item) => {
+    if (teamsKey(item.home_team, item.away_team) !== teamKey) return false;
+    if (item.market_key !== market) return false;
+    if (normalizeName(item.outcome_name) !== outcome) return false;
+    const point = numberValue(item.point);
+    return line === null || point === null || Number(point) === Number(line);
+  });
+
+  return numberValue(row?.price);
 }
 
 function pickLabel(edge: MarketEdgeRow) {
@@ -164,7 +194,8 @@ async function loadCanonicalRows() {
   const decisionByGame = new Map(((decisions.data ?? []) as DecisionRow[]).map((row) => [row.official_game_id, row]));
   const projectionByGame = new Map(((projections.data ?? []) as ProjectionRow[]).map((row) => [row.official_game_id, row]));
   const oddsByTeams = new Map<string, OddsRow>();
-  for (const row of ((odds.data ?? []) as OddsRow[])) {
+  const oddsRows = (odds.data ?? []) as OddsRow[];
+  for (const row of oddsRows) {
     const key = teamsKey(row.home_team, row.away_team);
     if (!oddsByTeams.has(key)) oddsByTeams.set(key, row);
   }
@@ -173,6 +204,7 @@ async function loadCanonicalRows() {
     decisionByGame,
     projectionByGame,
     oddsByTeams,
+    oddsRows,
   };
 }
 
@@ -207,7 +239,7 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
   if (!params.force && currentHourET() !== config.morningScanHourEt) {
     return { enabled: true, skipped: true, reason: "Morning scan runs only at 7:00 AM ET." };
   }
-  const { edges, projectionByGame, decisionByGame, oddsByTeams } = await loadCanonicalRows();
+  const { edges, projectionByGame, decisionByGame, oddsByTeams, oddsRows } = await loadCanonicalRows();
   const date = todayET();
   const scanAt = new Date().toISOString();
   const opportunities = selectMorningOpportunities(edges);
@@ -234,7 +266,7 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
         detectedPick: pickLabel(edge),
         detectedMarket: pickMarket(edge.market),
         detectedLine: pickLine(edge),
-        detectedOdds: pickOdds(edge),
+        detectedOdds: pickOdds(edge, oddsRows),
         detectedDirection: edge.direction,
         detectedEdge: numberValue(edge.edge),
         detectedAt: scanAt,
@@ -278,7 +310,7 @@ function gate(edge: MarketEdgeRow, decision?: DecisionRow, projection?: Projecti
 export async function runAtlasCoreLiveValidation() {
   const config = getAtlasCoreMlbConfig();
   if (!config.enabled || config.legacyRollbackEnabled) return { enabled: false, skipped: true, reason: "Atlas Core MLB disabled or rollback enabled." };
-  const { edges, decisionByGame, projectionByGame, oddsByTeams } = await loadCanonicalRows();
+  const { edges, decisionByGame, projectionByGame, oddsByTeams, oddsRows } = await loadCanonicalRows();
   const candidates = edges
     .filter(isOpportunity)
     .map((edge) => {
@@ -309,7 +341,7 @@ export async function runAtlasCoreLiveValidation() {
       pick: pickLabel(item.edge),
       market: pickMarket(item.edge.market),
       line: pickLine(item.edge),
-      odds: pickOdds(item.edge),
+      odds: pickOdds(item.edge, oddsRows),
       direction: item.edge.direction,
       rank: index + 1,
       status: "VALIDATED",

@@ -51,7 +51,7 @@ export async function getMlbPublicSignals(date = todayMiamiDate()) {
         pick: metadata.detectedPick ?? "Pending",
         market: metadata.detectedMarket ?? null,
         line: metadata.detectedLine ?? null,
-        odds: null,
+        odds: metadata.detectedOdds ?? null,
         status: "Pending",
         analysis_summary: null,
         confidence_label: null,

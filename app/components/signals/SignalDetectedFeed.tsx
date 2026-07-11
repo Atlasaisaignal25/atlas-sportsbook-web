@@ -10,6 +10,7 @@ export type SignalDetectedRow = {
   sport: SportCode;
   matchup: string;
   pick: string;
+  odds?: number | null;
   status: string;
   time: string;
   startTime?: string | null;
@@ -22,6 +23,12 @@ function ArrowIcon() {
       <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
+}
+
+function formatOdds(value?: number | null) {
+  const odds = Number(value);
+  if (!Number.isFinite(odds)) return null;
+  return odds > 0 ? `+${odds}` : `${odds}`;
 }
 
 type SportFilter = "ALL" | SportCode;
@@ -245,6 +252,9 @@ export function SignalDetectedFeed({
               <span className="block truncate text-[12px] font-bold text-white">{row.matchup}</span>
               <span className="block truncate text-[12px] font-semibold text-cyan-300">
                 {row.pick === "Signal Detected" ? "Pending" : row.pick}
+                {formatOdds(row.odds) ? (
+                  <span className="ml-1 text-white/58">{formatOdds(row.odds)}</span>
+                ) : null}
               </span>
             </span>
             <span className="justify-self-end rounded-[8px] border border-cyan-400/25 bg-cyan-400/10 px-2 py-1.5 text-[8px] font-black uppercase text-cyan-300">

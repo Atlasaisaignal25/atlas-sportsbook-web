@@ -3240,6 +3240,7 @@ function SignalDetectedRow({
   game,
   sport,
   pickLabel,
+  odds,
   result,
   isLast,
   onOpen,
@@ -3247,11 +3248,13 @@ function SignalDetectedRow({
   game: LiveScore;
   sport: SportTab;
   pickLabel: string;
+  odds?: number | null;
   result: string | null | undefined;
   isLast: boolean;
   onOpen: () => void;
 }) {
   const resultLabel = getSignalResultBadge(result);
+  const oddsLabel = formatAmericanOdds(odds ?? null);
 
   return (
     <button
@@ -3272,6 +3275,7 @@ function SignalDetectedRow({
         </p>
         <p className="truncate text-[13px] font-semibold text-cyan-300">
           {pickLabel === "N/A" ? "Pending" : pickLabel}
+          {oddsLabel !== "N/A" ? <span className="ml-1 text-white/58">{oddsLabel}</span> : null}
         </p>
       </div>
 
@@ -6866,6 +6870,7 @@ const subscriptionPlansBoard = (
               sport: group.sport as "MLB" | "NBA" | "NFL" | "NHL" | "SOCCER",
               matchup: `${getLiveDisplayName(game.away_team)} vs ${getLiveDisplayName(game.home_team)}`,
               pick: formatDisplayedPick(livePickData.pick, group.sport),
+              odds: livePickData.odds ?? null,
               status: String(livePickData.status ?? "Pending"),
               time: formatTime(game.commence_time).toUpperCase(),
               startTime: game.commence_time,
@@ -7690,6 +7695,7 @@ const subscriptionPlansBoard = (
                           sport: group.sport,
                           livePickData,
                           pickLabel: formatDisplayedPick(livePickData.pick, group.sport),
+                          odds: livePickData.odds ?? null,
                           result: getLivePickResult(game, livePickData),
                         },
                       ];
@@ -7704,6 +7710,7 @@ const subscriptionPlansBoard = (
                       game={row.game}
                       sport={row.sport}
                       pickLabel={row.pickLabel}
+                      odds={row.odds}
                       result={row.result}
                       isLast={idx === visibleRows.length - 1}
                       onOpen={() =>
