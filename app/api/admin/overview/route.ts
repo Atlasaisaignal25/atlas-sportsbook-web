@@ -175,6 +175,7 @@ async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin
       .from("mlb_research_validation_history")
       .select("id,result,market,edge_classification,decision,conviction,confidence,roi,clv_probability,created_at")
       .eq("canonical", true)
+      .eq("record_type", "OFFICIAL")
       .order("created_at", { ascending: false })
       .limit(300),
     supabase
@@ -370,6 +371,7 @@ async function loadResearchDashboard(supabase: ReturnType<typeof getSupabaseAdmi
     bullpenRows,
     lineupRows,
     weatherRows,
+    officialPicks,
   ] = await Promise.all([
     supabase
       .from("mlb_decision_research_snapshots")
@@ -415,6 +417,12 @@ async function loadResearchDashboard(supabase: ReturnType<typeof getSupabaseAdmi
       .eq("canonical", true)
       .order("captured_at", { ascending: false })
       .limit(200),
+    supabase
+      .from("atlas_core_mlb_picks")
+      .select("*")
+      .eq("sport", "MLB")
+      .order("published_at", { ascending: false })
+      .limit(300),
   ]);
 
   const errors = [
@@ -425,9 +433,11 @@ async function loadResearchDashboard(supabase: ReturnType<typeof getSupabaseAdmi
     bullpenRows.error?.message,
     lineupRows.error?.message,
     weatherRows.error?.message,
+    officialPicks.error?.message,
   ].filter(Boolean) as string[];
 
   const projectionByGame = latestBy(projections.data ?? [], (row: any) => row.official_game_id);
+  const officialPickByGame = latestBy(officialPicks.data ?? [], (row: any) => row.game_id);
   const teamByGameSide = latestBy(
     teamRows.data ?? [],
     (row: any) => `${row.official_game_id}:${row.side}`,
@@ -455,6 +465,7 @@ async function loadResearchDashboard(supabase: ReturnType<typeof getSupabaseAdmi
     const awayLineup: any = lineupByGameSide.get(`${decision.official_game_id}:AWAY`);
     const weather: any = weatherByGame.get(decision.official_game_id);
     const market = decision.component_breakdown?.marketIntelligence;
+    const officialPick: any = officialPickByGame.get(decision.official_game_id);
 
     return {
       id: decision.official_game_id,
@@ -479,6 +490,25 @@ async function loadResearchDashboard(supabase: ReturnType<typeof getSupabaseAdmi
         engineVersion: decision.model_version,
         updatedAt: decision.captured_at,
       },
+      officialPick: officialPick ? {
+        id: officialPick.id,
+        pick: officialPick.pick,
+        market: officialPick.market,
+        line: rowNumber(officialPick.line),
+        odds: rowNumber(officialPick.odds),
+        direction: officialPick.direction,
+        status: officialPick.status,
+        rank: rowNumber(officialPick.rank),
+        isTopSignal: Boolean(officialPick.is_top_signal),
+        edge: rowNumber(officialPick.edge),
+        confidence: rowNumber(officialPick.confidence),
+        consensus: officialPick.consensus_grade,
+        consensusScore: rowNumber(officialPick.consensus_score),
+        conviction: officialPick.conviction_grade,
+        convictionScore: rowNumber(officialPick.conviction_score),
+        publishedAt: officialPick.published_at,
+        source: "public.atlas_core_mlb_picks",
+      } : null,
       projection: projection ? {
         homeRuns: rowNumber(projection.projected_home_runs),
         awayRuns: rowNumber(projection.projected_away_runs),

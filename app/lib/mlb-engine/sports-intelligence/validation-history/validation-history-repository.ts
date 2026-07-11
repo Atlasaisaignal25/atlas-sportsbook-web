@@ -40,6 +40,31 @@ type MarketEdgeRow = {
   captured_at: string;
 };
 
+type OfficialPickRow = {
+  id: string;
+  game_id: string;
+  away_team: string;
+  home_team: string;
+  start_time: string | null;
+  pick: string;
+  market: string;
+  line: number | string | null;
+  odds: number | string | null;
+  direction: ValidationSelection | string;
+  rank: number | string | null;
+  status: string | null;
+  is_top_signal: boolean | null;
+  edge: number | string | null;
+  conviction_score: number | string | null;
+  conviction_grade: string | null;
+  consensus_score: number | string | null;
+  consensus_grade: string | null;
+  confidence: number | string | null;
+  source_versions: Record<string, unknown> | null;
+  source_snapshot_hashes: Record<string, unknown> | null;
+  published_at: string;
+};
+
 type ProjectionRow = {
   official_game_id: string;
   projected_home_runs: number | string | null;
@@ -207,6 +232,20 @@ function marketKeyFor(market: ValidationMarket) {
   return "totals";
 }
 
+function validationMarketFromOfficial(value: unknown): ValidationMarket | null {
+  const market = String(value ?? "").trim().toUpperCase();
+  if (market === "H2H" || market === "ML" || market === "MONEYLINE") return "MONEYLINE";
+  if (market === "SPREADS" || market === "SPREAD" || market === "RUN_LINE" || market === "RUN LINE") return "RUN_LINE";
+  if (market === "TOTALS" || market === "TOTAL") return "TOTALS";
+  return null;
+}
+
+function officialDirection(value: unknown): ValidationSelection {
+  const direction = String(value ?? "").trim().toUpperCase();
+  if (direction === "HOME" || direction === "AWAY" || direction === "OVER" || direction === "UNDER") return direction;
+  return "NONE";
+}
+
 function marketLineFromContext(edge: MarketEdgeRow) {
   const context = edge.market_context ?? {};
   if (edge.market === "RUN_LINE") {
@@ -288,6 +327,20 @@ async function loadCanonicalMarketEdges() {
   return (data ?? []) as MarketEdgeRow[];
 }
 
+async function loadOfficialPublishedPicks() {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("atlas_core_mlb_picks")
+    .select("id,game_id,away_team,home_team,start_time,pick,market,line,odds,direction,rank,status,is_top_signal,edge,conviction_score,conviction_grade,consensus_score,consensus_grade,confidence,source_versions,source_snapshot_hashes,published_at")
+    .eq("sport", "MLB")
+    .not("rank", "is", null)
+    .not("status", "in", '("REMOVED","VOID","CANCELLED","CANCELED")')
+    .order("published_at", { ascending: false })
+    .limit(300);
+  if (error) throw error;
+  return (data ?? []) as OfficialPickRow[];
+}
+
 async function loadCanonicalProjectionRows() {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
@@ -317,6 +370,8 @@ async function loadCanonicalDecisionRows() {
 function buildRows(snapshots: ValidationPregameSnapshot[]) {
   return snapshots.map((snapshot) => {
     const payload = {
+      recordType: snapshot.recordType ?? "OFFICIAL",
+      officialPickId: snapshot.officialPickId ?? null,
       gameId: snapshot.gameId,
       market: snapshot.market,
       selection: snapshot.selection,
@@ -331,6 +386,9 @@ function buildRows(snapshots: ValidationPregameSnapshot[]) {
       modelVersions: snapshot.modelVersions,
     };
     return {
+      record_type: snapshot.recordType ?? "OFFICIAL",
+      official_pick_id: snapshot.officialPickId ?? null,
+      odds_event_id: snapshot.oddsEventId ?? null,
       game_id: snapshot.gameId,
       game_date: snapshot.gameDate ?? null,
       home_team: snapshot.homeTeam,
@@ -353,6 +411,11 @@ function buildRows(snapshots: ValidationPregameSnapshot[]) {
       no_pick: snapshot.noPick,
       market_line: snapshot.marketLine ?? null,
       market_price: snapshot.marketPrice ?? null,
+      published_price: snapshot.publishedPrice ?? snapshot.marketPrice ?? null,
+      official_rank: snapshot.officialRank ?? null,
+      is_top_signal: snapshot.isTopSignal ?? false,
+      official_status: snapshot.officialStatus ?? null,
+      official_published_at: snapshot.officialPublishedAt ?? null,
       result: "PENDING",
       model_versions: snapshot.modelVersions,
       source_snapshot_hashes: snapshot.sourceSnapshotHashes,
@@ -366,7 +429,8 @@ function buildRows(snapshots: ValidationPregameSnapshot[]) {
 }
 
 export async function buildValidationPregameSnapshots(asOf = new Date().toISOString()) {
-  const [edges, projections, decisions, oddsSnapshots] = await Promise.all([
+  const [officialPicks, edges, projections, decisions, oddsSnapshots] = await Promise.all([
+    loadOfficialPublishedPicks(),
     loadCanonicalMarketEdges(),
     loadCanonicalProjectionRows(),
     loadCanonicalDecisionRows(),
@@ -379,21 +443,36 @@ export async function buildValidationPregameSnapshots(asOf = new Date().toISOStr
     oddsByGame.set(key, [...(oddsByGame.get(key) ?? []), snapshot]);
   }
 
-  const records = edges.map((edge): ValidationPregameSnapshot => {
-    const projection = projections.get(edge.official_game_id);
-    const decision = decisions.get(edge.official_game_id);
-    const line = marketLineFromContext(edge);
-    const contextPrice = marketPriceFromContext(edge);
+  const edgeByHash = new Map(edges.map((edge) => [edge.snapshot_hash, edge]));
+  const records = officialPicks.map((pick): ValidationPregameSnapshot | null => {
+    const market = validationMarketFromOfficial(pick.market);
+    const selection = officialDirection(pick.direction);
+    if (!market || selection === "NONE") return null;
+
+    const edgeHash = typeof pick.source_snapshot_hashes?.marketEdge === "string"
+      ? pick.source_snapshot_hashes.marketEdge
+      : null;
+    const edge = edgeHash ? edgeByHash.get(edgeHash) : edges.find((candidate) =>
+      candidate.official_game_id === pick.game_id &&
+      candidate.market === market &&
+      candidate.direction === selection &&
+      toNumber(marketLineFromContext(candidate)) === toNumber(pick.line)
+    );
+    const projection = projections.get(pick.game_id);
+    const decision = decisions.get(pick.game_id);
+    const line = toNumber(pick.line);
+    const contextPrice = toNumber(pick.odds);
     const snapshotPrices = priceEvidenceFromSnapshots({
-      snapshots: oddsByGame.get(teamsKey(edge.home_team_name, edge.away_team_name)) ?? [],
-      market: edge.market,
-      selection: edge.direction,
-      homeTeam: edge.home_team_name,
-      awayTeam: edge.away_team_name,
+      snapshots: oddsByGame.get(teamsKey(pick.home_team, pick.away_team)) ?? [],
+      market,
+      selection,
+      homeTeam: pick.home_team,
+      awayTeam: pick.away_team,
       line,
     });
     const pregameSnapshotAt = latestIso([
-      edge.captured_at,
+      pick.published_at,
+      edge?.captured_at,
       projection?.captured_at,
       decision?.captured_at,
       snapshotPrices.timestamp,
@@ -401,16 +480,19 @@ export async function buildValidationPregameSnapshots(asOf = new Date().toISOStr
     ]) ?? asOf;
 
     return {
-      gameId: edge.official_game_id,
+      recordType: "OFFICIAL",
+      officialPickId: pick.id,
+      oddsEventId: pick.game_id,
+      gameId: pick.game_id,
       gameDate: dateET(pregameSnapshotAt),
-      homeTeam: edge.home_team_name,
-      awayTeam: edge.away_team_name,
-      market: edge.market,
-      selection: edge.direction,
-      atlasProbability: toNumber(edge.atlas_probability),
-      marketProbability: toNumber(edge.market_probability),
-      edge: toNumber(edge.edge),
-      edgeClassification: edge.classification,
+      homeTeam: pick.home_team,
+      awayTeam: pick.away_team,
+      market,
+      selection,
+      atlasProbability: toNumber(edge?.atlas_probability),
+      marketProbability: toNumber(edge?.market_probability),
+      edge: toNumber(pick.edge ?? edge?.edge),
+      edgeClassification: edge?.classification ?? null,
       projectedHomeRuns: toNumber(projection?.projected_home_runs),
       projectedAwayRuns: toNumber(projection?.projected_away_runs),
       projectedTotal: toNumber(projection?.projected_total_runs),
@@ -423,22 +505,29 @@ export async function buildValidationPregameSnapshots(asOf = new Date().toISOStr
       noPick: Boolean(decision?.no_pick),
       marketLine: line,
       marketPrice: contextPrice ?? snapshotPrices.price,
+      publishedPrice: contextPrice ?? snapshotPrices.price,
+      officialRank: toNumber(pick.rank),
+      isTopSignal: Boolean(pick.is_top_signal),
+      officialStatus: pick.status,
+      officialPublishedAt: pick.published_at,
       modelVersions: {
         validation: MLB_VALIDATION_HISTORY_VERSION,
-        marketEdge: edge.model_version,
+        atlasCore: pick.source_versions?.atlasCore ?? null,
+        marketEdge: edge?.model_version ?? null,
         projection: projection?.model_version ?? null,
         decision: decision?.model_version ?? null,
       },
       sourceSnapshotHashes: {
-        marketEdge: edge.snapshot_hash,
+        officialPick: pick.id,
+        marketEdge: edge?.snapshot_hash ?? edgeHash,
         projection: projection?.feature_hash ?? null,
         decision: decision?.feature_hash ?? null,
       },
       pregameSnapshotAt,
     };
-  });
+  }).filter((record): record is ValidationPregameSnapshot => Boolean(record));
 
-  return { asOf, gamesInspected: new Set(edges.map((edge) => edge.official_game_id)).size, records };
+  return { asOf, gamesInspected: new Set(officialPicks.map((pick) => pick.game_id)).size, records };
 }
 
 export async function insertValidationPregameSnapshotsDeduped(records: ValidationPregameSnapshot[]) {
@@ -467,8 +556,8 @@ export async function insertValidationPregameSnapshotsDeduped(records: Validatio
         invalid_reason: "SUPERSEDED_BY_MLB_VALIDATION_HISTORY_CAPTURE",
         updated_at: new Date().toISOString(),
       })
-      .eq("game_id", row.game_id)
-      .eq("market", row.market)
+      .eq("record_type", "OFFICIAL")
+      .eq("official_pick_id", row.official_pick_id)
       .neq("feature_hash", row.feature_hash)
       .eq("canonical", true)
       .eq("result", "PENDING");
@@ -591,6 +680,7 @@ export async function gradeValidationHistory(): Promise<ValidationHistoryGradeRe
     .from(TABLE)
     .select("id,game_id,game_date,home_team,away_team,market,selection,market_probability,market_line,market_price,result,feature_hash,pregame_snapshot_at")
     .eq("canonical", true)
+    .eq("record_type", "OFFICIAL")
     .in("result", ["PENDING"])
     .order("pregame_snapshot_at", { ascending: false })
     .limit(300);
@@ -711,38 +801,43 @@ export async function getValidationHistoryStatus() {
 
   const { data, error: rowsError } = await supabase
     .from(TABLE)
-    .select("game_id,home_team,away_team,market,selection,edge,edge_classification,decision,consensus,conviction,confidence,no_pick,result,units,roi,clv_probability,pregame_snapshot_at,graded_at,feature_hash,canonical")
+    .select("record_type,official_pick_id,official_rank,is_top_signal,official_status,official_published_at,game_id,home_team,away_team,market,selection,edge,edge_classification,decision,consensus,conviction,confidence,no_pick,result,units,roi,clv_probability,pregame_snapshot_at,graded_at,feature_hash,canonical")
     .eq("canonical", true)
     .order("pregame_snapshot_at", { ascending: false })
     .limit(1000);
 
   const statusRows = rowsError ? [] : (data ?? []);
-  const gradedRows = statusRows.filter((row: any) => ["WON", "LOST", "PUSH", "VOID"].includes(row.result));
-  const won = statusRows.filter((row: any) => row.result === "WON").length;
-  const lost = statusRows.filter((row: any) => row.result === "LOST").length;
-  const pushes = statusRows.filter((row: any) => row.result === "PUSH").length;
+  const officialRows = statusRows.filter((row: any) => row.record_type === "OFFICIAL");
+  const researchRows = statusRows.filter((row: any) => row.record_type !== "OFFICIAL");
+  const gradedRows = officialRows.filter((row: any) => ["WON", "LOST", "PUSH", "VOID"].includes(row.result));
+  const won = officialRows.filter((row: any) => row.result === "WON").length;
+  const lost = officialRows.filter((row: any) => row.result === "LOST").length;
+  const pushes = officialRows.filter((row: any) => row.result === "PUSH").length;
 
   return {
     healthy: !rowsError,
     totalRecords: count ?? 0,
-    canonicalRecords: statusRows.length,
-    pending: statusRows.filter((row: any) => row.result === "PENDING").length,
+    canonicalRecords: officialRows.length,
+    officialRecords: officialRows.length,
+    researchRecords: researchRows.length,
+    pending: officialRows.filter((row: any) => row.result === "PENDING").length,
     graded: gradedRows.length,
     wins: won,
     losses: lost,
     pushes,
-    voids: statusRows.filter((row: any) => row.result === "VOID").length,
+    voids: officialRows.filter((row: any) => row.result === "VOID").length,
     roi: roiFor(gradedRows),
-    averageClv: average(statusRows.map((row: any) => toNumber(row.clv_probability))),
+    averageClv: average(officialRows.map((row: any) => toNumber(row.clv_probability))),
     roiByMarket: groupMetric(gradedRows, "market", "roi"),
-    clvByMarket: groupMetric(statusRows, "market", "clv"),
+    clvByMarket: groupMetric(officialRows, "market", "clv"),
     roiByEdgeClassification: groupMetric(gradedRows, "edge_classification", "roi"),
-    resultsByDecision: countBy(statusRows, "decision"),
-    resultsByConviction: countBy(statusRows, "conviction"),
-    resultsByConfidence: countBy(statusRows, "confidence"),
-    resultDistribution: countBy(statusRows, "result"),
-    marketDistribution: countBy(statusRows, "market"),
-    examples: statusRows.slice(0, 5),
+    resultsByDecision: countBy(officialRows, "decision"),
+    resultsByConviction: countBy(officialRows, "conviction"),
+    resultsByConfidence: countBy(officialRows, "confidence"),
+    resultDistribution: countBy(officialRows, "result"),
+    marketDistribution: countBy(officialRows, "market"),
+    recordTypeDistribution: countBy(statusRows, "record_type"),
+    examples: officialRows.slice(0, 5),
     errors: rowsError ? [rowsError.message] : [] as string[],
   };
 }

@@ -193,11 +193,10 @@ export function buildPerformanceAnalyticsSnapshot(
     byConfidence,
     byMotor: {
       status: "UNAVAILABLE",
-      reason: "public.mlb_research_validation_history does not store per-engine contribution fields. Phase 15 does not join external engine tables or invent motor relationships.",
+      reason: "Official performance uses public.mlb_research_validation_history rows where record_type = OFFICIAL. Per-engine contribution fields are not stored here.",
       requestedMotors: ["Projection", "Pitcher", "Offense", "Bullpen", "Weather", "Park"],
     },
     sourceTable: "public.mlb_research_validation_history",
     calculatedAt,
   };
 }
-

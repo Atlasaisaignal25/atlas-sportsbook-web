@@ -11,6 +11,9 @@ export type ValidationSelection = "HOME" | "AWAY" | "OVER" | "UNDER" | "NONE";
 export type ValidationResult = "WON" | "LOST" | "PUSH" | "VOID" | "PENDING";
 
 export type ValidationPregameSnapshot = {
+  recordType?: "OFFICIAL" | "RESEARCH";
+  officialPickId?: string | null;
+  oddsEventId?: string | null;
   gameId: string;
   gameDate?: string | null;
   homeTeam: string;
@@ -33,6 +36,11 @@ export type ValidationPregameSnapshot = {
   noPick: boolean;
   marketLine?: number | null;
   marketPrice?: number | null;
+  publishedPrice?: number | null;
+  officialRank?: number | null;
+  isTopSignal?: boolean;
+  officialStatus?: string | null;
+  officialPublishedAt?: string | null;
   modelVersions: Record<string, unknown>;
   sourceSnapshotHashes: Record<string, unknown>;
   pregameSnapshotAt: string;
@@ -187,4 +195,3 @@ export function noVigForSelectedPrice(
 export function teamsKey(homeTeam: string, awayTeam: string) {
   return `${normalizeMlbMarketName(homeTeam)}|${normalizeMlbMarketName(awayTeam)}`;
 }
-

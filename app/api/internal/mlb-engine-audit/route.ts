@@ -786,7 +786,7 @@ function validationHistoryAudit(
     marketDistribution: status.marketDistribution,
     examples: status.examples,
     warnings: [
-      "Atlas Validation & Research History Engine v1 is research-only and only records, grades, and measures existing Atlas evaluations. It is not connected to candidateScore, buildCandidate, public signals, Top 5, Top Signal, Top Play, closing, or public UI.",
+      "Atlas Validation History stores OFFICIAL published picks from public.atlas_core_mlb_picks separately from RESEARCH rows. It does not modify candidateScore, buildCandidate, public signals, Top 5, Top Signal, Top Play, closing, or public UI.",
       ...(status.totalRecords === 0 ? ["No MLB Validation History records are available yet."] : []),
       ...(status.errors ?? []),
     ],
@@ -817,11 +817,94 @@ function performanceAnalyticsAudit(
     lowSampleSize: status.lowSampleSize,
     latestSnapshot: status.latestSnapshot,
     warnings: [
-      "Atlas Performance Analytics Engine v1 is research-only and reads only public.mlb_research_validation_history. It does not create picks, change weights, or modify any engine.",
+      "Atlas Performance Analytics Engine v1 reads only public.mlb_research_validation_history rows where record_type = OFFICIAL. It does not create picks, change weights, or modify any engine.",
       ...(status.warnings ?? []),
       ...(status.totalSnapshots === 0 ? ["No MLB Performance Analytics snapshot is available yet."] : []),
       ...(status.errors ?? []),
     ],
+  };
+}
+
+async function officialPickConsistencyAudit() {
+  const supabase = getSupabaseAdmin();
+  const [officialPicks, officialHistory, researchHistory, performanceSnapshot] = await Promise.all([
+    supabase
+      .from("atlas_core_mlb_picks")
+      .select("id,game_id,pick,market,line,odds,rank,is_top_signal,status,published_at")
+      .eq("sport", "MLB")
+      .not("rank", "is", null)
+      .limit(1000),
+    supabase
+      .from("mlb_research_validation_history")
+      .select("id,official_pick_id,game_id,market,selection,official_rank,is_top_signal,result,canonical")
+      .eq("record_type", "OFFICIAL")
+      .eq("canonical", true)
+      .limit(1000),
+    supabase
+      .from("mlb_research_validation_history")
+      .select("id", { count: "exact", head: true })
+      .eq("record_type", "RESEARCH"),
+    supabase
+      .from("mlb_performance_analytics")
+      .select("total_picks,sample_size,source_table,calculated_at")
+      .eq("canonical", true)
+      .order("calculated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const picks = officialPicks.data ?? [];
+  const history = officialHistory.data ?? [];
+  const historyByPick = new Map<string, any[]>();
+  for (const row of history as any[]) {
+    if (!row.official_pick_id) continue;
+    historyByPick.set(row.official_pick_id, [...(historyByPick.get(row.official_pick_id) ?? []), row]);
+  }
+  const missingHistoryRecords = (picks as any[])
+    .filter((pick) => !historyByPick.has(pick.id))
+    .map((pick) => ({ gameId: pick.game_id, pick: pick.pick, rank: pick.rank }));
+  const duplicatedOfficialRecords = Array.from(historyByPick.entries())
+    .filter(([, rows]) => rows.length > 1)
+    .map(([officialPickId, rows]) => ({ officialPickId, count: rows.length, gameId: rows[0]?.game_id }));
+  const mismatches = (history as any[])
+    .filter((row) => {
+      const pick = (picks as any[]).find((item) => item.id === row.official_pick_id);
+      return pick && (Number(row.official_rank) !== Number(pick.rank) || Boolean(row.is_top_signal) !== Boolean(pick.is_top_signal));
+    })
+    .map((row) => ({ gameId: row.game_id, officialPickId: row.official_pick_id }));
+
+  return {
+    sourceOfTruth: {
+      officialPublishedPick: "public.atlas_core_mlb_picks",
+      signalsDetected: "public.atlas_core_mlb_signals",
+      researchOnly: [
+        "public.mlb_decision_research_snapshots",
+        "public.mlb_projection_research_snapshots",
+        "public.mlb_market_edge_research_snapshots",
+      ],
+    },
+    officialPicksCount: picks.length,
+    officialHistoryCount: history.length,
+    researchHistoryCount: researchHistory.count ?? 0,
+    performanceOfficialCount: performanceSnapshot.data?.total_picks ?? 0,
+    performanceSampleSize: performanceSnapshot.data?.sample_size ?? 0,
+    mismatches,
+    missingHistoryRecords,
+    duplicatedOfficialRecords,
+    healthy:
+      !officialPicks.error &&
+      !officialHistory.error &&
+      !researchHistory.error &&
+      !performanceSnapshot.error &&
+      mismatches.length === 0 &&
+      missingHistoryRecords.length === 0 &&
+      duplicatedOfficialRecords.length === 0,
+    errors: [
+      officialPicks.error?.message,
+      officialHistory.error?.message,
+      researchHistory.error?.message,
+      performanceSnapshot.error?.message,
+    ].filter(Boolean),
   };
 }
 
@@ -960,7 +1043,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus, performanceAnalyticsStatus, learningEngineStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus, performanceAnalyticsStatus, learningEngineStatus, officialPickConsistency] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -979,6 +1062,7 @@ export async function GET(request: Request) {
       getValidationHistoryStatus(),
       getPerformanceAnalyticsStatus(),
       getLearningEngineStatus(),
+      officialPickConsistencyAudit(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -1154,6 +1238,7 @@ export async function GET(request: Request) {
           sportsFlags.performanceAnalyticsMode === "RESEARCH_ONLY",
         performanceAnalyticsStatus,
       ),
+      officialPickConsistency,
       learningEngine: learningEngineAudit(
         sportsFlags.sportsIntelligenceEnabled &&
           sportsFlags.learningEngineEnabled &&

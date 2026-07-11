@@ -145,6 +145,7 @@ type ResearchGame = {
   id: string;
   header: { awayTeam: string; homeTeam: string; time: string; status: string; league: string };
   decision: any;
+  officialPick: any | null;
   projection: any | null;
   market: any | null;
   teamQuality: any;
@@ -238,6 +239,12 @@ function signedPct(value: unknown) {
   if (typeof value !== "number") return "N/A";
   const rounded = Math.round(value * 10) / 10;
   return `${rounded > 0 ? "+" : ""}${rounded}%`;
+}
+
+function pickText(pick: any | null | undefined) {
+  if (!pick?.pick) return "No official pick";
+  const odds = typeof pick.odds === "number" ? money(pick.odds) : null;
+  return odds ? `${pick.pick} ${odds}` : pick.pick;
 }
 
 function stars(value: unknown) {
@@ -644,7 +651,7 @@ function SummaryGameCard({
           <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr] lg:items-center">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
-                {noPick ? "No Pick" : "Top Play"}
+                {noPick ? "Research No Pick" : "Research Decision"}
               </p>
               <h4 className="mt-1 text-3xl font-black tracking-tight text-white">
                 {displayDecision(game.decision?.decision)}
@@ -667,6 +674,25 @@ function SummaryGameCard({
                 <p className="text-2xl font-black text-emerald-300">{signedPct(edge)}</p>
                 <p className="text-[11px] font-bold uppercase text-white/45">No Pick {noPick ? "Yes" : "No"}</p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-cyan-400/15 bg-cyan-950/10 p-3.5">
+          <div className="grid gap-3 sm:grid-cols-[1.2fr_1fr] sm:items-center">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
+                Official Published Pick
+              </p>
+              <h4 className="mt-1 text-2xl font-black text-white">{pickText(game.officialPick)}</h4>
+              <p className="mt-1 text-xs font-bold uppercase text-white/45">
+                Source: public.atlas_core_mlb_picks
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <MiniMetric label="Rank" value={game.officialPick?.rank ? `#${game.officialPick.rank}` : "N/A"} />
+              <MiniMetric label="Status" value={game.officialPick?.status ?? "N/A"} />
+              <MiniMetric label="Top Signal" value={game.officialPick?.isTopSignal ? "Yes" : "No"} />
             </div>
           </div>
         </section>
@@ -796,9 +822,9 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </p>
           </div>
           <div className="grid grid-cols-3 gap-2 lg:min-w-[420px]">
-            <MiniMetric label="Decision" value={decisionLabel(game.decision?.decision)} />
+            <MiniMetric label="Research Decision" value={decisionLabel(game.decision?.decision)} />
             <MiniMetric label="Confidence" value={scorePct(game.decision?.confidence)} />
-            <MiniMetric label="Snapshot" value={formatTime(game.decision?.updatedAt)} />
+            <MiniMetric label="Official Pick" value={pickText(game.officialPick)} />
           </div>
         </div>
       </summary>
@@ -821,7 +847,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
           <SystemSection index={2} title="Atlas Decision Engine" version={game.decision?.engineVersion}>
             <MetricGrid
               items={[
-                ["Decision", game.decision?.decision, "cyan"],
+                ["Research Decision", game.decision?.decision, "cyan"],
                 ["Consensus", game.decision?.consensus],
                 ["Consensus Score", game.decision?.consensusScore],
                 ["Conviction", game.decision?.conviction],
@@ -834,7 +860,24 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             />
           </SystemSection>
 
-          <SystemSection index={3} title="Sports Projection" version={game.projection?.modelVersion}>
+          <SystemSection index={3} title="Official Published Pick" version={game.officialPick?.source}>
+            <MetricGrid
+              items={[
+                ["Pick", pickText(game.officialPick), "cyan"],
+                ["Market", game.officialPick?.market],
+                ["Direction", game.officialPick?.direction],
+                ["Line", game.officialPick?.line ?? "N/A"],
+                ["Odds", game.officialPick?.odds ? money(game.officialPick.odds) : "N/A"],
+                ["Rank", game.officialPick?.rank ? `#${game.officialPick.rank}` : "N/A"],
+                ["Top Signal", game.officialPick?.isTopSignal ? "Yes" : "No"],
+                ["Status", game.officialPick?.status],
+                ["Edge", game.officialPick?.edge !== null && game.officialPick?.edge !== undefined ? signedPct(game.officialPick.edge * 100) : "N/A", "green"],
+                ["Published", formatTime(game.officialPick?.publishedAt)],
+              ]}
+            />
+          </SystemSection>
+
+          <SystemSection index={4} title="Sports Projection" version={game.projection?.modelVersion}>
             <MetricGrid
               items={[
                 ["Projected Home Runs", game.projection?.homeRuns],
@@ -852,7 +895,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
           </SystemSection>
 
           {game.market ? (
-            <SystemSection index={4} title="Market">
+            <SystemSection index={5} title="Market">
               <MetricGrid
                 items={[
                   ["Market Moneyline", "N/A"],
@@ -865,7 +908,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </SystemSection>
           ) : null}
 
-          <SystemSection index={5} title="Team Quality">
+          <SystemSection index={6} title="Team Quality">
             <div className="grid gap-3 md:grid-cols-2">
               <TeamTechnicalPanel
                 label="Home"
@@ -892,7 +935,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </div>
           </SystemSection>
 
-          <SystemSection index={6} title="Starting Pitchers">
+          <SystemSection index={7} title="Starting Pitchers">
             <div className="grid gap-3 md:grid-cols-2">
               <TeamTechnicalPanel
                 label="Home"
@@ -921,7 +964,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </div>
           </SystemSection>
 
-          <SystemSection index={7} title="Offense">
+          <SystemSection index={8} title="Offense">
             <div className="grid gap-3 md:grid-cols-2">
               <TeamTechnicalPanel
                 label="Home"
@@ -952,7 +995,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </div>
           </SystemSection>
 
-          <SystemSection index={8} title="Bullpen">
+          <SystemSection index={9} title="Bullpen">
             <div className="grid gap-3 md:grid-cols-2">
               <TeamTechnicalPanel
                 label="Home"
@@ -981,7 +1024,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </div>
           </SystemSection>
 
-          <SystemSection index={9} title="Lineups">
+          <SystemSection index={10} title="Lineups">
             <div className="grid gap-3 md:grid-cols-2">
               <TeamTechnicalPanel
                 label="Home"
@@ -1010,7 +1053,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </div>
           </SystemSection>
 
-          <SystemSection index={10} title="Weather and Park">
+          <SystemSection index={11} title="Weather and Park">
             <MetricGrid
               items={[
                 ["Temperature", game.weather?.temperature ? `${game.weather.temperature} F` : "N/A"],
@@ -1027,7 +1070,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             />
           </SystemSection>
 
-          <SystemSection index={11} title="Game Readiness">
+          <SystemSection index={12} title="Game Readiness">
             <div className="grid gap-3 md:grid-cols-2">
               <TeamTechnicalPanel
                 label="Home"
@@ -1054,7 +1097,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </div>
           </SystemSection>
 
-          <SystemSection index={12} title="Context Certainty">
+          <SystemSection index={13} title="Context Certainty">
             <MetricGrid
               items={[
                 ["Score", game.contextCertainty?.score],
@@ -1068,7 +1111,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
         </div>
 
         <aside className="grid content-start gap-2.5">
-          <SystemSection index={13} title="Engine Contribution">
+          <SystemSection index={14} title="Engine Contribution">
             <div className="grid gap-3">
               {contributions.map((item) => {
                 const numericScore = typeof item.score === "number" ? Math.min(100, Math.max(0, Math.abs(item.score))) : null;
@@ -1096,7 +1139,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
             </div>
           </SystemSection>
 
-          <SystemSection index={14} title="Engine Status">
+          <SystemSection index={15} title="Engine Status">
             <div className="overflow-hidden rounded-xl border border-white/10">
               <div className="grid grid-cols-[1fr_0.8fr_0.9fr] gap-2 border-b border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">
                 <span>Engine</span>
@@ -1114,7 +1157,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
           </SystemSection>
 
           {warnings.length ? (
-            <SystemSection index={15} title="Warnings">
+            <SystemSection index={16} title="Warnings">
               <div className="grid gap-2">
                 {warnings.map((warning) => (
                   <p key={warning} className="rounded-xl bg-yellow-400/10 px-3 py-2 text-xs font-bold text-yellow-100">
@@ -1126,7 +1169,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
           ) : null}
 
           {timeline.length >= 2 ? (
-            <SystemSection index={16} title="Timeline">
+            <SystemSection index={17} title="Timeline">
               <div className="grid gap-3">
                 {timeline.slice(0, 8).map((item) => (
                   <div key={`${item.time}-${item.label}`} className="border-l border-cyan-300/30 pl-3">

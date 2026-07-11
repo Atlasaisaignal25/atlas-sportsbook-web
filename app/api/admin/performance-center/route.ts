@@ -30,6 +30,8 @@ type NormalizedPick = {
   identity: string;
 };
 
+type MlbOfficialPerformancePick = NormalizedPick & { isTopSignal: boolean };
+
 const sportConfigs: Record<SportKey, SportConfig> = {
   MLB: {
     sport: "MLB",
@@ -214,6 +216,56 @@ async function fetchProductRows(params: {
   return { rows, error: null as string | null, table: params.table };
 }
 
+async function fetchMlbOfficialRows(params: {
+  supabase: ReturnType<typeof getSupabaseAdmin>;
+  period: string;
+}) {
+  let query = params.supabase
+    .from("mlb_research_validation_history")
+    .select("game_id,game_date,home_team,away_team,market,selection,result,published_price,market_price,clv_probability,official_rank,is_top_signal,official_published_at,graded_at,pregame_snapshot_at")
+    .eq("record_type", "OFFICIAL")
+    .eq("canonical", true)
+    .in("result", ["WON", "LOST", "PUSH"])
+    .limit(2000);
+  const start = periodStart(params.period);
+  if (start) query = query.gte("game_date", start);
+  const { data, error } = await query;
+  if (error) return { top5Rows: [] as NormalizedPick[], topSignalRows: [] as NormalizedPick[], error: error.message, table: "mlb_research_validation_history" };
+
+  const rowsWithTopSignal = (data ?? []).map((row: any): MlbOfficialPerformancePick | null => {
+    const result = resultOf(row);
+    if (!result) return null;
+    const market = normalizeMarket(row.market, row.selection, "MLB");
+    const selection = String(row.selection ?? "");
+    return {
+      sport: "MLB",
+      product: "top5",
+      date: row.game_date ?? String(row.pregame_snapshot_at ?? "").slice(0, 10),
+      gameId: row.game_id ?? null,
+      rank: numeric(row.official_rank),
+      market,
+      selection,
+      result,
+      odds: numeric(row.published_price ?? row.market_price),
+      clv: numeric(row.clv_probability),
+      gradedAt: row.graded_at ?? row.official_published_at ?? row.pregame_snapshot_at ?? null,
+      identity: pickIdentity("MLB", { ...row, rank: row.official_rank, date: row.game_date, pick: selection }, market, "top5"),
+      isTopSignal: Boolean(row.is_top_signal),
+    };
+  }).filter((row: MlbOfficialPerformancePick | null): row is MlbOfficialPerformancePick => Boolean(row));
+  const rows = rowsWithTopSignal.map(({ isTopSignal: _isTopSignal, ...row }: MlbOfficialPerformancePick) => row);
+
+  return {
+    top5Rows: rows,
+    topSignalRows: rowsWithTopSignal
+      .filter((row: MlbOfficialPerformancePick) => row.isTopSignal)
+      .map(({ isTopSignal: _isTopSignal, ...row }: MlbOfficialPerformancePick) => row)
+      .map((row: NormalizedPick) => ({ ...row, product: "topSignal" as const, identity: row.identity.replace("|top5", "|topSignal") })),
+    error: null as string | null,
+    table: "mlb_research_validation_history",
+  };
+}
+
 function dedupe(rows: NormalizedPick[], identity: (row: NormalizedPick) => string) {
   const seen = new Set<string>();
   return rows.filter((row) => {
@@ -234,10 +286,16 @@ export async function GET(req: NextRequest) {
   const config = sportConfigs[sport] ?? sportConfigs.MLB;
   const supabase = getSupabaseAdmin();
 
-  const [top5Result, topSignalResult] = await Promise.all([
-    fetchProductRows({ supabase, sport: config.sport, table: config.top5HistoryTable, product: "top5", period }),
-    fetchProductRows({ supabase, sport: config.sport, table: config.topSignalHistoryTable, product: "topSignal", period }),
-  ]);
+  const mlbOfficial = config.sport === "MLB" ? await fetchMlbOfficialRows({ supabase, period }) : null;
+  const [top5Result, topSignalResult] = mlbOfficial
+    ? [
+        { rows: mlbOfficial.top5Rows, error: mlbOfficial.error, table: mlbOfficial.table },
+        { rows: mlbOfficial.topSignalRows, error: mlbOfficial.error, table: mlbOfficial.table },
+      ]
+    : await Promise.all([
+        fetchProductRows({ supabase, sport: config.sport, table: config.top5HistoryTable, product: "top5", period }),
+        fetchProductRows({ supabase, sport: config.sport, table: config.topSignalHistoryTable, product: "topSignal", period }),
+      ]);
 
   const top5Rows = dedupe(top5Result.rows, (row) => row.identity);
   const topSignalRows = dedupe(topSignalResult.rows, (row) => row.identity);

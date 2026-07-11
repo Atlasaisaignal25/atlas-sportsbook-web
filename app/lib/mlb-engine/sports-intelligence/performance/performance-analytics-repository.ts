@@ -32,6 +32,8 @@ async function loadValidationRows() {
     .from("mlb_research_validation_history")
     .select("market,selection,edge_classification,decision,conviction,confidence,no_pick,result,units,clv_probability")
     .eq("canonical", true)
+    .eq("record_type", "OFFICIAL")
+    .not("official_status", "in", '("REMOVED","VOID","CANCELLED","CANCELED")')
     .limit(20000);
   if (error) throw error;
   return (data ?? []) as ValidationPerformanceRow[];
@@ -162,4 +164,3 @@ export async function getPerformanceAnalyticsStatus() {
     errors: latestError ? [latestError.message] : [] as string[],
   };
 }
-
