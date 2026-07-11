@@ -213,10 +213,6 @@ function gameStart(edge: MarketEdgeRow, oddsByTeams: Map<string, OddsRow>) {
   return oddsByTeams.get(teamsKey(edge.home_team_name, edge.away_team_name))?.commence_time ?? null;
 }
 
-function isOpportunity(edge: MarketEdgeRow) {
-  return edge.direction !== "NONE" && (numberValue(edge.edge) ?? 0) > 0 && edge.classification !== "NO_EDGE";
-}
-
 function atlasProbability(edge: MarketEdgeRow) {
   return numberValue(edge.atlas_probability);
 }
@@ -242,20 +238,11 @@ function selectHighestProbabilityMarketByGame(edges: MarketEdgeRow[]) {
 }
 
 function selectMorningOpportunities(edges: MarketEdgeRow[]) {
-  const byGame = new Map<string, MarketEdgeRow>();
-  const ranked = edges
-    .filter(isOpportunity)
-    .toSorted((a, b) => {
-      const edgeDiff = (numberValue(b.edge) ?? 0) - (numberValue(a.edge) ?? 0);
-      if (edgeDiff !== 0) return edgeDiff;
-      return (numberValue(b.value_percent) ?? 0) - (numberValue(a.value_percent) ?? 0);
-    });
-
-  for (const edge of ranked) {
-    if (!byGame.has(edge.official_game_id)) byGame.set(edge.official_game_id, edge);
-  }
-
-  return Array.from(byGame.values());
+  const config = getAtlasCoreMlbConfig();
+  return selectHighestProbabilityMarketByGame(edges).filter((edge) => {
+    const edgeValue = numberValue(edge.edge) ?? 0;
+    return edge.direction !== "NONE" && edgeValue >= config.minFinalPickEdge && edge.classification !== "NO_EDGE";
+  });
 }
 
 export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) {
@@ -293,6 +280,8 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
         detectedLine: pickLine(edge),
         detectedOdds: pickOdds(edge, oddsRows),
         detectedDirection: edge.direction,
+        detectedAtlasProbability: atlasProbability(edge),
+        detectedMarketProbability: numberValue(edge.market_probability),
         detectedEdge: numberValue(edge.edge),
         detectedAt: scanAt,
       },
@@ -307,6 +296,15 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
     .upsert(rows, { onConflict: "date,game_id" })
     .select("id");
   if (error) throw error;
+  const keepIds = rows.map((row) => row.game_id);
+  if (keepIds.length) {
+    await supabase
+      .from("atlas_core_mlb_signals")
+      .update({ stage: "SUPERSEDED", updated_at: scanAt })
+      .eq("date", date)
+      .eq("stage", "SIGNALS_DETECTED")
+      .not("game_id", "in", `(${keepIds.map((id) => `"${id}"`).join(",")})`);
+  }
   return { enabled: true, scanned: edges.length, signalsDetected: rows.length, upserted: data?.length ?? 0 };
 }
 
@@ -460,7 +458,7 @@ export async function getAtlasCoreMlbStatus() {
   const supabase = getSupabaseAdmin();
   const date = todayET();
   const [signals, picks] = await Promise.all([
-    supabase.from("atlas_core_mlb_signals").select("id", { count: "exact", head: true }).eq("date", date),
+    supabase.from("atlas_core_mlb_signals").select("id", { count: "exact", head: true }).eq("date", date).eq("stage", "SIGNALS_DETECTED"),
     supabase.from("atlas_core_mlb_picks").select("status,is_top_signal", { count: "exact" }).eq("date", date),
   ]);
   const pickRows = picks.data ?? [];

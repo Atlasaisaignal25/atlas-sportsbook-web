@@ -31,6 +31,7 @@ export async function getMlbPublicSignals(date = todayMiamiDate()) {
       .select("*")
       .eq("sport", "MLB")
       .eq("date", date)
+      .eq("stage", "SIGNALS_DETECTED")
       .order("start_time", { ascending: true });
 
     if (error) {

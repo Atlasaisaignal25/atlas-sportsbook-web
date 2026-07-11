@@ -151,6 +151,7 @@ async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin
       .from("atlas_core_mlb_signals")
       .select("*")
       .eq("date", date)
+      .eq("stage", "SIGNALS_DETECTED")
       .order("start_time", { ascending: true }),
     supabase
       .from("atlas_core_mlb_picks")
