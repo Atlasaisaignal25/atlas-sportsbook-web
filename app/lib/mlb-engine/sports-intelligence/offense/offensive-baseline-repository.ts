@@ -152,12 +152,38 @@ function snapshotRowsToTeamForms(rows: any[]): OffensiveTeamForm[] {
       expectedSLGOnContact: row.expected_slg_on_contact,
       expectedWOBAOnContact: row.expected_woba_on_contact,
       atlasExpectedOffenseRate: row.atlas_expected_offense_rate,
+      score: row.atlas_offensive_score === null ? undefined : Number(row.atlas_offensive_score),
+      scoreVersion: row.score_version,
+      baselineAsOf: row.baseline_as_of,
+      baselineVersion: row.baseline_version,
       sampleQuality: row.sample_quality,
-      componentBreakdown: [],
+      componentBreakdown: row.score_components ?? [],
     };
     byTeam.set(row.team_id, form);
   });
-  return Array.from(byTeam.values());
+  return Array.from(byTeam.values()).map((form) => {
+    const availableScores = (["last7", "last14", "last30"] as OffensiveRollingWindow[])
+      .map((window) => ({ window, score: form.rollingWindows[window]?.score }))
+      .filter((item): item is { window: OffensiveRollingWindow; score: number } => isNumber(item.score));
+    const totalWeight = availableScores.reduce((sum, item) => sum + WINDOW_WEIGHT[item.window], 0);
+    const atlasOffensiveScore = totalWeight > 0
+      ? round(availableScores.reduce((sum, item) => sum + item.score * WINDOW_WEIGHT[item.window], 0) / totalWeight, 1)
+      : undefined;
+    const currentWindow = form.rollingWindows.last7 ?? form.rollingWindows.last14 ?? form.rollingWindows.last30;
+    return {
+      ...form,
+      atlasOffensiveScore,
+      currentScore: atlasOffensiveScore,
+      scoreTimestamp: currentWindow?.endDate ?? currentWindow?.startDate,
+      scoreVersion: atlasOffensiveScore === undefined ? undefined : currentWindow?.scoreVersion,
+      baselineAsOf: currentWindow?.baselineAsOf,
+      baselineVersion: currentWindow?.baselineVersion,
+      componentBreakdown: currentWindow?.componentBreakdown ?? [],
+      last7Score: form.rollingWindows.last7?.score,
+      last14Score: form.rollingWindows.last14?.score,
+      last30Score: form.rollingWindows.last30?.score,
+    };
+  });
 }
 
 async function latestCanonicalRows() {
