@@ -86,6 +86,58 @@ type JourneyMessage = {
   body?: string;
 };
 
+type ProfileOverview = {
+  profile: {
+    name: string;
+    username: string;
+    initials: string;
+    membershipTier: string;
+    memberSince: string;
+    timeZone: string;
+  };
+  summary: {
+    signalsReceived: number | string;
+    winRate: string;
+    roi: string;
+    accuracy: string;
+    sampleSize: number;
+  };
+  signals: Array<{
+    id: string;
+    product: string;
+    productCode: string;
+    selection: string;
+    event: string;
+    opponent: string;
+    team: string;
+    status: string;
+    gameTime: string;
+    publishedAt: string;
+  }>;
+  products: Array<{
+    code: string;
+    name: string;
+    status: string;
+    detail: string;
+    expandable: boolean;
+  }>;
+  recommendations: Array<{
+    code: string;
+    title: string;
+    description: string;
+    cta: string;
+    tone: string;
+  }>;
+  activity: Array<{
+    id: string;
+    type: string;
+    description: string;
+    time: string;
+    product: string;
+  }>;
+  unreadCount: number;
+};
+
 type SignalsHomePageProps = {
   topPlay?: SignalsHomePrecisionResponse | null;
   topSignals?: Partial<Record<SportCode, SignalsHomePrecisionResponse | null>>;
@@ -963,7 +1015,7 @@ function SignalsFrameHotspots({
     <div className="pointer-events-none absolute inset-0 z-30">
       <button
         type="button"
-        aria-label="Open alerts"
+        aria-label="Open profile"
         onClick={() => onNavigate?.("alerts")}
         className="pointer-events-auto absolute right-[29.5%] top-[2.1%] h-[4.6%] w-[9%] rounded-2xl"
       />
@@ -1658,8 +1710,8 @@ function BottomNavIcon({ section }: { section: SignalsHomeNavSection }) {
   if (section === "alerts") {
     return (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path d="M6.5 10.4a5.5 5.5 0 0 1 11 0v3.1l1.5 2.7H5l1.5-2.7v-3.1Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M10 18.2a2.3 2.3 0 0 0 4 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
@@ -1682,7 +1734,7 @@ function BottomNav({
     { section: "challenges", label: "Challenges" },
     { section: "news", label: "Impact" },
     { section: "signals", label: "Home" },
-    { section: "alerts", label: "Alerts" },
+    { section: "alerts", label: "My Profile" },
     { section: "more", label: "More" },
   ];
 
@@ -2455,6 +2507,333 @@ function PricingPacksSection({
   );
 }
 
+function ProfileSectionTitle({
+  icon,
+  title,
+  subtitle,
+  action,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  action?: string;
+}) {
+  return (
+    <div className="mb-2.5 flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span className="grid h-7 w-7 shrink-0 place-items-center text-cyan-300">{icon}</span>
+        <div className="min-w-0">
+          <h2 className="text-[16px] font-black uppercase tracking-[0.08em] text-white">{title}</h2>
+          <p className="truncate text-[11px] font-semibold text-white/48">{subtitle}</p>
+        </div>
+      </div>
+      {action ? (
+        <button type="button" className="inline-flex shrink-0 items-center gap-1 text-[12px] font-black text-cyan-300">
+          {action}
+          <span className="text-xl font-light">›</span>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ProfileMiniIcon({ type }: { type: "pulse" | "target" | "bars" | "shield" | "star" | "five" | "crown" | "ball" | "diamond" | "clock" }) {
+  if (type === "pulse") {
+    return <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none"><path d="M3 13h4l2-6 4 12 2-6h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  }
+  if (type === "target") {
+    return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" /><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" /><path d="M16 8l4-4M17 4h3v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>;
+  }
+  if (type === "bars") {
+    return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M5 19V9M12 19V5M19 19v-8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" /></svg>;
+  }
+  if (type === "shield") {
+    return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M12 3 19 6v5c0 4.4-2.7 7.8-7 10-4.3-2.2-7-5.6-7-10V6l7-3Z" stroke="currentColor" strokeWidth="1.7" /><path d="m9 12 2 2 4-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  }
+  if (type === "star") {
+    return <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /></svg>;
+  }
+  if (type === "five") return <span className="text-[26px] font-black leading-none">5</span>;
+  if (type === "crown") {
+    return <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none"><path d="m5 17 1-9 4 4 2-6 2 6 4-4 1 9H5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M6 20h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>;
+  }
+  if (type === "ball") {
+    return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.7" /><path d="M9 5.5c2 3.4 2 9.6 0 13M15 5.5c-2 3.4-2 9.6 0 13" stroke="currentColor" strokeWidth="1.4" /></svg>;
+  }
+  if (type === "diamond") {
+    return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M12 3 21 9l-9 12L3 9l9-6Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M3 9h18M8 9l4 12 4-12" stroke="currentColor" strokeWidth="1.2" /></svg>;
+  }
+  return <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.7" /><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>;
+}
+
+function profileTone(code: string) {
+  if (code === "top_signal_mlb") return { accent: "border-l-violet-400", text: "text-violet-300", bg: "bg-violet-500/12", icon: "star" as const };
+  if (code === "top5_mlb") return { accent: "border-l-cyan-400", text: "text-cyan-300", bg: "bg-cyan-400/12", icon: "five" as const };
+  if (code === "exclusive_pack") return { accent: "border-l-emerald-400", text: "text-emerald-300", bg: "bg-emerald-400/12", icon: "crown" as const };
+  return { accent: "border-l-amber-400", text: "text-amber-300", bg: "bg-amber-400/12", icon: "ball" as const };
+}
+
+function statusTone(status: string) {
+  if (status === "READY" || status === "CONFIRMED" || status === "ACTIVE") return "bg-emerald-400/16 text-emerald-300";
+  if (status === "DETECTED" || status === "UNDER REVIEW" || status === "EXPIRES SOON") return "bg-yellow-400/15 text-yellow-300";
+  if (status === "DOWNGRADED" || status === "WITHDRAWN" || status === "CANCELLED") return "bg-red-500/15 text-red-300";
+  return "bg-white/8 text-white/52";
+}
+
+function TeamSignalLogo({ team }: { team: string }) {
+  const brand = teamBranding[team];
+  if (brand?.logo) {
+    return <img src={brand.logo} alt="" className="h-9 w-9 object-contain" />;
+  }
+  return <span className="text-[14px] font-black text-white/70">{team.slice(0, 2).toUpperCase()}</span>;
+}
+
+function MyProfileScreen({
+  onNavigate,
+}: {
+  onNavigate?: (section: SignalsHomeNavSection) => void;
+}) {
+  const [data, setData] = useState<ProfileOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    fetch("/api/profile/overview", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(response.status === 401 ? "Sign in to view your profile." : "Unable to load profile.");
+        return response.json() as Promise<ProfileOverview>;
+      })
+      .then((payload) => {
+        if (!active) return;
+        setData(payload);
+        setError(null);
+      })
+      .catch((err: Error) => {
+        if (!active) return;
+        setError(err.message);
+        setData(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const profile = data?.profile;
+  const summary = data?.summary;
+  const summaryItems = [
+    ["Signals Received", summary?.signalsReceived ?? "Unavailable", "This month", <ProfileMiniIcon key="pulse" type="pulse" />],
+    ["Win Rate", summary?.winRate ?? "Unavailable", "Official signals", <ProfileMiniIcon key="target" type="target" />],
+    ["ROI", summary?.roi ?? "Unavailable", "Official signals", <ProfileMiniIcon key="bars" type="bars" />],
+    ["Accuracy", summary?.accuracy ?? "Unavailable", "Official signals", <ProfileMiniIcon key="shield" type="shield" />],
+  ];
+
+  return (
+    <main className="min-h-screen bg-[#020814] text-white">
+      <div className="mx-auto min-h-screen w-full max-w-md bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-4 pb-[104px] pt-6">
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <img src="/icon.png" alt="Atlas Signals" className="h-10 w-10 object-contain" />
+              <div className="text-[11px] font-black uppercase leading-tight tracking-[0.32em] text-white">
+                Atlas<br /><span className="text-cyan-300">Signals</span>
+              </div>
+            </div>
+            <h1 className="mt-4 text-[32px] font-black leading-none tracking-[-0.04em]">My Profile</h1>
+            <p className="mt-2 text-[14px] font-medium text-white/62">Everything about your account and signals.</p>
+          </div>
+          <button type="button" className="relative grid h-12 w-12 place-items-center rounded-[13px] border border-white/12 bg-white/[0.035] text-white/80">
+            <HeaderBellIcon className="h-6 w-6" />
+            {data?.unreadCount ? (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-cyan-300 px-1 text-[10px] font-black text-black">
+                {data.unreadCount}
+              </span>
+            ) : null}
+          </button>
+        </header>
+
+        {loading ? (
+          <div className="mt-5 rounded-[22px] border border-white/10 bg-white/[0.035] p-5">
+            <div className="h-20 animate-pulse rounded-2xl bg-white/8" />
+            <div className="mt-4 h-20 animate-pulse rounded-2xl bg-white/8" />
+          </div>
+        ) : error ? (
+          <div className="mt-5 rounded-[22px] border border-red-400/20 bg-red-950/20 p-5">
+            <p className="text-[16px] font-black text-white">{error}</p>
+            <button type="button" onClick={() => onNavigate?.("signals")} className="mt-4 rounded-full bg-cyan-300 px-4 py-2 text-[12px] font-black text-black">
+              Go Home
+            </button>
+          </div>
+        ) : data && profile ? (
+          <div className="mt-5 space-y-5">
+            <section className="rounded-[22px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-4 shadow-[0_0_28px_rgba(0,0,0,0.22)]">
+              <div className="grid gap-4 sm:grid-cols-[1.2fr_1fr]">
+                <div className="flex items-center gap-4">
+                  <div className="grid h-[82px] w-[82px] shrink-0 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/10 text-[28px] font-black text-cyan-300">
+                    {profile.initials}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-[22px] font-black tracking-[-0.03em]">{profile.name}</h2>
+                    <p className="text-[13px] font-semibold text-white/55">{profile.username}</p>
+                    <span className="mt-2 inline-flex rounded-full border border-cyan-300/70 bg-cyan-400/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.10em] text-cyan-300">
+                      {profile.membershipTier}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 rounded-[16px] bg-black/12 p-3">
+                  <div>
+                    <p className="text-[11px] font-semibold text-white/45">Member since</p>
+                    <p className="mt-1 text-[13px] font-black text-white">{profile.memberSince}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-white/45">Time zone</p>
+                    <p className="mt-1 text-[13px] font-black text-white">{profile.timeZone}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 rounded-[18px] bg-white/[0.035] p-2 sm:grid-cols-4">
+                {summaryItems.map(([label, value, sub, icon]) => (
+                  <div key={String(label)} className="rounded-[14px] border border-white/6 bg-black/12 p-3">
+                    <div className="mb-2 text-cyan-300">{icon}</div>
+                    <p className="text-[11px] font-semibold text-white/48">{label}</p>
+                    <p className="mt-1 text-[21px] font-black leading-none text-white">{String(value)}</p>
+                    <p className="mt-1 text-[11px] font-medium text-white/45">{sub}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <ProfileSectionTitle
+                title="MY SIGNALS"
+                subtitle="Signals from your active products."
+                action="View all signals"
+                icon={<ProfileMiniIcon type="target" />}
+              />
+              <div className="overflow-hidden rounded-[22px] border border-white/12 bg-[linear-gradient(180deg,rgba(9,18,34,0.96),rgba(3,9,20,0.98))]">
+                {data.signals.length ? data.signals.map((signal) => {
+                  const tone = profileTone(signal.productCode);
+                  return (
+                    <button key={signal.id} type="button" className={`grid w-full grid-cols-[58px_minmax(0,1fr)_92px_22px] items-center gap-3 border-b border-white/8 border-l-[4px] ${tone.accent} px-3 py-3 text-left last:border-b-0`}>
+                      <div className={`grid h-12 w-12 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
+                        <TeamSignalLogo team={signal.team} />
+                      </div>
+                      <div className="min-w-0">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${tone.bg} ${tone.text}`}>
+                          {signal.product}
+                        </span>
+                        <p className="mt-1 truncate text-[15px] font-black text-white">{signal.selection}</p>
+                        <p className="truncate text-[12px] font-medium text-white/50">vs {signal.opponent}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-white/48">Status</p>
+                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${statusTone(signal.status)}`}>
+                          {signal.status}
+                        </span>
+                        <p className="mt-1 truncate text-[10px] font-medium text-white/42">Published {signal.publishedAt}</p>
+                        <p className="mt-2 text-[10px] font-semibold text-white/48">Game Time</p>
+                        <p className="text-[12px] font-black text-white">{signal.gameTime}</p>
+                      </div>
+                      <span className="text-[26px] font-light text-white/55">›</span>
+                    </button>
+                  );
+                }) : (
+                  <div className="p-5 text-[14px] font-bold text-white/55">No active signals yet.</div>
+                )}
+              </div>
+            </section>
+
+            <section>
+              <ProfileSectionTitle
+                title="MY PRODUCTS"
+                subtitle="Your active subscriptions and packs."
+                action="Manage subscriptions"
+                icon={<ProfileMiniIcon type="diamond" />}
+              />
+              <div className="grid grid-cols-2 gap-2.5">
+                {data.products.length ? data.products.map((product) => {
+                  const tone = profileTone(product.code);
+                  return (
+                    <button key={product.code} type="button" className="rounded-[16px] border border-white/12 bg-white/[0.035] p-3 text-left">
+                      <div className={`grid h-10 w-10 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
+                        <ProfileMiniIcon type={tone.icon} />
+                      </div>
+                      <p className="mt-3 text-[14px] font-black text-white">{product.name}</p>
+                      <p className={`mt-1 text-[10px] font-black uppercase ${statusTone(product.status)}`}>{product.status}</p>
+                      <p className="mt-1 text-[11px] font-medium text-white/45">{product.detail}</p>
+                      <div className="mt-3 grid h-8 place-items-center rounded-[12px] bg-white/[0.035] text-cyan-300">⌄</div>
+                    </button>
+                  );
+                }) : <div className="col-span-2 rounded-[16px] border border-white/10 p-4 text-white/55">No active products.</div>}
+              </div>
+            </section>
+
+            {data.recommendations.length ? (
+              <section>
+                <ProfileSectionTitle
+                  title="RECOMMENDED FOR YOU"
+                  subtitle="Unlock more Atlas Signals intelligence."
+                  action="View all products"
+                  icon={<ProfileMiniIcon type="diamond" />}
+                />
+                <div className="grid gap-2.5 sm:grid-cols-3">
+                  {data.recommendations.slice(0, 3).map((item) => {
+                    const tone = profileTone(item.code);
+                    return (
+                      <button key={item.code} type="button" className="rounded-[16px] border border-white/12 bg-white/[0.035] p-4 text-left">
+                        <div className={`grid h-12 w-12 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
+                          <ProfileMiniIcon type={tone.icon} />
+                        </div>
+                        <p className="mt-3 text-[15px] font-black text-white">{item.title}</p>
+                        <p className="mt-1 min-h-[36px] text-[12px] font-medium leading-[18px] text-white/62">{item.description}</p>
+                        <span className={`mt-3 inline-flex rounded-full px-4 py-2 text-[11px] font-black ${tone.bg} ${tone.text}`}>
+                          {item.cta}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
+            <section>
+              <ProfileSectionTitle
+                title="ACTIVITY"
+                subtitle="Your recent account activity."
+                action="View all activity"
+                icon={<ProfileMiniIcon type="clock" />}
+              />
+              <div className="rounded-[18px] border border-white/12 bg-white/[0.035] p-3">
+                {data.activity.length ? (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {data.activity.slice(0, 3).map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 rounded-[14px] bg-black/16 p-3">
+                        <span className="grid h-10 w-10 place-items-center rounded-full border border-emerald-300/50 bg-emerald-400/10 text-emerald-300">
+                          <ProfileMiniIcon type="shield" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-[12px] font-black text-white">{item.type}</p>
+                          <p className="truncate text-[11px] text-white/50">{item.description}</p>
+                        </div>
+                        <span className="ml-auto shrink-0 text-[11px] font-semibold text-white/45">{item.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="p-2 text-[14px] font-bold text-white/55">No recent activity.</p>}
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </div>
+      <BottomNav activeSection="alerts" onNavigate={onNavigate} />
+    </main>
+  );
+}
+
 export function SignalsHomePage({
   topPlay,
   topSignals,
@@ -2622,6 +3001,10 @@ export function SignalsHomePage({
   function openHowItWorks(initialSection?: "top-signal") {
     setHowItWorksInitialSection(initialSection);
     setHowItWorksOpen(true);
+  }
+
+  if (activeSection === "alerts") {
+    return <MyProfileScreen onNavigate={onNavigate} />;
   }
 
   return (

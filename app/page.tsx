@@ -6235,7 +6235,7 @@ const sectionTitle =
     : appSection === "news"
     ? "Market Impact"
     : appSection === "alerts"
-    ? "Alerts"
+    ? "My Profile"
     : "More";
 
 const sectionEyebrow =
@@ -6248,7 +6248,7 @@ const sectionEyebrow =
     : appSection === "news"
     ? "Atlas Pulse"
     : appSection === "alerts"
-    ? "Intelligence"
+    ? "Account"
     : "Account";
 
 const pulseSportFilters: Array<{ label: string; value: "ALL" | PulseSport }> = [
@@ -6841,7 +6841,7 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if (appSection === "signals" && viewMode === "live" && !shouldShowSubscriptionPlans) {
+  if (appSection === "alerts" || (appSection === "signals" && viewMode === "live" && !shouldShowSubscriptionPlans)) {
     const signalHomeRows = groupedSignalLiveGames
       .flatMap((group) =>
         group.games.flatMap((game) => {
@@ -6923,6 +6923,7 @@ const subscriptionPlansBoard = (
         liveLoading={liveLoading}
         liveErrorMessage={null}
         signalGroupCount={signalHomeRows.length}
+        activeSection={appSection}
         loading={precisionLoading}
         errorMessage={precisionError}
         journeyMessage={signalsJourneyMessage}
@@ -9812,7 +9813,7 @@ const subscriptionPlansBoard = (
             { key: "challenges" as const, label: "Challenges" },
             { key: "news" as const, label: "Impact" },
             { key: "signals" as const, label: "Home" },
-            { key: "alerts" as const, label: "Alerts" },
+            { key: "alerts" as const, label: "My Profile" },
             { key: "more" as const, label: "More" },
           ].map((item) => (
             <button
