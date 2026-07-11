@@ -186,7 +186,19 @@ function statValue(stat: Record<string, unknown> | undefined, keys: string[]) {
 }
 
 function aggregateStats(stats: Array<Record<string, unknown> | undefined>, window: PitcherWindow): PitcherQualityWindow {
-  const totals = stats.reduce((acc, stat) => {
+  type PitchingTotals = {
+    startsIncluded: number;
+    inningsOuts: number;
+    battersFaced: number;
+    pitchCount: number;
+    earnedRuns: number;
+    runsAllowed: number;
+    hitsAllowed: number;
+    walksAllowed: number;
+    strikeouts: number;
+    homeRunsAllowed: number;
+  };
+  const totals = stats.reduce<PitchingTotals>((acc, stat) => {
     acc.startsIncluded += statValue(stat, ["gamesStarted", "gamesStartedPitching"]) ?? 0;
     acc.inningsOuts += inningsToOuts(stat?.inningsPitched);
     acc.battersFaced += statValue(stat, ["battersFaced"]) ?? 0;
