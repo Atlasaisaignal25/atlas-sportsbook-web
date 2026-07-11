@@ -85,6 +85,10 @@ import {
   getMarketEdgeResearchStatus,
 } from "@/app/lib/mlb-engine/sports-intelligence/market-edge/market-edge-repository";
 import { MLB_MARKET_EDGE_RESEARCH_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/market-edge/market-edge-engine";
+import {
+  getValidationHistoryStatus,
+} from "@/app/lib/mlb-engine/sports-intelligence/validation-history/validation-history-repository";
+import { MLB_VALIDATION_HISTORY_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/validation-history/validation-history-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -745,6 +749,42 @@ function marketEdgeResearchAudit(
   };
 }
 
+function validationHistoryAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getValidationHistoryStatus>>,
+) {
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_VALIDATION_HISTORY_MODE ?? "RESEARCH_ONLY" : "DISABLED",
+    version: MLB_VALIDATION_HISTORY_VERSION,
+    researchOnly: true,
+    publicScoringImpact: "NONE",
+    storageHealth: status,
+    totalRecords: status.totalRecords,
+    pending: status.pending,
+    graded: status.graded,
+    wins: status.wins,
+    losses: status.losses,
+    pushes: status.pushes,
+    roi: status.roi,
+    averageClv: status.averageClv,
+    roiByMarket: status.roiByMarket,
+    clvByMarket: status.clvByMarket,
+    roiByEdgeClassification: status.roiByEdgeClassification,
+    resultsByDecision: status.resultsByDecision,
+    resultsByConviction: status.resultsByConviction,
+    resultsByConfidence: status.resultsByConfidence,
+    resultDistribution: status.resultDistribution,
+    marketDistribution: status.marketDistribution,
+    examples: status.examples,
+    warnings: [
+      "Atlas Validation & Research History Engine v1 is research-only and only records, grades, and measures existing Atlas evaluations. It is not connected to candidateScore, buildCandidate, public signals, Top 5, Top Signal, Top Play, closing, or public UI.",
+      ...(status.totalRecords === 0 ? ["No MLB Validation History records are available yet."] : []),
+      ...(status.errors ?? []),
+    ],
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -849,7 +889,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -865,6 +905,7 @@ export async function GET(request: Request) {
       getProjectionResearchStatus(),
       getDecisionResearchStatus(),
       getMarketEdgeResearchStatus(),
+      getValidationHistoryStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -1027,6 +1068,12 @@ export async function GET(request: Request) {
           sportsFlags.marketEdgeResearchEnabled &&
           sportsFlags.marketEdgeResearchMode === "RESEARCH_ONLY",
         marketEdgeResearchStatus,
+      ),
+      validationHistoryResearch: validationHistoryAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.validationHistoryEnabled &&
+          sportsFlags.validationHistoryMode === "RESEARCH_ONLY",
+        validationHistoryStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,
