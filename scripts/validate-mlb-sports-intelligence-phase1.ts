@@ -205,6 +205,9 @@ async function main() {
   process.env.MLB_GAME_READINESS_ENABLED = "false";
   process.env.MLB_CONTEXT_CERTAINTY_ENABLED = "false";
   process.env.MLB_TEAM_INTELLIGENCE_MODE = "DISABLED";
+  process.env.MLB_PITCHER_QUALITY_ENABLED = "false";
+  process.env.MLB_PITCHER_READINESS_ENABLED = "false";
+  process.env.MLB_PITCHER_QUALITY_MODE = "DISABLED";
   const flags = getMlbSportsIntelligenceFlags();
   assert.deepEqual(flags, {
     sportsIntelligenceEnabled: false,
@@ -237,6 +240,9 @@ async function main() {
     gameReadinessEnabled: false,
     contextCertaintyEnabled: false,
     teamIntelligenceMode: "DISABLED",
+    pitcherQualityEnabled: false,
+    pitcherReadinessEnabled: false,
+    pitcherQualityMode: "DISABLED",
     lineupSnapshotsEnabled: false,
     lineupChangeDetectionEnabled: false,
     starterVerificationSnapshotsEnabled: false,

@@ -22,6 +22,8 @@ export * from "./team-strength/team-strength-engine";
 export * from "./team-strength/team-strength-repository";
 export * from "./team-intelligence/team-intelligence-engine";
 export * from "./team-intelligence/team-intelligence-repository";
+export * from "./pitcher-quality/pitcher-quality-engine";
+export * from "./pitcher-quality/pitcher-quality-repository";
 export * from "./mlb-team-mapping";
 export * from "./projection";
 export * from "./provider";

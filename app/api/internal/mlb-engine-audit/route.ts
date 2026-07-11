@@ -64,6 +64,13 @@ import {
   TEAM_INTELLIGENCE_CONFIDENCE_VERSION,
   TEAM_QUALITY_VERSION,
 } from "@/app/lib/mlb-engine/sports-intelligence/team-intelligence/team-intelligence-engine";
+import {
+  getStartingPitcherQualitySnapshotStatus,
+} from "@/app/lib/mlb-engine/sports-intelligence/pitcher-quality/pitcher-quality-repository";
+import {
+  STARTING_PITCHER_QUALITY_VERSION,
+  STARTING_PITCHER_READINESS_VERSION,
+} from "@/app/lib/mlb-engine/sports-intelligence/pitcher-quality/pitcher-quality-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -554,6 +561,40 @@ async function teamIntelligenceAudit(
   };
 }
 
+function startingPitcherQualityAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getStartingPitcherQualitySnapshotStatus>>,
+) {
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_PITCHER_QUALITY_MODE ?? "AUDIT_ONLY" : "DISABLED",
+    version: STARTING_PITCHER_QUALITY_VERSION,
+    readinessVersion: STARTING_PITCHER_READINESS_VERSION,
+    providerHealth: {
+      source: "MLB_STATS_API",
+      endpoints: [
+        "/api/v1/schedule?sportId=1&hydrate=probablePitcher,venue",
+        "/api/v1/people/{playerId}",
+        "/api/v1/people/{playerId}/stats?stats=season&group=pitching",
+        "/api/v1/people/{playerId}/stats?stats=gameLog&group=pitching",
+      ],
+      statcastAdvancedMetrics: "Not connected in Phase 9; fields remain unavailable rather than fabricated.",
+    },
+    storageHealth: status,
+    pitchersScored: status.pitchersScored,
+    pitchersUnavailable: status.pitchersUnavailable,
+    qualityDistribution: status.qualityDistribution,
+    readinessDistribution: status.readinessDistribution,
+    confidenceDistribution: status.confidenceDistribution,
+    latestRefresh: status.latestRefresh,
+    examples: status.examples,
+    warnings: [
+      ...(status.canonicalSnapshots === 0 ? ["No canonical pitcher quality snapshots are available yet."] : []),
+      "Pitcher Quality is audit-only and is not connected to Team Quality in Phase 9.",
+    ],
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -658,7 +699,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, pitcherQualityStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -669,6 +710,7 @@ export async function GET(request: Request) {
       getWeatherParkSnapshotStatus(),
       getTeamStrengthSnapshotStatus(),
       getTeamIntelligenceSnapshotStatus(),
+      getStartingPitcherQualitySnapshotStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -800,6 +842,13 @@ export async function GET(request: Request) {
           sportsFlags.contextCertaintyEnabled &&
           sportsFlags.teamIntelligenceMode === "AUDIT_ONLY",
         teamIntelligenceStatus,
+      ),
+      startingPitcherQuality: startingPitcherQualityAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.pitcherQualityEnabled &&
+          sportsFlags.pitcherReadinessEnabled &&
+          sportsFlags.pitcherQualityMode === "AUDIT_ONLY",
+        pitcherQualityStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,
