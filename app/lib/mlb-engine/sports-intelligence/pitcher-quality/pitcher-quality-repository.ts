@@ -459,7 +459,6 @@ export function buildStartingPitcherQualityRows(snapshots: StartingPitcherQualit
       qualityVersion: snapshot.qualityVersion,
       baselineVersion: snapshot.baselineVersion,
       baselineSource: snapshot.baselineSource,
-      baselineAsOf: snapshot.baselineAsOf,
       qualityComponents: snapshot.qualityComponents,
       qualityConfidence: snapshot.qualityConfidence,
       readinessScore: snapshot.readinessScore,

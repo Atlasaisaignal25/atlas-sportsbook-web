@@ -150,7 +150,10 @@ async function main() {
   assert.equal(shortRest.qualityScore, production.qualityScore, "Readiness is independent from quality.");
   assert.ok((shortRest.readinessScore ?? 0) < (production.readinessScore ?? 0));
 
-  const rowsA = buildStartingPitcherQualityRows([production, { ...production, capturedAt: "2026-07-11T00:05:00.000Z" }]);
+  const rowsA = buildStartingPitcherQualityRows([
+    production,
+    { ...production, capturedAt: "2026-07-11T00:05:00.000Z", baselineAsOf: "2026-07-11T00:05:00.000Z" },
+  ]);
   assert.equal(rowsA[0].feature_hash, rowsA[1].feature_hash, "Timestamp-only changes dedupe.");
   const nextVersion = buildStartingPitcherQualityRows([{ ...production, baselineVersion: "starting_pitcher_baseline_v2" } as any]);
   assert.notEqual(rowsA[0].feature_hash, nextVersion[0].feature_hash, "Baseline version change creates valid new state.");
