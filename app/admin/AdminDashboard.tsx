@@ -140,6 +140,45 @@ function money(value: unknown) {
   return value > 0 ? `+${value}` : String(value);
 }
 
+function signedPct(value: unknown) {
+  if (typeof value !== "number") return "N/A";
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${rounded}%`;
+}
+
+function stars(value: unknown) {
+  if (typeof value !== "number") return "☆☆☆☆☆";
+  const count = Math.max(1, Math.min(5, Math.round(value / 20)));
+  return `${"★".repeat(count)}${"☆".repeat(5 - count)}`;
+}
+
+function displayDecision(value: unknown) {
+  const labels: Record<string, string> = {
+    HOME_ML: "Home Moneyline",
+    AWAY_ML: "Away Moneyline",
+    LEAN_HOME: "Lean Home",
+    LEAN_AWAY: "Lean Away",
+    LEAN_TOTAL_UNDER: "Lean Under",
+    LEAN_TOTAL_OVER: "Lean Over",
+    TOTAL_UNDER: "Total Under",
+    TOTAL_OVER: "Total Over",
+    NO_PICK: "No Pick",
+  };
+  return labels[String(value ?? "")] ?? decisionLabel(value);
+}
+
+function edgeValue(game: ResearchGame) {
+  return typeof game.market?.magnitudeScore === "number" ? game.market.magnitudeScore : null;
+}
+
+function pickedTeams(game: ResearchGame) {
+  const decision = String(game.decision?.decision ?? "");
+  const home = shortTeam(game.header.homeTeam);
+  const away = shortTeam(game.header.awayTeam);
+  if (decision.includes("AWAY")) return { pick: away, other: home, pickWin: game.projection?.awayWinProbability, otherWin: game.projection?.homeWinProbability, pickMl: game.projection?.fairMoneylineAway, otherMl: game.projection?.fairMoneylineHome };
+  return { pick: home, other: away, pickWin: game.projection?.homeWinProbability, otherWin: game.projection?.awayWinProbability, pickMl: game.projection?.fairMoneylineHome, otherMl: game.projection?.fairMoneylineAway };
+}
+
 function asList(value: unknown) {
   if (Array.isArray(value)) return value.filter(Boolean).map(String);
   if (typeof value === "string" && value.trim()) return [value.trim()];
@@ -175,10 +214,17 @@ function componentStatus(value: unknown): "Positive" | "Neutral" | "Negative" | 
 
 function statusColor(status: string) {
   if (status === "Positive") return "bg-emerald-400 text-emerald-300";
-  if (status === "Negative") return "bg-red-400 text-red-300";
+  if (status === "Negative") return "bg-yellow-300 text-yellow-300";
   if (status === "Partial") return "bg-sky-400 text-sky-300";
   if (status === "Unavailable") return "bg-red-400 text-red-300";
   return "bg-slate-400 text-white/55";
+}
+
+function signalLabel(status: string) {
+  if (status === "Positive") return "Supports Pick";
+  if (status === "Negative") return "Against Pick";
+  if (status === "Unavailable") return "Unavailable";
+  return "Neutral";
 }
 
 function planLabel(value: string | null | undefined) {
@@ -204,11 +250,11 @@ function StatCard({
           : "text-cyan-300";
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/45">
+    <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
         {label}
       </p>
-      <p className={`mt-2 text-3xl font-black ${color}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-black ${color}`}>{value}</p>
     </div>
   );
 }
@@ -218,12 +264,12 @@ function ResultLine({ title, counts }: { title: string; counts: StatusCounts }) 
   const rate = decided ? Math.round((counts.won / decided) * 100) : 0;
 
   return (
-    <div className="rounded-xl bg-black/20 p-3">
+    <div className="rounded-xl bg-black/20 p-2.5">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-white/65">{title}</p>
         <p className="text-sm font-black text-cyan-300">{rate}%</p>
       </div>
-      <div className="mt-2 grid grid-cols-4 gap-2 text-center text-[11px] font-bold uppercase tracking-[0.12em]">
+      <div className="mt-2 grid grid-cols-4 gap-1.5 text-center text-[10px] font-bold uppercase tracking-[0.1em]">
         <span className="rounded-lg bg-emerald-400/10 py-1 text-emerald-300">
           W {counts.won}
         </span>
@@ -239,9 +285,9 @@ function ResultLine({ title, counts }: { title: string; counts: StatusCounts }) 
 
 function MiniMetric({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+    <div className="rounded-xl border border-white/10 bg-black/20 p-2.5">
       <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/40">{label}</p>
-      <p className="mt-1 text-sm font-black text-white">{String(value ?? "N/A")}</p>
+      <p className="mt-0.5 text-sm font-black text-white">{String(value ?? "N/A")}</p>
     </div>
   );
 }
@@ -322,7 +368,7 @@ function motorSignals(game: ResearchGame) {
 
 function MetricGrid({ items }: { items: Array<[string, unknown, ("cyan" | "white" | "green" | "gold" | "red")?]> }) {
   return (
-    <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-4">
       {items.map(([label, value, tone = "white"]) => {
         const color =
           tone === "cyan"
@@ -335,9 +381,9 @@ function MetricGrid({ items }: { items: Array<[string, unknown, ("cyan" | "white
                   ? "text-rose-300"
                   : "text-white";
         return (
-          <div key={label} className="border-b border-white/10 pb-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/40">{label}</p>
-            <p className={`mt-1 text-sm font-black ${color}`}>{fmt(value)}</p>
+          <div key={label} className="border-b border-white/10 pb-1.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/40">{label}</p>
+            <p className={`mt-0.5 text-sm font-black ${color}`}>{fmt(value)}</p>
           </div>
         );
       })}
@@ -357,11 +403,11 @@ function SystemSection({
   version?: unknown;
 }) {
   return (
-    <details open className="rounded-2xl border border-white/10 bg-[#071322]/85">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+    <details open className="rounded-xl border border-white/10 bg-[#071322]/85">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-black text-white/70">{index}.</span>
-          <h4 className="text-xs font-black uppercase tracking-[0.16em] text-white">{title}</h4>
+          <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-white">{title}</h4>
           {version ? (
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black text-white/45">
               {String(version)}
@@ -370,7 +416,7 @@ function SystemSection({
         </div>
         <span className="text-white/55">⌃</span>
       </summary>
-      <div className="border-t border-white/10 px-4 py-3">{children}</div>
+      <div className="border-t border-white/10 px-3 py-2.5">{children}</div>
     </details>
   );
 }
@@ -385,10 +431,10 @@ function TeamTechnicalPanel({
   items: Array<[string, unknown]>;
 }) {
   return (
-    <div className="rounded-xl bg-black/20 p-3">
+    <div className="rounded-xl bg-black/20 p-2.5">
       <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{label}</p>
-      <h5 className="mt-1 text-sm font-black text-white">{team}</h5>
-      <div className="mt-3 grid gap-x-4 gap-y-2 sm:grid-cols-2">
+      <h5 className="mt-0.5 text-sm font-black text-white">{team}</h5>
+      <div className="mt-2 grid gap-x-3 gap-y-1.5 sm:grid-cols-2">
         {items.map(([itemLabel, value]) => (
           <div key={itemLabel} className="flex items-center justify-between gap-3 border-b border-white/10 pb-1 text-xs">
             <span className="text-white/45">{itemLabel}</span>
@@ -461,52 +507,103 @@ function SummaryGameCard({
   const motors = motorSignals(game);
   const homeName = shortTeam(game.header.homeTeam);
   const awayName = shortTeam(game.header.awayTeam);
+  const picked = pickedTeams(game);
+  const edge = edgeValue(game);
+  const noPick = Boolean(game.decision?.noPick);
   return (
-    <details className="rounded-3xl border border-cyan-400/15 bg-[#071120] shadow-[0_0_30px_rgba(0,220,255,0.06)]">
-      <summary className="cursor-pointer list-none p-4 sm:p-5">
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+    <details className="rounded-2xl border border-cyan-400/15 bg-[#071120] shadow-[0_0_24px_rgba(0,220,255,0.055)]">
+      <summary className="cursor-pointer list-none p-3.5 sm:p-4">
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
             <div>
-              <p className="text-sm text-white/70">{game.header.awayTeam}</p>
-              <h3 className="text-2xl font-black text-white">{awayName}</h3>
+              <p className="text-xs text-white/55">{game.header.awayTeam}</p>
+              <h3 className="text-xl font-black text-white">{awayName}</h3>
             </div>
             <div className="text-left sm:text-center">
-              <p className="text-lg font-black text-white/70">@</p>
-              <p className="text-sm text-white/45">{formatTime(game.header.time)}</p>
+              <p className="text-sm font-black text-white/60">@</p>
+              <p className="text-xs text-white/45">{formatTime(game.header.time)}</p>
             </div>
             <div className="sm:text-right">
-              <p className="text-sm text-white/70">{game.header.homeTeam}</p>
-              <h3 className="text-2xl font-black text-white">{homeName}</h3>
+              <p className="text-xs text-white/55">{game.header.homeTeam}</p>
+              <h3 className="text-xl font-black text-white">{homeName}</h3>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 lg:w-[380px]">
-            <MiniMetric label="Decision" value={decisionLabel(game.decision?.decision)} />
-            <MiniMetric label="Confidence" value={scorePct(game.decision?.confidence)} />
-            <MiniMetric label="Conviction" value={fmt(game.decision?.conviction)} />
+          <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-white/10 bg-black/20 lg:w-[420px]">
+            <div className="border-r border-white/10 p-2.5">
+              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/40">Decision</p>
+              <p className="mt-1 text-sm font-black text-cyan-300">{displayDecision(game.decision?.decision)}</p>
+            </div>
+            <div className="border-r border-white/10 p-2.5">
+              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/40">Confidence</p>
+              <p className="mt-1 text-lg font-black text-white">{scorePct(game.decision?.confidence)}</p>
+            </div>
+            <div className="p-2.5">
+              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/40">Conviction</p>
+              <p className="mt-1 text-sm font-black text-white">{fmt(game.decision?.conviction)}</p>
+            </div>
           </div>
         </div>
       </summary>
 
-      <div className="grid gap-4 border-t border-white/10 p-4 sm:p-5">
-        <section className="rounded-2xl border border-cyan-400/15 bg-black/20 p-4">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/45">Main Decision</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <MiniMetric label="Pick" value={decisionLabel(game.decision?.decision)} />
-            <MiniMetric label="Decision" value={game.decision?.decision} />
-            <MiniMetric label="Confidence" value={scorePct(game.decision?.confidence)} />
-            <MiniMetric label="Conviction" value={`${fmt(game.decision?.convictionScore)} ${game.decision?.conviction ?? ""}`} />
-            <MiniMetric label="Consensus" value={`${fmt(game.decision?.consensusScore)} ${decisionLabel(game.decision?.consensus)}`} />
-            <MiniMetric label="No Pick" value={game.decision?.noPick ? "Yes" : "No"} />
+      <div className="grid gap-3 border-t border-white/10 p-3.5 sm:p-4">
+        <section className="rounded-2xl border border-cyan-400/15 bg-black/25 p-3.5">
+          <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr] lg:items-center">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">
+                {noPick ? "No Pick" : "Top Play"}
+              </p>
+              <h4 className="mt-1 text-3xl font-black tracking-tight text-white">
+                {displayDecision(game.decision?.decision)}
+              </h4>
+              <p className="mt-1 text-lg text-yellow-300">{stars(game.decision?.confidence)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Confidence</p>
+                <p className="text-2xl font-black text-white">{scorePct(game.decision?.confidence)}</p>
+                <p className="text-[11px] font-bold uppercase text-cyan-300">{fmt(game.decision?.confidenceTier)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Conviction</p>
+                <p className="text-2xl font-black text-white">{fmt(game.decision?.convictionScore)}</p>
+                <p className="text-[11px] font-bold uppercase text-cyan-300">{fmt(game.decision?.conviction)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Edge</p>
+                <p className="text-2xl font-black text-emerald-300">{signedPct(edge)}</p>
+                <p className="text-[11px] font-bold uppercase text-white/45">No Pick {noPick ? "Yes" : "No"}</p>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">
-            {game.decision?.noPick ? "Why Atlas passed" : "Why Atlas reached this decision"}
+        {edge !== null ? (
+          <section className="grid gap-2 rounded-2xl border border-emerald-400/15 bg-emerald-950/10 p-3 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Atlas</p>
+              <p className="text-xl font-black text-white">{pct(picked.pickWin)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Market</p>
+              <p className="text-xl font-black text-white">{game.market?.consensusPercent ? numberPct(game.market.consensusPercent) : "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Edge</p>
+              <p className="text-2xl font-black text-emerald-300">{signedPct(edge)}</p>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+          <h4 className="text-sm font-black text-white">
+            Atlas Brain
           </h4>
-          <div className="mt-3 grid gap-2">
+          <p className="mt-0.5 text-xs font-bold text-cyan-300">
+            {game.decision?.noPick ? "Why Atlas passed" : "Why Atlas reached this decision"}
+          </p>
+          <div className="mt-2 grid gap-1.5">
             {brain.reasons.map((reason: string, index: number) => (
-              <p key={`${reason}-${index}`} className="text-sm font-bold text-white/75">
+              <p key={`${reason}-${index}`} className="text-sm leading-5 text-white/75">
                 <span className={reason.toLowerCase().includes("neutral") ? "text-white/45" : "text-emerald-300"}>
                   {reason.toLowerCase().includes("neutral") ? "−" : "✓"}
                 </span>{" "}
@@ -516,27 +613,44 @@ function SummaryGameCard({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">Quick Projection</h4>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <MiniMetric label="Projected Score" value={`${awayName} ${fmt(game.projection?.awayRuns)} · ${homeName} ${fmt(game.projection?.homeRuns)}`} />
-            <MiniMetric label="Projected Total" value={fmt(game.projection?.totalRuns)} />
-            <MiniMetric label="Win Probability" value={`${homeName} ${pct(game.projection?.homeWinProbability)} · ${awayName} ${pct(game.projection?.awayWinProbability)}`} />
-            <MiniMetric label="Fair Moneyline" value={`${homeName} ${money(game.projection?.fairMoneylineHome)} · ${awayName} ${money(game.projection?.fairMoneylineAway)}`} />
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+          <h4 className="text-sm font-black text-white">Quick Projection</h4>
+          <div className="mt-2 grid gap-3 sm:grid-cols-4">
+            <div className="sm:col-span-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Projected Score</p>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <p className="text-sm text-white/55">{homeName}<span className="block text-2xl font-black text-white">{fmt(game.projection?.homeRuns)}</span></p>
+                <p className="text-sm text-white/55">{awayName}<span className="block text-2xl font-black text-white">{fmt(game.projection?.awayRuns)}</span></p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Projected Total</p>
+              <p className="mt-1 text-3xl font-black text-cyan-300">{fmt(game.projection?.totalRuns)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Win Probability</p>
+              <p className="mt-1 text-sm text-white/55">{picked.pick} <span className="font-black text-emerald-300">{pct(picked.pickWin)}</span></p>
+              <p className="text-sm text-white/55">{picked.other} <span className="font-black text-white">{pct(picked.otherWin)}</span></p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/40">Fair Moneyline</p>
+              <p className="mt-1 text-sm text-white/55">{picked.pick} <span className="font-black text-emerald-300">{money(picked.pickMl)}</span></p>
+              <p className="text-sm text-white/55">{picked.other} <span className="font-black text-white">{money(picked.otherMl)}</span></p>
+            </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">Motor Signals</h4>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-9">
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+          <h4 className="text-sm font-black text-white">Motor Signals</h4>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {motors.map((motor) => {
               const color = statusColor(motor.status);
               return (
-                <div key={motor.name} className="flex items-center gap-2 text-sm">
+                <div key={motor.name} className="flex items-center gap-2 text-xs">
                   <span className={`h-2.5 w-2.5 rounded-full ${color.split(" ")[0]}`} />
                   <span>
-                    <span className="block font-bold text-white">{motor.name}</span>
-                    <span className={`text-xs font-bold ${color.split(" ")[1]}`}>{motor.status}</span>
+                    <span className="block font-bold text-white/85">{motor.name}</span>
+                    <span className={`text-[11px] font-bold ${color.split(" ")[1]}`}>{signalLabel(motor.status)}</span>
                   </span>
                 </div>
               );
@@ -544,9 +658,9 @@ function SummaryGameCard({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">Readiness</h4>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-3.5">
+          <h4 className="text-sm font-black text-white">Readiness</h4>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
             <MiniMetric label="Home Game Readiness" value={fmt(game.gameReadiness.home)} />
             <MiniMetric label="Away Game Readiness" value={fmt(game.gameReadiness.away)} />
             <MiniMetric label="Context Certainty" value={fmt(game.contextCertainty.score)} />
@@ -556,7 +670,7 @@ function SummaryGameCard({
         <button
           type="button"
           onClick={() => onSystem(game.id)}
-          className="rounded-2xl border border-cyan-400/20 bg-cyan-950/20 px-4 py-4 text-left text-sm font-black uppercase tracking-[0.16em] text-cyan-300"
+          className="rounded-xl border border-cyan-400/20 bg-cyan-950/20 px-3.5 py-3 text-left text-xs font-black uppercase tracking-[0.16em] text-cyan-300"
         >
           View System Details →
         </button>
@@ -573,17 +687,17 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
   const awayName = shortTeam(game.header.awayTeam);
 
   return (
-    <details className="rounded-3xl border border-cyan-400/15 bg-[#06101d] shadow-[0_0_30px_rgba(0,220,255,0.06)]">
-      <summary className="cursor-pointer list-none p-4 sm:p-5">
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+    <details className="rounded-2xl border border-cyan-400/15 bg-[#06101d] shadow-[0_0_24px_rgba(0,220,255,0.055)]">
+      <summary className="cursor-pointer list-none p-3.5 sm:p-4">
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">
               {game.header.league} System Snapshot
             </p>
-            <h3 className="mt-2 text-2xl font-black text-white">
+            <h3 className="mt-1 text-xl font-black text-white">
               {game.header.awayTeam} @ {game.header.homeTeam}
             </h3>
-            <p className="mt-1 text-sm text-white/45">
+            <p className="mt-0.5 text-xs text-white/45">
               {formatTime(game.header.time)} · {game.header.status} · Game ID {game.id}
             </p>
           </div>
@@ -595,8 +709,8 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
         </div>
       </summary>
 
-      <div className="grid gap-4 border-t border-white/10 p-4 sm:p-5 xl:grid-cols-[1fr_360px]">
-        <div className="grid gap-3">
+      <div className="grid gap-3 border-t border-white/10 p-3.5 sm:p-4 xl:grid-cols-[1fr_340px]">
+        <div className="grid gap-2.5">
           <SystemSection index={1} title="Game Header">
             <MetricGrid
               items={[
@@ -859,7 +973,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
           </SystemSection>
         </div>
 
-        <aside className="grid content-start gap-3">
+        <aside className="grid content-start gap-2.5">
           <SystemSection index={13} title="Engine Contribution">
             <div className="grid gap-3">
               {contributions.map((item) => {
@@ -1012,27 +1126,27 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   }, [researchView]);
 
   return (
-    <main className="min-h-screen bg-[#050816] px-4 py-6 text-white">
+    <main className="min-h-screen bg-[#050816] px-3 py-4 text-white sm:px-4">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-cyan-400/15 bg-gradient-to-br from-cyan-950/25 to-black/20 p-5 shadow-[0_0_40px_rgba(0,220,255,0.08)] sm:flex-row sm:items-center sm:justify-between">
+        <header className="mb-4 flex flex-col gap-3 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-cyan-950/20 to-black/20 p-4 shadow-[0_0_32px_rgba(0,220,255,0.07)] sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.28em] text-cyan-300">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-300">
               Atlas Signals
             </p>
-            <h1 className="mt-2 text-4xl font-black tracking-tight">Admin Dashboard</h1>
-            <p className="mt-2 text-sm text-white/55">{adminEmail}</p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight">Research Dashboard</h1>
+            <p className="mt-1 text-xs text-white/55">{adminEmail}</p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={loadOverview}
               disabled={loading}
-              className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-black disabled:opacity-50"
+              className="rounded-xl bg-cyan-400 px-4 py-2.5 text-xs font-black uppercase tracking-[0.16em] text-black disabled:opacity-50"
             >
               {loading ? "Loading" : "Refresh"}
             </button>
             <Link
               href="/"
-              className="rounded-2xl border border-white/15 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white/80"
+              className="rounded-xl border border-white/15 px-4 py-2.5 text-xs font-black uppercase tracking-[0.16em] text-white/80"
             >
               App
             </Link>
@@ -1040,32 +1154,32 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         </header>
 
         {cronResult ? (
-          <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-cyan-950/20 p-4 text-sm font-bold text-cyan-100">
+          <div className="mb-4 rounded-xl border border-cyan-400/20 bg-cyan-950/20 p-3 text-sm font-bold text-cyan-100">
             {cronResult}
           </div>
         ) : null}
 
-        <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Public Signals Today" value={totals.publicSignals} />
           <StatCard label="Top 5 Live Today" value={totals.top5Live} tone="gold" />
           <StatCard label="Top 5 History Today" value={totals.top5History} tone="green" />
           <StatCard label="Top Signal History Today" value={totals.topSignalHistory} tone="green" />
         </section>
 
-        <section className="mb-6 rounded-3xl border border-cyan-400/15 bg-white/[0.03] p-4 shadow-[0_0_40px_rgba(0,220,255,0.07)] sm:p-5">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <section className="mb-4 rounded-2xl border border-cyan-400/15 bg-white/[0.03] p-3.5 shadow-[0_0_32px_rgba(0,220,255,0.06)] sm:p-4">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">
                 Atlas Research Dashboard
               </p>
-              <h2 className="mt-1 text-2xl font-black">
+              <h2 className="mt-0.5 text-xl font-black">
                 {researchView === "summary" ? "Resumen" : "Sistema"}
               </h2>
-              <p className="mt-2 max-w-3xl text-sm text-white/50">
+              <p className="mt-1 max-w-3xl text-xs text-white/50">
                 Internal research-only view powered by existing Atlas engine snapshots.
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:items-end">
+            <div className="flex flex-col gap-2 sm:items-end">
               <p className="text-xs text-white/40">
                 Updated: {formatTime(overview?.researchDashboard?.updatedAt)}
               </p>
@@ -1076,7 +1190,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                     setResearchView("summary");
                     setSelectedSystemGameId(null);
                   }}
-                  className={`px-5 py-3 text-xs font-black uppercase tracking-[0.18em] ${
+                  className={`px-4 py-2.5 text-xs font-black uppercase tracking-[0.16em] ${
                     researchView === "summary" ? "bg-cyan-400/10 text-cyan-300" : "text-white/55"
                   }`}
                 >
@@ -1085,7 +1199,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
                 <button
                   type="button"
                   onClick={() => setResearchView("system")}
-                  className={`px-5 py-3 text-xs font-black uppercase tracking-[0.18em] ${
+                  className={`px-4 py-2.5 text-xs font-black uppercase tracking-[0.16em] ${
                     researchView === "system" ? "bg-cyan-400/10 text-cyan-300" : "text-white/55"
                   }`}
                 >
@@ -1095,7 +1209,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             </div>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {researchView === "summary"
               ? researchGames.map((game) => (
                   <SummaryGameCard key={game.id} game={game} onSystem={openSystemDetails} />
@@ -1123,54 +1237,25 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </div>
         </section>
 
-        <section className="mb-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">
-                Environment
-              </p>
-              <h2 className="text-2xl font-black">Production Readiness</h2>
-            </div>
-            <p className="text-xs text-white/45">ET date: {overview?.today ?? "..."}</p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {Object.entries(overview?.environment ?? {}).map(([key, ready]) => (
-              <div
-                key={key}
-                className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3"
-              >
-                <span className="text-sm font-bold text-white/70">{envLabels[key] ?? key}</span>
-                <span
-                  className={`text-xs font-black uppercase tracking-[0.16em] ${
-                    ready ? "text-emerald-300" : "text-rose-300"
-                  }`}
-                >
-                  {ready ? "Set" : "Missing"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-6 grid gap-4 lg:grid-cols-2">
+        <section className="mb-4 grid gap-3 lg:grid-cols-2">
           {(overview?.sports ?? []).map((sport) => (
             <article
               key={sport.sport}
-              className="rounded-3xl border border-cyan-400/15 bg-gradient-to-br from-[#071627] to-[#070914] p-5"
+              className="rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-[#071627] to-[#070914] p-4"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-2xl font-black">{sport.sport}</h2>
-                <span className="rounded-full border border-cyan-400/25 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-cyan-300">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-xl font-black">{sport.sport}</h2>
+                <span className="rounded-full border border-cyan-400/25 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
                   Today
                 </span>
               </div>
-              <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="mb-3 grid grid-cols-2 gap-2">
                 <StatCard label="Public" value={sport.today.publicSignals} />
                 <StatCard label="Top 5 Live" value={sport.today.top5Live} tone="gold" />
                 <StatCard label="Top 5 History" value={sport.today.top5History} tone="green" />
                 <StatCard label="Top Signal" value={sport.today.topSignalHistory} tone="green" />
               </div>
-              <div className="grid gap-3">
+              <div className="grid gap-2">
                 <ResultLine title="Top 5 last 7 days" counts={sport.last7Days.top5} />
                 <ResultLine title="Top Signal last 7 days" counts={sport.last7Days.topSignal} />
               </div>
@@ -1178,27 +1263,27 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           ))}
         </section>
 
-        <section className="mb-6 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="mb-4">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">
+        <section className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">
               Cron Center
             </p>
-            <h2 className="text-2xl font-black">Run Safe Automations</h2>
-            <p className="mt-2 text-sm text-white/50">
+            <h2 className="text-xl font-black">Run Safe Automations</h2>
+            <p className="mt-1 text-xs text-white/50">
               These buttons execute existing allowlisted cron routes. No delete, drop, or truncate
               actions are available here.
             </p>
           </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {(overview?.crons ?? []).map((cron) => (
               <button
                 key={cron.path}
                 onClick={() => runCron(cron.path)}
                 disabled={Boolean(cronRunning)}
-                className="rounded-2xl border border-cyan-400/15 bg-cyan-950/10 p-4 text-left transition hover:border-cyan-300/45 hover:bg-cyan-950/25 disabled:opacity-50"
+                className="rounded-xl border border-cyan-400/15 bg-cyan-950/10 p-3 text-left transition hover:border-cyan-300/45 hover:bg-cyan-950/25 disabled:opacity-50"
               >
-                <span className="block text-sm font-black text-white">{cron.path}</span>
-                <span className="mt-2 block text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">
+                <span className="block text-xs font-black text-white">{cron.path}</span>
+                <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300">
                   {cronRunning === cron.path ? "Running" : cron.schedule}
                 </span>
               </button>
@@ -1206,12 +1291,12 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </div>
         </section>
 
-        <section className="mb-6 grid gap-4 xl:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <h2 className="mb-4 text-2xl font-black">Subscriptions</h2>
-            <div className="grid gap-3">
+        <section className="mb-4 grid gap-3 xl:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <h2 className="mb-3 text-xl font-black">Subscriptions</h2>
+            <div className="grid gap-2">
               {(overview?.subscriptions ?? []).map((item) => (
-                <div key={item.id} className="rounded-2xl bg-black/20 p-4">
+                <div key={item.id} className="rounded-xl bg-black/20 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-black text-white">{planLabel(item.plan_code)}</p>
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">
@@ -1230,11 +1315,11 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <h2 className="mb-4 text-2xl font-black">Daily Purchases</h2>
-            <div className="grid gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <h2 className="mb-3 text-xl font-black">Daily Purchases</h2>
+            <div className="grid gap-2">
               {(overview?.purchases ?? []).map((item) => (
-                <div key={item.id} className="rounded-2xl bg-black/20 p-4">
+                <div key={item.id} className="rounded-xl bg-black/20 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-black text-white">{planLabel(item.product_code)}</p>
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-300">
@@ -1252,12 +1337,12 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </div>
         </section>
 
-        <section className="mb-6 grid gap-4 xl:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <h2 className="mb-4 text-2xl font-black">Challenge Attempts</h2>
-            <div className="grid gap-3">
+        <section className="mb-4 grid gap-3 xl:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <h2 className="mb-3 text-xl font-black">Challenge Attempts</h2>
+            <div className="grid gap-2">
               {(overview?.challenges?.attempts ?? []).map((item) => (
-                <div key={item.id} className="rounded-2xl bg-black/20 p-4">
+                <div key={item.id} className="rounded-xl bg-black/20 p-3">
                   <p className="font-black text-white">{planLabel(item.challenge_code)}</p>
                   <p className="mt-1 text-sm text-white/55">
                     {planLabel(item.status)} {item.result ? `- ${planLabel(item.result)}` : ""}
@@ -1270,11 +1355,11 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <h2 className="mb-4 text-2xl font-black">Challenge Rewards</h2>
-            <div className="grid gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <h2 className="mb-3 text-xl font-black">Challenge Rewards</h2>
+            <div className="grid gap-2">
               {(overview?.challenges?.rewards ?? []).map((item) => (
-                <div key={item.id} className="rounded-2xl bg-black/20 p-4">
+                <div key={item.id} className="rounded-xl bg-black/20 p-3">
                   <p className="font-black text-white">{planLabel(item.reward_plan)}</p>
                   <p className="mt-1 text-sm text-white/55">Status: {planLabel(item.status)}</p>
                   <p className="mt-1 text-xs text-white/35">
@@ -1289,12 +1374,41 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </div>
         </section>
 
+        <section className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">
+                Environment
+              </p>
+              <h2 className="text-xl font-black">Production Readiness</h2>
+            </div>
+            <p className="text-xs text-white/45">ET date: {overview?.today ?? "..."}</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(overview?.environment ?? {}).map(([key, ready]) => (
+              <div
+                key={key}
+                className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+              >
+                <span className="text-xs font-bold text-white/70">{envLabels[key] ?? key}</span>
+                <span
+                  className={`text-[10px] font-black uppercase tracking-[0.14em] ${
+                    ready ? "text-emerald-300" : "text-rose-300"
+                  }`}
+                >
+                  {ready ? "Set" : "Missing"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {overview?.errors?.length ? (
-          <section className="rounded-3xl border border-rose-400/20 bg-rose-950/10 p-5">
-            <h2 className="mb-3 text-2xl font-black text-rose-200">Warnings</h2>
+          <section className="rounded-2xl border border-rose-400/20 bg-rose-950/10 p-4">
+            <h2 className="mb-3 text-xl font-black text-rose-200">Warnings</h2>
             <div className="grid gap-2">
               {overview.errors.map((error, index) => (
-                <p key={`${error}-${index}`} className="rounded-xl bg-black/20 p-3 text-sm text-rose-100">
+                <p key={`${error}-${index}`} className="rounded-xl bg-black/20 p-2.5 text-sm text-rose-100">
                   {error}
                 </p>
               ))}
