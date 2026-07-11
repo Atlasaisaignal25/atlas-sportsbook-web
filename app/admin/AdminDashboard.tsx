@@ -107,6 +107,11 @@ function pct(value: unknown) {
   return `${Math.round(value * 100)}%`;
 }
 
+function numberPct(value: unknown) {
+  if (typeof value !== "number") return "N/A";
+  return `${Math.round(value)}%`;
+}
+
 function scorePct(value: unknown) {
   if (typeof value !== "number") return "N/A";
   return `${Math.round(value)}%`;
@@ -133,6 +138,24 @@ function shortTeam(name: string | undefined) {
 function money(value: unknown) {
   if (typeof value !== "number") return "N/A";
   return value > 0 ? `+${value}` : String(value);
+}
+
+function asList(value: unknown) {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String);
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function availabilityLabel(value: unknown) {
+  const label = String(value ?? "UNAVAILABLE").replace(/_/g, " ");
+  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+}
+
+function technicalStatus(value: unknown): "Ready" | "Partial" | "Unavailable" {
+  const upper = String(value ?? "").toUpperCase();
+  if (!upper || upper.includes("UNAVAILABLE")) return "Unavailable";
+  if (upper.includes("PARTIAL") || upper.includes("LOW")) return "Partial";
+  return "Ready";
 }
 
 function componentStatus(value: unknown): "Positive" | "Neutral" | "Negative" | "Partial" | "Unavailable" {
@@ -297,6 +320,136 @@ function motorSignals(game: ResearchGame) {
   ];
 }
 
+function MetricGrid({ items }: { items: Array<[string, unknown, ("cyan" | "white" | "green" | "gold" | "red")?]> }) {
+  return (
+    <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map(([label, value, tone = "white"]) => {
+        const color =
+          tone === "cyan"
+            ? "text-cyan-300"
+            : tone === "green"
+              ? "text-emerald-300"
+              : tone === "gold"
+                ? "text-yellow-300"
+                : tone === "red"
+                  ? "text-rose-300"
+                  : "text-white";
+        return (
+          <div key={label} className="border-b border-white/10 pb-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/40">{label}</p>
+            <p className={`mt-1 text-sm font-black ${color}`}>{fmt(value)}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SystemSection({
+  index,
+  title,
+  children,
+  version,
+}: {
+  index: number;
+  title: string;
+  children: React.ReactNode;
+  version?: unknown;
+}) {
+  return (
+    <details open className="rounded-2xl border border-white/10 bg-[#071322]/85">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-white/70">{index}.</span>
+          <h4 className="text-xs font-black uppercase tracking-[0.16em] text-white">{title}</h4>
+          {version ? (
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black text-white/45">
+              {String(version)}
+            </span>
+          ) : null}
+        </div>
+        <span className="text-white/55">⌃</span>
+      </summary>
+      <div className="border-t border-white/10 px-4 py-3">{children}</div>
+    </details>
+  );
+}
+
+function TeamTechnicalPanel({
+  label,
+  team,
+  items,
+}: {
+  label: string;
+  team: string;
+  items: Array<[string, unknown]>;
+}) {
+  return (
+    <div className="rounded-xl bg-black/20 p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{label}</p>
+      <h5 className="mt-1 text-sm font-black text-white">{team}</h5>
+      <div className="mt-3 grid gap-x-4 gap-y-2 sm:grid-cols-2">
+        {items.map(([itemLabel, value]) => (
+          <div key={itemLabel} className="flex items-center justify-between gap-3 border-b border-white/10 pb-1 text-xs">
+            <span className="text-white/45">{itemLabel}</span>
+            <span className="font-black text-white">{fmt(value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function collectSystemWarnings(game: ResearchGame) {
+  const warnings = new Set<string>();
+  if (!game.projection || technicalStatus(game.projection.availability) === "Unavailable") warnings.add("Projection unavailable");
+  if (!game.weather || technicalStatus(game.weather.availability) === "Unavailable") warnings.add("Weather unavailable");
+  if (technicalStatus(game.lineups?.home?.stability) !== "Ready") warnings.add(`${shortTeam(game.header.homeTeam)} lineup ${availabilityLabel(game.lineups?.home?.stability)}`);
+  if (technicalStatus(game.lineups?.away?.stability) !== "Ready") warnings.add(`${shortTeam(game.header.awayTeam)} lineup ${availabilityLabel(game.lineups?.away?.stability)}`);
+  if (!game.pitchers?.home?.name) warnings.add(`${shortTeam(game.header.homeTeam)} starter unavailable`);
+  if (!game.pitchers?.away?.name) warnings.add(`${shortTeam(game.header.awayTeam)} starter unavailable`);
+  for (const warning of [
+    ...asList(game.gameReadiness?.homeWarnings),
+    ...asList(game.gameReadiness?.awayWarnings),
+    ...asList(game.contextCertainty?.warnings),
+  ]) warnings.add(warning);
+  return Array.from(warnings);
+}
+
+function collectTimeline(game: ResearchGame) {
+  const rows = [
+    game.decision?.updatedAt ? { time: game.decision.updatedAt, label: "Decision updated", detail: decisionLabel(game.decision.decision) } : null,
+    game.projection?.updatedAt ? { time: game.projection.updatedAt, label: "Projection updated", detail: `Total ${fmt(game.projection.totalRuns)}` } : null,
+    game.pitchers?.home?.updatedAt ? { time: game.pitchers.home.updatedAt, label: `${shortTeam(game.header.homeTeam)} starter snapshot`, detail: fmt(game.pitchers.home.name) } : null,
+    game.pitchers?.away?.updatedAt ? { time: game.pitchers.away.updatedAt, label: `${shortTeam(game.header.awayTeam)} starter snapshot`, detail: fmt(game.pitchers.away.name) } : null,
+    game.lineups?.home?.updatedAt ? { time: game.lineups.home.updatedAt, label: `${shortTeam(game.header.homeTeam)} lineup snapshot`, detail: availabilityLabel(game.lineups.home.stability) } : null,
+    game.lineups?.away?.updatedAt ? { time: game.lineups.away.updatedAt, label: `${shortTeam(game.header.awayTeam)} lineup snapshot`, detail: availabilityLabel(game.lineups.away.stability) } : null,
+    game.weather?.updatedAt ? { time: game.weather.updatedAt, label: "Weather updated", detail: availabilityLabel(game.weather.availability) } : null,
+  ].filter(Boolean) as Array<{ time: string; label: string; detail: string }>;
+
+  const unique = new Map<string, { time: string; label: string; detail: string }>();
+  for (const row of rows) unique.set(`${row.time}:${row.label}`, row);
+  return Array.from(unique.values()).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+}
+
+function engineContribution(game: ResearchGame) {
+  const side = game.decision?.componentBreakdown?.sideComponents ?? {};
+  const total = game.decision?.componentBreakdown?.totalComponents ?? {};
+  const contributionRows = [
+    { name: "Projection", score: side.projectionWinProbability, status: game.projection?.availability, confidence: game.projection?.confidence },
+    { name: "Pitcher", score: side.pitcherQuality, status: game.pitchers?.home?.name || game.pitchers?.away?.name ? "AVAILABLE" : "UNAVAILABLE", confidence: game.pitchers?.home?.confidence ?? game.pitchers?.away?.confidence },
+    { name: "Offense", score: side.offense, status: game.offense?.home?.availability ?? game.offense?.away?.availability, confidence: game.teamQuality?.home?.confidence ?? game.teamQuality?.away?.confidence },
+    { name: "Bullpen", score: side.bullpenQuality, status: game.bullpen?.home?.availability ?? game.bullpen?.away?.availability, confidence: game.bullpen?.home?.confidence ?? game.bullpen?.away?.confidence },
+    { name: "Team Quality", score: side.teamQuality, status: game.teamQuality?.home?.availability ?? game.teamQuality?.away?.availability, confidence: game.teamQuality?.home?.confidence ?? game.teamQuality?.away?.confidence },
+    { name: "Lineups", score: null, status: game.lineups?.home?.stability ?? game.lineups?.away?.stability, confidence: null },
+    { name: "Weather", score: total.weatherRunEnvironment, status: game.weather?.availability, confidence: null },
+    { name: "Park", score: total.parkEnvironment, status: game.park?.availability, confidence: null },
+    { name: "Market", score: game.market?.magnitudeScore, status: game.market ? "AVAILABLE" : "UNAVAILABLE", confidence: game.market?.consensusPercent },
+    { name: "Decision", score: game.decision?.confidence, status: game.decision?.confidenceTier, confidence: game.decision?.confidence },
+  ];
+  return contributionRows;
+}
+
 function SummaryGameCard({
   game,
   onSystem,
@@ -413,153 +566,371 @@ function SummaryGameCard({
 }
 
 function ResearchGameCard({ game }: { game: ResearchGame }) {
-  const brain = atlasBrain(game);
+  const warnings = collectSystemWarnings(game);
+  const timeline = collectTimeline(game);
+  const contributions = engineContribution(game);
+  const homeName = shortTeam(game.header.homeTeam);
+  const awayName = shortTeam(game.header.awayTeam);
+
   return (
-    <details className="rounded-3xl border border-cyan-400/15 bg-gradient-to-br from-[#071627] to-[#070914] p-4 shadow-[0_0_30px_rgba(0,220,255,0.06)]">
-      <summary className="cursor-pointer list-none">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <details className="rounded-3xl border border-cyan-400/15 bg-[#06101d] shadow-[0_0_30px_rgba(0,220,255,0.06)]">
+      <summary className="cursor-pointer list-none p-4 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">{game.header.league} · {formatTime(game.header.time)}</p>
-            <h3 className="mt-1 text-xl font-black">{game.header.awayTeam} @ {game.header.homeTeam}</h3>
-            <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-white/45">{game.header.status}</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">
+              {game.header.league} System Snapshot
+            </p>
+            <h3 className="mt-2 text-2xl font-black text-white">
+              {game.header.awayTeam} @ {game.header.homeTeam}
+            </h3>
+            <p className="mt-1 text-sm text-white/45">
+              {formatTime(game.header.time)} · {game.header.status} · Game ID {game.id}
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-right sm:min-w-64">
-            <MiniMetric label="Decision" value={game.decision?.decision} />
-            <MiniMetric label="Conviction" value={game.decision?.conviction} />
+          <div className="grid grid-cols-3 gap-2 lg:min-w-[420px]">
+            <MiniMetric label="Decision" value={decisionLabel(game.decision?.decision)} />
+            <MiniMetric label="Confidence" value={scorePct(game.decision?.confidence)} />
+            <MiniMetric label="Snapshot" value={formatTime(game.decision?.updatedAt)} />
           </div>
         </div>
       </summary>
 
-      <div className="mt-4 grid gap-4">
-        <ResearchSection title="Atlas Decision Engine">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <MiniMetric label="Decision" value={game.decision?.decision} />
-            <MiniMetric label="Consensus" value={`${game.decision?.consensus ?? "N/A"} (${fmt(game.decision?.consensusScore)})`} />
-            <MiniMetric label="Conviction" value={`${game.decision?.conviction ?? "N/A"} (${fmt(game.decision?.convictionScore)})`} />
-            <MiniMetric label="Confidence" value={`${fmt(game.decision?.confidence)} ${game.decision?.confidenceTier ?? ""}`} />
-            <MiniMetric label="No Pick" value={game.decision?.noPick ? "Yes" : "No"} />
-            <MiniMetric label="Reason" value={game.decision?.noPickReasons?.join(" ") || "N/A"} />
-          </div>
-        </ResearchSection>
+      <div className="grid gap-4 border-t border-white/10 p-4 sm:p-5 xl:grid-cols-[1fr_360px]">
+        <div className="grid gap-3">
+          <SystemSection index={1} title="Game Header">
+            <MetricGrid
+              items={[
+                ["Away Team", game.header.awayTeam],
+                ["Home Team", game.header.homeTeam],
+                ["Hora", formatTime(game.header.time)],
+                ["Estado", game.header.status],
+                ["Game ID", game.id],
+                ["Snapshot actualizado", formatTime(game.decision?.updatedAt), "cyan"],
+              ]}
+            />
+          </SystemSection>
 
-        <ResearchSection title="Sports Projection">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <MiniMetric label="Home Runs" value={fmt(game.projection?.homeRuns)} />
-            <MiniMetric label="Away Runs" value={fmt(game.projection?.awayRuns)} />
-            <MiniMetric label="Projected Total" value={fmt(game.projection?.totalRuns)} />
-            <MiniMetric label="Home Win Probability" value={pct(game.projection?.homeWinProbability)} />
-            <MiniMetric label="Away Win Probability" value={pct(game.projection?.awayWinProbability)} />
-            <MiniMetric label="Fair ML Home" value={fmt(game.projection?.fairMoneylineHome)} />
-            <MiniMetric label="Fair ML Away" value={fmt(game.projection?.fairMoneylineAway)} />
-          </div>
-        </ResearchSection>
+          <SystemSection index={2} title="Atlas Decision Engine" version={game.decision?.engineVersion}>
+            <MetricGrid
+              items={[
+                ["Decision", game.decision?.decision, "cyan"],
+                ["Consensus", game.decision?.consensus],
+                ["Consensus Score", game.decision?.consensusScore],
+                ["Conviction", game.decision?.conviction],
+                ["Conviction Score", game.decision?.convictionScore],
+                ["Confidence", scorePct(game.decision?.confidence), "cyan"],
+                ["No Pick", game.decision?.noPick ? "Yes" : "No"],
+                ["Reason", game.decision?.noPickReasons?.join(", ") || "N/A"],
+                ["Updated At", formatTime(game.decision?.updatedAt)],
+              ]}
+            />
+          </SystemSection>
 
-        {game.market ? (
-          <ResearchSection title="Market">
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <MiniMetric label="Market Moneyline" value="N/A" />
-              <MiniMetric label="Atlas Fair Moneyline" value={fmt(game.projection?.fairMoneylineHome)} />
-              <MiniMetric label="Edge" value="N/A" />
-              <MiniMetric label="No Vig Probability" value="N/A" />
+          <SystemSection index={3} title="Sports Projection" version={game.projection?.modelVersion}>
+            <MetricGrid
+              items={[
+                ["Projected Home Runs", game.projection?.homeRuns],
+                ["Projected Away Runs", game.projection?.awayRuns],
+                ["Projected Total", game.projection?.totalRuns, "cyan"],
+                ["Home Win Probability", pct(game.projection?.homeWinProbability), "green"],
+                ["Away Win Probability", pct(game.projection?.awayWinProbability), "green"],
+                ["Fair Moneyline Home", money(game.projection?.fairMoneylineHome)],
+                ["Fair Moneyline Away", money(game.projection?.fairMoneylineAway)],
+                ["Projection Confidence", scorePct(game.projection?.confidence)],
+                ["Availability", availabilityLabel(game.projection?.availability)],
+                ["Updated At", formatTime(game.projection?.updatedAt)],
+              ]}
+            />
+          </SystemSection>
+
+          {game.market ? (
+            <SystemSection index={4} title="Market">
+              <MetricGrid
+                items={[
+                  ["Market Moneyline", "N/A"],
+                  ["Market No-Vig Probability", game.market.consensusPercent ? numberPct(game.market.consensusPercent) : "N/A"],
+                  ["Atlas Fair Moneyline", `${homeName} ${money(game.projection?.fairMoneylineHome)} · ${awayName} ${money(game.projection?.fairMoneylineAway)}`],
+                  ["Edge existente", game.market.magnitudeScore ? numberPct(game.market.magnitudeScore) : "N/A", "cyan"],
+                  ["Market Timestamp", formatTime(game.decision?.updatedAt)],
+                ]}
+              />
+            </SystemSection>
+          ) : null}
+
+          <SystemSection index={5} title="Team Quality">
+            <div className="grid gap-3 md:grid-cols-2">
+              <TeamTechnicalPanel
+                label="Home"
+                team={game.header.homeTeam}
+                items={[
+                  ["Team Quality", game.teamQuality?.home?.score],
+                  ["Confidence", game.teamQuality?.home?.confidence],
+                  ["Availability", availabilityLabel(game.teamQuality?.home?.availability)],
+                  ["Coverage", game.teamQuality?.home?.coverage],
+                  ["Version", game.teamQuality?.home?.version],
+                ]}
+              />
+              <TeamTechnicalPanel
+                label="Away"
+                team={game.header.awayTeam}
+                items={[
+                  ["Team Quality", game.teamQuality?.away?.score],
+                  ["Confidence", game.teamQuality?.away?.confidence],
+                  ["Availability", availabilityLabel(game.teamQuality?.away?.availability)],
+                  ["Coverage", game.teamQuality?.away?.coverage],
+                  ["Version", game.teamQuality?.away?.version],
+                ]}
+              />
             </div>
-          </ResearchSection>
-        ) : null}
+          </SystemSection>
 
-        <ResearchSection title="Team Quality">
-          <SideBySide home={game.teamQuality.home} away={game.teamQuality.away} fields={[
-            ["Team Quality", "score", fmt],
-            ["Team Confidence", "confidence", fmt],
-          ]} />
-        </ResearchSection>
-
-        <ResearchSection title="Starting Pitchers">
-          <SideBySide home={game.pitchers.home} away={game.pitchers.away} fields={[
-            ["Pitcher", "name", fmt],
-            ["Pitcher Quality", "quality", fmt],
-            ["Pitcher Readiness", "readiness", fmt],
-          ]} />
-        </ResearchSection>
-
-        <ResearchSection title="Offense">
-          <SideBySide home={game.offense.home} away={game.offense.away} fields={[["Offensive Score", "score", fmt]]} />
-        </ResearchSection>
-
-        <ResearchSection title="Bullpen">
-          <SideBySide home={game.bullpen.home} away={game.bullpen.away} fields={[
-            ["Bullpen Quality", "quality", fmt],
-            ["Bullpen Fatigue", "fatigue", fmt],
-          ]} />
-        </ResearchSection>
-
-        <ResearchSection title="Lineups">
-          <SideBySide home={game.lineups.home} away={game.lineups.away} fields={[
-            ["Confirmed", "confirmed", (value) => value === null || value === undefined ? "N/A" : value ? "Yes" : "No"],
-            ["Stability", "stability", fmt],
-          ]} />
-        </ResearchSection>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ResearchSection title="Weather">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <MiniMetric label="Temperature" value={game.weather?.temperature ? `${game.weather.temperature} F` : "N/A"} />
-              <MiniMetric label="Wind" value={game.weather?.wind ?? "N/A"} />
-              <MiniMetric label="Delay Risk" value={fmt(game.weather?.delayRisk)} />
-              <MiniMetric label="Weather Run Environment" value={fmt(game.weather?.runEnvironment)} />
+          <SystemSection index={6} title="Starting Pitchers">
+            <div className="grid gap-3 md:grid-cols-2">
+              <TeamTechnicalPanel
+                label="Home"
+                team={fmt(game.pitchers?.home?.name)}
+                items={[
+                  ["Probable / Confirmed", game.pitchers?.home?.status],
+                  ["Pitcher Quality", game.pitchers?.home?.quality],
+                  ["Pitcher Readiness", game.pitchers?.home?.readiness],
+                  ["Confidence", game.pitchers?.home?.confidence],
+                  ["Baseline Version", game.pitchers?.home?.baselineVersion],
+                  ["Updated At", formatTime(game.pitchers?.home?.updatedAt)],
+                ]}
+              />
+              <TeamTechnicalPanel
+                label="Away"
+                team={fmt(game.pitchers?.away?.name)}
+                items={[
+                  ["Probable / Confirmed", game.pitchers?.away?.status],
+                  ["Pitcher Quality", game.pitchers?.away?.quality],
+                  ["Pitcher Readiness", game.pitchers?.away?.readiness],
+                  ["Confidence", game.pitchers?.away?.confidence],
+                  ["Baseline Version", game.pitchers?.away?.baselineVersion],
+                  ["Updated At", formatTime(game.pitchers?.away?.updatedAt)],
+                ]}
+              />
             </div>
-          </ResearchSection>
-          <ResearchSection title="Park">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <MiniMetric label="Venue" value={game.park?.venue ?? "N/A"} />
-              <MiniMetric label="Park Environment" value={fmt(game.park?.environment)} />
+          </SystemSection>
+
+          <SystemSection index={7} title="Offense">
+            <div className="grid gap-3 md:grid-cols-2">
+              <TeamTechnicalPanel
+                label="Home"
+                team={game.header.homeTeam}
+                items={[
+                  ["Offensive Score", game.offense?.home?.score],
+                  ["Last 7", game.offense?.home?.last7],
+                  ["Last 14", game.offense?.home?.last14],
+                  ["Last 30", game.offense?.home?.last30],
+                  ["Availability", availabilityLabel(game.offense?.home?.availability)],
+                  ["Sample Quality", game.offense?.home?.sampleQuality],
+                  ["Version", game.offense?.home?.version],
+                ]}
+              />
+              <TeamTechnicalPanel
+                label="Away"
+                team={game.header.awayTeam}
+                items={[
+                  ["Offensive Score", game.offense?.away?.score],
+                  ["Last 7", game.offense?.away?.last7],
+                  ["Last 14", game.offense?.away?.last14],
+                  ["Last 30", game.offense?.away?.last30],
+                  ["Availability", availabilityLabel(game.offense?.away?.availability)],
+                  ["Sample Quality", game.offense?.away?.sampleQuality],
+                  ["Version", game.offense?.away?.version],
+                ]}
+              />
             </div>
-          </ResearchSection>
+          </SystemSection>
+
+          <SystemSection index={8} title="Bullpen">
+            <div className="grid gap-3 md:grid-cols-2">
+              <TeamTechnicalPanel
+                label="Home"
+                team={game.header.homeTeam}
+                items={[
+                  ["Bullpen Quality", game.bullpen?.home?.quality],
+                  ["Bullpen Fatigue", game.bullpen?.home?.fatigue],
+                  ["Effective Depth", game.bullpen?.home?.effectiveDepth],
+                  ["Confidence", game.bullpen?.home?.confidence],
+                  ["Availability", availabilityLabel(game.bullpen?.home?.availability)],
+                  ["Version", game.bullpen?.home?.version],
+                ]}
+              />
+              <TeamTechnicalPanel
+                label="Away"
+                team={game.header.awayTeam}
+                items={[
+                  ["Bullpen Quality", game.bullpen?.away?.quality],
+                  ["Bullpen Fatigue", game.bullpen?.away?.fatigue],
+                  ["Effective Depth", game.bullpen?.away?.effectiveDepth],
+                  ["Confidence", game.bullpen?.away?.confidence],
+                  ["Availability", availabilityLabel(game.bullpen?.away?.availability)],
+                  ["Version", game.bullpen?.away?.version],
+                ]}
+              />
+            </div>
+          </SystemSection>
+
+          <SystemSection index={9} title="Lineups">
+            <div className="grid gap-3 md:grid-cols-2">
+              <TeamTechnicalPanel
+                label="Home"
+                team={game.header.homeTeam}
+                items={[
+                  ["Confirmed", game.lineups?.home?.confirmed === null || game.lineups?.home?.confirmed === undefined ? "N/A" : game.lineups.home.confirmed ? "Yes" : "No"],
+                  ["Player Count", game.lineups?.home?.playerCount],
+                  ["Stability", game.lineups?.home?.stability],
+                  ["Lineup Changes", game.lineups?.home?.changes],
+                  ["Late Scratches", game.lineups?.home?.lateScratches],
+                  ["Updated At", formatTime(game.lineups?.home?.updatedAt)],
+                ]}
+              />
+              <TeamTechnicalPanel
+                label="Away"
+                team={game.header.awayTeam}
+                items={[
+                  ["Confirmed", game.lineups?.away?.confirmed === null || game.lineups?.away?.confirmed === undefined ? "N/A" : game.lineups.away.confirmed ? "Yes" : "No"],
+                  ["Player Count", game.lineups?.away?.playerCount],
+                  ["Stability", game.lineups?.away?.stability],
+                  ["Lineup Changes", game.lineups?.away?.changes],
+                  ["Late Scratches", game.lineups?.away?.lateScratches],
+                  ["Updated At", formatTime(game.lineups?.away?.updatedAt)],
+                ]}
+              />
+            </div>
+          </SystemSection>
+
+          <SystemSection index={10} title="Weather and Park">
+            <MetricGrid
+              items={[
+                ["Temperature", game.weather?.temperature ? `${game.weather.temperature} F` : "N/A"],
+                ["Humidity", game.weather?.humidity ? numberPct(game.weather.humidity) : "N/A"],
+                ["Wind", game.weather?.wind],
+                ["Precipitation", game.weather?.precipitation ? numberPct(game.weather.precipitation) : "N/A"],
+                ["Delay Risk", game.weather?.delayRisk],
+                ["Weather Run Environment", game.weather?.runEnvironment, "cyan"],
+                ["Roof Status", game.weather?.roofStatus],
+                ["Park Environment", game.park?.environment],
+                ["Availability", availabilityLabel(game.weather?.availability)],
+                ["Updated At", formatTime(game.weather?.updatedAt)],
+              ]}
+            />
+          </SystemSection>
+
+          <SystemSection index={11} title="Game Readiness">
+            <div className="grid gap-3 md:grid-cols-2">
+              <TeamTechnicalPanel
+                label="Home"
+                team={game.header.homeTeam}
+                items={[
+                  ["Score", game.gameReadiness?.home],
+                  ["Availability", availabilityLabel(game.gameReadiness?.availability)],
+                  ["Confidence", game.gameReadiness?.homeConfidence],
+                  ["Reasons", asList(game.gameReadiness?.homeReasons).join(", ") || "N/A"],
+                  ["Warnings", asList(game.gameReadiness?.homeWarnings).join(", ") || "N/A"],
+                ]}
+              />
+              <TeamTechnicalPanel
+                label="Away"
+                team={game.header.awayTeam}
+                items={[
+                  ["Score", game.gameReadiness?.away],
+                  ["Availability", availabilityLabel(game.gameReadiness?.availability)],
+                  ["Confidence", game.gameReadiness?.awayConfidence],
+                  ["Reasons", asList(game.gameReadiness?.awayReasons).join(", ") || "N/A"],
+                  ["Warnings", asList(game.gameReadiness?.awayWarnings).join(", ") || "N/A"],
+                ]}
+              />
+            </div>
+          </SystemSection>
+
+          <SystemSection index={12} title="Context Certainty">
+            <MetricGrid
+              items={[
+                ["Score", game.contextCertainty?.score],
+                ["Confidence", game.contextCertainty?.confidence],
+                ["Availability", availabilityLabel(game.contextCertainty?.availability)],
+                ["Missing Modules", asList(game.contextCertainty?.missingModules).join(", ") || "None"],
+                ["Warnings", asList(game.contextCertainty?.warnings).join(", ") || "None"],
+              ]}
+            />
+          </SystemSection>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ResearchSection title="Game Readiness">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <MiniMetric label="Away" value={fmt(game.gameReadiness.away)} />
-              <MiniMetric label="Home" value={fmt(game.gameReadiness.home)} />
+        <aside className="grid content-start gap-3">
+          <SystemSection index={13} title="Engine Contribution">
+            <div className="grid gap-3">
+              {contributions.map((item) => {
+                const numericScore = typeof item.score === "number" ? Math.min(100, Math.max(0, Math.abs(item.score))) : null;
+                return (
+                  <div key={item.name} className="grid gap-1">
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="font-bold text-white/75">{item.name}</span>
+                      <span className="font-black text-cyan-300">
+                        {numericScore === null ? technicalStatus(item.status) : fmt(item.score)}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-cyan-300"
+                        style={{ width: `${numericScore ?? (technicalStatus(item.status) === "Ready" ? 70 : technicalStatus(item.status) === "Partial" ? 42 : 12)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-white/35">
+                      <span>{technicalStatus(item.status)}</span>
+                      <span>{fmt(item.confidence)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </ResearchSection>
-          <ResearchSection title="Context Certainty">
-            <div className="grid gap-2 sm:grid-cols-3">
-              <MiniMetric label="Score" value={fmt(game.contextCertainty.score)} />
-              <MiniMetric label="Confidence" value={fmt(game.contextCertainty.confidence)} />
-              <MiniMetric label="Availability" value={fmt(game.contextCertainty.availability)} />
-            </div>
-          </ResearchSection>
-        </div>
+          </SystemSection>
 
-        <ResearchSection title="Atlas Brain">
-          <div className="rounded-xl bg-black/20 p-4">
-            <p className="text-lg font-black text-white">{brain.title}</p>
-            <div className="mt-3 grid gap-2">
-              {brain.reasons.map((reason: string, index: number) => (
-                <p key={`${reason}-${index}`} className="text-sm font-bold text-white/70">✓ {reason}</p>
+          <SystemSection index={14} title="Engine Status">
+            <div className="overflow-hidden rounded-xl border border-white/10">
+              <div className="grid grid-cols-[1fr_0.8fr_0.9fr] gap-2 border-b border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/40">
+                <span>Engine</span>
+                <span>Status</span>
+                <span>Last Update</span>
+              </div>
+              {game.engineStatus.map((engine) => (
+                <div key={engine.name} className="grid grid-cols-[1fr_0.8fr_0.9fr] gap-2 border-b border-white/5 px-3 py-2 text-xs last:border-b-0">
+                  <span className="font-bold text-white/75">{engine.name}</span>
+                  <span className="font-black text-cyan-300">{technicalStatus(engine.status)}</span>
+                  <span className="text-white/45">{formatTime(engine.updatedAt)}</span>
+                </div>
               ))}
             </div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <MiniMetric label="Consensus" value={fmt(game.decision?.consensusScore)} />
-              <MiniMetric label="Conviction" value={fmt(game.decision?.convictionScore)} />
-              <MiniMetric label="Confidence" value={fmt(game.decision?.confidence)} />
-            </div>
-          </div>
-        </ResearchSection>
+          </SystemSection>
 
-        <ResearchSection title="Engine Status">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {game.engineStatus.map((engine) => (
-              <div key={engine.name} className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-black text-white">{engine.name}</p>
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-300">{engine.status}</p>
-                </div>
-                <p className="mt-2 text-[11px] text-white/40">{formatTime(engine.updatedAt)}</p>
+          {warnings.length ? (
+            <SystemSection index={15} title="Warnings">
+              <div className="grid gap-2">
+                {warnings.map((warning) => (
+                  <p key={warning} className="rounded-xl bg-yellow-400/10 px-3 py-2 text-xs font-bold text-yellow-100">
+                    {warning}
+                  </p>
+                ))}
               </div>
-            ))}
-          </div>
-        </ResearchSection>
+            </SystemSection>
+          ) : null}
+
+          {timeline.length >= 2 ? (
+            <SystemSection index={16} title="Timeline">
+              <div className="grid gap-3">
+                {timeline.slice(0, 8).map((item) => (
+                  <div key={`${item.time}-${item.label}`} className="border-l border-cyan-300/30 pl-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">{formatTime(item.time)}</p>
+                    <p className="text-sm font-black text-white">{item.label}</p>
+                    <p className="text-xs text-white/45">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </SystemSection>
+          ) : null}
+        </aside>
       </div>
     </details>
   );
@@ -631,8 +1002,14 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   }
 
   useEffect(() => {
+    const savedView = window.sessionStorage.getItem("atlas-admin-research-view");
+    if (savedView === "summary" || savedView === "system") setResearchView(savedView);
     loadOverview();
   }, []);
+
+  useEffect(() => {
+    window.sessionStorage.setItem("atlas-admin-research-view", researchView);
+  }, [researchView]);
 
   return (
     <main className="min-h-screen bg-[#050816] px-4 py-6 text-white">
