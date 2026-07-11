@@ -159,6 +159,18 @@ function formatStatus(status: SignalStatus) {
   return "Pending";
 }
 
+function formatOdds(value?: number | null) {
+  const odds = Number(value);
+  if (!Number.isFinite(odds)) return "";
+  return odds > 0 ? `+${odds}` : `${odds}`;
+}
+
+function formatPickWithOdds(row: SignalDetectedRow) {
+  const odds = formatOdds(row.odds);
+  if (!odds || row.pick.includes(odds)) return row.pick;
+  return `${row.pick} ${odds}`;
+}
+
 function getStatusMessage(status: SignalStatus) {
   if (status === "won") return "Final result: this Signal Detected pick won.";
   if (status === "lost") return "Final result: this Signal Detected pick lost.";
@@ -299,7 +311,7 @@ export function SignalDetectedDetailSheet({
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/42">
                     Pick Detected
                   </p>
-                  <p className="mt-1 text-xl font-black text-cyan-200">{row.pick}</p>
+                  <p className="mt-1 text-xl font-black text-cyan-200">{formatPickWithOdds(row)}</p>
                 </div>
               </div>
 
@@ -307,7 +319,7 @@ export function SignalDetectedDetailSheet({
                 <DetailLine label="Sport" value={row.sport} />
                 <DetailLine label="Teams" value={row.matchup} />
                 <DetailLine label="Game Time" value={row.time} />
-                <DetailLine label="Pick" value={row.pick} />
+                <DetailLine label="Pick" value={formatPickWithOdds(row)} />
                 <DetailLine label="Status" value={formatStatus(status)} />
               </div>
 

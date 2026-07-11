@@ -639,6 +639,13 @@ function formatOdds(odds?: number | null) {
   return `${Number(odds) > 0 ? "+" : ""}${odds}`;
 }
 
+function formatSignalPickWithOdds(row: SignalDetectedRow) {
+  const pick = compactSignalPickLabel(row.pick);
+  const odds = formatOdds(row.odds);
+  if (!odds || pick.includes(odds)) return pick;
+  return `${pick} ${odds}`;
+}
+
 function formatPickMeta(data?: SignalsHomePrecisionResponse | null) {
   const parts = [
     data?.pick?.market,
@@ -1398,7 +1405,7 @@ function FrameSignalDetectedFeed({
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-black text-white">{row.matchup}</p>
-                  <p className="truncate text-[13px] font-semibold text-cyan-300">{compactSignalPickLabel(row.pick)}</p>
+                  <p className="truncate text-[13px] font-semibold text-cyan-300">{formatSignalPickWithOdds(row)}</p>
                 </div>
                 <div className="flex items-center justify-end gap-2">
                   {resultBadge ? (
@@ -1954,7 +1961,7 @@ function SelectedSportSignalRow({
       </span>
       <span className="min-w-0">
         <span className="block truncate text-[12px] font-black text-white">{row.matchup}</span>
-        <span className="mt-0.5 block truncate text-[11px] font-medium text-cyan-300">{compactSignalPickLabel(row.pick)}</span>
+        <span className="mt-0.5 block truncate text-[11px] font-medium text-cyan-300">{formatSignalPickWithOdds(row)}</span>
       </span>
       <span className="justify-self-end rounded-[7px] border border-cyan-300/50 px-2 py-1.5 text-[8px] font-black uppercase text-cyan-300">
         {row.status || "Pending"}
@@ -2077,7 +2084,7 @@ function SignalExplorerSheet({
                     <span className="min-w-0">
                       <span className="block truncate text-[13px] font-black text-white">{row.matchup}</span>
                       <span className="mt-0.5 block truncate text-[13px] font-semibold text-cyan-300">
-                        {compactSignalPickLabel(row.pick)}
+                        {formatSignalPickWithOdds(row)}
                       </span>
                     </span>
                     {resultBadge ? (
