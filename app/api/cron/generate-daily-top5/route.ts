@@ -50,8 +50,19 @@ export async function GET(req: Request) {
     }
 
     const results = [];
+    const atlasCoreMlbActive =
+      process.env.ATLAS_CORE_MLB_ENABLED === "true" &&
+      process.env.ATLAS_CORE_MLB_ROLLBACK_TO_LEGACY !== "true";
 
     for (const config of automationSports) {
+      if (config.sport === "MLB" && atlasCoreMlbActive) {
+        results.push({
+          sport: "MLB",
+          skipped: true,
+          reason: "Atlas Core MLB is active. Legacy Top 5 engine is available via rollback flag only.",
+        });
+        continue;
+      }
       const publicSignals = await generatePublicSignalsForSport(config);
       const generated = await generateDailyTop5ForSport(config);
       const tables = historyTables[config.sport];

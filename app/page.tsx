@@ -1253,6 +1253,7 @@ function formatDisplayedPick(rawPick: string, sport: string) {
   const pick = String(rawPick ?? "").trim();
 
   if (!pick) return "N/A";
+  if (pick === "Signal Detected") return "Signal Detected";
 
   const totalMatch = pick.match(
     /^(over|under)\s*[\(\s]?([0-9]+(?:\.[0-9]+)?)\)?$/i
@@ -1518,6 +1519,23 @@ function buildSignalInsight(
   pickData: SignalGame
 ): SignalInsight {
   const pick = formatDisplayedPick(pickData.pick, sport);
+  if (pickData.pick === "Signal Detected" || pick === "Signal Detected ML") {
+    return {
+      sport,
+      awayTeam: getDisplayName(game.away_team),
+      homeTeam: getDisplayName(game.home_team),
+      pick: "Signal Detected",
+      analysisSummary: "Atlas found a possible opportunity in the morning scan and is monitoring it internally.",
+      confidenceLabel: "Monitoring",
+      edgeLabel: "Hidden",
+      riskNote: "Signals Detected are not official picks. Picks are shown to subscribers only after Atlas Core validation.",
+      modelFactors: [
+        "Detected in the official 7:00 AM ET Atlas Core morning scan.",
+        "No pick, market, edge, confidence or conviction is shown for free users.",
+        "Atlas continues internal validation throughout the day.",
+      ],
+    };
+  }
   const market = String((pickData as any).market ?? "").toLowerCase();
   const marketLabel =
     market === "spreads"
@@ -3253,7 +3271,7 @@ function SignalDetectedRow({
           {getDisplayName(game.away_team)} vs {getDisplayName(game.home_team)}
         </p>
         <p className="truncate text-[13px] font-semibold text-cyan-300">
-          {pickLabel}
+          {pickLabel === "N/A" ? "Signal Detected" : pickLabel}
         </p>
       </div>
 

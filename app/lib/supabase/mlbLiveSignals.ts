@@ -20,7 +20,44 @@ function todayMiamiDate() {
   });
 }
 
+function isAtlasCoreMlbEnabled() {
+  return process.env.NEXT_PUBLIC_ATLAS_CORE_MLB_ENABLED === "true";
+}
+
 export async function getMlbPublicSignals(date = todayMiamiDate()) {
+  if (isAtlasCoreMlbEnabled()) {
+    const { data, error } = await supabase
+      .from("atlas_core_mlb_signals")
+      .select("*")
+      .eq("sport", "MLB")
+      .eq("date", date)
+      .order("start_time", { ascending: true });
+
+    if (error) {
+      console.error("getMlbPublicSignals atlas core error:", error);
+      return [];
+    }
+
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      sport: "MLB",
+      game_id: row.game_id,
+      date: row.date,
+      away_team: row.away_team,
+      home_team: row.home_team,
+      pick: "Signal Detected",
+      market: null,
+      line: null,
+      odds: null,
+      status: "SIGNAL_DETECTED",
+      analysis_summary: null,
+      confidence_label: null,
+      edge_label: null,
+      risk_note: null,
+      model_factors: null,
+      start_time: row.start_time,
+    }));
+  }
 
   const { data, error } = await supabase
     .from("mlb_public_signals")
@@ -38,6 +75,44 @@ export async function getMlbPublicSignals(date = todayMiamiDate()) {
 }
 
 export async function getMlbTop5Live(date = todayMiamiDate()) {
+  if (isAtlasCoreMlbEnabled()) {
+    const { data, error } = await supabase
+      .from("atlas_core_mlb_picks")
+      .select("*")
+      .eq("sport", "MLB")
+      .eq("date", date)
+      .in("status", ["VALIDATED", "CONFIRMED"])
+      .order("rank", { ascending: true });
+
+    if (error) {
+      console.error("MLB atlas core top5 live error:", error);
+      return [];
+    }
+
+    return (data ?? []).map((row: any) => ({
+      gameId: row.game_id,
+      awayTeam: row.away_team,
+      homeTeam: row.home_team,
+      pick: row.pick,
+      market: row.market,
+      line: row.line,
+      odds: row.odds,
+      status: row.status,
+      rank: row.rank,
+      isTopSignal: row.is_top_signal,
+      confidence: row.confidence,
+      internalScore: row.pick_ranking,
+      edge: row.edge,
+      analysisSummary: "Atlas Core validated this pick through the Final Pick Gate.",
+      confidenceLabel: row.conviction_grade,
+      edgeLabel: row.consensus_grade,
+      riskNote: "This pick is shown only after Atlas Core validation. Final pregame status may update to confirmed, downgraded or removed.",
+      modelFactors: row.validation_reasons,
+      startTime: row.start_time,
+      start_time: row.start_time,
+    }));
+  }
+
   const { data, error } = await supabase
     .from("mlb_top5_live")
     .select("*")
