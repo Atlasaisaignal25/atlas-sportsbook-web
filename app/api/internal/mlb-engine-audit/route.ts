@@ -89,6 +89,10 @@ import {
   getValidationHistoryStatus,
 } from "@/app/lib/mlb-engine/sports-intelligence/validation-history/validation-history-repository";
 import { MLB_VALIDATION_HISTORY_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/validation-history/validation-history-engine";
+import {
+  getPerformanceAnalyticsStatus,
+} from "@/app/lib/mlb-engine/sports-intelligence/performance/performance-analytics-repository";
+import { MLB_PERFORMANCE_ANALYTICS_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/performance/performance-analytics-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -785,6 +789,38 @@ function validationHistoryAudit(
   };
 }
 
+function performanceAnalyticsAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getPerformanceAnalyticsStatus>>,
+) {
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_PERFORMANCE_ANALYTICS_MODE ?? "RESEARCH_ONLY" : "DISABLED",
+    version: MLB_PERFORMANCE_ANALYTICS_VERSION,
+    researchOnly: true,
+    publicScoringImpact: "NONE",
+    storageHealth: status,
+    sampleSize: status.sampleSize,
+    totalPicks: status.totalPicks,
+    totalNoPicks: status.totalNoPicks,
+    roi: status.roi,
+    clv: status.averageClv,
+    bestMarket: status.bestMarket,
+    worstMarket: status.worstMarket,
+    bestEdge: status.bestEdgeClassification,
+    bestConviction: status.bestConviction,
+    bestConfidence: status.bestConfidenceBucket,
+    lowSampleSize: status.lowSampleSize,
+    latestSnapshot: status.latestSnapshot,
+    warnings: [
+      "Atlas Performance Analytics Engine v1 is research-only and reads only public.mlb_research_validation_history. It does not create picks, change weights, or modify any engine.",
+      ...(status.warnings ?? []),
+      ...(status.totalSnapshots === 0 ? ["No MLB Performance Analytics snapshot is available yet."] : []),
+      ...(status.errors ?? []),
+    ],
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -889,7 +925,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus, performanceAnalyticsStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -906,6 +942,7 @@ export async function GET(request: Request) {
       getDecisionResearchStatus(),
       getMarketEdgeResearchStatus(),
       getValidationHistoryStatus(),
+      getPerformanceAnalyticsStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -1074,6 +1111,12 @@ export async function GET(request: Request) {
           sportsFlags.validationHistoryEnabled &&
           sportsFlags.validationHistoryMode === "RESEARCH_ONLY",
         validationHistoryStatus,
+      ),
+      performanceAnalytics: performanceAnalyticsAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.performanceAnalyticsEnabled &&
+          sportsFlags.performanceAnalyticsMode === "RESEARCH_ONLY",
+        performanceAnalyticsStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,

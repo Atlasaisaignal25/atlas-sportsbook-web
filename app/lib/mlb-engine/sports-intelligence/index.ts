@@ -29,6 +29,11 @@ export * from "./projection-research/projection-research-engine";
 export * from "./decision-research/decision-research-engine";
 export * from "./market-edge/market-edge-engine";
 export * from "./validation-history/validation-history-engine";
+export {
+  MLB_PERFORMANCE_ANALYTICS_VERSION,
+  MLB_PERFORMANCE_LOW_SAMPLE_THRESHOLD,
+  buildPerformanceAnalyticsSnapshot,
+} from "./performance/performance-analytics-engine";
 export * from "./projection";
 export * from "./provider";
 export * from "./providers/mlb-official-client";
