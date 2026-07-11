@@ -73,6 +73,10 @@ import {
   STARTING_PITCHER_QUALITY_VERSION,
   STARTING_PITCHER_READINESS_VERSION,
 } from "@/app/lib/mlb-engine/sports-intelligence/pitcher-quality/pitcher-quality-engine";
+import {
+  getProjectionResearchStatus,
+} from "@/app/lib/mlb-engine/sports-intelligence/projection-research/projection-research-repository";
+import { MLB_PROJECTION_RESEARCH_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/projection-research/projection-research-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -644,6 +648,35 @@ function startingPitcherQualityAudit(
   };
 }
 
+function projectionResearchAudit(
+  enabled: boolean,
+  status: Awaited<ReturnType<typeof getProjectionResearchStatus>>,
+) {
+  return {
+    enabled,
+    mode: enabled ? process.env.MLB_PROJECTION_RESEARCH_MODE ?? "RESEARCH_ONLY" : "DISABLED",
+    version: MLB_PROJECTION_RESEARCH_VERSION,
+    researchOnly: true,
+    publicScoringImpact: "NONE",
+    marketInputsUsed: false,
+    storageHealth: status,
+    canonicalRows: status.canonicalSnapshots,
+    totalSnapshots: status.totalSnapshots,
+    latestCapture: status.latestCapture,
+    gamesProjected: status.gamesProjected,
+    availabilityCounts: status.availabilityCounts,
+    confidenceCounts: status.confidenceCounts,
+    projectedTotalDistribution: status.projectedTotalDistribution,
+    homeWinProbabilityDistribution: status.homeWinProbabilityDistribution,
+    examples: status.examples,
+    warnings: [
+      "MLB Projection Research v1 is research-only and is not connected to candidateScore, buildCandidate, Top 5, Top Signal, Top Play, closing, grading, public_signals, or UI.",
+      ...(status.canonicalSnapshots === 0 ? ["No canonical MLB Projection Research snapshots are available yet."] : []),
+      ...(status.errors ?? []),
+    ],
+  };
+}
+
 function lineupAudit(side: "home" | "away", features: MlbSportsIntelligenceFeatures, details: boolean) {
   const lineup = side === "home" ? features.lineup.homeLineup : features.lineup.awayLineup;
   if (!lineup) return undefined;
@@ -748,7 +781,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -761,6 +794,7 @@ export async function GET(request: Request) {
       getTeamIntelligenceSnapshotStatus(),
       getTeamQualityResearchStatus(),
       getStartingPitcherQualitySnapshotStatus(),
+      getProjectionResearchStatus(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -905,6 +939,12 @@ export async function GET(request: Request) {
           sportsFlags.pitcherReadinessEnabled &&
           sportsFlags.pitcherQualityMode === "AUDIT_ONLY",
         pitcherQualityStatus,
+      ),
+      mlbProjectionResearch: projectionResearchAudit(
+        sportsFlags.sportsIntelligenceEnabled &&
+          sportsFlags.projectionResearchEnabled &&
+          sportsFlags.projectionResearchMode === "RESEARCH_ONLY",
+        projectionResearchStatus,
       ),
       startingPitchers: {
         requestedEventId: requestedEventId ?? null,
