@@ -184,6 +184,23 @@ function isOpportunity(edge: MarketEdgeRow) {
   return edge.direction !== "NONE" && (numberValue(edge.edge) ?? 0) > 0 && edge.classification !== "NO_EDGE";
 }
 
+function selectMorningOpportunities(edges: MarketEdgeRow[]) {
+  const byGame = new Map<string, MarketEdgeRow>();
+  const ranked = edges
+    .filter(isOpportunity)
+    .toSorted((a, b) => {
+      const edgeDiff = (numberValue(b.edge) ?? 0) - (numberValue(a.edge) ?? 0);
+      if (edgeDiff !== 0) return edgeDiff;
+      return (numberValue(b.value_percent) ?? 0) - (numberValue(a.value_percent) ?? 0);
+    });
+
+  for (const edge of ranked) {
+    if (!byGame.has(edge.official_game_id)) byGame.set(edge.official_game_id, edge);
+  }
+
+  return Array.from(byGame.values());
+}
+
 export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) {
   const config = getAtlasCoreMlbConfig();
   if (!config.enabled || config.legacyRollbackEnabled) return { enabled: false, skipped: true, reason: "Atlas Core MLB disabled or rollback enabled." };
@@ -193,7 +210,8 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
   const { edges, projectionByGame, decisionByGame, oddsByTeams } = await loadCanonicalRows();
   const date = todayET();
   const scanAt = new Date().toISOString();
-  const rows = edges.filter(isOpportunity).map((edge) => {
+  const opportunities = selectMorningOpportunities(edges);
+  const rows = opportunities.map((edge) => {
     const startTime = gameStart(edge, oddsByTeams);
     return {
       date: sourceDateFromStart(startTime) || date,
@@ -210,7 +228,17 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
         projection: projectionByGame.get(edge.official_game_id)?.model_version ?? null,
         decision: decisionByGame.get(edge.official_game_id)?.model_version ?? null,
       },
-      metadata: { frozenBy: "7AM_MORNING_SCAN", opportunityClassification: edge.classification },
+      metadata: {
+        frozenBy: "7AM_MORNING_SCAN",
+        opportunityClassification: edge.classification,
+        detectedPick: pickLabel(edge),
+        detectedMarket: pickMarket(edge.market),
+        detectedLine: pickLine(edge),
+        detectedOdds: pickOdds(edge),
+        detectedDirection: edge.direction,
+        detectedEdge: numberValue(edge.edge),
+        detectedAt: scanAt,
+      },
       frozen: true,
       updated_at: scanAt,
     };
@@ -219,10 +247,10 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("atlas_core_mlb_signals")
-    .upsert(rows, { onConflict: "date,game_id", ignoreDuplicates: true })
+    .upsert(rows, { onConflict: "date,game_id" })
     .select("id");
   if (error) throw error;
-  return { enabled: true, scanned: edges.length, signalsDetected: rows.length, inserted: data?.length ?? 0, skippedDuplicates: rows.length - (data?.length ?? 0) };
+  return { enabled: true, scanned: edges.length, signalsDetected: rows.length, upserted: data?.length ?? 0 };
 }
 
 function gate(edge: MarketEdgeRow, decision?: DecisionRow, projection?: ProjectionRow) {
@@ -388,4 +416,3 @@ export async function getAtlasCoreMlbStatus() {
     legacyEngine: "available via ATLAS_CORE_MLB_ROLLBACK_TO_LEGACY=true",
   };
 }
-

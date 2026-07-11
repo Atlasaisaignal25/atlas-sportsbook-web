@@ -3212,7 +3212,7 @@ function SignalsActivitySummary({
       </p>
       <div className="mt-2.5 grid grid-cols-5 divide-x divide-white/10 text-center">
         {[
-          ["◉", signalGroupCount, "Signals Detected", "text-lime-300"],
+          ["◉", signalGroupCount, "Pending", "text-lime-300"],
           ["⌕", underReview, "Under Review", "text-cyan-300"],
           ["↗", strongCandidates, "Strong Candidates", "text-cyan-300"],
           ["◎", finalReview, "Final Review", "text-fuchsia-300"],

@@ -38,25 +38,29 @@ export async function getMlbPublicSignals(date = todayMiamiDate()) {
       return [];
     }
 
-    return (data ?? []).map((row: any) => ({
-      id: row.id,
-      sport: "MLB",
-      game_id: row.game_id,
-      date: row.date,
-      away_team: row.away_team,
-      home_team: row.home_team,
-      pick: "Signal Detected",
-      market: null,
-      line: null,
-      odds: null,
-      status: "SIGNAL_DETECTED",
-      analysis_summary: null,
-      confidence_label: null,
-      edge_label: null,
-      risk_note: null,
-      model_factors: null,
-      start_time: row.start_time,
-    }));
+    return (data ?? []).map((row: any) => {
+      const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+
+      return {
+        id: row.id,
+        sport: "MLB",
+        game_id: row.game_id,
+        date: row.date,
+        away_team: row.away_team,
+        home_team: row.home_team,
+        pick: metadata.detectedPick ?? "Pending",
+        market: metadata.detectedMarket ?? null,
+        line: metadata.detectedLine ?? null,
+        odds: null,
+        status: "Pending",
+        analysis_summary: null,
+        confidence_label: null,
+        edge_label: null,
+        risk_note: null,
+        model_factors: null,
+        start_time: row.start_time,
+      };
+    });
   }
 
   const { data, error } = await supabase
