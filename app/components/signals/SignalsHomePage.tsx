@@ -2644,38 +2644,40 @@ function MyProfileScreen({
     <main className="min-h-screen bg-[#020814] text-white">
       <div className="mx-auto min-h-screen w-full max-w-md overflow-x-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-3.5 pb-[88px] pt-4">
         <header>
-          <div className="flex items-center gap-2.5">
-            <img src="/icon.png" alt="Atlas Signals" className="h-8 w-8 object-contain" />
-            <div className="text-[9px] font-black uppercase leading-tight tracking-[0.30em] text-white">
-              Atlas<br /><span className="text-cyan-300">Signals</span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <img src="/icon.png" alt="Atlas Signals" className="h-8 w-8 object-contain" />
+              <div className="text-[9px] font-black uppercase leading-tight tracking-[0.30em] text-white">
+                Atlas<br /><span className="text-cyan-300">Signals</span>
+              </div>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() => setProductsOpen(true)}
+                className="grid h-9 w-9 place-items-center rounded-[11px] border border-cyan-300/20 bg-cyan-400/[0.07] text-cyan-300 [&_svg]:h-5 [&_svg]:w-5"
+                aria-label="Open products"
+                title="Products"
+              >
+                <ProfileMiniIcon type="box" />
+              </button>
+              <button
+                type="button"
+                className="relative grid h-9 w-9 place-items-center rounded-[11px] border border-white/12 bg-white/[0.035] text-white/78"
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <HeaderBellIcon className="h-[18px] w-[18px]" />
+                {data?.unreadCount ? (
+                  <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-black">
+                    {data.unreadCount}
+                  </span>
+                ) : null}
+              </button>
             </div>
           </div>
-          <h1 className="mt-2 text-[27px] font-black leading-none tracking-[-0.035em]">My Profile</h1>
-          <p className="mt-1 max-w-[320px] text-[12px] font-medium leading-snug text-white/62">Everything about your account and signals.</p>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setProductsOpen(true)}
-              className="inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-cyan-300/20 bg-cyan-400/[0.07] px-2 text-[10px] font-black uppercase tracking-[0.04em] text-cyan-300"
-              aria-label="Open products"
-            >
-              <ProfileMiniIcon type="box" />
-              <span className="truncate">Products</span>
-            </button>
-            <button
-              type="button"
-              className="relative inline-flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-white/12 bg-white/[0.035] px-2 text-[10px] font-black uppercase tracking-[0.04em] text-white/78"
-              aria-label="Notifications"
-            >
-              <HeaderBellIcon className="h-4 w-4" />
-              <span className="truncate">Notifications</span>
-              {data?.unreadCount ? (
-                <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-black">
-                  {data.unreadCount}
-                </span>
-              ) : null}
-            </button>
-          </div>
+          <h1 className="mt-1.5 text-[26px] font-black leading-none tracking-[-0.035em]">My Profile</h1>
+          <p className="mt-0.5 max-w-[320px] text-[11px] font-medium leading-snug text-white/58">Your personal Atlas Signals hub.</p>
         </header>
 
         {loading ? (
@@ -2691,8 +2693,8 @@ function MyProfileScreen({
             </button>
           </div>
         ) : data && profile ? (
-          <div className="mt-3 space-y-3">
-            <section className="rounded-[16px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-2.5 shadow-[0_0_20px_rgba(0,0,0,0.18)]">
+          <div className="mt-2.5 space-y-2.5">
+            <section className="rounded-[15px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-2.5 shadow-[0_0_18px_rgba(0,0,0,0.16)]">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-[50px] w-[50px] shrink-0 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/10 text-[18px] font-black text-cyan-300">
                     {profile.initials}
@@ -2711,16 +2713,17 @@ function MyProfileScreen({
                   </div>
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-4 rounded-[12px] border border-white/6 bg-white/[0.03]">
-                {summaryItems.map(([label, value, icon]) => (
-                  <div key={String(label)} className="min-w-0 border-r border-white/7 px-1 py-1.5 last:border-r-0">
-                    <div className="mx-auto mb-0.5 grid h-4 w-4 place-items-center text-cyan-300 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</div>
-                    <p className="truncate text-center text-[8px] font-semibold text-white/45">{label}</p>
-                    <p className={`mt-0.5 truncate text-center font-black leading-none text-white ${String(value).length > 7 ? "text-[9px] uppercase tracking-[0.015em] text-cyan-200" : "text-[14px]"}`}>{String(value)}</p>
-                  </div>
-                ))}
-              </div>
             </section>
+
+            <div className="grid grid-cols-4 rounded-[13px] border border-white/8 bg-white/[0.028]">
+              {summaryItems.map(([label, value, icon]) => (
+                <div key={String(label)} className="min-w-0 border-r border-white/7 px-1 py-1.5 last:border-r-0">
+                  <div className="mx-auto mb-0.5 grid h-3.5 w-3.5 place-items-center text-cyan-300 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</div>
+                  <p className="truncate text-center text-[7.5px] font-semibold uppercase tracking-[0.02em] text-white/42">{label}</p>
+                  <p className={`mt-0.5 truncate text-center font-black leading-none text-white ${String(value).length > 7 ? "text-[8.5px] uppercase tracking-[0.01em] text-cyan-200" : "text-[13px]"}`}>{String(value)}</p>
+                </div>
+              ))}
+            </div>
 
             <section>
               <ProfileSectionTitle
@@ -2729,16 +2732,16 @@ function MyProfileScreen({
                 action="View all signals"
                 icon={<ProfileMiniIcon type="target" />}
               />
-              <div className="mb-2 grid grid-cols-4 overflow-hidden rounded-[14px] border border-cyan-300/16 bg-cyan-400/[0.045]">
+              <div className="mb-2 grid grid-cols-4 overflow-hidden rounded-[14px] border border-cyan-300/18 bg-cyan-400/[0.055]">
                 {[
-                  ["Today's Signals", data.signals.length],
+                  ["TODAY", data.signals.length],
                   ["Ready", readySignals],
                   ["Under Review", underReviewSignals],
                   ["Confirmed", confirmedSignals],
                 ].map(([label, value]) => (
-                  <div key={String(label)} className="border-r border-white/8 px-1.5 py-2 text-center last:border-r-0">
-                    <p className="truncate text-[8px] font-black uppercase tracking-[0.04em] text-white/45">{label}</p>
-                    <p className="mt-0.5 text-[15px] font-black leading-none text-cyan-200">{String(value)}</p>
+                  <div key={String(label)} className="border-r border-white/8 px-1.5 py-1.5 text-center last:border-r-0">
+                    <p className="truncate text-[7.5px] font-black uppercase tracking-[0.04em] text-white/45">{label}</p>
+                    <p className="mt-0.5 text-[16px] font-black leading-none text-cyan-200">{String(value)}</p>
                   </div>
                 ))}
               </div>
@@ -2746,32 +2749,40 @@ function MyProfileScreen({
                 {data.signals.length ? data.signals.map((signal) => {
                   const tone = profileTone(signal.productCode);
                   const isTopSignal = signal.productCode === "top_signal_mlb";
+                  const displayStatus = isTopSignal ? "READY" : signal.status;
+                  const statusDot =
+                    displayStatus === "READY" || displayStatus === "CONFIRMED"
+                      ? "bg-emerald-300"
+                      : displayStatus === "DOWNGRADED" || displayStatus === "WITHDRAWN"
+                        ? "bg-red-400"
+                        : "bg-yellow-300";
                   return (
-                    <button key={signal.id} type="button" className={`grid w-full grid-cols-[48px_minmax(0,1fr)_86px_14px] items-center gap-2.5 border-b border-white/8 border-l-[4px] ${tone.accent} px-2.5 py-2.5 text-left last:border-b-0`}>
-                      <div className={`grid h-10 w-10 place-items-center rounded-full border border-current ${tone.bg} ${tone.text}`}>
-                        <TeamSignalLogo team={signal.team} />
+                    <button key={signal.id} type="button" className="grid w-full grid-cols-[18px_minmax(0,1fr)_76px_12px] items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left last:border-b-0">
+                      <div className="relative flex h-full items-center justify-center">
+                        <span className="absolute bottom-[-18px] top-[20px] w-px bg-white/10" />
+                        <span className={`relative z-10 h-2.5 w-2.5 rounded-full ${statusDot} shadow-[0_0_12px_currentColor]`} />
                       </div>
                       <div className="min-w-0">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${tone.bg} ${tone.text}`}>
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[7.5px] font-black uppercase tracking-[0.06em] ${tone.bg} ${tone.text}`}>
                           {signal.product}
-                        </span>
+                          </span>
+                          <span className={`truncate text-[8px] font-black uppercase ${statusTone(displayStatus)}`}>
+                            {displayStatus}
+                          </span>
+                        </div>
                         <p className="mt-1 truncate text-[13px] font-black text-white">{signal.selection}</p>
-                        <p className="truncate text-[10.5px] font-medium text-white/50">vs {signal.opponent}</p>
+                        <p className="truncate text-[10px] font-medium text-white/50">Game vs {signal.opponent}</p>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-semibold text-white/48">Status</p>
-                        <span className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${statusTone(signal.status)}`}>
-                          {isTopSignal ? "READY" : signal.status}
-                        </span>
-                        <p className="mt-0.5 truncate text-[9px] font-medium text-white/42">{isTopSignal ? "Ready to Bet" : signal.publishedAt}</p>
-                        <p className="mt-1 text-[9px] font-semibold text-white/48">Game Time</p>
-                        <p className="text-[11px] font-black text-white">{signal.gameTime}</p>
+                      <div className="min-w-0 text-right">
+                        <p className="text-[9px] font-semibold text-white/43">{isTopSignal ? "Ready to Use" : "Game"}</p>
+                        <p className="mt-0.5 text-[11px] font-black text-white">{signal.gameTime}</p>
                       </div>
-                      <span className="text-[21px] font-light text-white/55">›</span>
+                      <span className="text-[18px] font-light text-white/55">›</span>
                     </button>
                   );
                 }) : (
-                  <div className="flex min-h-[76px] items-center px-4 text-[13px] font-bold text-white/55">No active signals yet.</div>
+                  <div className="flex min-h-[64px] items-center px-4 text-[13px] font-bold text-white/55">No Active Signals Yet.</div>
                 )}
               </div>
             </section>
