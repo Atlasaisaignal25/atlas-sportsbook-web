@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { teamBranding } from "@/app/lib/teamBranding";
 
 type StatusCounts = {
   won: number;
@@ -1158,6 +1159,50 @@ function adminMarketLabel(value: unknown) {
   return String(value ?? "N/A").toUpperCase();
 }
 
+function normalizeAdminTeam(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const adminTeamBrandingLookup = Object.entries(teamBranding).reduce(
+  (lookup, [name, brand]) => {
+    lookup[normalizeAdminTeam(name)] = { name, ...brand };
+    lookup[normalizeAdminTeam(brand.shortName)] = { name, ...brand };
+    lookup[normalizeAdminTeam(brand.abbr)] = { name, ...brand };
+    return lookup;
+  },
+  {} as Record<string, { name: string; shortName: string; abbr: string; logo: string }>
+);
+
+function adminPickTeamName(pick: any) {
+  const rawPick = String(pick?.pick ?? "");
+  const candidates = [rawPick, pick?.home_team, pick?.away_team].filter(Boolean);
+  for (const entry of candidates) {
+    const normalized = normalizeAdminTeam(entry);
+    const direct = adminTeamBrandingLookup[normalized];
+    if (direct) return direct.name;
+    const contained = Object.values(adminTeamBrandingLookup).find((brand) => normalized.includes(normalizeAdminTeam(brand.name)) || normalized.includes(normalizeAdminTeam(brand.shortName)));
+    if (contained) return contained.name;
+  }
+  return rawPick.replace(/\s\([^)]+\)|\sML$/g, "") || shortTeam(pick?.home_team);
+}
+
+function adminTeamBrand(teamName: unknown) {
+  return adminTeamBrandingLookup[normalizeAdminTeam(teamName)];
+}
+
+function AdminTeamLogo({ team, className = "" }: { team: unknown; className?: string }) {
+  const brand = adminTeamBrand(team);
+  const [failed, setFailed] = useState(false);
+  const showLogo = Boolean(brand?.logo && !failed);
+  return (
+    <span className={`grid place-items-center rounded-xl border border-white/10 bg-white/[0.035] ${className}`}>
+      {showLogo && brand?.logo ? <img src={brand.logo} alt="" className="h-full w-full object-contain p-1" onError={() => setFailed(true)} /> : <span className="text-[13px] font-black text-sky-300">{shortTeam(String(team ?? "")).slice(0, 2).toUpperCase()}</span>}
+    </span>
+  );
+}
+
 function AdminShellCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <section className={`rounded-[12px] border border-slate-600/45 bg-[linear-gradient(145deg,rgba(10,25,44,0.86),rgba(4,10,21,0.94))] ${className}`}>
@@ -1169,10 +1214,10 @@ function AdminShellCard({ children, className = "" }: { children: React.ReactNod
 function OperationMetricCard({ label, value, sub, tone = "cyan" }: { label: string; value: string | number; sub?: string; tone?: "cyan" | "green" | "purple" | "white" }) {
   const color = tone === "green" ? "text-emerald-300" : tone === "purple" ? "text-purple-300" : tone === "white" ? "text-white" : "text-sky-400";
   return (
-    <AdminShellCard className="min-h-[54px] px-1 py-2 text-center">
+    <AdminShellCard className="min-h-[64px] px-1 py-2 text-center">
       <p className="text-[8px] font-black uppercase leading-[1.05] text-white/88 sm:text-[10px]">{label}</p>
       <p className={`mt-1 text-[23px] font-black leading-none ${color}`}>{value}</p>
-      {sub ? <p className={`mt-1 text-[9px] font-black uppercase ${color}`}>{sub}</p> : null}
+      {sub ? <p className={`mt-1 text-[8px] font-black uppercase ${color}`}>{sub}</p> : null}
     </AdminShellCard>
   );
 }
@@ -1183,15 +1228,16 @@ function AdminStatusPill({ status }: { status?: string | null }) {
     value === "CONFIRMED" || value === "VALIDATED"
       ? "border-emerald-400/20 bg-emerald-400/14 text-emerald-300"
       : value === "DOWNGRADED" || value === "REMOVED"
-        ? "border-orange-400/20 bg-orange-400/14 text-orange-300"
+        ? "border-red-400/20 bg-red-400/14 text-red-300"
         : "border-yellow-400/20 bg-yellow-400/12 text-yellow-300";
   return <span className={`rounded-[5px] border px-1.5 py-0.5 text-[8px] font-black uppercase sm:text-[9px] ${classes}`}>{value}</span>;
 }
 
 function AdminTopSignalCard({ operations }: { operations?: AdminOperations }) {
   const top = operations?.topSignal;
+  const teamName = top ? adminPickTeamName(top) : null;
   return (
-    <AdminShellCard className="border-cyan-300/35 p-2.5 shadow-[0_0_0_1px_rgba(56,189,248,0.10)]">
+    <AdminShellCard className="border-purple-400/55 p-2.5 shadow-[0_0_0_1px_rgba(168,85,247,0.15)]">
       <div className="flex items-center justify-between border-b border-white/10 pb-2">
         <h2 className="text-[17px] font-black uppercase tracking-[-0.01em] text-white">Top Signal</h2>
         <button className="text-[12px] font-black uppercase text-sky-400">View Details ›</button>
@@ -1199,19 +1245,18 @@ function AdminTopSignalCard({ operations }: { operations?: AdminOperations }) {
       {top ? (
         <>
           <div className="grid grid-cols-[48px_1fr_auto] items-center gap-2.5 border-b border-white/10 py-2.5">
-            <div className="grid h-11 w-11 place-items-center rounded-xl border border-cyan-300/18 bg-cyan-300/[0.055] text-[18px] font-black text-sky-300">
-              {shortTeam(top.home_team).slice(0, 2).toUpperCase()}
-            </div>
+            <AdminTeamLogo team={teamName} className="h-11 w-11" />
             <div className="min-w-0">
-              <p className="truncate text-[20px] font-black leading-tight text-white">{top.pick?.replace(/\s\([^)]+\)/, "") ?? shortTeam(top.home_team)}</p>
+              <p className="truncate text-[20px] font-black leading-tight text-white">{teamName}</p>
               <p className="mt-0.5 text-[13px] font-black uppercase text-sky-400">{adminMarketLabel(top.market)} {top.line ? `${Number(top.line) > 0 ? "+" : ""}${top.line}` : formatAdminOdds(top.odds)}</p>
             </div>
             <AdminStatusPill status={top.status} />
           </div>
-          <div className="grid grid-cols-3 gap-2 pt-2">
+          <div className="grid grid-cols-4 gap-2 pt-2">
             <MiniAdminStat label="Confidence" value={numberPct(top.confidence)} />
             <MiniAdminStat label="Edge" value={formatAdminEdge(top.edge)} />
             <MiniAdminStat label="Published" value={formatAdminTime(top.published_at)} />
+            <MiniAdminStat label="Market" value={adminMarketLabel(top.market)} />
           </div>
         </>
       ) : (
@@ -1240,9 +1285,10 @@ function AdminTop5Card({ operations }: { operations?: AdminOperations }) {
       </div>
       <div>
         {rows.slice(0, 5).map((pick, index) => (
-          <div key={pick.id ?? `${pick.game_id}-${index}`} className="grid grid-cols-[18px_minmax(0,1fr)_46px_62px_48px_10px] items-center gap-1 border-b border-white/8 py-1.5 last:border-b-0 sm:grid-cols-[22px_minmax(0,1fr)_58px_70px_58px_12px] sm:gap-1.5">
+          <div key={pick.id ?? `${pick.game_id}-${index}`} className="grid grid-cols-[18px_28px_minmax(0,1fr)_43px_62px_48px_10px] items-center gap-1 border-b border-white/8 py-1.5 last:border-b-0 sm:grid-cols-[22px_32px_minmax(0,1fr)_58px_70px_58px_12px] sm:gap-1.5">
             <span className="text-[12px] font-black text-white sm:text-[13px]">{pick.rank ?? index + 1}</span>
-            <span className="truncate text-[13px] font-semibold text-white sm:text-[14px]">{pick.pick?.replace(/\sML$|\s\([^)]+\)$/g, "") ?? shortTeam(pick.home_team)}</span>
+            <AdminTeamLogo team={adminPickTeamName(pick)} className="h-7 w-7 rounded-lg sm:h-8 sm:w-8" />
+            <span className="truncate text-[12px] font-semibold text-white sm:text-[14px]">{adminPickTeamName(pick)}</span>
             <span className="text-[11px] font-black text-white sm:text-[12px]">{pick.line ? `${Number(pick.line) > 0 ? "+" : ""}${pick.line}` : adminMarketLabel(pick.market)}</span>
             <AdminStatusPill status={pick.status} />
             <span className="text-right text-[12px] font-black text-emerald-300 sm:text-[13px]">{formatAdminEdge(pick.edge)}</span>
@@ -1257,7 +1303,8 @@ function AdminTop5Card({ operations }: { operations?: AdminOperations }) {
 
 function PipelineStatus({ operations }: { operations?: AdminOperations }) {
   const steps = operations?.pipeline ?? [];
-  const icons = ["⌕", "◎", "▥", "★", "♛", "🏆"];
+  const icons = ["⌕", "◎", "▥", "★", "♛", "♜"];
+  const details = ["7:00 AM", "Frozen", "Live", "Active", "Published", "Pending"];
   return (
     <AdminShellCard className="p-2.5">
       <div className="flex items-center justify-between">
@@ -1271,7 +1318,9 @@ function PipelineStatus({ operations }: { operations?: AdminOperations }) {
             <div key={step.label} className="relative text-center">
               {index < steps.length - 1 ? <span className={`absolute left-1/2 right-[-50%] top-[17px] h-0.5 ${complete ? "bg-emerald-400" : "bg-white/14"}`} /> : null}
               <span className={`relative z-10 mx-auto grid h-[34px] w-[34px] place-items-center rounded-full border text-[15px] ${complete ? "border-emerald-400/70 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-400"}`}>{icons[index]}</span>
-              <p className="mt-1.5 text-[8px] font-black uppercase leading-[1.15] text-white sm:text-[9px]">{step.label}</p>
+              <span className={`relative z-10 mx-auto -mt-1 grid h-3.5 w-3.5 place-items-center rounded-full text-[8px] font-black ${complete ? "bg-emerald-400 text-black" : "bg-slate-500 text-white/60"}`}>✓</span>
+              <p className="mt-1 text-[8px] font-black uppercase leading-[1.12] text-white sm:text-[9px]">{step.label}</p>
+              <p className="mt-0.5 text-[7px] font-black uppercase leading-none text-white/55 sm:text-[8px]">{details[index] ?? step.detail}</p>
             </div>
           );
         })}
@@ -1529,10 +1578,10 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         </div>
       </div>
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-        <OperationMetricCard label="Signals Detected" value={operations?.signalsDetected ?? 0} />
-        <OperationMetricCard label="Validated Picks" value={operations?.validatedPicks ?? 0} tone="green" />
-        <OperationMetricCard label="Top Signal" value={operations?.topSignalPublished ? 1 : 0} tone="purple" />
-        <OperationMetricCard label="Games Remaining" value={operations?.gamesRemaining ?? 0} tone="white" />
+        <OperationMetricCard label="Signals Detected" value={operations?.signalsDetected ?? 0} sub="Free View" />
+        <OperationMetricCard label="Validated Picks" value={operations?.validatedPicks ?? 0} sub="Subscribers" tone="green" />
+        <OperationMetricCard label="Top Signal" value={operations?.topSignalPublished ? 1 : 0} sub={operations?.topSignalPublished ? "Published" : "Pending"} tone="purple" />
+        <OperationMetricCard label="Games Remaining" value={operations?.gamesRemaining ?? 0} sub="Today" tone="white" />
       </div>
       <AdminTopSignalCard operations={operations} />
       <AdminTop5Card operations={operations} />
