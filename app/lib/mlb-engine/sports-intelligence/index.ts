@@ -27,6 +27,7 @@ export * from "./pitcher-quality/pitcher-quality-repository";
 export * from "./mlb-team-mapping";
 export * from "./projection-research/projection-research-engine";
 export * from "./decision-research/decision-research-engine";
+export * from "./market-edge/market-edge-engine";
 export * from "./projection";
 export * from "./provider";
 export * from "./providers/mlb-official-client";
