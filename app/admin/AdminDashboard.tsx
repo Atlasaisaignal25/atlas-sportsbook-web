@@ -107,6 +107,57 @@ function pct(value: unknown) {
   return `${Math.round(value * 100)}%`;
 }
 
+function scorePct(value: unknown) {
+  if (typeof value !== "number") return "N/A";
+  return `${Math.round(value)}%`;
+}
+
+function decisionLabel(value: unknown) {
+  const labels: Record<string, string> = {
+    HOME_ML: "Home Moneyline",
+    AWAY_ML: "Away Moneyline",
+    LEAN_HOME: "Lean Home",
+    LEAN_AWAY: "Lean Away",
+    LEAN_TOTAL_UNDER: "Lean Under",
+    LEAN_TOTAL_OVER: "Lean Over",
+    NO_PICK: "No Pick",
+  };
+  return labels[String(value ?? "")] ?? fmt(value);
+}
+
+function shortTeam(name: string | undefined) {
+  const parts = String(name ?? "").split(" ").filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1] : String(name ?? "Team");
+}
+
+function money(value: unknown) {
+  if (typeof value !== "number") return "N/A";
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function componentStatus(value: unknown): "Positive" | "Neutral" | "Negative" | "Partial" | "Unavailable" {
+  if (value === null || value === undefined || value === "") return "Unavailable";
+  if (typeof value === "string") {
+    const upper = value.toUpperCase();
+    if (upper.includes("PARTIAL")) return "Partial";
+    if (upper.includes("UNAVAILABLE")) return "Unavailable";
+    if (upper.includes("LOW")) return "Partial";
+    return "Positive";
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Unavailable";
+  if (value >= 4) return "Positive";
+  if (value <= -4) return "Negative";
+  return "Neutral";
+}
+
+function statusColor(status: string) {
+  if (status === "Positive") return "bg-emerald-400 text-emerald-300";
+  if (status === "Negative") return "bg-red-400 text-red-300";
+  if (status === "Partial") return "bg-sky-400 text-sky-300";
+  if (status === "Unavailable") return "bg-red-400 text-red-300";
+  return "bg-slate-400 text-white/55";
+}
+
 function planLabel(value: string | null | undefined) {
   return String(value ?? "unknown").replace(/_/g, " ").toUpperCase();
 }
@@ -215,18 +266,150 @@ function atlasBrain(game: ResearchGame) {
       title: "No Pick",
       reasons: game.decision.noPickReasons?.length
         ? game.decision.noPickReasons
-        : ["Consensus insuficiente para una decision research-only."],
+        : ["Engines disagree", "Conviction is low", "Consensus is weak"],
     };
   }
 
-  if (Math.abs(side.projectionWinProbability ?? 0) >= 5) reasons.push(`Projection favorece ${(side.projectionWinProbability ?? 0) > 0 ? "Home" : "Away"}`);
-  if (Math.abs(side.pitcherQuality ?? 0) >= 5) reasons.push(`Starting Pitcher Quality favorece ${(side.pitcherQuality ?? 0) > 0 ? "Home" : "Away"}`);
-  if (Math.abs(side.bullpenQuality ?? 0) >= 5) reasons.push(`Bullpen favorece ${(side.bullpenQuality ?? 0) > 0 ? "Home" : "Away"}`);
-  if (Math.abs(side.offense ?? 0) >= 5) reasons.push(`Offense favorece ${(side.offense ?? 0) > 0 ? "Home" : "Away"}`);
+  if (Math.abs(side.projectionWinProbability ?? 0) >= 5) reasons.push(`Projection favors ${(side.projectionWinProbability ?? 0) > 0 ? shortTeam(game.header.homeTeam) : shortTeam(game.header.awayTeam)}`);
+  if (Math.abs(side.pitcherQuality ?? 0) >= 5) reasons.push(`Starting pitcher advantage for ${(side.pitcherQuality ?? 0) > 0 ? shortTeam(game.header.homeTeam) : shortTeam(game.header.awayTeam)}`);
+  if (Math.abs(side.bullpenQuality ?? 0) >= 5) reasons.push(`Bullpen favors ${(side.bullpenQuality ?? 0) > 0 ? shortTeam(game.header.homeTeam) : shortTeam(game.header.awayTeam)}`);
+  if (Math.abs(side.offense ?? 0) >= 5) reasons.push(`Offense favors ${(side.offense ?? 0) > 0 ? shortTeam(game.header.homeTeam) : shortTeam(game.header.awayTeam)}`);
+  if (Math.abs(side.offense ?? 0) < 5) reasons.push("Offense is neutral");
   if (Math.abs(total.weatherRunEnvironment ?? 0) < 3) reasons.push("Weather neutral");
-  if (!reasons.length) reasons.push("Los modulos no muestran una ventaja dominante; decision de baja conviccion.");
+  if (!reasons.length) reasons.push("No dominant module advantage is present.");
 
   return { title: decision, reasons };
+}
+
+function motorSignals(game: ResearchGame) {
+  const side = game.decision?.componentBreakdown?.sideComponents ?? {};
+  const total = game.decision?.componentBreakdown?.totalComponents ?? {};
+  return [
+    { name: "Projection", status: componentStatus(side.projectionWinProbability) },
+    { name: "Starting Pitcher", status: componentStatus(side.pitcherQuality) },
+    { name: "Offense", status: componentStatus(side.offense) },
+    { name: "Bullpen", status: componentStatus(side.bullpenQuality) },
+    { name: "Lineups", status: componentStatus(game.lineups?.home?.confirmed || game.lineups?.away?.confirmed ? "AVAILABLE" : game.lineups?.home?.stability) },
+    { name: "Weather", status: componentStatus(total.weatherRunEnvironment) },
+    { name: "Park", status: componentStatus(total.parkEnvironment) },
+    { name: "Market", status: game.market ? "Positive" : "Unavailable" },
+    { name: "Decision", status: game.decision?.noPick ? "Neutral" : componentStatus(game.decision?.confidence) },
+  ];
+}
+
+function SummaryGameCard({
+  game,
+  onSystem,
+}: {
+  game: ResearchGame;
+  onSystem: (gameId: string) => void;
+}) {
+  const brain = atlasBrain(game);
+  const motors = motorSignals(game);
+  const homeName = shortTeam(game.header.homeTeam);
+  const awayName = shortTeam(game.header.awayTeam);
+  return (
+    <details className="rounded-3xl border border-cyan-400/15 bg-[#071120] shadow-[0_0_30px_rgba(0,220,255,0.06)]">
+      <summary className="cursor-pointer list-none p-4 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+            <div>
+              <p className="text-sm text-white/70">{game.header.awayTeam}</p>
+              <h3 className="text-2xl font-black text-white">{awayName}</h3>
+            </div>
+            <div className="text-left sm:text-center">
+              <p className="text-lg font-black text-white/70">@</p>
+              <p className="text-sm text-white/45">{formatTime(game.header.time)}</p>
+            </div>
+            <div className="sm:text-right">
+              <p className="text-sm text-white/70">{game.header.homeTeam}</p>
+              <h3 className="text-2xl font-black text-white">{homeName}</h3>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 lg:w-[380px]">
+            <MiniMetric label="Decision" value={decisionLabel(game.decision?.decision)} />
+            <MiniMetric label="Confidence" value={scorePct(game.decision?.confidence)} />
+            <MiniMetric label="Conviction" value={fmt(game.decision?.conviction)} />
+          </div>
+        </div>
+      </summary>
+
+      <div className="grid gap-4 border-t border-white/10 p-4 sm:p-5">
+        <section className="rounded-2xl border border-cyan-400/15 bg-black/20 p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/45">Main Decision</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <MiniMetric label="Pick" value={decisionLabel(game.decision?.decision)} />
+            <MiniMetric label="Decision" value={game.decision?.decision} />
+            <MiniMetric label="Confidence" value={scorePct(game.decision?.confidence)} />
+            <MiniMetric label="Conviction" value={`${fmt(game.decision?.convictionScore)} ${game.decision?.conviction ?? ""}`} />
+            <MiniMetric label="Consensus" value={`${fmt(game.decision?.consensusScore)} ${decisionLabel(game.decision?.consensus)}`} />
+            <MiniMetric label="No Pick" value={game.decision?.noPick ? "Yes" : "No"} />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">
+            {game.decision?.noPick ? "Why Atlas passed" : "Why Atlas reached this decision"}
+          </h4>
+          <div className="mt-3 grid gap-2">
+            {brain.reasons.map((reason: string, index: number) => (
+              <p key={`${reason}-${index}`} className="text-sm font-bold text-white/75">
+                <span className={reason.toLowerCase().includes("neutral") ? "text-white/45" : "text-emerald-300"}>
+                  {reason.toLowerCase().includes("neutral") ? "−" : "✓"}
+                </span>{" "}
+                {reason}
+              </p>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">Quick Projection</h4>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MiniMetric label="Projected Score" value={`${awayName} ${fmt(game.projection?.awayRuns)} · ${homeName} ${fmt(game.projection?.homeRuns)}`} />
+            <MiniMetric label="Projected Total" value={fmt(game.projection?.totalRuns)} />
+            <MiniMetric label="Win Probability" value={`${homeName} ${pct(game.projection?.homeWinProbability)} · ${awayName} ${pct(game.projection?.awayWinProbability)}`} />
+            <MiniMetric label="Fair Moneyline" value={`${homeName} ${money(game.projection?.fairMoneylineHome)} · ${awayName} ${money(game.projection?.fairMoneylineAway)}`} />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">Motor Signals</h4>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-9">
+            {motors.map((motor) => {
+              const color = statusColor(motor.status);
+              return (
+                <div key={motor.name} className="flex items-center gap-2 text-sm">
+                  <span className={`h-2.5 w-2.5 rounded-full ${color.split(" ")[0]}`} />
+                  <span>
+                    <span className="block font-bold text-white">{motor.name}</span>
+                    <span className={`text-xs font-bold ${color.split(" ")[1]}`}>{motor.status}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-black/20 p-4">
+          <h4 className="text-sm font-black uppercase tracking-[0.16em] text-white">Readiness</h4>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <MiniMetric label="Home Game Readiness" value={fmt(game.gameReadiness.home)} />
+            <MiniMetric label="Away Game Readiness" value={fmt(game.gameReadiness.away)} />
+            <MiniMetric label="Context Certainty" value={fmt(game.contextCertainty.score)} />
+          </div>
+        </section>
+
+        <button
+          type="button"
+          onClick={() => onSystem(game.id)}
+          className="rounded-2xl border border-cyan-400/20 bg-cyan-950/20 px-4 py-4 text-left text-sm font-black uppercase tracking-[0.16em] text-cyan-300"
+        >
+          View System Details →
+        </button>
+      </div>
+    </details>
+  );
 }
 
 function ResearchGameCard({ game }: { game: ResearchGame }) {
@@ -387,6 +570,8 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [loading, setLoading] = useState(true);
   const [cronRunning, setCronRunning] = useState<string | null>(null);
   const [cronResult, setCronResult] = useState<string | null>(null);
+  const [researchView, setResearchView] = useState<"summary" | "system">("summary");
+  const [selectedSystemGameId, setSelectedSystemGameId] = useState<string | null>(null);
 
   const totals = useMemo(() => {
     const sports = overview?.sports ?? [];
@@ -398,6 +583,16 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       topSignalHistory: sports.reduce((sum, item) => sum + item.today.topSignalHistory, 0),
     };
   }, [overview]);
+
+  const researchGames = overview?.researchDashboard?.games ?? [];
+  const systemGames = selectedSystemGameId
+    ? researchGames.filter((game) => game.id === selectedSystemGameId)
+    : researchGames;
+
+  function openSystemDetails(gameId: string) {
+    setSelectedSystemGameId(gameId);
+    setResearchView("system");
+  }
 
   async function loadOverview() {
     setLoading(true);
@@ -486,24 +681,67 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
               <p className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">
                 Atlas Research Dashboard
               </p>
-              <h2 className="mt-1 text-2xl font-black">System Thinking Panel</h2>
+              <h2 className="mt-1 text-2xl font-black">
+                {researchView === "summary" ? "Resumen" : "Sistema"}
+              </h2>
               <p className="mt-2 max-w-3xl text-sm text-white/50">
                 Internal research-only view powered by existing Atlas engine snapshots.
               </p>
             </div>
-            <p className="text-xs text-white/40">
-              Updated: {formatTime(overview?.researchDashboard?.updatedAt)}
-            </p>
+            <div className="flex flex-col gap-3 sm:items-end">
+              <p className="text-xs text-white/40">
+                Updated: {formatTime(overview?.researchDashboard?.updatedAt)}
+              </p>
+              <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResearchView("summary");
+                    setSelectedSystemGameId(null);
+                  }}
+                  className={`px-5 py-3 text-xs font-black uppercase tracking-[0.18em] ${
+                    researchView === "summary" ? "bg-cyan-400/10 text-cyan-300" : "text-white/55"
+                  }`}
+                >
+                  Resumen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResearchView("system")}
+                  className={`px-5 py-3 text-xs font-black uppercase tracking-[0.18em] ${
+                    researchView === "system" ? "bg-cyan-400/10 text-cyan-300" : "text-white/55"
+                  }`}
+                >
+                  Sistema
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-4">
-            {(overview?.researchDashboard?.games ?? []).map((game) => (
-              <ResearchGameCard key={game.id} game={game} />
-            ))}
-            {!overview?.researchDashboard?.games?.length ? (
+            {researchView === "summary"
+              ? researchGames.map((game) => (
+                  <SummaryGameCard key={game.id} game={game} onSystem={openSystemDetails} />
+                ))
+              : systemGames.map((game) => (
+                  <ResearchGameCard key={game.id} game={game} />
+                ))}
+            {!researchGames.length ? (
               <p className="rounded-2xl bg-black/20 p-4 text-sm text-white/45">
                 No research snapshots available yet.
               </p>
+            ) : null}
+            {researchView === "system" && selectedSystemGameId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setResearchView("summary");
+                  setSelectedSystemGameId(null);
+                }}
+                className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-black uppercase tracking-[0.16em] text-white/70"
+              >
+                Back to Resumen
+              </button>
             ) : null}
           </div>
         </section>
