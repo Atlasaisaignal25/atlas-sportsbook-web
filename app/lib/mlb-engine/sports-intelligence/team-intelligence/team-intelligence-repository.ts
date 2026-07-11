@@ -292,7 +292,10 @@ function buildResearchSensitivity(baseInputs: Array<Parameters<typeof buildTeamQ
     return [label, {
       weights: TEAM_QUALITY_RESEARCH_WEIGHTS[label as keyof typeof TEAM_QUALITY_RESEARCH_WEIGHTS],
       rankingCorrelationToA: label === "A" ? 1 : rankCorrelation(rows),
-      distribution: researchScoreDistribution(rows.filter((row) => row.availability === "AVAILABLE").map((row) => row.score)),
+      distribution: researchScoreDistribution(rows.map((row) => row.score)),
+      completeDistribution: researchScoreDistribution(rows.filter((row) => row.availability === "AVAILABLE").map((row) => row.score)),
+      partialDistribution: researchScoreDistribution(rows.filter((row) => row.availability === "PARTIAL").map((row) => row.score)),
+      limitedDistribution: researchScoreDistribution(rows.filter((row) => row.availability === "LIMITED").map((row) => row.score)),
       meanScoreChangeFromA: label === "A" ? 0 : round(deltas.filter((item) => isNumber(item.deltaFromA)).reduce((sum, item) => sum + Math.abs(item.deltaFromA ?? 0), 0) / Math.max(1, deltas.filter((item) => isNumber(item.deltaFromA)).length)),
       largestDeltasFromA: deltas.filter((item) => isNumber(item.deltaFromA)).toSorted((a, b) => Math.abs(b.deltaFromA ?? 0) - Math.abs(a.deltaFromA ?? 0)).slice(0, 5),
     }];
