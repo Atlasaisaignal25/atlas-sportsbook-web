@@ -136,6 +136,161 @@ async function safeRecent(
   };
 }
 
+async function loadOperationsCenter(supabase: ReturnType<typeof getSupabaseAdmin>, date: string) {
+  const now = new Date().toISOString();
+  const [
+    signals,
+    picks,
+    performance,
+    learning,
+    validation,
+  ] = await Promise.all([
+    supabase
+      .from("atlas_core_mlb_signals")
+      .select("*")
+      .eq("date", date)
+      .order("start_time", { ascending: true }),
+    supabase
+      .from("atlas_core_mlb_picks")
+      .select("*")
+      .eq("date", date)
+      .order("rank", { ascending: true }),
+    supabase
+      .from("mlb_performance_analytics")
+      .select("*")
+      .eq("canonical", true)
+      .order("calculated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("mlb_learning_insights")
+      .select("*")
+      .eq("canonical", true)
+      .order("timestamp", { ascending: false })
+      .limit(6),
+    supabase
+      .from("mlb_research_validation_history")
+      .select("id,result,market,edge_classification,decision,conviction,confidence,roi,clv_probability,created_at")
+      .eq("canonical", true)
+      .order("created_at", { ascending: false })
+      .limit(300),
+  ]);
+
+  const signalRows = signals.data ?? [];
+  const pickRows = picks.data ?? [];
+  const topSignal = pickRows.find((row: any) => row.is_top_signal) ?? null;
+  const gamesRemaining = signalRows.filter((row: any) => row.start_time && row.start_time > now).length;
+  const confirmed = pickRows.filter((row: any) => String(row.status).toUpperCase() === "CONFIRMED").length;
+  const downgraded = pickRows.filter((row: any) => String(row.status).toUpperCase() === "DOWNGRADED").length;
+  const removed = pickRows.filter((row: any) => String(row.status).toUpperCase() === "REMOVED").length;
+  const validationRows = validation.data ?? [];
+  const graded = validationRows.filter((row: any) => String(row.result).toUpperCase() !== "PENDING");
+  const wins = graded.filter((row: any) => String(row.result).toUpperCase() === "WON").length;
+  const losses = graded.filter((row: any) => String(row.result).toUpperCase() === "LOST").length;
+
+  const recentActivity = [
+    signalRows.length
+      ? {
+          time: signalRows[0]?.morning_scan_at ?? signalRows[0]?.created_at,
+          title: "Morning scan completed",
+          detail: `${signalRows.length} signals detected and frozen`,
+          tone: "blue",
+        }
+      : null,
+    pickRows.length
+      ? {
+          time: pickRows[0]?.published_at ?? pickRows[0]?.created_at,
+          title: "Top 5 updated",
+          detail: `${pickRows.length} validated picks active`,
+          tone: "green",
+        }
+      : null,
+    topSignal
+      ? {
+          time: topSignal.published_at ?? topSignal.created_at,
+          title: "Top Signal published",
+          detail: `${topSignal.pick}`,
+          tone: "purple",
+        }
+      : null,
+    confirmed
+      ? {
+          time: pickRows.find((row: any) => String(row.status).toUpperCase() === "CONFIRMED")?.final_validated_at,
+          title: "Pick confirmed",
+          detail: `${confirmed} confirmed`,
+          tone: "green",
+        }
+      : null,
+    downgraded
+      ? {
+          time: pickRows.find((row: any) => String(row.status).toUpperCase() === "DOWNGRADED")?.final_validated_at,
+          title: "Pick downgraded",
+          detail: `${downgraded} downgraded`,
+          tone: "yellow",
+        }
+      : null,
+  ].filter(Boolean);
+
+  const errors = [
+    signals.error?.message,
+    picks.error?.message,
+    performance.error?.message,
+    learning.error?.message,
+    validation.error?.message,
+  ].filter(Boolean) as string[];
+
+  return {
+    errors,
+    generatedAt: new Date().toISOString(),
+    date,
+    league: "MLB",
+    signalsDetected: signalRows.length,
+    validatedPicks: pickRows.length,
+    topSignalPublished: Boolean(topSignal),
+    gamesRemaining,
+    confirmed,
+    downgraded,
+    removed,
+    topSignal,
+    topPicks: pickRows,
+    pipeline: [
+      { label: "Morning Scan", detail: "7:00 AM", status: signalRows.length ? "complete" : "pending" },
+      { label: "Signals Frozen", detail: signalRows.length ? "Active" : "Pending", status: signalRows.length ? "complete" : "pending" },
+      { label: "Validation Live", detail: "Every 5 min", status: "complete" },
+      { label: "Top 5 Active", detail: pickRows.length ? "Active" : "Pending", status: pickRows.length ? "complete" : "pending" },
+      { label: "Top Signal Published", detail: topSignal ? "Published" : "Pending", status: topSignal ? "complete" : "pending" },
+      { label: "Post Game", detail: graded.length ? "Active" : "Pending", status: graded.length ? "complete" : "pending" },
+    ],
+    recentActivity,
+    performance: {
+      sampleSize: performance.data?.sample_size ?? validationRows.length,
+      totalPicks: performance.data?.total_picks ?? validationRows.length,
+      totalNoPicks: performance.data?.total_no_picks ?? 0,
+      wins: performance.data?.wins ?? wins,
+      losses: performance.data?.losses ?? losses,
+      pushes: performance.data?.pushes ?? 0,
+      winRate: performance.data?.win_rate ?? (wins + losses ? wins / (wins + losses) : null),
+      roi: performance.data?.roi ?? null,
+      averageClv: performance.data?.average_clv ?? null,
+      bestMarket: performance.data?.best_market ?? null,
+      worstMarket: performance.data?.worst_market ?? null,
+      bestEdgeClassification: performance.data?.best_edge_classification ?? null,
+      bestConviction: performance.data?.best_conviction ?? null,
+      bestConfidenceBucket: performance.data?.best_confidence_bucket ?? null,
+      lowSampleSize: performance.data?.low_sample_size ?? true,
+      calculatedAt: performance.data?.calculated_at ?? null,
+    },
+    learning: learning.data ?? [],
+    database: {
+      health: errors.length ? "warnings" : "ready",
+      snapshots: signalRows.length + pickRows.length + validationRows.length,
+      cron: "ready",
+      storage: "ready",
+      warnings: errors,
+    },
+  };
+}
+
 function rowNumber(value: unknown) {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string") {
@@ -502,7 +657,7 @@ export async function GET() {
     })
   );
 
-  const [subscriptions, purchases, challengeAttempts, challengeRewards, researchDashboard] = await Promise.all([
+  const [subscriptions, purchases, challengeAttempts, challengeRewards, researchDashboard, operations] = await Promise.all([
     safeRecent(
       supabase,
       "subscriptions",
@@ -528,12 +683,14 @@ export async function GET() {
       10
     ),
     loadResearchDashboard(supabase),
+    loadOperationsCenter(supabase, today),
   ]);
 
   for (const item of [subscriptions, purchases, challengeAttempts, challengeRewards]) {
     if (item.error) errors.push(item.error);
   }
   errors.push(...researchDashboard.errors.map((error) => `Research dashboard: ${error}`));
+  errors.push(...operations.errors.map((error) => `Operations: ${error}`));
 
   return NextResponse.json({
     success: true,
@@ -559,6 +716,7 @@ export async function GET() {
       rewards: challengeRewards.data,
     },
     researchDashboard,
+    operations,
     errors,
   });
 }

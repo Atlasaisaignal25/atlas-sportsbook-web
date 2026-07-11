@@ -44,7 +44,45 @@ type AdminOverview = {
     games: ResearchGame[];
     errors: string[];
   };
+  operations?: AdminOperations;
   errors: string[];
+};
+
+type AdminOperations = {
+  generatedAt: string;
+  date: string;
+  league: string;
+  signalsDetected: number;
+  validatedPicks: number;
+  topSignalPublished: boolean;
+  gamesRemaining: number;
+  confirmed: number;
+  downgraded: number;
+  removed: number;
+  topSignal: any | null;
+  topPicks: any[];
+  pipeline: Array<{ label: string; detail: string; status: string }>;
+  recentActivity: Array<{ time?: string | null; title: string; detail: string; tone: string }>;
+  performance: {
+    sampleSize: number;
+    totalPicks: number;
+    totalNoPicks: number;
+    wins: number;
+    losses: number;
+    pushes: number;
+    winRate: number | null;
+    roi: number | null;
+    averageClv: number | null;
+    bestMarket: string | null;
+    worstMarket: string | null;
+    bestEdgeClassification: string | null;
+    bestConviction: string | null;
+    bestConfidenceBucket: string | null;
+    lowSampleSize: boolean;
+    calculatedAt: string | null;
+  };
+  learning: any[];
+  database: { health: string; snapshots: number; cron: string; storage: string; warnings: string[] };
 };
 
 type ResearchGame = {
@@ -1050,6 +1088,233 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
   );
 }
 
+type AdminSection = "operations" | "research" | "performance" | "more";
+
+function AtlasAdminLogo() {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <img src="/icon.png" alt="" className="h-9 w-9 object-contain drop-shadow-[0_0_14px_rgba(56,189,248,0.35)]" />
+      <div className="leading-none">
+        <p className="text-[28px] font-black uppercase tracking-[0.26em] text-white">Atlas</p>
+        <p className="-mt-0.5 text-center text-[11px] font-black uppercase tracking-[0.28em] text-white/76">Admin</p>
+      </div>
+    </div>
+  );
+}
+
+function formatAdminTime(value?: string | null) {
+  if (!value) return "N/A";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "America/New_York",
+    }).format(new Date(value));
+  } catch {
+    return String(value).slice(11, 16);
+  }
+}
+
+function formatAdminDate(value?: string | null) {
+  if (!value) return "Date";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "America/New_York",
+    }).format(new Date(`${value}T12:00:00`));
+  } catch {
+    return value;
+  }
+}
+
+function adminNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function formatAdminOdds(value: unknown) {
+  const odds = adminNumber(value);
+  if (odds === null) return "";
+  return odds > 0 ? `+${odds}` : String(odds);
+}
+
+function formatAdminEdge(value: unknown) {
+  const edge = adminNumber(value);
+  if (edge === null) return "N/A";
+  return `${(edge * 100).toFixed(2)}%`;
+}
+
+function adminMarketLabel(value: unknown) {
+  const market = String(value ?? "").toLowerCase();
+  if (market === "h2h") return "ML";
+  if (market === "spreads") return "SPREADS";
+  if (market === "totals") return "TOTALS";
+  return String(value ?? "N/A").toUpperCase();
+}
+
+function AdminShellCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`rounded-[13px] border border-slate-600/50 bg-[linear-gradient(145deg,rgba(12,27,48,0.88),rgba(5,12,24,0.94))] ${className}`}>
+      {children}
+    </section>
+  );
+}
+
+function OperationMetricCard({ label, value, sub, tone = "cyan" }: { label: string; value: string | number; sub: string; tone?: "cyan" | "green" | "purple" | "white" }) {
+  const color = tone === "green" ? "text-emerald-300" : tone === "purple" ? "text-purple-300" : tone === "white" ? "text-white" : "text-sky-400";
+  return (
+    <AdminShellCard className="min-h-[92px] px-3 py-3 text-center">
+      <p className="text-[12px] font-black uppercase tracking-[-0.01em] text-white">{label}</p>
+      <p className={`mt-2 text-[34px] font-black leading-none ${color}`}>{value}</p>
+      <p className={`mt-2 text-[11px] font-black uppercase ${color}`}>{sub}</p>
+    </AdminShellCard>
+  );
+}
+
+function AdminStatusPill({ status }: { status?: string | null }) {
+  const value = String(status ?? "PENDING").toUpperCase();
+  const classes =
+    value === "CONFIRMED"
+      ? "border-emerald-400/20 bg-emerald-400/14 text-emerald-300"
+      : value === "DOWNGRADED" || value === "REMOVED"
+        ? "border-orange-400/20 bg-orange-400/14 text-orange-300"
+        : "border-yellow-400/20 bg-yellow-400/12 text-yellow-300";
+  return <span className={`rounded-md border px-2 py-1 text-[11px] font-black uppercase ${classes}`}>{value}</span>;
+}
+
+function AdminTopSignalCard({ operations }: { operations?: AdminOperations }) {
+  const top = operations?.topSignal;
+  return (
+    <AdminShellCard className="border-purple-400/50 p-4 shadow-[0_0_0_1px_rgba(168,85,247,0.18)]">
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <h2 className="text-[16px] font-black uppercase text-white">Top Signal</h2>
+        <button className="text-[13px] font-black uppercase text-sky-400">View Details ›</button>
+      </div>
+      {top ? (
+        <>
+          <div className="grid grid-cols-[72px_1fr_auto] items-center gap-3 border-b border-white/10 py-4">
+            <div className="grid h-14 w-14 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-[26px] font-black text-sky-300">
+              {shortTeam(top.home_team).slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-[19px] font-black text-white">{top.pick?.replace(/\s\([^)]+\)/, "") ?? shortTeam(top.home_team)}</p>
+              <p className="mt-0.5 text-[18px] font-black text-sky-400">{top.line ? `${Number(top.line) > 0 ? "+" : ""}${top.line}` : formatAdminOdds(top.odds)}</p>
+            </div>
+            <AdminStatusPill status={top.status} />
+          </div>
+          <div className="grid grid-cols-4 gap-3 pt-3">
+            <MiniAdminStat label="Confidence" value={numberPct(top.confidence)} />
+            <MiniAdminStat label="Edge" value={formatAdminEdge(top.edge)} />
+            <MiniAdminStat label="Published" value={formatAdminTime(top.published_at)} />
+            <MiniAdminStat label="Market" value={adminMarketLabel(top.market)} />
+          </div>
+        </>
+      ) : (
+        <div className="py-8 text-center text-sm font-bold text-white/50">No Top Signal published yet.</div>
+      )}
+    </AdminShellCard>
+  );
+}
+
+function MiniAdminStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] font-black uppercase text-white/42">{label}</p>
+      <p className="mt-1 text-[15px] font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function AdminTop5Card({ operations }: { operations?: AdminOperations }) {
+  const rows = operations?.topPicks ?? [];
+  return (
+    <AdminShellCard className="p-4">
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <h2 className="text-[16px] font-black uppercase text-white">Top 5 Picks</h2>
+        <button className="text-[13px] font-black uppercase text-sky-400">View All ›</button>
+      </div>
+      <div>
+        {rows.slice(0, 5).map((pick, index) => (
+          <div key={pick.id ?? `${pick.game_id}-${index}`} className="grid grid-cols-[28px_1fr_80px_86px_64px_14px] items-center gap-2 border-b border-white/8 py-2.5 last:border-b-0">
+            <span className="text-[15px] font-black text-white">{pick.rank ?? index + 1}</span>
+            <span className="truncate text-[15px] font-bold text-white">{pick.pick?.replace(/\sML$|\s\([^)]+\)$/g, "") ?? shortTeam(pick.home_team)}</span>
+            <span className="text-[13px] font-black text-white">{pick.line ? `${Number(pick.line) > 0 ? "+" : ""}${pick.line}` : adminMarketLabel(pick.market)}</span>
+            <AdminStatusPill status={pick.status} />
+            <span className="text-right text-[15px] font-black text-emerald-300">{formatAdminEdge(pick.edge)}</span>
+            <span className="text-xl text-white/60">›</span>
+          </div>
+        ))}
+        {!rows.length ? <p className="py-6 text-center text-sm text-white/45">No validated picks yet.</p> : null}
+      </div>
+    </AdminShellCard>
+  );
+}
+
+function PipelineStatus({ operations }: { operations?: AdminOperations }) {
+  const steps = operations?.pipeline ?? [];
+  const icons = ["⌕", "◎", "▥", "★", "♛", "🏆"];
+  return (
+    <AdminShellCard className="p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[16px] font-black uppercase text-white">Pipeline Status</h2>
+        <button className="text-[13px] font-black uppercase text-sky-400">View Pipeline ›</button>
+      </div>
+      <div className="mt-4 grid grid-cols-6 items-start gap-0">
+        {steps.map((step, index) => {
+          const complete = step.status === "complete";
+          return (
+            <div key={step.label} className="relative text-center">
+              {index < steps.length - 1 ? <span className={`absolute left-1/2 right-[-50%] top-8 h-1 ${complete ? "bg-emerald-400" : "bg-white/14"}`} /> : null}
+              <span className={`relative z-10 mx-auto grid h-16 w-16 place-items-center rounded-full border text-2xl ${complete ? "border-emerald-400/70 bg-emerald-400/10 text-emerald-300" : "border-slate-500/50 bg-slate-500/10 text-slate-400"}`}>{icons[index]}</span>
+              <span className={`relative z-10 mx-auto -mt-2 grid h-5 w-5 place-items-center rounded-full text-[11px] font-black ${complete ? "bg-emerald-400 text-black" : "bg-slate-500 text-white/60"}`}>✓</span>
+              <p className="mt-2 text-[10px] font-black uppercase leading-4 text-white">{step.label}</p>
+              <p className="text-[10px] font-bold uppercase text-white/60">{step.detail}</p>
+            </div>
+          );
+        })}
+      </div>
+    </AdminShellCard>
+  );
+}
+
+function RecentActivity({ operations }: { operations?: AdminOperations }) {
+  const rows = operations?.recentActivity ?? [];
+  const tone: Record<string, string> = {
+    blue: "bg-sky-400",
+    green: "bg-emerald-400",
+    purple: "bg-purple-400",
+    yellow: "bg-yellow-400",
+  };
+  return (
+    <AdminShellCard className="p-4">
+      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+        <h2 className="text-[16px] font-black uppercase text-white">Recent Activity</h2>
+        <button className="text-[13px] font-black uppercase text-sky-400">View All ›</button>
+      </div>
+      <div className="pt-2">
+        {rows.map((item, index) => (
+          <div key={`${item.title}-${index}`} className="grid grid-cols-[78px_20px_1fr_14px] items-center border-b border-white/8 py-2.5 last:border-b-0">
+            <span className="text-[13px] font-medium text-white/65">{formatAdminTime(item.time)}</span>
+            <span className={`h-3 w-3 rounded-full ${tone[item.tone] ?? "bg-sky-400"} shadow-[0_0_0_4px_rgba(255,255,255,0.06)]`} />
+            <span>
+              <p className="text-[15px] font-semibold leading-tight text-white">{item.title}</p>
+              <p className="text-[13px] leading-tight text-white/48">{item.detail}</p>
+            </span>
+            <span className="text-xl text-white/60">›</span>
+          </div>
+        ))}
+        {!rows.length ? <p className="py-5 text-center text-sm text-white/45">No activity yet.</p> : null}
+      </div>
+    </AdminShellCard>
+  );
+}
+
 export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1057,6 +1322,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [cronResult, setCronResult] = useState<string | null>(null);
   const [researchView, setResearchView] = useState<"summary" | "system">("summary");
   const [selectedSystemGameId, setSelectedSystemGameId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<AdminSection>("operations");
 
   const totals = useMemo(() => {
     const sports = overview?.sports ?? [];
@@ -1124,6 +1390,236 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   useEffect(() => {
     window.sessionStorage.setItem("atlas-admin-research-view", researchView);
   }, [researchView]);
+
+  const operations = overview?.operations;
+  const adminNav: Array<{ id: AdminSection; label: string; icon: string }> = [
+    { id: "operations", label: "Operations", icon: "▱" },
+    { id: "research", label: "Research", icon: "⌬" },
+    { id: "performance", label: "Performance", icon: "▥" },
+    { id: "more", label: "More", icon: "•••" },
+  ];
+
+  const researchPanel = (
+    <section className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">Research</p>
+          <h1 className="text-[26px] font-black text-white">Atlas Research Dashboard</h1>
+        </div>
+        <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-[#071322]">
+          <button
+            type="button"
+            onClick={() => {
+              setResearchView("summary");
+              setSelectedSystemGameId(null);
+            }}
+            className={`px-4 py-2 text-[11px] font-black uppercase ${researchView === "summary" ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
+          >
+            Resumen
+          </button>
+          <button
+            type="button"
+            onClick={() => setResearchView("system")}
+            className={`px-4 py-2 text-[11px] font-black uppercase ${researchView === "system" ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
+          >
+            Sistema
+          </button>
+        </div>
+      </div>
+      <div className="grid gap-3">
+        {researchView === "summary"
+          ? researchGames.map((game) => <SummaryGameCard key={game.id} game={game} onSystem={openSystemDetails} />)
+          : systemGames.map((game) => <ResearchGameCard key={game.id} game={game} />)}
+        {!researchGames.length ? (
+          <p className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm text-white/50">No research snapshots available yet.</p>
+        ) : null}
+        {researchView === "system" && selectedSystemGameId ? (
+          <button
+            type="button"
+            onClick={() => {
+              setResearchView("summary");
+              setSelectedSystemGameId(null);
+            }}
+            className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-black uppercase tracking-[0.16em] text-white/70"
+          >
+            Back to Resumen
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+
+  const performance = operations?.performance;
+  const performancePanel = (
+    <section className="grid gap-3">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">Performance</p>
+        <h1 className="text-[26px] font-black text-white">Atlas Performance</h1>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <OperationMetricCard label="ROI" value={performance?.roi === null || performance?.roi === undefined ? "N/A" : `${Number(performance.roi).toFixed(2)}%`} sub="Research" tone="green" />
+        <OperationMetricCard label="CLV" value={performance?.averageClv === null || performance?.averageClv === undefined ? "N/A" : `${Number(performance.averageClv).toFixed(2)}%`} sub="Average" />
+        <OperationMetricCard label="Win Rate" value={performance?.winRate === null || performance?.winRate === undefined ? "N/A" : pct(performance.winRate)} sub="Graded" tone="white" />
+        <OperationMetricCard label="Sample Size" value={performance?.sampleSize ?? 0} sub={performance?.lowSampleSize ? "Low Sample" : "Ready"} tone="purple" />
+      </div>
+      <AdminShellCard className="p-4">
+        <h2 className="text-[16px] font-black uppercase text-white">Research Summary</h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <MiniMetric label="Best Market" value={performance?.bestMarket ?? "N/A"} />
+          <MiniMetric label="Best Edge" value={performance?.bestEdgeClassification ?? "N/A"} />
+          <MiniMetric label="Best Conviction" value={performance?.bestConviction ?? "N/A"} />
+          <MiniMetric label="Best Confidence" value={performance?.bestConfidenceBucket ?? "N/A"} />
+          <MiniMetric label="Wins / Losses" value={`${performance?.wins ?? 0} / ${performance?.losses ?? 0}`} />
+          <MiniMetric label="Learning Status" value={operations?.learning?.length ? "Active" : "Waiting"} />
+        </div>
+      </AdminShellCard>
+    </section>
+  );
+
+  const morePanel = (
+    <section className="grid gap-3">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-300">More</p>
+        <h1 className="text-[26px] font-black text-white">System Controls</h1>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {["History", "Clients", "Database", "Settings"].map((item) => (
+          <AdminShellCard key={item} className="p-4">
+            <p className="text-[15px] font-black text-white">{item}</p>
+            <p className="mt-1 text-xs font-bold text-white/48">Internal Atlas tools</p>
+          </AdminShellCard>
+        ))}
+      </div>
+      <AdminShellCard className="p-4">
+        <h2 className="text-[16px] font-black uppercase text-white">Database</h2>
+        <div className="mt-3 grid gap-3 md:grid-cols-4">
+          <MiniMetric label="Health" value={operations?.database?.health ?? "Loading"} />
+          <MiniMetric label="Snapshots" value={operations?.database?.snapshots ?? 0} />
+          <MiniMetric label="Cron" value={operations?.database?.cron ?? "N/A"} />
+          <MiniMetric label="Storage" value={operations?.database?.storage ?? "N/A"} />
+        </div>
+      </AdminShellCard>
+      <AdminShellCard className="p-4">
+        <h2 className="text-[16px] font-black uppercase text-white">Cron</h2>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {(overview?.crons ?? []).slice(0, 8).map((cron) => (
+            <button
+              key={cron.path}
+              onClick={() => runCron(cron.path)}
+              disabled={Boolean(cronRunning)}
+              className="rounded-xl border border-cyan-400/15 bg-cyan-950/10 p-3 text-left transition hover:border-cyan-300/45 disabled:opacity-50"
+            >
+              <span className="block text-xs font-black text-white">{cron.path}</span>
+              <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300">{cronRunning === cron.path ? "Running" : cron.schedule}</span>
+            </button>
+          ))}
+        </div>
+      </AdminShellCard>
+    </section>
+  );
+
+  const operationsPanel = (
+    <section className="grid gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h1 className="text-[25px] font-black uppercase tracking-[-0.02em] text-white">Operations</h1>
+          <span className="flex items-center gap-1 text-[12px] font-black uppercase text-emerald-300">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Live
+          </span>
+        </div>
+        <div className="rounded-xl border border-slate-600/70 bg-[#071322] px-3 py-2 text-[13px] font-black uppercase text-white">
+          ▣ {formatAdminDate(operations?.date ?? overview?.today)}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <OperationMetricCard label="Signals Detected" value={operations?.signalsDetected ?? 0} sub="Free View" />
+        <OperationMetricCard label="Validated Picks" value={operations?.validatedPicks ?? 0} sub="Subscribers" tone="green" />
+        <OperationMetricCard label="Top Signal" value={operations?.topSignalPublished ? 1 : 0} sub={operations?.topSignalPublished ? "Published" : "Pending"} tone="purple" />
+        <OperationMetricCard label="Games Remaining" value={operations?.gamesRemaining ?? 0} sub="Today" tone="white" />
+      </div>
+      <AdminTopSignalCard operations={operations} />
+      <AdminTop5Card operations={operations} />
+      <PipelineStatus operations={operations} />
+      <RecentActivity operations={operations} />
+    </section>
+  );
+
+  return (
+    <main className="min-h-screen bg-[#020915] text-white">
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[210px] border-r border-white/10 bg-[#03101f] px-5 py-6 lg:block">
+        <div className="mb-10">
+          <p className="text-[23px] font-black uppercase tracking-[0.16em] text-white">Atlas</p>
+          <p className="text-[15px] font-black uppercase tracking-[0.34em] text-cyan-300">Signals</p>
+        </div>
+        <nav className="grid gap-2">
+          {adminNav.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveSection(item.id)}
+              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold ${activeSection === item.id ? "bg-cyan-400/10 text-cyan-300" : "text-white/62"}`}
+            >
+              <span>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="absolute bottom-6 left-5 right-5 rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <p className="text-[11px] font-black uppercase text-white">System Status</p>
+          <p className="mt-2 text-[11px] font-bold text-emerald-300">{operations?.database?.health === "warnings" ? "Warnings detected" : "All Systems Operational"}</p>
+        </div>
+      </aside>
+
+      <div className="min-h-screen pb-24 lg:ml-[210px] lg:pb-8">
+        <header className="sticky top-0 z-20 border-b border-white/10 bg-[#020915]/95 px-4 py-4 backdrop-blur lg:static lg:px-8">
+          <div className="mx-auto flex max-w-5xl items-center justify-between">
+            <button className="grid h-10 w-10 place-items-center text-3xl text-white/85 lg:hidden">≡</button>
+            <AtlasAdminLogo />
+            <button className="relative grid h-10 w-10 place-items-center text-2xl text-white/85">
+              ♧
+              <span className="absolute right-0 top-0 grid h-5 w-5 place-items-center rounded-full bg-sky-500 text-[10px] font-black text-white">3</span>
+            </button>
+          </div>
+        </header>
+
+        <div className="mx-auto grid max-w-5xl gap-3 px-4 py-4 lg:px-8">
+          <div className="hidden items-center justify-between lg:flex">
+            <div>
+              <h1 className="text-[27px] font-black uppercase text-white">Admin Dashboard</h1>
+              <p className="text-sm text-white/50">Atlas Admin Command Center · {adminEmail}</p>
+            </div>
+            <button
+              onClick={loadOverview}
+              disabled={loading}
+              className="rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-black text-cyan-200"
+            >
+              {loading ? "Loading" : "Refresh"}
+            </button>
+          </div>
+
+          {cronResult ? <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/20 p-3 text-sm font-bold text-cyan-100">{cronResult}</div> : null}
+          {activeSection === "operations" ? operationsPanel : null}
+          {activeSection === "research" ? researchPanel : null}
+          {activeSection === "performance" ? performancePanel : null}
+          {activeSection === "more" ? morePanel : null}
+        </div>
+      </div>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t border-white/10 bg-[#020915]/98 px-2 pb-5 pt-3 backdrop-blur lg:hidden">
+        {adminNav.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setActiveSection(item.id)}
+            className={`grid place-items-center gap-1 text-[11px] font-black uppercase ${activeSection === item.id ? "text-sky-400" : "text-white/55"}`}
+          >
+            <span className="text-[27px] leading-none">{item.icon}</span>
+            {item.label}
+          </button>
+        ))}
+      </nav>
+    </main>
+  );
 
   return (
     <main className="min-h-screen bg-[#050816] px-3 py-4 text-white sm:px-4">
@@ -1407,7 +1903,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           <section className="rounded-2xl border border-rose-400/20 bg-rose-950/10 p-4">
             <h2 className="mb-3 text-xl font-black text-rose-200">Warnings</h2>
             <div className="grid gap-2">
-              {overview.errors.map((error, index) => (
+              {(overview?.errors ?? []).map((error, index) => (
                 <p key={`${error}-${index}`} className="rounded-xl bg-black/20 p-2.5 text-sm text-rose-100">
                   {error}
                 </p>
