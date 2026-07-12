@@ -10,6 +10,7 @@ import {
   type OneTimeProductCode,
   type TopSignalProductCode,
 } from "@/app/lib/stripe";
+import { storedPlanForCheckout } from "@/app/lib/product-access";
 
 export const runtime = "nodejs";
 
@@ -55,19 +56,20 @@ async function upsertSubscription(subscription: Stripe.Subscription) {
   const planCode =
     stripePriceToPlan[priceId] ??
     subscription.metadata.plan_code;
+  const storedPlanCode = storedPlanForCheckout(planCode);
   const userId = subscription.metadata.user_id;
   const sport = normalizeSubscriptionSport(subscription.metadata.sport);
 
   if (
     !userId ||
-    (planCode !== "exclusive" && planCode !== "premium" && planCode !== "elite")
+    !storedPlanCode
   ) {
     return;
   }
 
   const row = {
     user_id: userId,
-    plan_code: planCode,
+    plan_code: storedPlanCode,
     sport,
     status: subscription.status,
     stripe_customer_id: String(subscription.customer),

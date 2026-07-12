@@ -1,13 +1,24 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
+import {
+  activeSubscriptionStatuses,
+  getEntitlement,
+  isNewProductModelEnabled,
+  isSignalDeliveryV2Enabled,
+  normalizeAtlasSport,
+  planDisplayName,
+  presentationStatus,
+  productCodeFromPlan,
+  productCopy,
+  type AtlasSport,
+  type ProductCode,
+} from "@/app/lib/product-access";
 
 export const dynamic = "force-dynamic";
 
-type ProductCode = "top_signal_mlb" | "top5_mlb" | "exclusive_pack" | "nrfi_yrfi";
 type SignalStatus = "DETECTED" | "UNDER REVIEW" | "CONFIRMED" | "DOWNGRADED" | "WITHDRAWN" | "READY";
 
-const activeSubscriptionStatuses = ["active", "trialing"];
 const visibleOfficialStatuses = ["VALIDATED", "CONFIRMED", "PENDING", "DOWNGRADED"];
 
 function todayET() {
@@ -76,22 +87,11 @@ function pct(value: number | null) {
 }
 
 function planTier(plan: string | null | undefined) {
-  const normalized = String(plan ?? "").toLowerCase();
-  if (normalized === "elite") return "ELITE MEMBER";
-  if (normalized === "premium") return "PREMIUM MEMBER";
-  if (normalized === "exclusive") return "PRO MEMBER";
-  return "FREE MEMBER";
-}
-
-function productFromPlan(plan: string | null | undefined): ProductCode | null {
-  const normalized = String(plan ?? "").toLowerCase();
-  if (normalized === "exclusive") return "exclusive_pack";
-  if (normalized === "premium" || normalized === "elite") return "top5_mlb";
-  return null;
+  return `${planDisplayName(plan === "elite" ? "unlimited" : (String(plan ?? "free").toLowerCase() as any))} MEMBER`;
 }
 
 function statusLabel(status: unknown, product: ProductCode): SignalStatus {
-  if (product === "top_signal_mlb") return "READY";
+  if (product === "top_signal_by_sport") return "READY";
   const normalized = String(status ?? "").toUpperCase();
   if (normalized === "CONFIRMED") return "CONFIRMED";
   if (normalized === "DOWNGRADED") return "DOWNGRADED";
@@ -101,41 +101,17 @@ function statusLabel(status: unknown, product: ProductCode): SignalStatus {
 }
 
 function productLabel(code: ProductCode) {
-  if (code === "top_signal_mlb") return "Top Signal";
-  if (code === "top5_mlb") return "Top 5 MLB";
-  if (code === "exclusive_pack") return "Exclusive Pack";
-  return "NRFI/YRFI";
+  return productCopy[code]?.name ?? code;
 }
 
 function recommendationCatalog() {
   return [
     {
-      code: "top_signal_mlb",
+      code: "top_signal_by_sport",
       title: "Today's Top Signal",
-      description: "Get the strongest signal of the day.",
+      description: productCopy.top_signal_by_sport.description,
       cta: "Unlock",
       tone: "purple",
-    },
-    {
-      code: "top5_mlb",
-      title: "Top 5 MLB",
-      description: "5 premium signals every day.",
-      cta: "View Details",
-      tone: "cyan",
-    },
-    {
-      code: "exclusive_pack",
-      title: "Exclusive Pack",
-      description: "Get exclusive signals and insights.",
-      cta: "Upgrade",
-      tone: "green",
-    },
-    {
-      code: "nrfi_yrfi",
-      title: "NRFI/YRFI",
-      description: "Specialized first-inning signals.",
-      cta: "Subscribe",
-      tone: "gold",
     },
   ];
 }
@@ -146,6 +122,61 @@ function productStatus(row: any | null) {
   if (status.includes("CANCEL")) return "CANCELLED";
   if (status === "ACTIVE" || status === "TRIALING" || status === "PAID") return "ACTIVE";
   return status || "INACTIVE";
+}
+
+function metadataValue(row: any, key: string) {
+  const metadata = row?.metadata && typeof row.metadata === "object" ? row.metadata : {};
+  return metadata[key];
+}
+
+function detectedScore(row: any) {
+  return Number(metadataValue(row, "detectedAtlasProbability") ?? 0) * 1000 + Number(metadataValue(row, "detectedEdge") ?? 0);
+}
+
+function mapDetectedSignal(row: any, params: { rank?: number; premium: boolean }) {
+  const selection = params.premium
+    ? String(metadataValue(row, "detectedPick") ?? "Signal Detected")
+    : "Signal Detected";
+  const status = presentationStatus("UNDER REVIEW", "exclusive_detected_top3");
+
+  return {
+    id: `detected-${row.id}`,
+    sport: row.sport ?? "MLB",
+    product: params.premium ? "EXCLUSIVE PACK" : "FREE",
+    productCode: params.premium ? "exclusive_detected_top3" : "signals_detected",
+    rank: params.rank ?? null,
+    selection,
+    event: `${row.away_team} @ ${row.home_team}`,
+    opponent: row.away_team,
+    team: row.home_team,
+    status: params.premium ? status.label : "DETECTED",
+    statusDescription: params.premium ? status.description : "Atlas detected a Signal.",
+    gameTime: formatTime(row.start_time),
+    publishedAt: formatTime(row.updated_at ?? row.morning_scan_at),
+  };
+}
+
+function mapOfficialSignal(row: any, product: ProductCode) {
+  const status = presentationStatus(row.status, product);
+  return {
+    id: `${product}-${row.id}`,
+    sport: row.sport ?? "MLB",
+    product: productLabel(product),
+    productCode: product,
+    rank: row.rank ?? null,
+    selection: `${row.pick}${row.odds ? ` ${money(row.odds)}` : ""}`,
+    event: `${row.away_team} @ ${row.home_team}`,
+    opponent: row.direction === "HOME" ? row.away_team : row.home_team,
+    team: row.direction === "HOME" ? row.home_team : row.away_team,
+    status: status.label,
+    statusDescription: status.description,
+    gameTime: formatTime(row.start_time),
+    publishedAt: formatTime(row.published_at ?? row.updated_at),
+  };
+}
+
+function sectionProgress(count: number, max: number, label: string) {
+  return `${Math.min(count, max)} of ${max} ${label} available`;
 }
 
 function activeUntilText(row: any | null) {
@@ -173,7 +204,7 @@ export async function GET() {
 
   const admin = getSupabaseAdmin();
   const date = todayET();
-  const [subscriptions, purchases, officialPicks, officialHistory, notifications] = await Promise.all([
+  const [subscriptions, purchases, detectedSignals, officialPicks, officialHistory, notifications] = await Promise.all([
     safeTable(
       admin
         .from("subscriptions")
@@ -191,6 +222,16 @@ export async function GET() {
         .gte("access_date", date)
         .order("created_at", { ascending: false })
         .limit(20),
+      [] as any[],
+    ),
+    safeTable(
+      admin
+        .from("atlas_core_mlb_signals")
+        .select("id,game_id,date,away_team,home_team,start_time,sport,stage,morning_scan_at,metadata,updated_at")
+        .eq("sport", "MLB")
+        .eq("date", date)
+        .eq("stage", "SIGNALS_DETECTED")
+        .order("start_time", { ascending: true }),
       [] as any[],
     ),
     safeTable(
@@ -226,66 +267,83 @@ export async function GET() {
   ]);
 
   const activeSubscription = subscriptions.find((row) =>
-    activeSubscriptionStatuses.includes(String(row.status ?? "").toLowerCase()),
+    (activeSubscriptionStatuses as readonly string[]).includes(String(row.status ?? "").toLowerCase()),
   ) ?? null;
-  const subscriptionProduct = productFromPlan(activeSubscription?.plan_code);
+  const topSignalSports = purchases
+    .filter((purchase) => purchase.status === "paid" && String(purchase.product_code).startsWith("top_signal_"))
+    .map((purchase) => normalizeAtlasSport(purchase.sport))
+    .filter((sport): sport is AtlasSport => Boolean(sport));
+  const entitlement = getEntitlement({
+    planCode: activeSubscription?.plan_code,
+    selectedSport: activeSubscription?.sport,
+    topSignalSports,
+  });
   const owned = new Set<ProductCode>();
+  const subscriptionProduct = productCodeFromPlan(entitlement.plan);
   if (subscriptionProduct) owned.add(subscriptionProduct);
   for (const purchase of purchases) {
     if (purchase.status !== "paid") continue;
-    if (purchase.product_code === "top_signal_mlb") owned.add("top_signal_mlb");
+    if (String(purchase.product_code).startsWith("top_signal_")) owned.add("top_signal_by_sport");
   }
 
-  const canSeeTopSignal = owned.has("top_signal_mlb");
-  const canSeeTop5 = owned.has("top5_mlb");
-  const canSeeExclusive = owned.has("exclusive_pack");
+  const rankedDetected = [...detectedSignals].sort((a, b) => detectedScore(b) - detectedScore(a));
+  const productSections: any[] = [];
 
-  const signals = officialPicks.flatMap((row) => {
-    const rows: any[] = [];
-    if (row.is_top_signal && canSeeTopSignal) {
-      rows.push({
-        id: `top-signal-${row.id}`,
-        product: "Top Signal",
-        productCode: "top_signal_mlb",
-        selection: `${row.pick}${row.odds ? ` ${money(row.odds)}` : ""}`,
-        event: `${row.home_team} vs ${row.away_team}`,
-        opponent: row.direction === "HOME" ? row.away_team : row.home_team,
-        team: row.direction === "HOME" ? row.home_team : row.away_team,
-        status: "READY",
-        gameTime: formatTime(row.start_time),
-        publishedAt: formatTime(row.published_at),
+  if (entitlement.plan === "free") {
+    const rows = detectedSignals.map((row) => mapDetectedSignal(row, { premium: false }));
+    productSections.push({
+      code: "signals_detected",
+      title: "SIGNALS DETECTED",
+      sport: "ALL",
+      progress: `${rows.length} Signals Detected`,
+      signals: rows,
+    });
+  }
+
+  if (entitlement.canViewExclusiveTop3) {
+    const rows = rankedDetected.slice(0, 3).map((row, index) => mapDetectedSignal(row, { premium: true, rank: index + 1 }));
+    productSections.push({
+      code: "exclusive_detected_top3",
+      title: "EXCLUSIVE SIGNALS",
+      sport: "ALL",
+      progress: sectionProgress(rows.length, 3, "Signals"),
+      signals: rows,
+      emptyText: "Atlas is still validating today's Signals.",
+    });
+  }
+
+  if (entitlement.canViewOfficialTop5) {
+    const sports = entitlement.canViewAllSports ? entitlement.sports : entitlement.sports.slice(0, 1);
+    for (const sport of sports) {
+      if (sport !== "MLB") continue;
+      const rows = officialPicks
+        .filter((row) => !row.is_top_signal && Number(row.rank) <= 5)
+        .slice(0, 5)
+        .map((row) => mapOfficialSignal(row, entitlement.canViewAllSports ? "atlas_unlimited_all_sports" : "premium_sport_top5"));
+      productSections.push({
+        code: entitlement.canViewAllSports ? "atlas_unlimited_all_sports" : "premium_sport_top5",
+        title: entitlement.canViewAllSports ? `${sport} OFFICIAL SIGNALS` : `PREMIUM — ${sport}`,
+        sport,
+        progress: sectionProgress(rows.length, 5, "Official Signals"),
+        signals: rows,
+        emptyText: "Atlas is still validating today's Official Signals.",
       });
     }
-    if (canSeeTop5 && Number(row.rank) <= 5) {
-      rows.push({
-        id: `top5-${row.id}`,
-        product: "Top 5 MLB",
-        productCode: "top5_mlb",
-        selection: `${row.pick}${row.odds ? ` ${money(row.odds)}` : ""}`,
-        event: `${row.home_team} vs ${row.away_team}`,
-        opponent: row.direction === "HOME" ? row.away_team : row.home_team,
-        team: row.direction === "HOME" ? row.home_team : row.away_team,
-        status: statusLabel(row.status, "top5_mlb"),
-        gameTime: formatTime(row.start_time),
-        publishedAt: formatTime(row.published_at),
-      });
-    }
-    if (canSeeExclusive && Number(row.rank) <= 3) {
-      rows.push({
-        id: `exclusive-${row.id}`,
-        product: "Exclusive Pack",
-        productCode: "exclusive_pack",
-        selection: `${row.pick}${row.odds ? ` ${money(row.odds)}` : ""}`,
-        event: `${row.home_team} vs ${row.away_team}`,
-        opponent: row.direction === "HOME" ? row.away_team : row.home_team,
-        team: row.direction === "HOME" ? row.home_team : row.away_team,
-        status: statusLabel(row.status, "exclusive_pack"),
-        gameTime: formatTime(row.start_time),
-        publishedAt: formatTime(row.published_at),
-      });
-    }
-    return rows;
-  });
+  }
+
+  if (entitlement.topSignalSports.includes("MLB")) {
+    const topSignal = officialPicks.find((row) => row.is_top_signal);
+    productSections.push({
+      code: "top_signal_by_sport",
+      title: "TOP SIGNAL — MLB",
+      sport: "MLB",
+      progress: topSignal ? "READY" : "Not published yet",
+      signals: topSignal ? [mapOfficialSignal(topSignal, "top_signal_by_sport")] : [],
+      emptyText: "Atlas has not published a Top Signal for this sport today.",
+    });
+  }
+
+  const signals = productSections.flatMap((section) => section.signals);
 
   const graded = officialHistory;
   const wins = graded.filter((row) => row.result === "WON").length;
@@ -300,24 +358,31 @@ export async function GET() {
 
   const products = [
     {
-      code: "top_signal_mlb",
+      code: "top_signal_by_sport",
       name: "Top Signal",
-      status: canSeeTopSignal ? "ACTIVE" : "INACTIVE",
-      detail: canSeeTopSignal ? `Access for ${date}` : "Not subscribed",
+      status: owned.has("top_signal_by_sport") ? "ACTIVE" : "INACTIVE",
+      detail: owned.has("top_signal_by_sport") ? `Access for ${date}` : "Not subscribed",
       expandable: true,
     },
     {
-      code: "top5_mlb",
-      name: "Top 5 MLB",
-      status: canSeeTop5 ? "ACTIVE" : "INACTIVE",
-      detail: canSeeTop5 ? activeUntilText(activeSubscription) : "Not subscribed",
+      code: "premium_sport_top5",
+      name: "Premium Pack",
+      status: entitlement.plan === "premium" ? "ACTIVE" : "INACTIVE",
+      detail: entitlement.plan === "premium" ? `${entitlement.selectedSport ?? "MLB"} • ${activeUntilText(activeSubscription)}` : "Not subscribed",
       expandable: true,
     },
     {
-      code: "exclusive_pack",
+      code: "exclusive_detected_top3",
       name: "Exclusive Pack",
-      status: canSeeExclusive ? productStatus(activeSubscription) : "INACTIVE",
-      detail: canSeeExclusive ? activeUntilText(activeSubscription) : "Not subscribed",
+      status: entitlement.plan === "exclusive" ? productStatus(activeSubscription) : "INACTIVE",
+      detail: entitlement.plan === "exclusive" ? activeUntilText(activeSubscription) : "Not subscribed",
+      expandable: true,
+    },
+    {
+      code: "atlas_unlimited_all_sports",
+      name: "Atlas Unlimited",
+      status: entitlement.plan === "unlimited" ? "ACTIVE" : "INACTIVE",
+      detail: entitlement.plan === "unlimited" ? activeUntilText(activeSubscription) : "Not subscribed",
       expandable: true,
     },
     {
@@ -356,9 +421,15 @@ export async function GET() {
       sampleSize: decisions,
     },
     signals,
+    productSections,
     products,
     recommendations,
     activity: signalActivity,
     unreadCount: notifications.length,
+    entitlement,
+    featureFlags: {
+      atlasNewProductModel: isNewProductModelEnabled(),
+      atlasSignalDeliveryV2: isSignalDeliveryV2Enabled(),
+    },
   });
 }

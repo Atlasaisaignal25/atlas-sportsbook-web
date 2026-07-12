@@ -111,7 +111,7 @@ type LiveScore = {
   timeRemaining?: string | null;
 };
 
-type UserPlan = "free" | "exclusive" | "premium" | "elite" | "admin";
+type UserPlan = "free" | "exclusive" | "premium" | "elite" | "unlimited" | "admin";
 type PlanAccess = {
   plan: Exclude<UserPlan, "admin">;
   selectedSport?: SportTab;
@@ -125,6 +125,7 @@ type CheckoutProduct =
   | "exclusive"
   | "premium"
   | "elite"
+  | "unlimited"
   | "top_signal_mlb"
   | "top_signal_nba"
   | "top_signal_nhl"
@@ -164,6 +165,13 @@ const planAccessRules: Record<Exclude<UserPlan, "admin">, Omit<PlanAccess, "plan
     canViewTopPlay: false,
   },
   elite: {
+    canViewTop3: true,
+    canViewRankedTop3: true,
+    canViewAllSports: true,
+    canViewTopSignal: false,
+    canViewTopPlay: false,
+  },
+  unlimited: {
     canViewTop3: true,
     canViewRankedTop3: true,
     canViewAllSports: true,
@@ -362,6 +370,7 @@ function isUserPlan(value: unknown): value is UserPlan {
     value === "exclusive" ||
     value === "premium" ||
     value === "elite" ||
+    value === "unlimited" ||
     value === "admin"
   );
 }
@@ -371,6 +380,7 @@ function isCheckoutProduct(value: unknown): value is CheckoutProduct {
     value === "exclusive" ||
     value === "premium" ||
     value === "elite" ||
+    value === "unlimited" ||
     value === "top_signal_mlb" ||
     value === "top_signal_nba" ||
     value === "top_signal_nhl" ||
@@ -380,12 +390,16 @@ function isCheckoutProduct(value: unknown): value is CheckoutProduct {
   );
 }
 
-function isSubscriptionCheckoutProduct(value: CheckoutProduct): value is "exclusive" | "premium" | "elite" {
-  return value === "exclusive" || value === "premium" || value === "elite";
+function isSubscriptionCheckoutProduct(value: CheckoutProduct): value is "exclusive" | "premium" | "elite" | "unlimited" {
+  return value === "exclusive" || value === "premium" || value === "elite" || value === "unlimited";
 }
 
 function topSignalProductForSport(sport: CheckoutSport): CheckoutProduct {
   return `top_signal_${sport.toLowerCase()}` as CheckoutProduct;
+}
+
+function hasAllSportsAccessPlan(plan: UserPlan) {
+  return plan === "elite" || plan === "unlimited" || plan === "admin";
 }
 
 function getTeamLogoKey(value: string) {
@@ -2113,7 +2127,7 @@ function getSubPicksForUser(
     return labelSubscriptionPicks(sortPicksByAtlasValue(subscriptionPicks), true);
   }
 
-  if (userAccess.plan === "elite") {
+  if (userAccess.plan === "elite" || userAccess.plan === "unlimited") {
     return labelSubscriptionPicks(sortPicksByAtlasValue(subscriptionPicks), true);
   }
 
@@ -2131,7 +2145,7 @@ function getSubPicksForUser(
 }
 
 function hasSportAccess(userAccess: UserAccess, sport: SportTab) {
-  if (userAccess.plan === "elite" || userAccess.plan === "admin") return true;
+  if (hasAllSportsAccessPlan(userAccess.plan)) return true;
   return userAccess.sports.includes(sport);
 }
 
@@ -2146,7 +2160,7 @@ function canViewTopTab(userAccess: UserAccess) {
 function canViewStatsAndHistory(userAccess: UserAccess) {
   return (
     userAccess.plan === "premium" ||
-    userAccess.plan === "elite" ||
+    userAccess.plan === "elite" || userAccess.plan === "unlimited" ||
     userAccess.plan === "admin"
   );
 }
@@ -2155,7 +2169,7 @@ function canViewTop5History(userAccess: UserAccess) {
   return (
     userAccess.plan === "exclusive" ||
     userAccess.plan === "premium" ||
-    userAccess.plan === "elite" ||
+    userAccess.plan === "elite" || userAccess.plan === "unlimited" ||
     userAccess.plan === "admin"
   );
 }
@@ -2184,7 +2198,7 @@ function canViewPickInSubs(
     return !!pickData.isTop5 && !pickData.isTopSignal;
   }
 
-  if (userAccess.plan === "elite") {
+  if (userAccess.plan === "elite" || userAccess.plan === "unlimited") {
     return !!pickData.isTop5 && !pickData.isTopSignal;
   }
 
@@ -2205,7 +2219,7 @@ function getSubsBadgeLabel(
 
   if (
     userAccess.plan === "premium" ||
-    userAccess.plan === "elite"
+    userAccess.plan === "elite" || userAccess.plan === "unlimited"
   ) {
     if (pickData.isTop5) {
       return `Ranked Top 3 #${pickData.topRank ?? ""}`;
@@ -2226,7 +2240,7 @@ function getSubsBadgeLabel(
 }
 
 type PackPlan = {
-  plan: "exclusive" | "premium" | "elite";
+  plan: "exclusive" | "premium" | "unlimited";
   name: string;
   price: string;
   icon: string;
@@ -2245,14 +2259,14 @@ const subscriptionPackPlans: PackPlan[] = [
     price: "$34.99",
     icon: "★",
     tone: "bronze",
-    description: "Best for users focused on one sport.",
+    description: "Top 3 ranked Signals Detected across all available sports.",
     included: [
-      "Choose Your Sport",
-      "Top 3 Signals",
-      "Not Ranked",
-      "Sorted by start time",
+      "All Available Sports",
+      "Top 3 Signals Detected",
+      "Ranked Signals",
+      "Live Status Updates",
     ],
-    locked: ["Top Signal (locked)", "Top Play (locked)"],
+    locked: ["Top Signal sold separately"],
     cta: "Choose Exclusive",
   },
   {
@@ -2262,29 +2276,31 @@ const subscriptionPackPlans: PackPlan[] = [
     icon: "◎",
     tone: "blue",
     badge: "Recommended",
-    description: "Best for users who want Atlas AI to prioritize the strongest plays.",
+    description: "Up to 5 official ranked Atlas Signals for one selected sport.",
     included: [
       "Choose Your Sport",
-      "Ranked Top 3 Signals",
-      "Atlas value priority",
+      "Up to 5 Official Signals",
+      "Ranked Signals",
+      "Live Status Updates",
     ],
-    locked: ["Top Signal (locked)", "Top Play (locked)"],
+    locked: ["Top Signal sold separately"],
     cta: "Choose Premium",
   },
   {
-    plan: "elite",
-    name: "ELITE",
+    plan: "unlimited",
+    name: "ATLAS UNLIMITED",
     price: "$99.99",
     icon: "◆",
     tone: "purple",
-    description: "Best for users who want full coverage across all available sports.",
+    description: "Up to 5 official ranked Atlas Signals for every available sport.",
     included: [
-      "All Active Sports",
-      "Ranked Top 3 for Every Sport",
-      "Each sport ranked separately",
+      "All Available Sports",
+      "Up to 5 Per Sport",
+      "Ranked Signals",
+      "Auto-Includes New Sports",
     ],
-    locked: ["Top Signal (locked)", "Top Play (locked)"],
-    cta: "Choose Elite",
+    locked: ["Top Signal sold separately"],
+    cta: "Choose Unlimited",
   },
 ];
 
@@ -4177,7 +4193,7 @@ function handleJoinPlanChoose(plan: PackPlan["plan"]) {
     return;
   }
 
-  void handleSubscribe(plan, plan === "elite" ? undefined : selectedPackSport);
+  void handleSubscribe(plan, plan === "unlimited" ? undefined : selectedPackSport);
 }
 
 async function handleLogout() {
@@ -5917,7 +5933,7 @@ const subsPicks = useMemo(() => {
 
 const subscriptionSportGroups = useMemo(() => {
   const sportsToRender: CheckoutSport[] =
-    userAccess.plan === "elite" || userAccess.plan === "admin"
+    hasAllSportsAccessPlan(userAccess.plan)
       ? activeSubscriptionSports
       : selectedSport !== "TOP" && checkoutSports.includes(selectedSport as CheckoutSport)
       ? [selectedSport as CheckoutSport]
@@ -6612,10 +6628,10 @@ const homeMembershipPlans = [
     plan: "exclusive" as const,
     title: "Exclusive",
     price: "$34.99",
-    subtitle: "Choose Your Sport",
-    featureTitle: "Not Ranked Top 3",
-    featureSubtitle: "One Sport Focus",
-    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Signal History", "Closing Status"],
+    subtitle: "All Available Sports",
+    featureTitle: "Ranked Top 3",
+    featureSubtitle: "Signals Detected",
+    features: ["All Available Sports", "Top 3 Signals Detected", "Ranked Signals", "Live Status Updates", "Signal History"],
     cta: "Get Exclusive",
     accent: "cyan" as const,
   },
@@ -6624,22 +6640,22 @@ const homeMembershipPlans = [
     title: "Premium",
     price: "$59.99",
     subtitle: "Choose Your Sport",
-    featureTitle: "Ranked Top 3",
-    featureSubtitle: "Best to Worst",
-    features: ["Choose 1 Sport", "Ranked Top 3", "Best to Worst", "Atlas AI Ranking", "Signal History", "Closing Status"],
+    featureTitle: "Up to 5 Official",
+    featureSubtitle: "Ranked Signals",
+    features: ["Choose 1 Sport", "Up to 5 Official Signals", "Ranked Signals", "Live Status Updates", "Signal History"],
     cta: "Get Premium",
     accent: "gold" as const,
     badge: "Most Popular",
   },
   {
-    plan: "elite" as const,
-    title: "Elite",
+    plan: "unlimited" as const,
+    title: "Atlas Unlimited",
     price: "$99.99",
-    subtitle: "All Active Sports",
-    featureTitle: "Ranked Top 3",
+    subtitle: "All Available Sports",
+    featureTitle: "Up to 5 Official",
     featureSubtitle: "For Every Sport",
-    features: ["All Active Sports", "Ranked Top 3 Per Sport", "Best to Worst", "Auto-Includes New Sports", "Signal History", "Closing Status"],
-    cta: "Get Elite",
+    features: ["All Available Sports", "Up to 5 Per Sport", "Ranked Signals", "Auto-Includes New Sports", "Signal History"],
+    cta: "Get Unlimited",
     accent: "purple" as const,
   },
 ];
@@ -6751,7 +6767,7 @@ const subscriptionPlansBoard = (
             <div className="flex justify-center">
               <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
                 <HomeMembershipIcon
-                  type={plan.plan === "premium" ? "crown" : plan.plan === "elite" ? "diamond" : "star"}
+                  type={plan.plan === "premium" ? "crown" : plan.plan === "unlimited" ? "diamond" : "star"}
                   className="h-5 w-5"
                 />
               </span>
@@ -6981,14 +6997,14 @@ const subscriptionPlansBoard = (
         badge: "Most Popular",
       },
       {
-        plan: "elite" as const,
-        title: "Elite",
+        plan: "unlimited" as const,
+        title: "Atlas Unlimited",
         price: "$99.99",
-        subtitle: "All Active Sports",
-        featureTitle: "Ranked Top 3",
+        subtitle: "All Available Sports",
+        featureTitle: "Up to 5 Official",
         featureSubtitle: "For Every Sport",
-        features: ["All Active Sports", "Ranked Top 3 Per Sport", "Best to Worst", "Auto-Includes New Sports", "Signal History", "Closing Status"],
-        cta: "Get Elite",
+        features: ["All Available Sports", "Up to 5 Per Sport", "Ranked Signals", "Auto-Includes New Sports", "Signal History", "Closing Status"],
+        cta: "Get Unlimited",
         accent: "purple" as const,
       },
     ];
@@ -7299,7 +7315,7 @@ const subscriptionPlansBoard = (
                       <div className="flex justify-center">
                         <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
                           <JoinIcon
-                            type={plan.plan === "premium" ? "crown" : plan.plan === "elite" ? "diamond" : "star"}
+                            type={plan.plan === "premium" ? "crown" : plan.plan === "unlimited" ? "diamond" : "star"}
                             className="h-5 w-5"
                           />
                         </span>
@@ -7911,7 +7927,7 @@ const subscriptionPlansBoard = (
                 Choose your Atlas access
               </h2>
               <p className="mx-auto mt-2 max-w-[340px] text-[14px] leading-6 text-white/65">
-                Choose one sport for Exclusive or Premium, or go Elite for every active sport. Top Signal and Top Play stay separate.
+                Choose Premium for one sport, or Atlas Unlimited for every available sport. Top Signal stays separate.
               </p>
             </div>
 
@@ -7944,36 +7960,20 @@ const subscriptionPlansBoard = (
                     cta: "Unlock",
                   },
                   {
-                    product: "top_play" as const,
-                    name: "TOP PLAY",
-                    price: "$149.99",
-                    period: "daily",
-                    tone: "gold",
-                    summary: "Unlock today's absolute #1 Atlas pick across every available sport. One-day access only.",
-                    premium: true,
-                    features: [
-                      "Best overall pick",
-                      "Daily unlock",
-                      "No Top 5",
-                      "No subscription",
-                    ],
-                    cta: "Unlock",
-                  },
-                  {
                     product: "exclusive" as const,
                     plan: "exclusive" as const,
                     name: "EXCLUSIVE",
                     price: "$34.99",
                     period: "month",
                     tone: "bronze",
-                    summary: "Choose one sport. Top 3 Signals, not ranked.",
+                    summary: "Top 3 ranked Signals Detected across all available sports.",
                     features: [
-                      "Choose Your Sport",
-                      "Top 3 Signals",
-                      "Not Ranked",
-                      "Sorted by start time",
+                      "All Available Sports",
+                      "Top 3 Signals Detected",
+                      "Ranked Signals",
+                      "Live Status Updates",
                     ],
-                    excludes: ["Top Signal", "Top Play"],
+                    excludes: ["Top Signal"],
                     cta: "Choose",
                   },
                   {
@@ -7983,31 +7983,32 @@ const subscriptionPlansBoard = (
                     price: "$59.99",
                     period: "month",
                     tone: "silver",
-                    summary: "Choose one sport. Ranked Top 3 Signals.",
+                    summary: "Up to 5 official ranked Atlas Signals for one selected sport.",
                     recommended: true,
                     features: [
                       "Choose Your Sport",
-                      "Ranked Top 3 Signals",
-                      "Atlas value priority",
+                      "Up to 5 Official Signals",
+                      "Ranked Signals",
                       "Recommended",
                     ],
-                    excludes: ["Top Signal", "Top Play"],
+                    excludes: ["Top Signal"],
                     cta: "Choose",
                   },
                   {
-                    product: "elite" as const,
-                    plan: "elite" as const,
-                    name: "ELITE",
+                    product: "unlimited" as const,
+                    plan: "unlimited" as const,
+                    name: "ATLAS UNLIMITED",
                     price: "$99.99",
                     period: "month",
                     tone: "cyan",
-                    summary: "All active sports. Ranked Top 3 for every sport.",
+                    summary: "Up to 5 official ranked Atlas Signals for every available sport.",
                     features: [
-                      "All Active Sports",
-                      "Ranked Top 3 per sport",
+                      "All Available Sports",
+                      "Up to 5 Per Sport",
+                      "Ranked Signals",
                       "Dynamic sports coverage",
                     ],
-                    excludes: ["Top Signal", "Top Play"],
+                    excludes: ["Top Signal"],
                     cta: "Choose",
                   },
                 ]
@@ -8049,7 +8050,7 @@ const subscriptionPlansBoard = (
                             : "border-cyan-200/55 bg-cyan-400/20 text-cyan-100"
                         }`}
                       >
-                        {option.premium ? "1" : "*"}
+                        {"plan" in option ? "5" : "1"}
                       </div>
                     </div>
 
@@ -8134,7 +8135,7 @@ const subscriptionPlansBoard = (
           </section>
         ) : visibleSubscriptionPickCount === 0 ? (
   <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4 text-sm text-white/60">
-    No subscription picks available for {userAccess.plan === "elite" ? "active sports" : selectedSport}.
+    No subscription picks available for {userAccess.plan === "elite" || userAccess.plan === "unlimited" ? "active sports" : selectedSport}.
   </div>
 ) : (
   <div className="space-y-3">
@@ -8216,7 +8217,7 @@ const subscriptionPlansBoard = (
 
     {subscriptionSportGroups.map((group) => (
       <div key={`subscription-group-${group.sport}`} className="space-y-3">
-        {userAccess.plan === "elite" || userAccess.plan === "admin" ? (
+        {hasAllSportsAccessPlan(userAccess.plan) ? (
           <div className="rounded-[18px] border border-cyan-300/18 bg-cyan-400/[0.045] px-4 py-3">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
               {group.sport}

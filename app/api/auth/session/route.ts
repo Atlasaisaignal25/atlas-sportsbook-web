@@ -2,34 +2,19 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
 import { getActiveRewardAccess } from "@/app/lib/challenges";
+import {
+  atlasSupportedSports,
+  getEntitlement,
+  normalizeAtlasSport,
+  normalizeStoredPlan,
+  type AtlasSport,
+  type CommercialPlan,
+} from "@/app/lib/product-access";
 
-type SubscriptionPlan = "free" | "exclusive" | "premium" | "elite" | "admin";
-const validSubscriptionSports = ["MLB", "NBA", "NHL", "SOCCER", "NFL"];
+type SubscriptionPlan = CommercialPlan;
 
 function normalizeSubscriptionSport(value: unknown) {
-  const sport = String(value ?? "").trim().toUpperCase();
-  return validSubscriptionSports.includes(sport) ? sport : null;
-}
-
-function getSportsForPlan(plan: SubscriptionPlan, selectedSport?: string | null) {
-  if (plan === "admin" || plan === "elite") {
-    return ["MLB", "NBA", "NHL", "SOCCER", "NFL"];
-  }
-
-  if (plan === "exclusive" || plan === "premium") {
-    const sport = normalizeSubscriptionSport(selectedSport);
-    return sport ? [sport] : [];
-  }
-
-  return [];
-}
-
-function normalizePlan(plan: string | null | undefined): SubscriptionPlan {
-  if (plan === "exclusive" || plan === "premium" || plan === "elite") {
-    return plan;
-  }
-
-  return "free";
+  return normalizeAtlasSport(value);
 }
 
 function getNewYorkDate() {
@@ -62,16 +47,17 @@ export async function GET() {
       authenticated: Boolean(user),
       email: user?.email ?? null,
       plan: "admin",
-      sports: getSportsForPlan("admin"),
+      sports: getEntitlement({ admin: true }).sports,
       unlocks: {
         topPlay: true,
-        topSignals: ["MLB", "NBA", "NHL", "SOCCER", "NFL"],
+        topSignals: [...atlasSupportedSports],
       },
+      entitlement: getEntitlement({ admin: true }),
     });
   }
 
   let plan: SubscriptionPlan = "free";
-  let subscriptionSport: string | null = null;
+  let subscriptionSport: AtlasSport | null = null;
   let unlocks = {
     topPlay: false,
     topSignals: [] as string[],
@@ -88,7 +74,7 @@ export async function GET() {
       .limit(1)
       .maybeSingle();
 
-    plan = normalizePlan(subscription?.plan_code);
+    plan = normalizeStoredPlan(subscription?.plan_code);
     subscriptionSport = normalizeSubscriptionSport(subscription?.sport);
 
     if (plan === "free") {
@@ -96,9 +82,9 @@ export async function GET() {
         const rewardAccess = await getActiveRewardAccess(user.id);
 
         if (rewardAccess) {
-          plan = rewardAccess.plan;
+          plan = normalizeStoredPlan(rewardAccess.plan);
           subscriptionSport =
-            rewardAccess.plan === "premium" ? rewardAccess.sports[0] ?? null : null;
+            rewardAccess.plan === "premium" ? normalizeSubscriptionSport(rewardAccess.sports[0]) : null;
         }
       } catch (error) {
         console.error("challenge reward access error", error);
@@ -127,7 +113,16 @@ export async function GET() {
     authenticated: Boolean(user),
     email: user?.email ?? null,
     plan,
-    sports: getSportsForPlan(plan, subscriptionSport),
+    sports: getEntitlement({
+      planCode: plan,
+      selectedSport: subscriptionSport,
+      topSignalSports: unlocks.topSignals,
+    }).sports,
     unlocks,
+    entitlement: getEntitlement({
+      planCode: plan,
+      selectedSport: subscriptionSport,
+      topSignalSports: unlocks.topSignals,
+    }),
   });
 }

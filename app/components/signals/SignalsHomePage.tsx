@@ -104,15 +104,26 @@ type ProfileOverview = {
   };
   signals: Array<{
     id: string;
+    sport?: string;
     product: string;
     productCode: string;
+    rank?: number | null;
     selection: string;
     event: string;
     opponent: string;
     team: string;
     status: string;
+    statusDescription?: string;
     gameTime: string;
     publishedAt: string;
+  }>;
+  productSections?: Array<{
+    code: string;
+    title: string;
+    sport: string;
+    progress: string;
+    emptyText?: string;
+    signals: ProfileOverview["signals"];
   }>;
   products: Array<{
     code: string;
@@ -158,7 +169,7 @@ type SignalsHomePageProps = {
   activeSubscriptionSports?: SportCode[];
   selectedSubscriptionSport?: SportCode;
   onSelectedSubscriptionSportChange?: (sport: SportCode) => void;
-  onPlanSubscribe?: (plan: "exclusive" | "premium" | "elite", sport?: SportCode) => void;
+  onPlanSubscribe?: (plan: "exclusive" | "premium" | "unlimited", sport?: SportCode) => void;
   onRetry?: () => void;
   journeyMessage?: JourneyMessage | null;
   onDismissJourneyMessage?: () => void;
@@ -2170,7 +2181,7 @@ function SignalExplorerSheet({
   );
 }
 
-type PricingPlanCode = "exclusive" | "premium" | "elite";
+type PricingPlanCode = "exclusive" | "premium" | "unlimited";
 
 type PricingPlan = {
   code: PricingPlanCode;
@@ -2190,10 +2201,10 @@ const pricingPlans: PricingPlan[] = [
     code: "exclusive",
     title: "Exclusive",
     price: "$34.99",
-    subtitle: "Choose Your Sport",
-    featureTitle: "Not Ranked Top 3",
-    featureSubtitle: "One Sport Focus",
-    features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Signal History", "Closing Status"],
+    subtitle: "All Available Sports",
+    featureTitle: "Ranked Top 3",
+    featureSubtitle: "Signals Detected",
+    features: ["All Available Sports", "Top 3 Signals Detected", "Live Status Updates", "Progressive Delivery", "No Top Signal"],
     cta: "Get Exclusive",
     accent: "cyan",
   },
@@ -2202,22 +2213,22 @@ const pricingPlans: PricingPlan[] = [
     title: "Premium",
     price: "$59.99",
     subtitle: "Choose Your Sport",
-    featureTitle: "Ranked Top 3",
-    featureSubtitle: "Best to Worst",
-    features: ["Choose 1 Sport", "Ranked Top 3", "Best to Worst", "Atlas AI Ranking", "Signal History", "Closing Status"],
+    featureTitle: "Up to 5 Official",
+    featureSubtitle: "Ranked Signals",
+    features: ["Choose 1 Sport", "Up to 5 Official Signals", "Ranked Signals", "Live Status Updates", "No Top Signal"],
     cta: "Get Premium",
     accent: "gold",
     badge: "Most Popular",
   },
   {
-    code: "elite",
-    title: "Elite",
+    code: "unlimited",
+    title: "Atlas Unlimited",
     price: "$99.99",
-    subtitle: "All Active Sports",
-    featureTitle: "Ranked Top 3",
+    subtitle: "Every Available Sport",
+    featureTitle: "Up to 5 Official",
     featureSubtitle: "For Every Sport",
-    features: ["All Active Sports", "Ranked Top 3 Per Sport", "Best to Worst", "Auto-Includes New Sports", "Signal History", "Closing Status"],
-    cta: "Get Elite",
+    features: ["All Available Sports", "Up to 5 Per Sport", "Ranked Signals", "Auto-Includes New Sports", "Live Status Updates"],
+    cta: "Get Unlimited",
     accent: "purple",
   },
 ];
@@ -2370,7 +2381,7 @@ function PricingPacksSection({
             <div className="mt-2 grid grid-cols-3 gap-1.5">
               {pricingPlans.map((plan) => {
                 const styles = pricingAccentStyles[plan.accent];
-                const sportForPlan = plan.code === "elite" ? undefined : selectedSport;
+                const sportForPlan = plan.code === "unlimited" ? undefined : selectedSport;
 
                 return (
                   <article
@@ -2386,7 +2397,7 @@ function PricingPacksSection({
                     <div className="flex justify-center">
                       <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
                         <PricingIcon
-                          type={plan.code === "premium" ? "crown" : plan.code === "elite" ? "diamond" : "star"}
+                          type={plan.code === "premium" ? "crown" : plan.code === "unlimited" ? "diamond" : "star"}
                           className="h-5 w-5"
                         />
                       </span>
@@ -2462,7 +2473,7 @@ function PricingPacksSection({
                 <span className="h-px flex-1 bg-white/10" />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 <button
                   type="button"
                   onClick={() => onTopSignalAction?.(selectedSport)}
@@ -2479,24 +2490,6 @@ function PricingPacksSection({
                   </div>
                   <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The #1 strongest signal of the day for a specific sport.</p>
                   <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-purple-300/45 px-2 py-1 text-[8px] font-black uppercase text-purple-200">Unlock</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onTopPlayAction}
-                  className="min-h-[112px] rounded-[14px] border border-amber-300/35 bg-amber-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(251,191,36,0.10)]"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-300/40 bg-amber-300/10 text-amber-200">
-                      <PricingIcon type="crown" className="h-5 w-5" />
-                    </span>
-                    <div className="text-left">
-                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
-                      <p className="text-[15px] font-black text-white">$149.99</p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The highest-conviction play selected by Atlas Signals.</p>
-                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-amber-300/45 px-2 py-1 text-[8px] font-black uppercase text-amber-200">Unlock</span>
                 </button>
               </div>
             </div>
@@ -2570,9 +2563,11 @@ function ProfileMiniIcon({ type }: { type: "pulse" | "target" | "bars" | "shield
 }
 
 function profileTone(code: string) {
-  if (code === "top_signal_mlb") return { accent: "border-l-violet-400", text: "text-violet-300", bg: "bg-violet-500/12", icon: "star" as const };
-  if (code === "top5_mlb") return { accent: "border-l-cyan-400", text: "text-cyan-300", bg: "bg-cyan-400/12", icon: "five" as const };
-  if (code === "exclusive_pack") return { accent: "border-l-emerald-400", text: "text-emerald-300", bg: "bg-emerald-400/12", icon: "crown" as const };
+  if (code === "top_signal_by_sport" || code === "top_signal_mlb") return { accent: "border-l-violet-400", text: "text-violet-300", bg: "bg-violet-500/12", icon: "star" as const };
+  if (code === "premium_sport_top5" || code === "top5_mlb") return { accent: "border-l-cyan-400", text: "text-cyan-300", bg: "bg-cyan-400/12", icon: "five" as const };
+  if (code === "exclusive_detected_top3" || code === "exclusive_pack") return { accent: "border-l-emerald-400", text: "text-emerald-300", bg: "bg-emerald-400/12", icon: "crown" as const };
+  if (code === "atlas_unlimited_all_sports") return { accent: "border-l-purple-400", text: "text-purple-300", bg: "bg-purple-500/12", icon: "diamond" as const };
+  if (code === "signals_detected") return { accent: "border-l-cyan-400", text: "text-cyan-300", bg: "bg-cyan-400/12", icon: "target" as const };
   return { accent: "border-l-amber-400", text: "text-amber-300", bg: "bg-amber-400/12", icon: "ball" as const };
 }
 
@@ -2632,7 +2627,12 @@ function MyProfileScreen({
   const readySignals = data?.signals.filter((signal) => signal.status === "READY").length ?? 0;
   const underReviewSignals = data?.signals.filter((signal) => signal.status === "DETECTED" || signal.status === "UNDER REVIEW").length ?? 0;
   const confirmedSignals = data?.signals.filter((signal) => signal.status === "CONFIRMED").length ?? 0;
-  const topSignalRecommendation = data?.recommendations.find((item) => item.code === "top_signal_mlb");
+  const topSignalRecommendation = data?.recommendations.find((item) => item.code === "top_signal_by_sport" || item.code === "top_signal_mlb");
+  const productSections = data?.productSections?.length
+    ? data.productSections
+    : data
+      ? [{ code: "signals", title: "MY SIGNALS", sport: "ALL", progress: `${data.signals.length} Signals`, signals: data.signals }]
+      : [];
   const summaryItems = [
     ["Signals", summary?.signalsReceived ?? "Unavailable", <ProfileMiniIcon key="pulse" type="pulse" />],
     ["Win Rate", summary?.winRate ?? "Unavailable", <ProfileMiniIcon key="target" type="target" />],
@@ -2745,45 +2745,66 @@ function MyProfileScreen({
                   </div>
                 ))}
               </div>
-              <div className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(9,18,34,0.96),rgba(3,9,20,0.98))]">
-                {data.signals.length ? data.signals.map((signal) => {
-                  const tone = profileTone(signal.productCode);
-                  const isTopSignal = signal.productCode === "top_signal_mlb";
-                  const displayStatus = isTopSignal ? "READY" : signal.status;
-                  const statusDot =
-                    displayStatus === "READY" || displayStatus === "CONFIRMED"
-                      ? "bg-emerald-300"
-                      : displayStatus === "DOWNGRADED" || displayStatus === "WITHDRAWN"
-                        ? "bg-red-400"
-                        : "bg-yellow-300";
-                  return (
-                    <button key={signal.id} type="button" className="grid w-full grid-cols-[18px_minmax(0,1fr)_76px_12px] items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left last:border-b-0">
-                      <div className="relative flex h-full items-center justify-center">
-                        <span className="absolute bottom-[-18px] top-[20px] w-px bg-white/10" />
-                        <span className={`relative z-10 h-2.5 w-2.5 rounded-full ${statusDot} shadow-[0_0_12px_currentColor]`} />
-                      </div>
+              <div className="space-y-2">
+                {productSections.map((section) => (
+                  <div key={`${section.code}-${section.sport}`} className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(9,18,34,0.96),rgba(3,9,20,0.98))]">
+                    <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
                       <div className="min-w-0">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[7.5px] font-black uppercase tracking-[0.06em] ${tone.bg} ${tone.text}`}>
-                          {signal.product}
-                          </span>
-                          <span className={`truncate text-[8px] font-black uppercase ${statusTone(displayStatus)}`}>
-                            {displayStatus}
-                          </span>
-                        </div>
-                        <p className="mt-1 truncate text-[13px] font-black text-white">{signal.selection}</p>
-                        <p className="truncate text-[10px] font-medium text-white/50">Game vs {signal.opponent}</p>
+                        <p className="truncate text-[11px] font-black uppercase tracking-[0.06em] text-white">{section.title}</p>
+                        <p className="truncate text-[9px] font-semibold text-cyan-200/70">{section.progress}</p>
                       </div>
-                      <div className="min-w-0 text-right">
-                        <p className="text-[9px] font-semibold text-white/43">{isTopSignal ? "Ready to Use" : "Game"}</p>
-                        <p className="mt-0.5 text-[11px] font-black text-white">{signal.gameTime}</p>
+                      {section.sport && section.sport !== "ALL" ? (
+                        <span className="rounded-full border border-cyan-300/18 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black text-cyan-200">
+                          {section.sport}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {section.signals.length ? section.signals.map((signal) => {
+                      const tone = profileTone(signal.productCode);
+                      const isTopSignal = signal.productCode === "top_signal_by_sport" || signal.productCode === "top_signal_mlb";
+                      const displayStatus = isTopSignal ? "READY" : signal.status;
+                      const statusDot =
+                        displayStatus === "READY" || displayStatus === "CONFIRMED"
+                          ? "bg-emerald-300"
+                          : displayStatus === "DOWNGRADED" || displayStatus === "WITHDRAWN"
+                            ? "bg-red-400"
+                            : "bg-yellow-300";
+                      return (
+                        <button key={signal.id} type="button" className="grid w-full grid-cols-[18px_minmax(0,1fr)_76px_12px] items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left last:border-b-0">
+                          <div className="relative flex h-full items-center justify-center">
+                            <span className="absolute bottom-[-18px] top-[20px] w-px bg-white/10" />
+                            <span className={`relative z-10 h-2.5 w-2.5 rounded-full ${statusDot} shadow-[0_0_12px_currentColor]`} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              {signal.rank ? (
+                                <span className="shrink-0 text-[8px] font-black text-cyan-200">#{signal.rank}</span>
+                              ) : null}
+                              <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[7.5px] font-black uppercase tracking-[0.06em] ${tone.bg} ${tone.text}`}>
+                                {signal.product}
+                              </span>
+                              <span className={`truncate text-[8px] font-black uppercase ${statusTone(displayStatus)}`}>
+                                {displayStatus}
+                              </span>
+                            </div>
+                            <p className="mt-1 truncate text-[13px] font-black text-white">{signal.selection}</p>
+                            <p className="truncate text-[10px] font-medium text-white/50">{signal.event || `Game vs ${signal.opponent}`}</p>
+                          </div>
+                          <div className="min-w-0 text-right">
+                            <p className="text-[9px] font-semibold text-white/43">{isTopSignal ? "Ready to Use" : "Game"}</p>
+                            <p className="mt-0.5 text-[11px] font-black text-white">{signal.gameTime}</p>
+                          </div>
+                          <span className="text-[18px] font-light text-white/55">›</span>
+                        </button>
+                      );
+                    }) : (
+                      <div className="flex min-h-[58px] items-center px-4 text-[12px] font-bold text-white/55">
+                        {section.emptyText ?? "No Active Signals Yet."}
                       </div>
-                      <span className="text-[18px] font-light text-white/55">›</span>
-                    </button>
-                  );
-                }) : (
-                  <div className="flex min-h-[64px] items-center px-4 text-[13px] font-bold text-white/55">No Active Signals Yet.</div>
-                )}
+                    )}
+                  </div>
+                ))}
               </div>
             </section>
 

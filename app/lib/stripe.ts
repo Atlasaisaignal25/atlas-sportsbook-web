@@ -14,7 +14,7 @@ export function getStripe() {
   return stripeClient;
 }
 
-export type SubscriptionPlanCode = "exclusive" | "premium" | "elite";
+export type SubscriptionPlanCode = "exclusive" | "premium" | "elite" | "unlimited";
 export type TopSignalProductCode =
   | "top_signal_mlb"
   | "top_signal_nba"
@@ -27,13 +27,15 @@ export type CheckoutProductCode = SubscriptionPlanCode | OneTimeProductCode;
 export const stripePriceToPlan: Record<string, SubscriptionPlanCode> = {
   [process.env.STRIPE_PRICE_EXCLUSIVE ?? ""]: "exclusive",
   [process.env.STRIPE_PRICE_PREMIUM ?? ""]: "premium",
-  [process.env.STRIPE_PRICE_ELITE ?? ""]: "elite",
+  [process.env.STRIPE_PRICE_ELITE ?? ""]: "unlimited",
+  [process.env.STRIPE_PRICE_UNLIMITED ?? ""]: "unlimited",
 };
 
 export const planToStripePrice: Record<SubscriptionPlanCode, string | undefined> = {
   exclusive: process.env.STRIPE_PRICE_EXCLUSIVE,
   premium: process.env.STRIPE_PRICE_PREMIUM,
   elite: process.env.STRIPE_PRICE_ELITE,
+  unlimited: process.env.STRIPE_PRICE_UNLIMITED ?? process.env.STRIPE_PRICE_ELITE,
 };
 
 export const oneTimeProductToStripePrice: Record<OneTimeProductCode, string | undefined> = {

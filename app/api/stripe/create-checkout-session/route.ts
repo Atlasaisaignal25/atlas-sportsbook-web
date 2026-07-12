@@ -19,10 +19,11 @@ import {
   type SubscriptionPlanCode,
   type TopSignalProductCode,
 } from "@/app/lib/stripe";
+import { storedPlanForCheckout } from "@/app/lib/product-access";
 
 type CheckoutPlan = SubscriptionPlanCode;
 
-const validPlans: CheckoutPlan[] = ["exclusive", "premium", "elite"];
+const validPlans: CheckoutPlan[] = ["exclusive", "premium", "elite", "unlimited"];
 const validProducts: OneTimeProductCode[] = [
   "top_signal_mlb",
   "top_signal_nba",
@@ -382,6 +383,9 @@ export async function POST(req: Request) {
     }
 
     const isSubscription = isCheckoutPlan(checkoutProduct);
+    const storedSubscriptionPlan = isSubscription
+      ? storedPlanForCheckout(checkoutProduct)
+      : null;
     const priceId = isSubscription
       ? planToStripePrice[checkoutProduct]
       : oneTimeProductToStripePrice[checkoutProduct];
@@ -438,7 +442,8 @@ export async function POST(req: Request) {
       user_id: user.id,
       ...(isSubscription
         ? {
-            plan_code: checkoutProduct,
+            plan_code: storedSubscriptionPlan ?? checkoutProduct,
+            commercial_plan: checkoutProduct === "elite" ? "unlimited" : checkoutProduct,
             product_type: "subscription",
             sport: subscriptionSport,
           }
