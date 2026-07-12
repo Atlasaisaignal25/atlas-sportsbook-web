@@ -15,7 +15,11 @@ import { TodayActivityCard, type ActivityMetric } from "./TodayActivityCard";
 import { TopPlayCard, type TopPlayViewModel } from "./TopPlayCard";
 import { TopPlayDetailSheet } from "./TopPlayDetailSheet";
 import { teamBranding } from "../../lib/teamBranding";
-import { AtlasControlCenterOverview, type AtlasControlCenterData } from "../../admin/AdminDashboard";
+import {
+  AtlasControlCenterOverview,
+  filterAtlasControlCenterData,
+  type AtlasControlCenterData,
+} from "../../admin/AdminDashboard";
 
 export type SignalsHomePrecisionResponse = {
   productType?: "top_signal" | "top_play";
@@ -2597,6 +2601,8 @@ function MyAtlasScreen({
   const [error, setError] = useState<string | null>(null);
   const [engineDetailsOpen, setEngineDetailsOpen] = useState(false);
   const [leadersExpanded, setLeadersExpanded] = useState(false);
+  const [selectedSport, setSelectedSport] = useState("ALL");
+  const filteredData = filterAtlasControlCenterData(data, selectedSport);
 
   async function loadControlCenter(options: { silent?: boolean } = {}) {
     if (!options.silent) setLoading(true);
@@ -2663,7 +2669,7 @@ function MyAtlasScreen({
           </div>
         ) : (
           <AtlasControlCenterOverview
-            data={data}
+            data={filteredData}
             loading={loading}
             error={error}
             engineDetailsOpen={engineDetailsOpen}
@@ -2671,6 +2677,8 @@ function MyAtlasScreen({
             onToggleEngineDetails={() => setEngineDetailsOpen((open) => !open)}
             onToggleLeaders={() => setLeadersExpanded((open) => !open)}
             onRefresh={() => void loadControlCenter()}
+            selectedSport={selectedSport}
+            onSportChange={setSelectedSport}
             title="Overview"
             eyebrow="Atlas Control Center"
             subtitle="Live Signal Engines from the admin Overview."
