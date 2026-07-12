@@ -913,9 +913,10 @@ export async function runAtlasCorePostgame() {
 export async function getAtlasCoreMlbStatus() {
   const supabase = getSupabaseAdmin();
   const date = todayET();
-  const [signals, picks] = await Promise.all([
+  const [signals, picks, topSignal] = await Promise.all([
     supabase.from("atlas_core_mlb_signals").select("id", { count: "exact", head: true }).eq("date", date).eq("stage", "SIGNALS_DETECTED"),
     supabase.from("atlas_core_mlb_picks").select("status,is_top_signal", { count: "exact" }).eq("date", date),
+    supabase.from("top_signal_history").select("id", { count: "exact", head: true }).eq("slate_date", date).eq("published", true),
   ]);
   const pickRows = picks.data ?? [];
   return {
@@ -926,7 +927,7 @@ export async function getAtlasCoreMlbStatus() {
     confirmed: pickRows.filter((row: any) => row.status === "CONFIRMED").length,
     downgraded: pickRows.filter((row: any) => row.status === "DOWNGRADED").length,
     removed: pickRows.filter((row: any) => row.status === "REMOVED").length,
-    topSignalPublished: pickRows.some((row: any) => row.is_top_signal),
+    topSignalPublished: Boolean(topSignal.count),
     rollbackAvailable: true,
     legacyEngine: "available via ATLAS_CORE_MLB_ROLLBACK_TO_LEGACY=true",
   };

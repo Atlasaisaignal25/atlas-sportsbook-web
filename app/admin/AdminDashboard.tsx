@@ -144,11 +144,19 @@ type PerformanceCenterData = {
 export type AtlasControlTab = "overview" | "top-signal" | "top5" | "top3" | "signals" | "activity" | "health";
 export type AtlasActivityFilter = "ALL" | "TOP SIGNAL" | "TOP 5" | "EXCLUSIVE" | "SIGNALS" | "VALIDATION" | "ERRORS";
 type AtlasControlSportFilter = "ALL" | string;
+export type AtlasControlMode = "live" | "official";
 
 export type AtlasControlCenterData = {
   summary: any;
   engineHealth: any[];
   topSignal: any | null;
+  officialProducts?: {
+    topSignal: any | null;
+    premiumTop5: any[];
+    exclusiveTop3: any[];
+    signalsDetected: any[];
+    productStatus: any;
+  };
   topSignalTimeline: any[];
   top5: any;
   top5Movement: any[];
@@ -1754,10 +1762,10 @@ function ControlSignalPreview({ title, rows, empty, action, premium = false }: {
   );
 }
 
-function ControlTopSignalCurrentLeader({ data }: { data: any | null }) {
+function ControlTopSignalCurrentLeader({ data, title = "Top Signal Current Leader" }: { data: any | null; title?: string }) {
   if (!data) {
     return (
-      <ControlSection title="Top Signal Current Leader">
+      <ControlSection title={title}>
         <p className="py-5 text-center text-sm font-bold text-white/45">NO_QUALIFIED_SIGNAL</p>
       </ControlSection>
     );
@@ -1766,7 +1774,7 @@ function ControlTopSignalCurrentLeader({ data }: { data: any | null }) {
     <AdminShellCard className="border-purple-400/50 p-2.5 shadow-[0_0_22px_rgba(168,85,247,0.10)]">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-purple-300">Top Signal Current Leader</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-purple-300">{title}</p>
           <div className="mt-2 flex items-center gap-2">
             <ControlMatchLogos awayTeam={data.awayTeam} homeTeam={data.homeTeam} size="md" />
             <div className="min-w-0">
@@ -1783,6 +1791,36 @@ function ControlTopSignalCurrentLeader({ data }: { data: any | null }) {
         <ControlMiniMetric label="Next Review" value={formatAdminTime(data.nextFinalReview) || data.estimatedPublicationWindow} />
       </div>
     </AdminShellCard>
+  );
+}
+
+function ProductStatusPanel({ status }: { status?: any }) {
+  const publication = status?.publication ?? {};
+  const validation = status?.validation ?? {};
+  const rows = [
+    ["Signals Published", publication.signalsPublished ? "YES" : "NO"],
+    ["Top Signal Published", publication.topSignalPublished ? "YES" : "NO"],
+    ["Top 5 Published", publication.top5Published ? "YES" : "NO"],
+    ["Exclusive Published", publication.exclusivePublished ? "YES" : "NO"],
+    ["Validation Completed", validation.completed ?? 0],
+    ["Validation Pending", validation.pending ?? 0],
+    ["Confirmed", validation.confirmed ?? 0],
+    ["Downgraded", validation.downgraded ?? 0],
+    ["Withdrawn", validation.withdrawn ?? 0],
+  ];
+  return (
+    <ControlSection title="Product Status">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {rows.map(([label, value]) => (
+          <ControlMiniMetric
+            key={label}
+            label={label}
+            value={value}
+            tone={String(value).toUpperCase() === "YES" || Number(value) > 0 ? "text-emerald-300" : "text-white"}
+          />
+        ))}
+      </div>
+    </ControlSection>
   );
 }
 
@@ -2092,6 +2130,8 @@ export function filterAtlasControlCenterData(data: AtlasControlCenterData | null
         secondPlaceCandidate,
       }
     : null;
+  const officialTopSignalMatches = rowMatchesControlSport(data.officialProducts?.topSignal, sport);
+  const officialTopSignal = officialTopSignalMatches ? data.officialProducts?.topSignal : null;
   const top5Rows = filterControlRows(data.top5?.currentInternalRanking ?? [], sport);
   const officialTop5Rows = filterControlRows(data.top5?.officialFrozenTop5 ?? [], sport);
   const exclusiveRows = filterControlRows(data.exclusiveTop3?.currentInternalRanking ?? [], sport);
@@ -2108,6 +2148,13 @@ export function filterAtlasControlCenterData(data: AtlasControlCenterData | null
       exclusiveTop3Candidates: exclusiveRows.length || officialExclusiveRows.length,
     },
     topSignal,
+    officialProducts: {
+      ...data.officialProducts,
+      topSignal: officialTopSignal,
+      premiumTop5: officialTop5Rows,
+      exclusiveTop3: officialExclusiveRows,
+      signalsDetected,
+    },
     topSignalTimeline: filterControlRows(data.topSignalTimeline ?? [], sport),
     top5: {
       ...data.top5,
@@ -2311,6 +2358,7 @@ export function AtlasControlCenterPanel({
   data,
   loading,
   error,
+  mode,
   tab,
   activityFilter,
   engineDetailsOpen,
@@ -2324,10 +2372,12 @@ export function AtlasControlCenterPanel({
   onToggleLeaders,
   onSportChange,
   onRefresh,
+  onModeChange,
 }: {
   data: AtlasControlCenterData | null;
   loading: boolean;
   error: string | null;
+  mode: AtlasControlMode;
   tab: AtlasControlTab;
   activityFilter: AtlasActivityFilter;
   engineDetailsOpen: boolean;
@@ -2341,6 +2391,7 @@ export function AtlasControlCenterPanel({
   onToggleLeaders: () => void;
   onSportChange: (sport: AtlasControlSportFilter) => void;
   onRefresh: () => void;
+  onModeChange: (mode: AtlasControlMode) => void;
 }) {
   const activityFilters: AtlasActivityFilter[] = ["ALL", "TOP SIGNAL", "TOP 5", "EXCLUSIVE", "SIGNALS", "VALIDATION", "ERRORS"];
   const filteredData = filterAtlasControlCenterData(data, selectedSport);
@@ -2373,6 +2424,24 @@ export function AtlasControlCenterPanel({
 
       {data && showSportFilter ? <OverviewSportFilter sports={sportOptions} selectedSport={selectedSport} onSportChange={onSportChange} /> : null}
 
+      {data ? (
+        <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-[#061223]">
+          {([
+            ["live", "Live Engine"],
+            ["official", "Official Products"],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onModeChange(id)}
+              className={`px-3 py-2.5 text-[11px] font-black uppercase ${mode === id ? "bg-cyan-400/12 text-cyan-300 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.28)]" : "text-white/55"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <AtlasControlCenterTabBar tab={tab} onTab={onTab} />
 
       {!data && loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">Loading Control Center...</p> : null}
@@ -2381,67 +2450,113 @@ export function AtlasControlCenterPanel({
       {filteredData ? (
         <>
           {tab === "overview" ? (
-            <AtlasControlCenterOverview
-              data={filteredData}
-              loading={loading}
-              error={error}
-              engineDetailsOpen={engineDetailsOpen}
-              leadersExpanded={leadersExpanded}
-              onToggleEngineDetails={onToggleEngineDetails}
-              onToggleLeaders={onToggleLeaders}
-              onRefresh={onRefresh}
-              onOpenTop5={() => onTab("top5")}
-              onOpenTop3={() => onTab("top3")}
-              onOpenSignals={() => onTab("signals")}
-              showChrome={false}
-            />
+            mode === "live" ? (
+              <AtlasControlCenterOverview
+                data={filteredData}
+                loading={loading}
+                error={error}
+                engineDetailsOpen={engineDetailsOpen}
+                leadersExpanded={leadersExpanded}
+                onToggleEngineDetails={onToggleEngineDetails}
+                onToggleLeaders={onToggleLeaders}
+                onRefresh={onRefresh}
+                onOpenTop5={() => onTab("top5")}
+                onOpenTop3={() => onTab("top3")}
+                onOpenSignals={() => onTab("signals")}
+                showChrome={false}
+              />
+            ) : (
+              <>
+                <ProductStatusPanel status={filteredData.officialProducts?.productStatus} />
+                <ControlTopSignalCurrentLeader data={filteredData.officialProducts?.topSignal ?? null} title="Top Signal Published" />
+                <ControlSignalPreview
+                  title="Official Premium Top 5"
+                  rows={(filteredData.officialProducts?.premiumTop5 ?? []).slice(0, 5)}
+                  empty="Official Premium Top 5 has not been published yet."
+                  action={onTab ? <button type="button" onClick={() => onTab("top5")}>Open Official Top 5 →</button> : null}
+                />
+                <ControlSignalPreview
+                  title="Official Exclusive Top 3"
+                  rows={(filteredData.officialProducts?.exclusiveTop3 ?? []).slice(0, 3)}
+                  empty="Official Exclusive Top 3 has not been published yet."
+                  action={onTab ? <button type="button" onClick={() => onTab("top3")}>Open Exclusive Top 3 →</button> : null}
+                />
+                <ControlSignalPreview
+                  title="Signals Detected Frozen"
+                  rows={(filteredData.officialProducts?.signalsDetected ?? []).slice(0, 5)}
+                  empty="No frozen Signals Detected rows yet."
+                  action={onTab ? <button type="button" onClick={() => onTab("signals")}>View Frozen Signals →</button> : null}
+                />
+              </>
+            )
           ) : null}
 
           {tab === "top-signal" ? (
-            <>
-              <ControlTopSignalHero data={filteredData.topSignal} />
-              <ControlTopSignalStrength strength={filteredData.topSignal?.strength} />
-              <ControlSection title="Second Place Candidate">
-                <SecondPlaceCandidate candidate={filteredData.topSignal?.secondPlaceCandidate ?? null} />
-              </ControlSection>
-              <ControlSection title="Top Signal Leader Timeline">
-                <ControlActivityList rows={(filteredData.topSignalTimeline ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.status, event: row.candidate, affectedSignal: row.market, description: `${controlPct(row.probability)} · ${formatAdminEdge(row.edge)} · score ${controlScore(row.score)}`, severity: row.status === "PUBLISHED" ? "SUCCESS" : "INFO" }))} />
-              </ControlSection>
-              <ControlSection title="Why Atlas Changed">
-                <ControlChangeReasons rows={filteredData.topSignal?.changeReasons ?? []} />
-              </ControlSection>
-            </>
+            mode === "live" ? (
+              <>
+                <ControlTopSignalHero data={filteredData.topSignal} />
+                <ControlTopSignalStrength strength={filteredData.topSignal?.strength} />
+                <ControlSection title="Second Place Candidate">
+                  <SecondPlaceCandidate candidate={filteredData.topSignal?.secondPlaceCandidate ?? null} />
+                </ControlSection>
+                <ControlSection title="Top Signal Leader Timeline">
+                  <ControlActivityList rows={(filteredData.topSignalTimeline ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.status, event: row.candidate, affectedSignal: row.market, description: `${controlPct(row.probability)} · ${formatAdminEdge(row.edge)} · score ${controlScore(row.score)}`, severity: row.status === "PUBLISHED" ? "SUCCESS" : "INFO" }))} />
+                </ControlSection>
+                <ControlSection title="Why Atlas Changed">
+                  <ControlChangeReasons rows={filteredData.topSignal?.changeReasons ?? []} />
+                </ControlSection>
+              </>
+            ) : (
+              <ControlTopSignalCurrentLeader data={filteredData.officialProducts?.topSignal ?? null} title="Top Signal Published" />
+            )
           ) : null}
 
           {tab === "top5" ? (
-            <>
+            mode === "live" ? (
+              <>
               <ControlSection title="Current Internal Ranking" action={`Next ${formatAdminTime(filteredData.top5?.nextRecalculation)}`}>
                 <ControlRankingList rows={filteredData.top5?.currentInternalRanking ?? []} empty="No current Premium Top 5 ranking." />
-              </ControlSection>
-              <ControlSection title="Official Frozen Top 5" action={filteredData.top5?.frozen ? "Frozen" : "Pending"}>
-                <ControlRankingList rows={filteredData.top5?.officialFrozenTop5 ?? []} empty="Official Top 5 has not frozen yet." />
               </ControlSection>
               <ControlSection title="Top 5 Movement History">
                 <ControlActivityList rows={(filteredData.top5Movement ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
               </ControlSection>
-            </>
+              </>
+            ) : (
+              <ControlSection title="Official Frozen Top 5" action={filteredData.top5?.frozen ? "Frozen" : "Pending"}>
+                <ControlRankingList rows={filteredData.officialProducts?.premiumTop5 ?? []} empty="Official Top 5 has not frozen yet." />
+              </ControlSection>
+            )
           ) : null}
 
           {tab === "top3" ? (
-            <>
+            mode === "live" ? (
+              <>
               <ControlSection title="Exclusive Top 3 Internal Ranking" action={filteredData.exclusiveTop3?.frozen ? "Frozen" : "Live"}>
                 <ControlRankingList rows={filteredData.exclusiveTop3?.currentInternalRanking ?? []} empty="No Exclusive Top 3 ranking yet." />
               </ControlSection>
               <ControlSection title="Exclusive Top 3 Movement">
                 <ControlActivityList rows={(filteredData.exclusiveTop3?.movementHistory ?? []).map((row: any) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
               </ControlSection>
-            </>
+              </>
+            ) : (
+              <ControlSection title="Official Frozen Exclusive Top 3" action={filteredData.exclusiveTop3?.frozen ? "Frozen" : "Pending"}>
+                <ControlRankingList rows={filteredData.officialProducts?.exclusiveTop3 ?? []} empty="Official Exclusive Top 3 has not frozen yet." />
+              </ControlSection>
+            )
           ) : null}
 
           {tab === "signals" ? (
-            <ControlSection title="Frozen Signals Detected">
-              <ControlSignalsDetectedList rows={filteredData.signalsDetected ?? []} />
-            </ControlSection>
+            mode === "live" ? (
+              <ControlSignalPreview
+                title="Current Signals Ranking"
+                rows={filteredData.exclusiveTop3?.currentInternalRanking ?? []}
+                empty="No current signals ranking yet."
+              />
+            ) : (
+              <ControlSection title="Frozen Signals Detected">
+                <ControlSignalsDetectedList rows={filteredData.officialProducts?.signalsDetected ?? []} />
+              </ControlSection>
+            )
           ) : null}
 
           {tab === "activity" ? (
@@ -2643,6 +2758,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [controlLoading, setControlLoading] = useState(true);
   const [controlError, setControlError] = useState<string | null>(null);
   const [controlTab, setControlTab] = useState<AtlasControlTab>("overview");
+  const [controlMode, setControlMode] = useState<AtlasControlMode>("live");
   const [controlActivityFilter, setControlActivityFilter] = useState<AtlasActivityFilter>("ALL");
   const [controlSportFilter, setControlSportFilter] = useState<AtlasControlSportFilter>("ALL");
   const [controlEngineDetailsOpen, setControlEngineDetailsOpen] = useState(false);
@@ -2770,11 +2886,12 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
   useEffect(() => {
     if (activeSection !== "control") return;
+    if (controlMode !== "live") return;
     const interval = window.setInterval(() => {
       void loadControlCenter({ silent: true });
     }, 45000);
     return () => window.clearInterval(interval);
-  }, [activeSection]);
+  }, [activeSection, controlMode]);
 
   const operations = overview?.operations;
   const adminNav: Array<{ id: AdminSection; label: string; icon: string }> = [
@@ -3058,12 +3175,14 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       data={controlCenter}
       loading={controlLoading}
       error={controlError}
+      mode={controlMode}
       tab={controlTab}
       activityFilter={controlActivityFilter}
       engineDetailsOpen={controlEngineDetailsOpen}
       leadersExpanded={controlLeadersExpanded}
       selectedSport={controlSportFilter}
       onTab={setControlTab}
+      onModeChange={setControlMode}
       onActivityFilter={setControlActivityFilter}
       onToggleEngineDetails={() => setControlEngineDetailsOpen((open) => !open)}
       onToggleLeaders={() => setControlLeadersExpanded((open) => !open)}

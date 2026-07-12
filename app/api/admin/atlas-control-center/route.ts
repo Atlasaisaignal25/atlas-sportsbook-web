@@ -341,6 +341,7 @@ export async function GET() {
   const officialTop3Rows = rankingRows(latestExclusiveFrozen, []);
   const firstStartTime = firstStart([...signalsHistory, ...top5History, ...activeSignals]);
   const topSignalLeader = topSignalTimelineRaw.at(-1) ?? null;
+  const officialTopSignalRow = topSignalTimelineRaw.filter((row) => Boolean(row.published)).at(-1) ?? null;
   const eligibleTopSignalCandidates = latestPremiumInternal
     .filter((row) => {
       const odds = num(row.odds);
@@ -552,6 +553,26 @@ export async function GET() {
       }
     : null;
 
+  const officialTopSignal = officialTopSignalRow
+    ? {
+        currentLeader: pickLabel(officialTopSignalRow),
+        sport: officialTopSignalRow.sport,
+        event: eventName(officialTopSignalRow),
+        awayTeam: officialTopSignalRow.away_team ?? null,
+        homeTeam: officialTopSignalRow.home_team ?? null,
+        market: marketLabel(officialTopSignalRow),
+        selection: pickLabel(officialTopSignalRow),
+        odds: num(officialTopSignalRow.odds),
+        atlasProbability: num(officialTopSignalRow.atlas_probability),
+        edge: num(officialTopSignalRow.edge),
+        engineScore: scoreOf(officialTopSignalRow),
+        candidateStatus: officialTopSignalRow.status ?? "PUBLISHED",
+        published: Boolean(officialTopSignalRow.published),
+        publishedAt: officialTopSignalRow.run_at,
+        lastRun: officialTopSignalRow.run_at,
+      }
+    : null;
+
   const currentPremiumLastRun = latestPremiumInternal[0]?.run_at ?? null;
   const currentExclusiveLastRun = latestExclusiveInternal[0]?.run_at ?? null;
   const signalsLastRun = signalsHistory.map((row) => row.run_at).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
@@ -613,6 +634,7 @@ export async function GET() {
     exclusiveTop3Candidates: latestTop3Rows.length || officialTop3Rows.length,
     premiumTop5Candidates: latestTop5Rows.length || officialTop5Rows.length,
     topSignalCurrentLeader: topSignal?.currentLeader ?? "NO_QUALIFIED_SIGNAL",
+    topSignalPublished: Boolean(officialTopSignal),
     publishedSignals: activePicks.filter((row) => row.published_at).length,
     confirmed: statuses.CONFIRMED ?? 0,
     downgraded: statuses.DOWNGRADED ?? 0,
@@ -637,6 +659,27 @@ export async function GET() {
     summary,
     engineHealth: healthRows,
     topSignal,
+    officialProducts: {
+      topSignal: officialTopSignal,
+      premiumTop5: officialTop5Rows,
+      exclusiveTop3: officialTop3Rows,
+      signalsDetected: signalsWithTop3Rank,
+      productStatus: {
+        publication: {
+          signalsPublished: signalsHistory.length > 0,
+          topSignalPublished: Boolean(officialTopSignal),
+          top5Published: officialTop5Rows.some((row) => row.published),
+          exclusivePublished: officialTop3Rows.some((row) => row.published),
+        },
+        validation: {
+          completed: activePicks.filter((row) => ["CONFIRMED", "DOWNGRADED", "REMOVED", "WITHDRAWN"].includes(String(row.status ?? "").toUpperCase())).length,
+          pending: activePicks.filter((row) => !["CONFIRMED", "DOWNGRADED", "REMOVED", "WITHDRAWN"].includes(String(row.status ?? "").toUpperCase())).length,
+          confirmed: statuses.CONFIRMED ?? 0,
+          downgraded: statuses.DOWNGRADED ?? 0,
+          withdrawn: (statuses.WITHDRAWN ?? 0) + (statuses.REMOVED ?? 0),
+        },
+      },
+    },
     topSignalTimeline,
     top5: {
       currentInternalRanking: latestTop5Rows,

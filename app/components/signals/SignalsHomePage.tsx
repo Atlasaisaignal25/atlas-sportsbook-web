@@ -20,6 +20,7 @@ import {
   filterAtlasControlCenterData,
   type AtlasActivityFilter,
   type AtlasControlCenterData,
+  type AtlasControlMode,
   type AtlasControlTab,
 } from "../../admin/AdminDashboard";
 
@@ -2609,6 +2610,7 @@ function MyAtlasScreen({
   const [engineDetailsOpen, setEngineDetailsOpen] = useState(false);
   const [leadersExpanded, setLeadersExpanded] = useState(false);
   const [selectedSport, setSelectedSport] = useState<SelectedSport>("all");
+  const [controlMode, setControlMode] = useState<AtlasControlMode>("live");
   const [controlTab, setControlTab] = useState<AtlasControlTab>("overview");
   const [activityFilter, setActivityFilter] = useState<AtlasActivityFilter>("ALL");
   const filteredData = filterAtlasControlCenterData(data, controlSportFromSelectedSport(selectedSport));
@@ -2637,11 +2639,15 @@ function MyAtlasScreen({
 
   useEffect(() => {
     void loadControlCenter();
+  }, []);
+
+  useEffect(() => {
+    if (controlMode !== "live") return;
     const interval = window.setInterval(() => {
       void loadControlCenter({ silent: true });
     }, 45000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [controlMode]);
 
   return (
     <main className="min-h-screen bg-[#020814] text-white">
@@ -2685,6 +2691,7 @@ function MyAtlasScreen({
               data={filteredData}
               loading={loading}
               error={error}
+              mode={controlMode}
               tab={controlTab}
               activityFilter={activityFilter}
               engineDetailsOpen={engineDetailsOpen}
@@ -2693,6 +2700,7 @@ function MyAtlasScreen({
               showHeader={false}
               showSportFilter={false}
               onTab={setControlTab}
+              onModeChange={setControlMode}
               onActivityFilter={setActivityFilter}
               onToggleEngineDetails={() => setEngineDetailsOpen((open) => !open)}
               onToggleLeaders={() => setLeadersExpanded((open) => !open)}
