@@ -2056,6 +2056,43 @@ function ControlTopSignalStoryTimeline({ rows }: { rows: any[] }) {
   );
 }
 
+function ControlTopSignalSessionTimeline({ sessions, fallbackRows }: { sessions?: any[]; fallbackRows: any[] }) {
+  const rows = Array.isArray(sessions) && sessions.length
+    ? sessions
+    : [{ sessionLabel: "SESSION 1", candidate: "Current Leader", status: "Candidate", rows: fallbackRows }];
+  if (!rows.length || !rows.some((session) => (session.rows ?? []).length)) {
+    return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No Top Signal sessions yet.</p>;
+  }
+  return (
+    <div className="grid gap-3">
+      {rows.slice().reverse().map((session) => (
+        <div key={session.sessionId ?? session.sessionLabel} className="rounded-xl border border-white/10 bg-black/15 p-2.5">
+          <div className="flex items-start justify-between gap-2 border-b border-white/8 pb-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-purple-300">{session.sessionLabel}</p>
+              <p className="mt-1 break-words text-[14px] font-black leading-tight text-white">{session.candidate}</p>
+              <p className="mt-0.5 text-[10px] font-bold text-white/42">
+                {formatAdminTime(session.startedAt)} → {session.publicationTime ? formatAdminTime(session.publicationTime) : "Waiting Final Review"}
+              </p>
+            </div>
+            <span className={`shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-black uppercase ${controlTone(session.status)}`}>
+              {session.published ? "READY" : session.status}
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
+            <ControlMiniMetric label="Probability" value={controlPct(session.probability)} tone="text-emerald-300" />
+            <ControlMiniMetric label="Edge" value={formatAdminEdge(session.edge)} tone="text-cyan-300" />
+            <ControlMiniMetric label="Score" value={controlScore(session.score)} />
+          </div>
+          <div className="mt-2">
+            <ControlTopSignalStoryTimeline rows={session.rows ?? []} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ControlActivityList({ rows }: { rows: any[] }) {
   if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No live activity yet.</p>;
   return (
@@ -2576,7 +2613,7 @@ export function AtlasControlCenterPanel({
                   <SecondPlaceCandidate candidate={filteredData.topSignal?.secondPlaceCandidate ?? null} />
                 </ControlSection>
                 <ControlSection title="Top Signal Story">
-                  <ControlTopSignalStoryTimeline rows={filteredData.topSignalTimeline ?? []} />
+                  <ControlTopSignalSessionTimeline sessions={filteredData.topSignal?.sessions ?? []} fallbackRows={filteredData.topSignalTimeline ?? []} />
                 </ControlSection>
                 <ControlSection title="Why Atlas Changed">
                   <ControlChangeReasons rows={filteredData.topSignal?.changeReasons ?? []} />

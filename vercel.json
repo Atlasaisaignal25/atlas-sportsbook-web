@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/atlas-core-daily-pipeline",
-      "schedule": "0 * * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/atlas-exclusive-top3-engine",
@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/atlas-top-signal-engine",
-      "schedule": "15 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/atlas-signal-engines-validation",

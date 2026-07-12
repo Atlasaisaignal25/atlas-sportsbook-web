@@ -167,6 +167,7 @@ function rankingRows(current: DbRow[], previous: DbRow[]) {
       event: eventName(row),
       awayTeam: row.away_team ?? null,
       homeTeam: row.home_team ?? null,
+      gameId: row.game_id,
       market: marketLabel(row),
       selection: pickLabel(row),
       odds: num(row.odds),
@@ -185,7 +186,6 @@ function rankingRows(current: DbRow[], previous: DbRow[]) {
       published: Boolean(row.published),
       runAt: row.run_at,
       startTime: row.start_time,
-      gameId: row.game_id,
     };
   });
 }
@@ -275,6 +275,11 @@ function durationLabel(minutes: number | null) {
   return rest ? `${hours}h ${rest}m` : `${hours}h`;
 }
 
+function topSignalSessionNumber(sessionId: unknown) {
+  const match = String(sessionId ?? "").match(/session_(\d+)$/i);
+  return match ? Number(match[1]) : null;
+}
+
 function topSignalStoryStatus(row: DbRow, previous: DbRow | null) {
   const rawStatus = String(row.status ?? "").toUpperCase();
   if (Boolean(row.published)) return "Published";
@@ -288,6 +293,11 @@ function topSignalStoryStatus(row: DbRow, previous: DbRow | null) {
   if (probabilityDelta !== null && probabilityDelta > 0.0005) return "Confidence Improved";
   if (probabilityDelta !== null && probabilityDelta < -0.0005) return "Confidence Reduced";
   return "Stable";
+}
+
+function topSignalSessionLabel(sessionId: unknown, fallbackIndex: number) {
+  const parsed = topSignalSessionNumber(sessionId);
+  return `SESSION ${parsed ?? fallbackIndex}`;
 }
 
 function changeReasons(timeline: DbRow[]) {
@@ -392,11 +402,14 @@ export async function GET() {
     return {
       timestamp: row.run_at,
       timestampEt: timeET(row.run_at),
+      sessionId: row.session_id ?? null,
+      sessionLabel: topSignalSessionLabel(row.session_id, index + 1),
       candidate: pickLabel(row),
       sport: row.sport,
       event: eventName(row),
       awayTeam: row.away_team ?? null,
       homeTeam: row.home_team ?? null,
+      gameId: row.game_id,
       market: marketLabel(row),
       probability: num(row.atlas_probability),
       edge: num(row.edge),
@@ -405,10 +418,43 @@ export async function GET() {
       edgeDelta,
       scoreDelta,
       ranking: index + 1,
-      leaderSince,
-      leaderTime: durationLabel(minutesBetween(leaderSince, row.run_at)),
+      leaderSince: row.leader_start ?? leaderSince,
+      leaderEnd: row.leader_end ?? null,
+      publicationTime: row.publication_time ?? null,
+      publicationReason: row.publication_reason ?? null,
+      publishWindow: row.publish_window ?? null,
+      leaderTime: row.leader_duration ?? durationLabel(minutesBetween(row.leader_start ?? leaderSince, row.run_at)),
       rawStatus: row.status,
       status,
+    };
+  });
+  const topSignalSessions = Array.from(
+    topSignalTimeline.reduce((map, row) => {
+      const key = row.sessionId ?? `${row.gameId}:${row.candidate}`;
+      map.set(key, [...(map.get(key) ?? []), row]);
+      return map;
+    }, new Map<string, typeof topSignalTimeline>()),
+  ).map(([sessionId, rows], index) => {
+    const first = rows[0];
+    const latest = rows.at(-1) ?? first;
+    return {
+      sessionId,
+      sessionLabel: latest.sessionLabel ?? topSignalSessionLabel(sessionId, index + 1),
+      candidate: latest.candidate,
+      event: latest.event,
+      market: latest.market,
+      status: latest.status,
+      rawStatus: latest.rawStatus,
+      published: latest.status === "Published",
+      startedAt: first.timestamp,
+      latestAt: latest.timestamp,
+      publicationTime: latest.publicationTime,
+      publicationReason: latest.publicationReason,
+      leaderTime: latest.leaderTime,
+      probability: latest.probability,
+      edge: latest.edge,
+      score: latest.score,
+      rows,
     };
   });
   const leaderChangesToday = topSignalTimeline.filter((row) => ["Leader Established", "Leader Replaced"].includes(row.status)).length;
@@ -589,12 +635,14 @@ export async function GET() {
         secondPlace: topSignalSecondCandidate,
         strength: topSignalStrength,
         timeline: topSignalTimeline,
+        sessions: topSignalSessions,
         changeReasons: topSignalChangeReasons,
         leadersToday,
         engineDetails: {
           strength: topSignalStrength,
           secondPlace: topSignalSecondCandidate,
           timeline: topSignalTimeline,
+          sessions: topSignalSessions,
           changeReasons: topSignalChangeReasons,
         },
         leader: topSignalLeaderCandidate,

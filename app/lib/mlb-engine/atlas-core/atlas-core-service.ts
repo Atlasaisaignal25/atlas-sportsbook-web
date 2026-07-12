@@ -11,8 +11,11 @@ import { buildMarketEdgeResearchSnapshots, insertMarketEdgeSnapshotsDeduped } fr
 const SIGNAL_ENGINE_RECALC_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_RECALC_MINUTES ?? 60);
 const SIGNAL_ENGINE_FREEZE_BEFORE_START_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_FREEZE_BEFORE_START_MINUTES ?? 60);
 const SIGNAL_ENGINE_VALIDATE_BEFORE_START_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_VALIDATE_BEFORE_START_MINUTES ?? 30);
-const TOP_SIGNAL_MIN_ODDS = Number(process.env.ATLAS_TOP_SIGNAL_MIN_ODDS ?? -160);
-const TOP_SIGNAL_MAX_ODDS = Number(process.env.ATLAS_TOP_SIGNAL_MAX_ODDS ?? 120);
+const TOP_SIGNAL_REFRESH_MINUTES = Number(process.env.TOP_SIGNAL_REFRESH_MINUTES ?? process.env.ATLAS_TOP_SIGNAL_REFRESH_MINUTES ?? 15);
+const TOP_SIGNAL_DATA_REFRESH_MINUTES = Number(process.env.TOP_SIGNAL_DATA_REFRESH ?? process.env.TOP_SIGNAL_DATA_REFRESH_MINUTES ?? 5);
+const TOP_SIGNAL_FINAL_WINDOW_MINUTES = Number(process.env.TOP_SIGNAL_FINAL_WINDOW ?? process.env.TOP_SIGNAL_FINAL_WINDOW_MINUTES ?? 30);
+const TOP_SIGNAL_MIN_ODDS = Number(process.env.TOP_SIGNAL_MIN_ODDS ?? process.env.ATLAS_TOP_SIGNAL_MIN_ODDS ?? -160);
+const TOP_SIGNAL_MAX_ODDS = Number(process.env.TOP_SIGNAL_MAX_ODDS ?? process.env.ATLAS_TOP_SIGNAL_MAX_ODDS ?? 120);
 
 type MarketEdgeRow = {
   official_game_id: string;
@@ -347,6 +350,53 @@ function shouldValidate(startTime: string | null) {
   if (!startTime) return false;
   const delta = new Date(startTime).getTime() - Date.now();
   return delta <= SIGNAL_ENGINE_VALIDATE_BEFORE_START_MINUTES * 60 * 1000 && delta >= -15 * 60 * 1000;
+}
+
+function minutesUntilStart(startTime: string | null) {
+  if (!startTime) return null;
+  const start = new Date(startTime);
+  if (Number.isNaN(start.getTime())) return null;
+  return (start.getTime() - Date.now()) / 60000;
+}
+
+function marketGameStatus(edge: MarketEdgeRow) {
+  const context = edge.market_context ?? {};
+  return String(context.status ?? context.gameStatus ?? context.eventStatus ?? context.state ?? "").toUpperCase();
+}
+
+function isPregameTopSignalCandidate(candidate: AtlasCoreCandidate) {
+  const status = marketGameStatus(candidate.edge);
+  const blockedStatuses = new Set(["LIVE", "IN_PROGRESS", "FINAL", "CANCELLED", "CANCELED", "POSTPONED"]);
+  if (blockedStatuses.has(status)) return false;
+  const allowedStatuses = new Set(["", "PRE_GAME", "PREGAME", "NOT_STARTED", "PENDING", "SCHEDULED"]);
+  if (!allowedStatuses.has(status)) return false;
+  const minutes = minutesUntilStart(candidate.startTime);
+  return minutes !== null && minutes > 0;
+}
+
+function inTopSignalFinalWindow(startTime: string | null) {
+  const minutes = minutesUntilStart(startTime);
+  return minutes !== null && minutes <= TOP_SIGNAL_FINAL_WINDOW_MINUTES && minutes >= 0;
+}
+
+function topSignalSessionNumber(sessionId: unknown) {
+  const match = String(sessionId ?? "").match(/session_(\d+)$/i);
+  return match ? Number(match[1]) : null;
+}
+
+function nextTopSignalSessionId(slateDate: string, rows: Array<{ session_id?: string | null }>) {
+  const maxSession = rows.reduce((max, row) => Math.max(max, topSignalSessionNumber(row.session_id) ?? 0), 0);
+  return `mlb_${slateDate}_top_signal_session_${maxSession + 1}`;
+}
+
+function topSignalLeaderDuration(leaderStart: string, leaderEnd: string) {
+  const start = new Date(leaderStart);
+  const end = new Date(leaderEnd);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? `${hours}h${rest ? ` ${rest}m` : ""}` : `${rest}m`;
 }
 
 function operationalPickRow(item: AtlasCoreCandidate, index: number, oddsRows: OddsRow[], params: { date: string; now: string; engineProduct: "EXCLUSIVE_TOP3" | "PREMIUM_TOP5" }) {
@@ -756,25 +806,49 @@ export async function runPremiumTop5Engine() {
 export async function runTopSignalEngine() {
   const supabase = getSupabaseAdmin();
   const { candidates, oddsRows, slateDate } = await buildAtlasCoreCandidates({ oddsRange: { min: TOP_SIGNAL_MIN_ODDS, max: TOP_SIGNAL_MAX_ODDS } });
-  const leader = candidates[0] ?? null;
-  if (!leader) return { enabled: true, engine: "TOP_SIGNAL", published: false, reason: "No candidate inside Top Signal odds range.", slateDate };
-
-  const previous = await supabase
+  const history = await supabase
     .from("top_signal_history")
-    .select("game_id,consecutive_leader_hours")
+    .select("game_id,consecutive_leader_hours,session_id,published,leader_start,run_at")
     .eq("sport", "MLB")
     .eq("slate_date", slateDate)
     .order("run_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (previous.error) throw previous.error;
-  const consecutive = previous.data?.game_id === leader.edge.official_game_id ? Number(previous.data.consecutive_leader_hours ?? 0) + 1 : 1;
+    .limit(200);
+  if (history.error) throw history.error;
+  const historyRows = (history.data ?? []) as Array<{ game_id: string; consecutive_leader_hours?: number | null; session_id?: string | null; published?: boolean | null; leader_start?: string | null; run_at?: string | null }>;
+  const publishedGameIds = new Set(historyRows.filter((row) => row.published).map((row) => row.game_id));
+  const eligibleCandidates = candidates
+    .filter((candidate) => !publishedGameIds.has(candidate.edge.official_game_id))
+    .filter(isPregameTopSignalCandidate);
+  const leader = eligibleCandidates[0] ?? null;
+  if (!leader) {
+    return {
+      enabled: true,
+      engine: "TOP_SIGNAL",
+      published: false,
+      reason: "No pregame candidate inside Top Signal odds range.",
+      candidates: candidates.length,
+      eligibleCandidates: 0,
+      excludedPublishedGames: publishedGameIds.size,
+      refreshMinutes: TOP_SIGNAL_REFRESH_MINUTES,
+      dataRefreshMinutes: TOP_SIGNAL_DATA_REFRESH_MINUTES,
+      finalWindowMinutes: TOP_SIGNAL_FINAL_WINDOW_MINUTES,
+      slateDate,
+    };
+  }
+
+  const previous = historyRows[0] ?? null;
+  const sameOpenSession = previous && !previous.published && previous.game_id === leader.edge.official_game_id;
+  const sessionId = sameOpenSession && previous.session_id ? previous.session_id : nextTopSignalSessionId(slateDate, historyRows);
+  const leaderStart = sameOpenSession ? previous.leader_start ?? previous.run_at ?? new Date().toISOString() : new Date().toISOString();
+  const consecutive = sameOpenSession ? Number(previous.consecutive_leader_hours ?? 0) + 1 : 1;
   const now = new Date().toISOString();
-  const readyToPublish = shouldFreeze(leader.startTime);
+  const readyToPublish = inTopSignalFinalWindow(leader.startTime);
+  const leaderEnd = readyToPublish ? now : null;
   const historyRow = {
     sport: "MLB",
     slate_date: slateDate,
     engine: "TOP_SIGNAL",
+    session_id: sessionId,
     game_id: leader.edge.official_game_id,
     away_team: leader.edge.away_team_name,
     home_team: leader.edge.home_team_name,
@@ -791,6 +865,12 @@ export async function runTopSignalEngine() {
     status: readyToPublish ? "READY" : "CANDIDATE",
     source_snapshot_hashes: { projection: leader.projection?.feature_hash, decision: leader.decision?.feature_hash, marketEdge: leader.edge.snapshot_hash },
     published: readyToPublish,
+    leader_start: leaderStart,
+    leader_end: leaderEnd,
+    publication_time: readyToPublish ? now : null,
+    publication_reason: readyToPublish ? "FINAL_WINDOW_LEADER_CONFIRMED" : "WAITING_FINAL_WINDOW",
+    leader_duration: leaderEnd ? topSignalLeaderDuration(leaderStart, leaderEnd) : topSignalLeaderDuration(leaderStart, now),
+    publish_window: `T-${TOP_SIGNAL_FINAL_WINDOW_MINUTES}_MINUTES`,
     run_at: now,
   };
   const insert = await supabase.from("top_signal_history").insert(historyRow).select("id").maybeSingle();
@@ -800,10 +880,19 @@ export async function runTopSignalEngine() {
     engine: "TOP_SIGNAL",
     candidate: historyRow.pick,
     odds: historyRow.odds,
+    sessionId,
     consecutiveLeaderHours: consecutive,
     published: readyToPublish,
+    publicationTime: historyRow.publication_time,
+    publicationReason: historyRow.publication_reason,
     status: historyRow.status,
     historyId: insert.data?.id ?? null,
+    candidates: candidates.length,
+    eligibleCandidates: eligibleCandidates.length,
+    excludedPublishedGames: publishedGameIds.size,
+    refreshMinutes: TOP_SIGNAL_REFRESH_MINUTES,
+    dataRefreshMinutes: TOP_SIGNAL_DATA_REFRESH_MINUTES,
+    finalWindowMinutes: TOP_SIGNAL_FINAL_WINDOW_MINUTES,
     slateDate,
   };
 }
