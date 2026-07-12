@@ -5,12 +5,28 @@
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/atlas-core-daily-pipeline-morning",
+      "path": "/api/cron/atlas-signals-detected-engine",
       "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/atlas-core-daily-pipeline",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/atlas-exclusive-top3-engine",
+      "schedule": "5 * * * *"
+    },
+    {
+      "path": "/api/cron/atlas-premium-top5-engine",
+      "schedule": "10 * * * *"
+    },
+    {
+      "path": "/api/cron/atlas-top-signal-engine",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/atlas-signal-engines-validation",
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/cron/atlas-core-final-validation",

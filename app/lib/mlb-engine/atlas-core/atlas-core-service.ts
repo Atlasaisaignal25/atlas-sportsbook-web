@@ -8,6 +8,12 @@ import { buildMlbProjectionResearchSnapshots, insertProjectionResearchSnapshotsD
 import { buildDecisionResearchSnapshots, insertDecisionResearchSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/decision-research/decision-research-repository";
 import { buildMarketEdgeResearchSnapshots, insertMarketEdgeSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/market-edge/market-edge-repository";
 
+const SIGNAL_ENGINE_RECALC_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_RECALC_MINUTES ?? 60);
+const SIGNAL_ENGINE_FREEZE_BEFORE_START_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_FREEZE_BEFORE_START_MINUTES ?? 60);
+const SIGNAL_ENGINE_VALIDATE_BEFORE_START_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_VALIDATE_BEFORE_START_MINUTES ?? 30);
+const TOP_SIGNAL_MIN_ODDS = Number(process.env.ATLAS_TOP_SIGNAL_MIN_ODDS ?? -160);
+const TOP_SIGNAL_MAX_ODDS = Number(process.env.ATLAS_TOP_SIGNAL_MAX_ODDS ?? 120);
+
 type MarketEdgeRow = {
   official_game_id: string;
   home_team_name: string;
@@ -285,6 +291,141 @@ function selectMorningOpportunities(edges: MarketEdgeRow[]) {
   });
 }
 
+type AtlasCoreCandidate = {
+  edge: MarketEdgeRow;
+  decision?: DecisionRow;
+  projection?: ProjectionRow;
+  gate: ReturnType<typeof gate>;
+  startTime: string | null;
+};
+
+async function buildAtlasCoreCandidates(params: { gameIds?: Set<string>; oddsRange?: { min: number; max: number } } = {}) {
+  const { edges, decisionByGame, projectionByGame, oddsByTeams, oddsRows, slateDate } = await loadCanonicalRows();
+  const selectedMarkets = selectHighestProbabilityMarketByGame(edges);
+  const candidates = selectedMarkets
+    .filter((edge) => !params.gameIds || params.gameIds.has(edge.official_game_id))
+    .map((edge): AtlasCoreCandidate => {
+      const decision = decisionByGame.get(edge.official_game_id);
+      const projection = projectionByGame.get(edge.official_game_id);
+      const startTime = gameStart(edge, oddsByTeams);
+      return { edge, decision, projection, gate: gate(edge, decision, projection), startTime };
+    })
+    .filter((item) => timestampBelongsToMlbSlate(item.startTime, slateDate))
+    .filter((item) => item.gate.passed)
+    .filter((item) => {
+      if (!params.oddsRange) return true;
+      const odds = pickOdds(item.edge, oddsRows);
+      return odds !== null && odds >= params.oddsRange.min && odds <= params.oddsRange.max;
+    })
+    .toSorted((a, b) => b.gate.ranking - a.gate.ranking);
+
+  const onePerGame = new Map<string, AtlasCoreCandidate>();
+  for (const item of candidates) {
+    if (!onePerGame.has(item.edge.official_game_id)) onePerGame.set(item.edge.official_game_id, item);
+  }
+
+  return {
+    candidates: Array.from(onePerGame.values()),
+    oddsRows,
+    slateDate,
+  };
+}
+
+function firstStartTime(rows: Array<{ start_time?: string | null; startTime?: string | null }>) {
+  return rows
+    .map((row) => row.start_time ?? row.startTime ?? null)
+    .filter((value): value is string => Boolean(value))
+    .toSorted((a, b) => new Date(a).getTime() - new Date(b).getTime())[0] ?? null;
+}
+
+function shouldFreeze(firstStart: string | null) {
+  if (!firstStart) return false;
+  return new Date(firstStart).getTime() - Date.now() <= SIGNAL_ENGINE_FREEZE_BEFORE_START_MINUTES * 60 * 1000;
+}
+
+function shouldValidate(startTime: string | null) {
+  if (!startTime) return false;
+  const delta = new Date(startTime).getTime() - Date.now();
+  return delta <= SIGNAL_ENGINE_VALIDATE_BEFORE_START_MINUTES * 60 * 1000 && delta >= -15 * 60 * 1000;
+}
+
+function operationalPickRow(item: AtlasCoreCandidate, index: number, oddsRows: OddsRow[], params: { date: string; now: string; engineProduct: "EXCLUSIVE_TOP3" | "PREMIUM_TOP5" }) {
+  return {
+    date: sourceDateFromStart(item.startTime) || params.date,
+    game_id: item.edge.official_game_id,
+    away_team: item.edge.away_team_name,
+    home_team: item.edge.home_team_name,
+    start_time: item.startTime,
+    sport: "MLB",
+    pick: pickLabel(item.edge),
+    market: pickMarket(item.edge.market),
+    line: pickLine(item.edge),
+    odds: pickOdds(item.edge, oddsRows),
+    direction: item.edge.direction,
+    rank: index + 1,
+    status: "UNDER_REVIEW",
+    is_top_signal: false,
+    pick_ranking: item.gate.ranking,
+    edge: item.gate.edgeValue,
+    conviction_score: item.gate.conviction,
+    conviction_grade: item.decision?.conviction_grade ?? null,
+    consensus_score: item.gate.consensus,
+    consensus_grade: item.decision?.consensus_grade ?? null,
+    confidence: item.gate.confidence,
+    validation_reasons: item.gate.reasons,
+    warnings: item.gate.warnings,
+    source_versions: { atlasCore: ATLAS_CORE_MLB_VERSION, projection: item.projection?.model_version, decision: item.decision?.model_version, marketEdge: item.edge.source_versions },
+    source_snapshot_hashes: { projection: item.projection?.feature_hash, decision: item.decision?.feature_hash, marketEdge: item.edge.snapshot_hash },
+    published_at: params.now,
+    publication_blocked: false,
+    publication_block_reason: null,
+    engine_product: params.engineProduct,
+    ranking_frozen_at: params.now,
+    updated_at: params.now,
+  };
+}
+
+async function insertTop5HistoryRows(params: {
+  engine: "EXCLUSIVE_TOP3" | "PREMIUM_TOP5";
+  runType: "INTERNAL_RANKING" | "OFFICIAL_FREEZE";
+  rows: AtlasCoreCandidate[];
+  oddsRows: OddsRow[];
+  slateDate: string;
+  frozen: boolean;
+  published: boolean;
+}) {
+  if (!params.rows.length) return { inserted: 0, skipped: 0 };
+  const supabase = getSupabaseAdmin();
+  const runAt = new Date().toISOString();
+  const payload = params.rows.map((item, index) => ({
+    sport: "MLB",
+    slate_date: params.slateDate,
+    engine: params.engine,
+    run_type: params.runType,
+    game_id: item.edge.official_game_id,
+    away_team: item.edge.away_team_name,
+    home_team: item.edge.home_team_name,
+    start_time: item.startTime,
+    pick: pickLabel(item.edge),
+    market: pickMarket(item.edge.market),
+    line: pickLine(item.edge),
+    odds: pickOdds(item.edge, params.oddsRows),
+    direction: item.edge.direction,
+    rank: index + 1,
+    status: params.published ? "UNDER_REVIEW" : "INTERNAL",
+    atlas_probability: item.gate.probability,
+    edge: item.gate.edgeValue,
+    score: item.gate.ranking,
+    source_snapshot_hashes: { projection: item.projection?.feature_hash, decision: item.decision?.feature_hash, marketEdge: item.edge.snapshot_hash },
+    frozen: params.frozen,
+    published: params.published,
+    run_at: runAt,
+  }));
+  const { data, error } = await supabase.from("top5_history").upsert(payload, { onConflict: "slate_date,engine,run_type,game_id" }).select("id");
+  if (error) throw error;
+  return { inserted: data?.length ?? 0, skipped: payload.length - (data?.length ?? 0) };
+}
+
 export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) {
   const config = getAtlasCoreMlbConfig();
   if (!config.enabled || config.legacyRollbackEnabled) return { enabled: false, skipped: true, reason: "Atlas Core MLB disabled or rollback enabled." };
@@ -451,6 +592,8 @@ export async function runAtlasCoreLiveValidation() {
       published_at: now,
       publication_blocked: false,
       publication_block_reason: null,
+      engine_product: "PREMIUM_TOP5",
+      ranking_frozen_at: now,
       updated_at: now,
     };
   });
@@ -472,7 +615,7 @@ export async function runAtlasCoreLiveValidation() {
     return { enabled: true, candidates: candidates.length, publishedTop5: 0, topSignalPublished: false, slateDate, publicationBlocked: true, publicationBlockReason: "BLOCKED_STALE_UPSTREAM" };
   }
   if (rows.length) {
-    const { error } = await supabase.from("atlas_core_mlb_picks").upsert(rows, { onConflict: "date,game_id" });
+    const { error } = await supabase.from("atlas_core_mlb_picks").upsert(rows, { onConflict: "date,game_id,engine_product" });
     if (error) throw error;
   }
   const keepIds = rows.map((row) => row.game_id);
@@ -487,6 +630,208 @@ export async function runAtlasCoreLiveValidation() {
   return { enabled: true, candidates: candidates.length, publishedTop5: rows.length, topSignalPublished: Boolean(topSignalId), topSignalGameId: topSignalId, slateDate, freshnessGate: "PASSED" };
 }
 
+export async function runSignalsDetectedEngine() {
+  const pipeline = await runAtlasCoreDailyPipeline("MORNING");
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("atlas_core_mlb_signals")
+    .select("id,date,game_id,away_team,home_team,start_time,metadata,morning_scan_at")
+    .eq("date", pipeline.slateDate)
+    .eq("stage", "SIGNALS_DETECTED")
+    .order("start_time", { ascending: true });
+  if (error) throw error;
+  const rows = (data ?? []).map((row: any, index: number) => ({
+    sport: "MLB",
+    slate_date: row.date,
+    engine: "SIGNALS_DETECTED",
+    game_id: row.game_id,
+    away_team: row.away_team,
+    home_team: row.home_team,
+    start_time: row.start_time,
+    pick: row.metadata?.detectedPick ?? "Pending",
+    market: row.metadata?.detectedMarket ?? null,
+    line: row.metadata?.detectedLine ?? null,
+    odds: row.metadata?.detectedOdds ?? null,
+    direction: row.metadata?.detectedDirection ?? null,
+    rank: index + 1,
+    status: "FROZEN",
+    atlas_probability: row.metadata?.detectedAtlasProbability ?? null,
+    edge: row.metadata?.detectedEdge ?? null,
+    score: null,
+    source_snapshot_hashes: row.metadata ?? {},
+    frozen: true,
+    published: true,
+    run_at: row.morning_scan_at ?? new Date().toISOString(),
+  }));
+  if (rows.length) {
+    const inserted = await supabase.from("signals_detected_history").upsert(rows, { onConflict: "slate_date,engine,game_id" }).select("id");
+    if (inserted.error) throw inserted.error;
+  }
+  return { ...pipeline, signalsDetectedHistory: rows.length, engine: "SIGNALS_DETECTED" };
+}
+
+export async function runExclusiveTop3Engine() {
+  const supabase = getSupabaseAdmin();
+  const slateDate = resolveMlbSlateDate();
+  const { data: signals, error } = await supabase
+    .from("atlas_core_mlb_signals")
+    .select("game_id,start_time")
+    .eq("date", slateDate)
+    .eq("stage", "SIGNALS_DETECTED")
+    .order("start_time", { ascending: true });
+  if (error) throw error;
+  const frozenSignals = signals ?? [];
+  if (!frozenSignals.length) return { enabled: true, engine: "EXCLUSIVE_TOP3", skipped: true, reason: "No frozen Signals Detected list for slate.", slateDate };
+
+  const gameIds = new Set<string>(frozenSignals.map((row: any) => String(row.game_id)));
+  const { candidates, oddsRows } = await buildAtlasCoreCandidates({ gameIds });
+  const top3 = candidates.slice(0, 3);
+  const freezeNow = shouldFreeze(firstStartTime(frozenSignals as any[]));
+  await insertTop5HistoryRows({ engine: "EXCLUSIVE_TOP3", runType: freezeNow ? "OFFICIAL_FREEZE" : "INTERNAL_RANKING", rows: top3, oddsRows, slateDate, frozen: freezeNow, published: freezeNow });
+  if (!freezeNow) {
+    await supabase
+      .from("atlas_core_mlb_picks")
+      .update({ status: "INTERNAL_CANDIDATE", rank: null, is_top_signal: false, updated_at: new Date().toISOString() })
+      .eq("date", slateDate)
+      .eq("engine_product", "EXCLUSIVE_TOP3")
+      .is("ranking_frozen_at", null);
+    return { enabled: true, engine: "EXCLUSIVE_TOP3", internalRanked: top3.length, published: false, recalcMinutes: SIGNAL_ENGINE_RECALC_MINUTES, slateDate };
+  }
+
+  const now = new Date().toISOString();
+  const existing = await supabase
+    .from("atlas_core_mlb_picks")
+    .select("id")
+    .eq("date", slateDate)
+    .eq("engine_product", "EXCLUSIVE_TOP3")
+    .not("ranking_frozen_at", "is", null)
+    .limit(1);
+  if (existing.error) throw existing.error;
+  if ((existing.data ?? []).length) return { enabled: true, engine: "EXCLUSIVE_TOP3", published: false, frozen: true, reason: "Top 3 already frozen.", slateDate };
+
+  const rows = top3.map((item, index) => operationalPickRow(item, index, oddsRows, { date: slateDate, now, engineProduct: "EXCLUSIVE_TOP3" }));
+  if (rows.length) {
+    const upsert = await supabase.from("atlas_core_mlb_picks").upsert(rows, { onConflict: "date,game_id,engine_product" });
+    if (upsert.error) throw upsert.error;
+  }
+  return { enabled: true, engine: "EXCLUSIVE_TOP3", published: true, frozen: true, top3: rows.length, slateDate };
+}
+
+export async function runPremiumTop5Engine() {
+  const supabase = getSupabaseAdmin();
+  const slateDate = resolveMlbSlateDate();
+  const { candidates, oddsRows } = await buildAtlasCoreCandidates();
+  const top5 = candidates.slice(0, 5);
+  const freezeNow = shouldFreeze(firstStartTime(top5.map((item) => ({ start_time: item.startTime }))));
+  await insertTop5HistoryRows({ engine: "PREMIUM_TOP5", runType: freezeNow ? "OFFICIAL_FREEZE" : "INTERNAL_RANKING", rows: top5, oddsRows, slateDate, frozen: freezeNow, published: freezeNow });
+  if (!freezeNow) {
+    await supabase
+      .from("atlas_core_mlb_picks")
+      .update({ status: "INTERNAL_CANDIDATE", rank: null, is_top_signal: false, updated_at: new Date().toISOString() })
+      .eq("date", slateDate)
+      .eq("engine_product", "PREMIUM_TOP5")
+      .is("ranking_frozen_at", null);
+    return { enabled: true, engine: "PREMIUM_TOP5", internalRanked: top5.length, published: false, recalcMinutes: SIGNAL_ENGINE_RECALC_MINUTES, slateDate };
+  }
+
+  const now = new Date().toISOString();
+  const existing = await supabase
+    .from("atlas_core_mlb_picks")
+    .select("id")
+    .eq("date", slateDate)
+    .eq("engine_product", "PREMIUM_TOP5")
+    .not("ranking_frozen_at", "is", null)
+    .limit(1);
+  if (existing.error) throw existing.error;
+  if ((existing.data ?? []).length) return { enabled: true, engine: "PREMIUM_TOP5", published: false, frozen: true, reason: "Top 5 already frozen.", slateDate };
+
+  const rows = top5.map((item, index) => operationalPickRow(item, index, oddsRows, { date: slateDate, now, engineProduct: "PREMIUM_TOP5" }));
+  if (rows.length) {
+    const upsert = await supabase.from("atlas_core_mlb_picks").upsert(rows, { onConflict: "date,game_id,engine_product" });
+    if (upsert.error) throw upsert.error;
+  }
+  return { enabled: true, engine: "PREMIUM_TOP5", published: true, frozen: true, top5: rows.length, slateDate };
+}
+
+export async function runTopSignalEngine() {
+  const supabase = getSupabaseAdmin();
+  const { candidates, oddsRows, slateDate } = await buildAtlasCoreCandidates({ oddsRange: { min: TOP_SIGNAL_MIN_ODDS, max: TOP_SIGNAL_MAX_ODDS } });
+  const leader = candidates[0] ?? null;
+  if (!leader) return { enabled: true, engine: "TOP_SIGNAL", published: false, reason: "No candidate inside Top Signal odds range.", slateDate };
+
+  const previous = await supabase
+    .from("top_signal_history")
+    .select("game_id,consecutive_leader_hours")
+    .eq("sport", "MLB")
+    .eq("slate_date", slateDate)
+    .order("run_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (previous.error) throw previous.error;
+  const consecutive = previous.data?.game_id === leader.edge.official_game_id ? Number(previous.data.consecutive_leader_hours ?? 0) + 1 : 1;
+  const now = new Date().toISOString();
+  const readyToPublish = shouldFreeze(leader.startTime);
+  const historyRow = {
+    sport: "MLB",
+    slate_date: slateDate,
+    engine: "TOP_SIGNAL",
+    game_id: leader.edge.official_game_id,
+    away_team: leader.edge.away_team_name,
+    home_team: leader.edge.home_team_name,
+    start_time: leader.startTime,
+    pick: pickLabel(leader.edge),
+    market: pickMarket(leader.edge.market),
+    line: pickLine(leader.edge),
+    odds: pickOdds(leader.edge, oddsRows),
+    direction: leader.edge.direction,
+    atlas_probability: leader.gate.probability,
+    edge: leader.gate.edgeValue,
+    score: leader.gate.ranking,
+    consecutive_leader_hours: consecutive,
+    status: readyToPublish ? "READY" : "CANDIDATE",
+    source_snapshot_hashes: { projection: leader.projection?.feature_hash, decision: leader.decision?.feature_hash, marketEdge: leader.edge.snapshot_hash },
+    published: readyToPublish,
+    run_at: now,
+  };
+  const insert = await supabase.from("top_signal_history").insert(historyRow).select("id").maybeSingle();
+  if (insert.error) throw insert.error;
+  return {
+    enabled: true,
+    engine: "TOP_SIGNAL",
+    candidate: historyRow.pick,
+    odds: historyRow.odds,
+    consecutiveLeaderHours: consecutive,
+    published: readyToPublish,
+    status: historyRow.status,
+    historyId: insert.data?.id ?? null,
+    slateDate,
+  };
+}
+
+export async function runAtlasSignalEnginesValidation() {
+  const supabase = getSupabaseAdmin();
+  const slateDate = resolveMlbSlateDate();
+  const { data, error } = await supabase
+    .from("atlas_core_mlb_picks")
+    .select("id,start_time,warnings,status,engine_product")
+    .eq("date", slateDate)
+    .eq("status", "UNDER_REVIEW")
+    .in("engine_product", ["EXCLUSIVE_TOP3", "PREMIUM_TOP5"]);
+  if (error) throw error;
+  const rows = data ?? [];
+  let updated = 0;
+  for (const row of rows) {
+    if (!shouldValidate(row.start_time)) continue;
+    const nextStatus = Array.isArray(row.warnings) && row.warnings.length ? "DOWNGRADED" : "CONFIRMED";
+    const update = await supabase
+      .from("atlas_core_mlb_picks")
+      .update({ status: nextStatus, final_validated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("id", row.id);
+    if (!update.error) updated += 1;
+  }
+  return { enabled: true, slateDate, checked: rows.length, updated };
+}
+
 export async function runAtlasCoreDailyPipeline(mode: "MORNING" | "LIVE") {
   const slateDate = resolveMlbSlateDate();
   const projectionCapture = await buildMlbProjectionResearchSnapshots();
@@ -495,7 +840,10 @@ export async function runAtlasCoreDailyPipeline(mode: "MORNING" | "LIVE") {
   const decisionStorage = await insertDecisionResearchSnapshotsDeduped(decisionCapture.decisions);
   const marketEdgeCapture = await buildMarketEdgeResearchSnapshots();
   const marketEdgeStorage = await insertMarketEdgeSnapshotsDeduped(marketEdgeCapture.marketEdges);
-  const atlasCore = mode === "MORNING" ? await runAtlasCoreMorningScan({ force: true }) : await runAtlasCoreLiveValidation();
+  const atlasCore =
+    mode === "MORNING"
+      ? await runAtlasCoreMorningScan({ force: true })
+      : { enabled: true, skipped: true, reason: "LIVE pipeline refreshes upstream only. Signal Engines V2 own publication." };
 
   return {
     ok: true,
