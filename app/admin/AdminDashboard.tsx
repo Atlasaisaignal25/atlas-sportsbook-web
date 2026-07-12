@@ -144,7 +144,7 @@ type PerformanceCenterData = {
 type AtlasControlTab = "overview" | "top-signal" | "top5" | "signals" | "activity" | "health";
 type AtlasActivityFilter = "ALL" | "TOP SIGNAL" | "TOP 5" | "EXCLUSIVE" | "SIGNALS" | "VALIDATION" | "ERRORS";
 
-type AtlasControlCenterData = {
+export type AtlasControlCenterData = {
   summary: any;
   engineHealth: any[];
   topSignal: any | null;
@@ -2041,6 +2041,106 @@ function filterActivity(rows: any[], filter: AtlasActivityFilter) {
   return rows;
 }
 
+export function AtlasControlCenterOverview({
+  data,
+  loading,
+  error,
+  engineDetailsOpen,
+  leadersExpanded,
+  onToggleEngineDetails,
+  onToggleLeaders,
+  onRefresh,
+  onOpenTop5,
+  onOpenSignals,
+  showChrome = true,
+  title = "Signal Engines",
+  eyebrow = "Atlas Control Center",
+  subtitle = "Live operational view of today’s Signal Engines.",
+}: {
+  data: AtlasControlCenterData | null;
+  loading: boolean;
+  error: string | null;
+  engineDetailsOpen: boolean;
+  leadersExpanded: boolean;
+  onToggleEngineDetails: () => void;
+  onToggleLeaders: () => void;
+  onRefresh: () => void;
+  onOpenTop5?: () => void;
+  onOpenSignals?: () => void;
+  showChrome?: boolean;
+  title?: string;
+  eyebrow?: string;
+  subtitle?: string;
+}) {
+  const summary = data?.summary;
+  return (
+    <section className="grid gap-2.5">
+      {showChrome ? (
+        <>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">{eyebrow}</p>
+              <h1 className="text-[24px] font-black uppercase tracking-[-0.03em] text-white">{title}</h1>
+              <p className="text-xs font-bold text-white/45">{subtitle}</p>
+            </div>
+            <button onClick={onRefresh} disabled={loading} className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-[10px] font-black uppercase text-cyan-200 disabled:opacity-50">
+              {loading ? "Loading" : "Refresh"}
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-bold text-white/45">
+            <span>Last updated: {formatAdminTime(summary?.generatedAt)}</span>
+            <span>{formatAdminDate(summary?.slateDate)}</span>
+          </div>
+          {error ? <p className="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-2 text-xs font-bold text-yellow-100">{error}</p> : null}
+          {data?.errors?.length ? <p className="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-2 text-xs font-bold text-yellow-100">{data.errors.join(" · ")}</p> : null}
+
+          {!data && loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">Loading Control Center...</p> : null}
+          {!data && !loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">No Control Center data available.</p> : null}
+        </>
+      ) : null}
+
+      {data ? (
+        <>
+          <ControlEngineStatusBar rows={data.engineHealth} summary={summary} />
+          <ControlTopSignalCurrentLeader data={data.topSignal} />
+          <ControlLeadersToday
+            rows={data.topSignal?.leadersToday ?? []}
+            secondPlace={data.topSignal?.secondPlaceCandidate ?? null}
+            expanded={leadersExpanded}
+            onToggle={onToggleLeaders}
+          />
+          <AdminShellCard className="p-2.5">
+            <button type="button" onClick={onToggleEngineDetails} className="flex w-full items-center justify-between text-[11px] font-black uppercase text-cyan-300">
+              <span>{engineDetailsOpen ? "Hide Engine Details ↑" : "Open Engine Details →"}</span>
+              <span className="text-white/35">{engineDetailsOpen ? "Expanded" : "Compact"}</span>
+            </button>
+            {engineDetailsOpen ? <ControlOverviewDetails data={data} summary={summary} /> : null}
+          </AdminShellCard>
+          <ControlSignalPreview
+            title="Premium Top 5"
+            rows={(data.top5?.currentInternalRanking ?? []).slice(0, 5)}
+            empty="No Premium Top 5 ranking yet."
+            action={onOpenTop5 ? <button type="button" onClick={onOpenTop5}>Open Top 5 →</button> : null}
+          />
+          <ControlSignalPreview
+            title="Exclusive Top 3"
+            rows={(data.exclusiveTop3?.currentInternalRanking ?? []).slice(0, 3)}
+            empty="No Exclusive Top 3 ranking yet."
+            action={onOpenSignals ? <button type="button" onClick={onOpenSignals}>Open Exclusive Top 3 →</button> : null}
+          />
+          <ControlSignalPreview
+            title="Signals Detected"
+            rows={(data.signalsDetected ?? []).slice(0, 5)}
+            empty="No frozen Signals Detected rows yet."
+            action={onOpenSignals ? <button type="button" onClick={onOpenSignals}>View All Signals →</button> : null}
+          />
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 function AtlasControlCenterPanel({
   data,
   loading,
@@ -2118,41 +2218,19 @@ function AtlasControlCenterPanel({
       {data ? (
         <>
           {tab === "overview" ? (
-            <>
-              <ControlEngineStatusBar rows={data.engineHealth} summary={summary} />
-              <ControlTopSignalCurrentLeader data={data.topSignal} />
-              <ControlLeadersToday
-                rows={data.topSignal?.leadersToday ?? []}
-                secondPlace={data.topSignal?.secondPlaceCandidate ?? null}
-                expanded={leadersExpanded}
-                onToggle={onToggleLeaders}
-              />
-              <AdminShellCard className="p-2.5">
-                <button type="button" onClick={onToggleEngineDetails} className="flex w-full items-center justify-between text-[11px] font-black uppercase text-cyan-300">
-                  <span>{engineDetailsOpen ? "Hide Engine Details ↑" : "Open Engine Details →"}</span>
-                  <span className="text-white/35">{engineDetailsOpen ? "Expanded" : "Compact"}</span>
-                </button>
-                {engineDetailsOpen ? <ControlOverviewDetails data={data} summary={summary} /> : null}
-              </AdminShellCard>
-              <ControlSignalPreview
-                title="Premium Top 5"
-                rows={(data.top5?.currentInternalRanking ?? []).slice(0, 5)}
-                empty="No Premium Top 5 ranking yet."
-                action={<button type="button" onClick={() => onTab("top5")}>Open Top 5 →</button>}
-              />
-              <ControlSignalPreview
-                title="Exclusive Top 3"
-                rows={(data.exclusiveTop3?.currentInternalRanking ?? []).slice(0, 3)}
-                empty="No Exclusive Top 3 ranking yet."
-                action={<button type="button" onClick={() => onTab("signals")}>Open Exclusive Top 3 →</button>}
-              />
-              <ControlSignalPreview
-                title="Signals Detected"
-                rows={(data.signalsDetected ?? []).slice(0, 5)}
-                empty="No frozen Signals Detected rows yet."
-                action={<button type="button" onClick={() => onTab("signals")}>View All Signals →</button>}
-              />
-            </>
+            <AtlasControlCenterOverview
+              data={data}
+              loading={loading}
+              error={error}
+              engineDetailsOpen={engineDetailsOpen}
+              leadersExpanded={leadersExpanded}
+              onToggleEngineDetails={onToggleEngineDetails}
+              onToggleLeaders={onToggleLeaders}
+              onRefresh={onRefresh}
+              onOpenTop5={() => onTab("top5")}
+              onOpenSignals={() => onTab("signals")}
+              showChrome={false}
+            />
           ) : null}
 
           {tab === "top-signal" ? (

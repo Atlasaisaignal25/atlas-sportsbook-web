@@ -6251,7 +6251,7 @@ const sectionTitle =
     : appSection === "news"
     ? "Market Impact"
     : appSection === "alerts"
-    ? "My Profile"
+    ? "My Atlas"
     : "More";
 
 const sectionEyebrow =
@@ -6264,7 +6264,7 @@ const sectionEyebrow =
     : appSection === "news"
     ? "Atlas Pulse"
     : appSection === "alerts"
-    ? "Account"
+    ? "My Atlas"
     : "Account";
 
 const pulseSportFilters: Array<{ label: string; value: "ALL" | PulseSport }> = [
@@ -9814,7 +9814,7 @@ const subscriptionPlansBoard = (
             { key: "challenges" as const, label: "Challenges" },
             { key: "news" as const, label: "Impact" },
             { key: "signals" as const, label: "Home" },
-            { key: "alerts" as const, label: "My Profile" },
+            { key: "alerts" as const, label: "My Atlas" },
             { key: "more" as const, label: "More" },
           ].map((item) => (
             <button

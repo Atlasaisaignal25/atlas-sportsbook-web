@@ -15,6 +15,7 @@ import { TodayActivityCard, type ActivityMetric } from "./TodayActivityCard";
 import { TopPlayCard, type TopPlayViewModel } from "./TopPlayCard";
 import { TopPlayDetailSheet } from "./TopPlayDetailSheet";
 import { teamBranding } from "../../lib/teamBranding";
+import { AtlasControlCenterOverview, type AtlasControlCenterData } from "../../admin/AdminDashboard";
 
 export type SignalsHomePrecisionResponse = {
   productType?: "top_signal" | "top_play";
@@ -1026,13 +1027,13 @@ function SignalsFrameHotspots({
     <div className="pointer-events-none absolute inset-0 z-30">
       <button
         type="button"
-        aria-label="Open profile"
+        aria-label="Open My Atlas"
         onClick={() => onNavigate?.("alerts")}
         className="pointer-events-auto absolute right-[29.5%] top-[2.1%] h-[4.6%] w-[9%] rounded-2xl"
       />
       <button
         type="button"
-        aria-label="Open profile"
+        aria-label="Open My Atlas"
         onClick={() => onNavigate?.("more")}
         className="pointer-events-auto absolute right-[4.2%] top-[2.0%] h-[4.9%] w-[22.5%] rounded-2xl"
       />
@@ -1745,7 +1746,7 @@ function BottomNav({
     { section: "challenges", label: "Challenges" },
     { section: "news", label: "Impact" },
     { section: "signals", label: "Home" },
-    { section: "alerts", label: "My Profile" },
+    { section: "alerts", label: "My Atlas" },
     { section: "more", label: "More" },
   ];
 
@@ -2586,321 +2587,96 @@ function TeamSignalLogo({ team }: { team: string }) {
   return <span className="text-[12px] font-black text-white/70">{team.slice(0, 2).toUpperCase()}</span>;
 }
 
-function MyProfileScreen({
+function MyAtlasScreen({
   onNavigate,
 }: {
   onNavigate?: (section: SignalsHomeNavSection) => void;
 }) {
-  const [data, setData] = useState<ProfileOverview | null>(null);
+  const [data, setData] = useState<AtlasControlCenterData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [productsOpen, setProductsOpen] = useState(false);
+  const [engineDetailsOpen, setEngineDetailsOpen] = useState(false);
+  const [leadersExpanded, setLeadersExpanded] = useState(false);
+
+  async function loadControlCenter(options: { silent?: boolean } = {}) {
+    if (!options.silent) setLoading(true);
+    try {
+      const response = await fetch("/api/admin/atlas-control-center", { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setData(null);
+        setError(response.status === 401 || response.status === 403 ? "Admin access required." : payload?.error ?? "Unable to load My Atlas.");
+        return;
+      }
+
+      setData(payload as AtlasControlCenterData);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load My Atlas.");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    fetch("/api/profile/overview", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(response.status === 401 ? "Sign in to view your profile." : "Unable to load profile.");
-        return response.json() as Promise<ProfileOverview>;
-      })
-      .then((payload) => {
-        if (!active) return;
-        setData(payload);
-        setError(null);
-      })
-      .catch((err: Error) => {
-        if (!active) return;
-        setError(err.message);
-        setData(null);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    void loadControlCenter();
+    const interval = window.setInterval(() => {
+      void loadControlCenter({ silent: true });
+    }, 45000);
+    return () => window.clearInterval(interval);
   }, []);
-
-  const profile = data?.profile;
-  const summary = data?.summary;
-  const readySignals = data?.signals.filter((signal) => signal.status === "READY").length ?? 0;
-  const underReviewSignals = data?.signals.filter((signal) => signal.status === "DETECTED" || signal.status === "UNDER REVIEW").length ?? 0;
-  const confirmedSignals = data?.signals.filter((signal) => signal.status === "CONFIRMED").length ?? 0;
-  const topSignalRecommendation = data?.recommendations.find((item) => item.code === "top_signal_by_sport" || item.code === "top_signal_mlb");
-  const productSections = data?.productSections?.length
-    ? data.productSections
-    : data
-      ? [{ code: "signals", title: "MY SIGNALS", sport: "ALL", progress: `${data.signals.length} Signals`, signals: data.signals }]
-      : [];
-  const summaryItems = [
-    ["Signals", summary?.signalsReceived ?? "Unavailable", <ProfileMiniIcon key="pulse" type="pulse" />],
-    ["Win Rate", summary?.winRate ?? "Unavailable", <ProfileMiniIcon key="target" type="target" />],
-    ["ROI", summary?.roi ?? "Unavailable", <ProfileMiniIcon key="bars" type="bars" />],
-    ["Accuracy", summary?.accuracy ?? "Unavailable", <ProfileMiniIcon key="shield" type="shield" />],
-  ];
 
   return (
     <main className="min-h-screen bg-[#020814] text-white">
       <div className="mx-auto min-h-screen w-full max-w-md overflow-x-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-3.5 pb-[88px] pt-4">
-        <header>
+        <header className="mb-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5">
+            <button type="button" onClick={() => onNavigate?.("signals")} className="flex items-center gap-2.5 text-left" aria-label="Back to Atlas home">
               <img src="/icon.png" alt="Atlas Signals" className="h-8 w-8 object-contain" />
               <div className="text-[9px] font-black uppercase leading-tight tracking-[0.30em] text-white">
                 Atlas<br /><span className="text-cyan-300">Signals</span>
               </div>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={() => setProductsOpen(true)}
-                className="grid h-9 w-9 place-items-center rounded-[11px] border border-cyan-300/20 bg-cyan-400/[0.07] text-cyan-300 [&_svg]:h-5 [&_svg]:w-5"
-                aria-label="Open products"
-                title="Products"
-              >
-                <ProfileMiniIcon type="box" />
-              </button>
-              <button
-                type="button"
-                className="relative grid h-9 w-9 place-items-center rounded-[11px] border border-white/12 bg-white/[0.035] text-white/78"
-                aria-label="Notifications"
-                title="Notifications"
-              >
-                <HeaderBellIcon className="h-[18px] w-[18px]" />
-                {data?.unreadCount ? (
-                  <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-cyan-300 px-1 text-[9px] font-black text-black">
-                    {data.unreadCount}
-                  </span>
-                ) : null}
-              </button>
-            </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadControlCenter()}
+              className="grid h-9 w-9 place-items-center rounded-[11px] border border-cyan-300/20 bg-cyan-400/[0.07] text-[16px] font-black text-cyan-300"
+              aria-label="Refresh My Atlas"
+              title="Refresh"
+            >
+              ↻
+            </button>
           </div>
-          <h1 className="mt-1.5 text-[26px] font-black leading-none tracking-[-0.035em]">My Profile</h1>
-          <p className="mt-0.5 max-w-[320px] text-[11px] font-medium leading-snug text-white/58">Your personal Atlas Signals hub.</p>
+          <h1 className="mt-1.5 text-[26px] font-black uppercase leading-none tracking-[-0.035em]">My Atlas</h1>
+          <p className="mt-0.5 max-w-[320px] text-[11px] font-medium leading-snug text-white/58">Your Atlas operational overview.</p>
         </header>
 
-        {loading ? (
-          <div className="mt-3.5 rounded-[18px] border border-white/10 bg-white/[0.035] p-3">
-            <div className="h-16 animate-pulse rounded-2xl bg-white/8" />
-            <div className="mt-2 h-12 animate-pulse rounded-2xl bg-white/8" />
-          </div>
-        ) : error ? (
-          <div className="mt-3.5 rounded-[18px] border border-red-400/20 bg-red-950/20 p-4">
-            <p className="text-[14px] font-black text-white">{error}</p>
+        {error === "Admin access required." ? (
+          <div className="rounded-[18px] border border-white/10 bg-white/[0.035] p-4">
+            <p className="text-[14px] font-black text-white">Admin access required.</p>
+            <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">My Atlas is ready for personal account blocks, but the operational Overview is only available to an administrator.</p>
             <button type="button" onClick={() => onNavigate?.("signals")} className="mt-3 rounded-full bg-cyan-300 px-4 py-2 text-[11px] font-black text-black">
               Go Home
             </button>
           </div>
-        ) : data && profile ? (
-          <div className="mt-2.5 space-y-2.5">
-            <section className="rounded-[15px] border border-white/12 bg-[linear-gradient(180deg,rgba(8,18,34,0.96),rgba(4,10,22,0.96))] p-2.5 shadow-[0_0_18px_rgba(0,0,0,0.16)]">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-[50px] w-[50px] shrink-0 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/10 text-[18px] font-black text-cyan-300">
-                    {profile.initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <h2 className="truncate text-[17px] font-black leading-tight tracking-[-0.025em]">{profile.name}</h2>
-                    <span className="shrink-0 rounded-full border border-cyan-300/65 bg-cyan-400/12 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-300">
-                      {profile.membershipTier}
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-semibold text-white/55">{profile.username}</p>
-                  <div className="mt-1 flex min-w-0 flex-wrap gap-x-3 gap-y-0.5 text-[9px] font-semibold text-white/45">
-                    <span>Member since <b className="font-black text-white/78">{profile.memberSince}</b></span>
-                    <span>Time zone <b className="font-black text-white/78">{profile.timeZone}</b></span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <div className="grid grid-cols-4 rounded-[13px] border border-white/8 bg-white/[0.028]">
-              {summaryItems.map(([label, value, icon]) => (
-                <div key={String(label)} className="min-w-0 border-r border-white/7 px-1 py-1.5 last:border-r-0">
-                  <div className="mx-auto mb-0.5 grid h-3.5 w-3.5 place-items-center text-cyan-300 [&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</div>
-                  <p className="truncate text-center text-[7.5px] font-semibold uppercase tracking-[0.02em] text-white/42">{label}</p>
-                  <p className={`mt-0.5 truncate text-center font-black leading-none text-white ${String(value).length > 7 ? "text-[8.5px] uppercase tracking-[0.01em] text-cyan-200" : "text-[13px]"}`}>{String(value)}</p>
-                </div>
-              ))}
-            </div>
-
-            <section>
-              <ProfileSectionTitle
-                title="MY SIGNALS"
-                subtitle="Signals from your active products."
-                action="View all signals"
-                icon={<ProfileMiniIcon type="target" />}
-              />
-              <div className="mb-2 grid grid-cols-4 overflow-hidden rounded-[14px] border border-cyan-300/18 bg-cyan-400/[0.055]">
-                {[
-                  ["TODAY", data.signals.length],
-                  ["Ready", readySignals],
-                  ["Under Review", underReviewSignals],
-                  ["Confirmed", confirmedSignals],
-                ].map(([label, value]) => (
-                  <div key={String(label)} className="border-r border-white/8 px-1.5 py-1.5 text-center last:border-r-0">
-                    <p className="truncate text-[7.5px] font-black uppercase tracking-[0.04em] text-white/45">{label}</p>
-                    <p className="mt-0.5 text-[16px] font-black leading-none text-cyan-200">{String(value)}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-2">
-                {productSections.map((section) => (
-                  <div key={`${section.code}-${section.sport}`} className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(9,18,34,0.96),rgba(3,9,20,0.98))]">
-                    <div className="flex items-center justify-between border-b border-white/8 px-3 py-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-[11px] font-black uppercase tracking-[0.06em] text-white">{section.title}</p>
-                        <p className="truncate text-[9px] font-semibold text-cyan-200/70">{section.progress}</p>
-                      </div>
-                      {section.sport && section.sport !== "ALL" ? (
-                        <span className="rounded-full border border-cyan-300/18 bg-cyan-300/10 px-2 py-0.5 text-[8px] font-black text-cyan-200">
-                          {section.sport}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    {section.signals.length ? section.signals.map((signal) => {
-                      const tone = profileTone(signal.productCode);
-                      const isTopSignal = signal.productCode === "top_signal_by_sport" || signal.productCode === "top_signal_mlb";
-                      const displayStatus = isTopSignal ? "READY" : signal.status;
-                      const statusDot =
-                        displayStatus === "READY" || displayStatus === "CONFIRMED"
-                          ? "bg-emerald-300"
-                          : displayStatus === "DOWNGRADED" || displayStatus === "WITHDRAWN"
-                            ? "bg-red-400"
-                            : "bg-yellow-300";
-                      return (
-                        <button key={signal.id} type="button" className="grid w-full grid-cols-[18px_minmax(0,1fr)_76px_12px] items-center gap-2.5 border-b border-white/8 px-3 py-2.5 text-left last:border-b-0">
-                          <div className="relative flex h-full items-center justify-center">
-                            <span className="absolute bottom-[-18px] top-[20px] w-px bg-white/10" />
-                            <span className={`relative z-10 h-2.5 w-2.5 rounded-full ${statusDot} shadow-[0_0_12px_currentColor]`} />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex min-w-0 items-center gap-1.5">
-                              {signal.rank ? (
-                                <span className="shrink-0 text-[8px] font-black text-cyan-200">#{signal.rank}</span>
-                              ) : null}
-                              <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[7.5px] font-black uppercase tracking-[0.06em] ${tone.bg} ${tone.text}`}>
-                                {signal.product}
-                              </span>
-                              <span className={`truncate text-[8px] font-black uppercase ${statusTone(displayStatus)}`}>
-                                {displayStatus}
-                              </span>
-                            </div>
-                            <p className="mt-1 truncate text-[13px] font-black text-white">{signal.selection}</p>
-                            <p className="truncate text-[10px] font-medium text-white/50">{signal.event || `Game vs ${signal.opponent}`}</p>
-                          </div>
-                          <div className="min-w-0 text-right">
-                            <p className="text-[9px] font-semibold text-white/43">{isTopSignal ? "Ready to Use" : "Game"}</p>
-                            <p className="mt-0.5 text-[11px] font-black text-white">{signal.gameTime}</p>
-                          </div>
-                          <span className="text-[18px] font-light text-white/55">›</span>
-                        </button>
-                      );
-                    }) : (
-                      <div className="flex min-h-[58px] items-center px-4 text-[12px] font-bold text-white/55">
-                        {section.emptyText ?? "No Active Signals Yet."}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section>
-              <ProfileSectionTitle
-                title="ACTIVITY"
-                subtitle="Your recent account activity."
-                action="View all activity"
-                icon={<ProfileMiniIcon type="clock" />}
-              />
-              <div className="rounded-[16px] border border-white/12 bg-white/[0.035] p-2">
-                {data.activity.length ? (
-                  <div className="grid gap-1">
-                    {data.activity.slice(0, 3).map((item) => (
-                      <div key={item.id} className="flex items-center gap-2 rounded-[12px] bg-black/16 px-2 py-1.5">
-                        <span className="grid h-7 w-7 place-items-center rounded-full border border-emerald-300/50 bg-emerald-400/10 text-emerald-300 [&_svg]:h-4 [&_svg]:w-4">
-                          <ProfileMiniIcon type="shield" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-[11px] font-black text-white">{item.type}</p>
-                          <p className="truncate text-[9.5px] text-white/50">{item.description}</p>
-                        </div>
-                        <span className="ml-auto shrink-0 text-[9.5px] font-semibold text-white/45">{item.time}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : <p className="flex min-h-[46px] items-center px-2 text-[12px] font-bold text-white/55">No recent activity.</p>}
-              </div>
-            </section>
-
-            {topSignalRecommendation ? (
-              <section>
-                <ProfileSectionTitle
-                  title="RECOMMENDED FOR YOU"
-                  subtitle="Unlock more Atlas Signals intelligence."
-                  action="View product"
-                  icon={<ProfileMiniIcon type="diamond" />}
-                />
-                <button type="button" className="flex w-full items-center gap-3 rounded-[16px] border border-violet-300/25 bg-violet-500/[0.06] p-3 text-left">
-                  <span className="grid h-10 w-10 place-items-center rounded-full border border-violet-300/50 bg-violet-400/10 text-violet-300">
-                    <ProfileMiniIcon type="star" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-black text-white">{topSignalRecommendation.title}</span>
-                    <span className="line-clamp-1 text-[11px] font-medium text-white/58">{topSignalRecommendation.description}</span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-violet-400/18 px-3 py-1.5 text-[10px] font-black text-violet-200">
-                    {topSignalRecommendation.cta} →
-                  </span>
-                </button>
-              </section>
-            ) : null}
-          </div>
-        ) : null}
+        ) : (
+          <AtlasControlCenterOverview
+            data={data}
+            loading={loading}
+            error={error}
+            engineDetailsOpen={engineDetailsOpen}
+            leadersExpanded={leadersExpanded}
+            onToggleEngineDetails={() => setEngineDetailsOpen((open) => !open)}
+            onToggleLeaders={() => setLeadersExpanded((open) => !open)}
+            onRefresh={() => void loadControlCenter()}
+            title="Overview"
+            eyebrow="Atlas Control Center"
+            subtitle="Live Signal Engines from the admin Overview."
+          />
+        )}
       </div>
-      {data && productsOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/64 px-3 pb-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="My Products">
-          <div className="w-full max-w-md rounded-[20px] border border-white/12 bg-[#06101f] p-3 shadow-[0_0_36px_rgba(0,0,0,0.42)]">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/30 bg-cyan-400/10 text-cyan-300">
-                  <ProfileMiniIcon type="box" />
-                </span>
-                <div>
-                  <h2 className="text-[15px] font-black uppercase tracking-[0.07em] text-white">My Products</h2>
-                  <p className="text-[10px] font-semibold text-white/45">Subscriptions and packs</p>
-                </div>
-              </div>
-              <button type="button" onClick={() => setProductsOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-white/8 text-[18px] font-light text-white/70" aria-label="Close products">
-                ×
-              </button>
-            </div>
-
-            <div className="grid gap-2">
-              {data.products.length ? data.products.map((product) => {
-                const tone = profileTone(product.code);
-                return (
-                  <div key={product.code} className="flex items-center gap-3 rounded-[14px] border border-white/9 bg-white/[0.035] p-2.5">
-                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border border-current ${tone.bg} ${tone.text} [&_svg]:h-5 [&_svg]:w-5`}>
-                      <ProfileMiniIcon type={tone.icon} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-black text-white">{product.name}</span>
-                      <span className="block truncate text-[10px] font-semibold text-white/45">{product.detail}</span>
-                    </span>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase ${statusTone(product.status)}`}>{product.status}</span>
-                  </div>
-                );
-              }) : <div className="rounded-[14px] border border-white/10 p-3 text-[13px] text-white/55">No Active Products.</div>}
-            </div>
-            <button type="button" className="mt-3 w-full rounded-full bg-cyan-300 px-4 py-2.5 text-[12px] font-black text-black">
-              Manage Subscription
-            </button>
-          </div>
-        </div>
-      ) : null}
       <BottomNav activeSection="alerts" onNavigate={onNavigate} />
     </main>
   );
@@ -3076,7 +2852,7 @@ export function SignalsHomePage({
   }
 
   if (activeSection === "alerts") {
-    return <MyProfileScreen onNavigate={onNavigate} />;
+    return <MyAtlasScreen onNavigate={onNavigate} />;
   }
 
   return (
