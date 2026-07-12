@@ -1680,6 +1680,141 @@ function ControlHealthStrip({ rows }: { rows: any[] }) {
   );
 }
 
+function ControlEngineStatusBar({ rows, summary }: { rows: any[]; summary?: any }) {
+  const items = [
+    { key: "Signals", match: "Signals Detected", sub: `${summary?.signalsDetected ?? 0} Frozen` },
+    { key: "Exclusive", match: "Exclusive", sub: `${summary?.exclusiveTop3Candidates ?? 0} Ranked` },
+    { key: "Premium", match: "Premium", sub: `${summary?.premiumTop5Candidates ?? 0} Ranked` },
+    { key: "Top Signal", match: "Top Signal", sub: summary?.topSignalCurrentLeader ? "1 Leader" : "No Leader" },
+  ];
+  return (
+    <AdminShellCard className="scrollbar-hide flex gap-3 overflow-x-auto px-2.5 py-2">
+      {items.map((item) => {
+        const row = rows.find((entry) => String(entry.engine).includes(item.match));
+        const status = row?.status ?? "IDLE";
+        const dot = status === "HEALTHY" ? "bg-emerald-400" : status === "ERROR" ? "bg-red-400" : status === "WARNING" ? "bg-yellow-400" : "bg-white/35";
+        return (
+          <div key={item.key} className="flex min-w-[86px] items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${dot}`} />
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-black uppercase text-white">{item.key}</p>
+              <p className="truncate text-[9px] font-bold text-white/42">{item.sub}</p>
+            </div>
+          </div>
+        );
+      })}
+    </AdminShellCard>
+  );
+}
+
+function ControlMatchLogos({ awayTeam, homeTeam, size = "sm" }: { awayTeam?: string | null; homeTeam?: string | null; size?: "sm" | "md" }) {
+  const logoClass = size === "md" ? "h-10 w-10 rounded-xl" : "h-7 w-7 rounded-lg";
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <AdminTeamLogo team={awayTeam} className={logoClass} />
+      <span className="text-[10px] font-black text-white/35">vs</span>
+      <AdminTeamLogo team={homeTeam} className={logoClass} />
+    </div>
+  );
+}
+
+function ControlSignalRow({ row, rank, premium = false }: { row: any; rank?: number | null; premium?: boolean }) {
+  const displayRank = rank ?? row.currentRank ?? row.rank ?? row.exclusiveTop3Rank ?? null;
+  return (
+    <div className={`grid grid-cols-[92px_minmax(0,1fr)_52px_44px] items-center gap-2 border-b border-white/8 px-2.5 py-2 last:border-b-0 ${premium ? "border-l-2 border-l-purple-400/50" : ""}`}>
+      <div className="flex items-center gap-1">
+        {displayRank ? <span className="w-5 text-[12px] font-black text-white">#{displayRank}</span> : null}
+        <ControlMatchLogos awayTeam={row.awayTeam} homeTeam={row.homeTeam} />
+      </div>
+      <div className="min-w-0">
+        <p className="break-words text-[13px] font-black leading-tight text-white">{row.selection}</p>
+        <p className="break-words text-[10px] font-bold leading-tight text-white/42">{row.event}</p>
+        <p className="mt-0.5 text-[9px] font-black uppercase text-white/35">{row.market} {formatAdminOdds(row.odds)}</p>
+      </div>
+      <span className="text-right text-[11px] font-black text-emerald-300">{controlPct(row.atlasProbability ?? row.probability)}</span>
+      <span className={`text-right text-[10px] font-black ${controlTone(row.trend ?? row.status)}`}>{row.trend ?? row.status ?? "LIVE"}</span>
+    </div>
+  );
+}
+
+function ControlSignalPreview({ title, rows, empty, action, premium = false }: { title: string; rows: any[]; empty: string; action?: React.ReactNode; premium?: boolean }) {
+  return (
+    <ControlSection title={title} action={action}>
+      {rows.length ? (
+        <div className="overflow-hidden rounded-xl border border-white/10">
+          {rows.map((row, index) => <ControlSignalRow key={`${row.gameId ?? row.signalIdentity}-${index}`} row={row} rank={row.rank ?? row.currentRank ?? index + 1} premium={premium && index === 0} />)}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">{empty}</p>
+      )}
+    </ControlSection>
+  );
+}
+
+function ControlTopSignalCurrentLeader({ data }: { data: any | null }) {
+  if (!data) {
+    return (
+      <ControlSection title="Top Signal Current Leader">
+        <p className="py-5 text-center text-sm font-bold text-white/45">NO_QUALIFIED_SIGNAL</p>
+      </ControlSection>
+    );
+  }
+  return (
+    <AdminShellCard className="border-purple-400/50 p-2.5 shadow-[0_0_22px_rgba(168,85,247,0.10)]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-purple-300">Top Signal Current Leader</p>
+          <div className="mt-2 flex items-center gap-2">
+            <ControlMatchLogos awayTeam={data.awayTeam} homeTeam={data.homeTeam} size="md" />
+            <div className="min-w-0">
+              <p className="break-words text-[18px] font-black leading-tight text-white">{data.selection}</p>
+              <p className="break-words text-[11px] font-bold leading-tight text-white/45">{data.event} · {data.market} {formatAdminOdds(data.odds)}</p>
+            </div>
+          </div>
+        </div>
+        <span className={`rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-black uppercase ${controlTone(data.candidateStatus)}`}>{data.candidateStatus}</span>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        <ControlMiniMetric label="Probability" value={controlPct(data.atlasProbability)} tone="text-emerald-300" />
+        <ControlMiniMetric label="Edge" value={formatAdminEdge(data.edge)} tone="text-cyan-300" />
+        <ControlMiniMetric label="Next Review" value={formatAdminTime(data.nextFinalReview) || data.estimatedPublicationWindow} />
+      </div>
+    </AdminShellCard>
+  );
+}
+
+function ControlLeadersToday({ rows }: { rows: any[] }) {
+  return (
+    <ControlSignalPreview
+      title="Top Signal Leaders Today"
+      rows={rows}
+      empty="No Top Signal leader history yet."
+      premium
+    />
+  );
+}
+
+function ControlOverviewDetails({ data, summary }: { data: AtlasControlCenterData; summary?: any }) {
+  return (
+    <div className="grid gap-2 pt-2">
+      <ControlTopSignalStrength strength={data.topSignal?.strength} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ControlMiniMetric label="Sports" value={(summary?.sportsAvailable ?? []).join(", ") || "N/A"} />
+        <ControlMiniMetric label="Games Inspected" value={summary?.gamesInspected ?? 0} />
+        <ControlMiniMetric label="Signals Detected" value={summary?.signalsDetected ?? 0} tone="text-cyan-300" />
+        <ControlMiniMetric label="Stale Sources" value={summary?.staleSources ?? 0} tone={(summary?.staleSources ?? 0) ? "text-yellow-300" : "text-emerald-300"} />
+      </div>
+      <ControlSection title="Second Place Candidate">
+        <SecondPlaceCandidate candidate={data.topSignal?.secondPlaceCandidate ?? null} />
+      </ControlSection>
+      <ControlSection title="Why Atlas Changed">
+        <ControlChangeReasons rows={data.topSignal?.changeReasons ?? []} />
+      </ControlSection>
+      <ControlMarketPulse pulse={data.marketPulse} />
+    </div>
+  );
+}
+
 function ControlTopSignalHero({ data }: { data: any | null }) {
   if (!data) {
     return (
@@ -1915,8 +2050,10 @@ function AtlasControlCenterPanel({
   error,
   tab,
   activityFilter,
+  engineDetailsOpen,
   onTab,
   onActivityFilter,
+  onToggleEngineDetails,
   onRefresh,
 }: {
   data: AtlasControlCenterData | null;
@@ -1924,8 +2061,10 @@ function AtlasControlCenterPanel({
   error: string | null;
   tab: AtlasControlTab;
   activityFilter: AtlasActivityFilter;
+  engineDetailsOpen: boolean;
   onTab: (tab: AtlasControlTab) => void;
   onActivityFilter: (filter: AtlasActivityFilter) => void;
+  onToggleEngineDetails: () => void;
   onRefresh: () => void;
 }) {
   const tabs: Array<{ id: AtlasControlTab; label: string }> = [
@@ -1979,27 +2118,34 @@ function AtlasControlCenterPanel({
         <>
           {tab === "overview" ? (
             <>
-              <ControlHealthStrip rows={data.engineHealth} />
-              <ControlTopSignalHero data={data.topSignal} />
-              <ControlTopSignalStrength strength={data.topSignal?.strength} />
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <ControlMiniMetric label="Sports" value={(summary?.sportsAvailable ?? []).join(", ") || "N/A"} />
-                <ControlMiniMetric label="Games Inspected" value={summary?.gamesInspected ?? 0} />
-                <ControlMiniMetric label="Signals Detected" value={summary?.signalsDetected ?? 0} tone="text-cyan-300" />
-                <ControlMiniMetric label="Stale Sources" value={summary?.staleSources ?? 0} tone={(summary?.staleSources ?? 0) ? "text-yellow-300" : "text-emerald-300"} />
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                <ControlSection title="Premium Top 5" action={`Last ${formatAdminTime(data.top5?.lastRecalculation)}`}>
-                  <ControlRankingList rows={data.top5?.currentInternalRanking ?? []} empty="No Premium Top 5 ranking yet." compact />
-                </ControlSection>
-                <ControlSection title="Exclusive Top 3" action={`Last ${formatAdminTime(data.exclusiveTop3?.lastRecalculation)}`}>
-                  <ControlRankingList rows={data.exclusiveTop3?.currentInternalRanking ?? []} empty="No Exclusive Top 3 ranking yet." compact />
-                </ControlSection>
-              </div>
-              <ControlSection title="Signals Detected Summary">
-                <ControlSignalsDetectedList rows={(data.signalsDetected ?? []).slice(0, 6)} />
-              </ControlSection>
-              <ControlMarketPulse pulse={data.marketPulse} />
+              <ControlEngineStatusBar rows={data.engineHealth} summary={summary} />
+              <ControlTopSignalCurrentLeader data={data.topSignal} />
+              <ControlLeadersToday rows={data.topSignal?.leadersToday ?? []} />
+              <ControlSignalPreview
+                title="Premium Top 5"
+                rows={(data.top5?.currentInternalRanking ?? []).slice(0, 5)}
+                empty="No Premium Top 5 ranking yet."
+                action={<button type="button" onClick={() => onTab("top5")}>Open Top 5 →</button>}
+              />
+              <ControlSignalPreview
+                title="Exclusive Top 3"
+                rows={(data.exclusiveTop3?.currentInternalRanking ?? []).slice(0, 3)}
+                empty="No Exclusive Top 3 ranking yet."
+                action={<button type="button" onClick={() => onTab("signals")}>Open Exclusive Top 3 →</button>}
+              />
+              <ControlSignalPreview
+                title="Signals Detected"
+                rows={(data.signalsDetected ?? []).slice(0, 5)}
+                empty="No frozen Signals Detected rows yet."
+                action={<button type="button" onClick={() => onTab("signals")}>View All Signals →</button>}
+              />
+              <AdminShellCard className="p-2.5">
+                <button type="button" onClick={onToggleEngineDetails} className="flex w-full items-center justify-between text-[11px] font-black uppercase text-cyan-300">
+                  <span>{engineDetailsOpen ? "Hide Engine Details ↑" : "Open Engine Details →"}</span>
+                  <span className="text-white/35">{engineDetailsOpen ? "Expanded" : "Compact"}</span>
+                </button>
+                {engineDetailsOpen ? <ControlOverviewDetails data={data} summary={summary} /> : null}
+              </AdminShellCard>
             </>
           ) : null}
 
@@ -2247,6 +2393,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [controlError, setControlError] = useState<string | null>(null);
   const [controlTab, setControlTab] = useState<AtlasControlTab>("overview");
   const [controlActivityFilter, setControlActivityFilter] = useState<AtlasActivityFilter>("ALL");
+  const [controlEngineDetailsOpen, setControlEngineDetailsOpen] = useState(false);
   const [cronRunning, setCronRunning] = useState<string | null>(null);
   const [cronResult, setCronResult] = useState<string | null>(null);
   const [researchView, setResearchView] = useState<"summary" | "system">("summary");
@@ -2660,8 +2807,10 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       error={controlError}
       tab={controlTab}
       activityFilter={controlActivityFilter}
+      engineDetailsOpen={controlEngineDetailsOpen}
       onTab={setControlTab}
       onActivityFilter={setControlActivityFilter}
+      onToggleEngineDetails={() => setControlEngineDetailsOpen((open) => !open)}
       onRefresh={() => void loadControlCenter()}
     />
   );

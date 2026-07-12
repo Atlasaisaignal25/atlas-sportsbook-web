@@ -106,6 +106,8 @@ function candidateFromRow(row: DbRow | null | undefined) {
   return {
     sport: row.sport,
     event: eventName(row),
+    awayTeam: row.away_team ?? null,
+    homeTeam: row.home_team ?? null,
     market: marketLabel(row),
     selection: pickLabel(row),
     odds: num(row.odds),
@@ -163,6 +165,8 @@ function rankingRows(current: DbRow[], previous: DbRow[]) {
     return {
       sport: row.sport,
       event: eventName(row),
+      awayTeam: row.away_team ?? null,
+      homeTeam: row.home_team ?? null,
       market: marketLabel(row),
       selection: pickLabel(row),
       odds: num(row.odds),
@@ -359,6 +363,8 @@ export async function GET() {
       candidate: pickLabel(row),
       sport: row.sport,
       event: eventName(row),
+      awayTeam: row.away_team ?? null,
+      homeTeam: row.home_team ?? null,
       market: marketLabel(row),
       probability: num(row.atlas_probability),
       edge: num(row.edge),
@@ -369,6 +375,49 @@ export async function GET() {
   const leaderChangesToday = topSignalTimeline.filter((row) => row.status === "NEW LEADER").length;
   const longestLeaderStreak = topSignalTimelineRaw.reduce((max, row) => Math.max(max, Number(row.consecutive_leader_hours ?? 1)), 0);
   const topSignalChangeReasons = changeReasons(topSignalTimelineRaw);
+  const topSignalCurrentRank = new Map(eligibleTopSignalCandidates.map((row, index) => [String(row.game_id), index + 1]));
+  const leadersByIdentity = new Map<string, DbRow[]>();
+  for (const row of topSignalTimelineRaw) {
+    const key = `${row.sport}:${row.game_id}:${marketLabel(row)}:${pickLabel(row)}:${row.line ?? ""}`;
+    leadersByIdentity.set(key, [...(leadersByIdentity.get(key) ?? []), row]);
+  }
+  const leadersToday = Array.from(leadersByIdentity.entries())
+    .map(([signalIdentity, rows]) => {
+      const first = rows[0];
+      const last = rows.at(-1) ?? first;
+      const currentCandidate = eligibleTopSignalCandidates.find((row) => row.game_id === last.game_id) ?? last;
+      const currentRank = topSignalCurrentRank.get(String(last.game_id)) ?? null;
+      const previousRank = rows.length > 1 ? topSignalCurrentRank.get(String(rows.at(-2)?.game_id)) ?? null : null;
+      const trend = last.game_id === topSignalLeader?.game_id
+        ? "NEW LEADER"
+        : previousRank !== null && currentRank !== null && currentRank < previousRank
+          ? "UP"
+          : previousRank !== null && currentRank !== null && currentRank > previousRank
+            ? "DOWN"
+            : "SAME";
+      return {
+        signalIdentity,
+        currentRank,
+        previousRank,
+        trend,
+        firstLedAt: first.run_at,
+        lastLedAt: last.run_at,
+        totalLeaderCycles: rows.length,
+        leaderDuration: `${rows.length} cycle${rows.length === 1 ? "" : "s"}`,
+        probability: num(currentCandidate.atlas_probability),
+        edge: num(currentCandidate.edge),
+        score: scoreOf(currentCandidate),
+        event: eventName(currentCandidate),
+        awayTeam: currentCandidate.away_team ?? null,
+        homeTeam: currentCandidate.home_team ?? null,
+        market: marketLabel(currentCandidate),
+        selection: pickLabel(currentCandidate),
+        odds: num(currentCandidate.odds),
+        status: currentCandidate.status,
+        gameId: currentCandidate.game_id,
+      };
+    })
+    .sort((a, b) => (a.currentRank ?? 999) - (b.currentRank ?? 999));
 
   const signalsWithTop3Rank = signalsHistory.map((row) => {
     const top3 = latestTop3Rows.find((item) => item.gameId === row.game_id) ?? officialTop3Rows.find((item) => item.gameId === row.game_id);
@@ -377,6 +426,8 @@ export async function GET() {
     return {
       sport: row.sport,
       event: eventName(row),
+      awayTeam: row.away_team ?? null,
+      homeTeam: row.home_team ?? null,
       market: marketLabel(row),
       selection: pickLabel(row),
       odds: num(row.odds),
@@ -468,6 +519,8 @@ export async function GET() {
         currentLeader: pickLabel(topSignalLeader),
         sport: topSignalLeader.sport,
         event: eventName(topSignalLeader),
+        awayTeam: topSignalLeader.away_team ?? null,
+        homeTeam: topSignalLeader.home_team ?? null,
         market: marketLabel(topSignalLeader),
         selection: pickLabel(topSignalLeader),
         odds: num(topSignalLeader.odds),
@@ -486,6 +539,13 @@ export async function GET() {
         strength: topSignalStrength,
         timeline: topSignalTimeline,
         changeReasons: topSignalChangeReasons,
+        leadersToday,
+        engineDetails: {
+          strength: topSignalStrength,
+          secondPlace: topSignalSecondCandidate,
+          timeline: topSignalTimeline,
+          changeReasons: topSignalChangeReasons,
+        },
         leader: topSignalLeaderCandidate,
         leaderSeparation: topSignalStrength.scoreGap,
         lastRun: topSignalLeader.run_at,
