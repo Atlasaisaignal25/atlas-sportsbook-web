@@ -16,9 +16,11 @@ import { TopPlayCard, type TopPlayViewModel } from "./TopPlayCard";
 import { TopPlayDetailSheet } from "./TopPlayDetailSheet";
 import { teamBranding } from "../../lib/teamBranding";
 import {
-  AtlasControlCenterOverview,
+  AtlasControlCenterPanel,
   filterAtlasControlCenterData,
+  type AtlasActivityFilter,
   type AtlasControlCenterData,
+  type AtlasControlTab,
 } from "../../admin/AdminDashboard";
 
 export type SignalsHomePrecisionResponse = {
@@ -2591,6 +2593,11 @@ function TeamSignalLogo({ team }: { team: string }) {
   return <span className="text-[12px] font-black text-white/70">{team.slice(0, 2).toUpperCase()}</span>;
 }
 
+function controlSportFromSelectedSport(sport: SelectedSport) {
+  if (sport === "all") return "ALL";
+  return selectedSportToSportCode[sport];
+}
+
 function MyAtlasScreen({
   onNavigate,
 }: {
@@ -2601,8 +2608,10 @@ function MyAtlasScreen({
   const [error, setError] = useState<string | null>(null);
   const [engineDetailsOpen, setEngineDetailsOpen] = useState(false);
   const [leadersExpanded, setLeadersExpanded] = useState(false);
-  const [selectedSport, setSelectedSport] = useState("ALL");
-  const filteredData = filterAtlasControlCenterData(data, selectedSport);
+  const [selectedSport, setSelectedSport] = useState<SelectedSport>("all");
+  const [controlTab, setControlTab] = useState<AtlasControlTab>("overview");
+  const [activityFilter, setActivityFilter] = useState<AtlasActivityFilter>("ALL");
+  const filteredData = filterAtlasControlCenterData(data, controlSportFromSelectedSport(selectedSport));
 
   async function loadControlCenter(options: { silent?: boolean } = {}) {
     if (!options.silent) setLoading(true);
@@ -2668,21 +2677,29 @@ function MyAtlasScreen({
             </button>
           </div>
         ) : (
-          <AtlasControlCenterOverview
-            data={filteredData}
-            loading={loading}
-            error={error}
-            engineDetailsOpen={engineDetailsOpen}
-            leadersExpanded={leadersExpanded}
-            onToggleEngineDetails={() => setEngineDetailsOpen((open) => !open)}
-            onToggleLeaders={() => setLeadersExpanded((open) => !open)}
-            onRefresh={() => void loadControlCenter()}
-            selectedSport={selectedSport}
-            onSportChange={setSelectedSport}
-            title="Overview"
-            eyebrow="Atlas Control Center"
-            subtitle="Live Signal Engines from the admin Overview."
-          />
+          <>
+            <div className="relative mb-2 h-[76px] overflow-visible">
+              <FrameSportSelectorRow selectedSport={selectedSport} onSelectSport={setSelectedSport} />
+            </div>
+            <AtlasControlCenterPanel
+              data={filteredData}
+              loading={loading}
+              error={error}
+              tab={controlTab}
+              activityFilter={activityFilter}
+              engineDetailsOpen={engineDetailsOpen}
+              leadersExpanded={leadersExpanded}
+              selectedSport="ALL"
+              showHeader={false}
+              showSportFilter={false}
+              onTab={setControlTab}
+              onActivityFilter={setActivityFilter}
+              onToggleEngineDetails={() => setEngineDetailsOpen((open) => !open)}
+              onToggleLeaders={() => setLeadersExpanded((open) => !open)}
+              onSportChange={() => undefined}
+              onRefresh={() => void loadControlCenter()}
+            />
+          </>
         )}
       </div>
       <BottomNav activeSection="alerts" onNavigate={onNavigate} />

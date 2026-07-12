@@ -141,8 +141,8 @@ type PerformanceCenterData = {
   totals: { top5Graded: number; topSignalGraded: number; globalGraded: number };
 };
 
-type AtlasControlTab = "overview" | "top-signal" | "top5" | "signals" | "activity" | "health";
-type AtlasActivityFilter = "ALL" | "TOP SIGNAL" | "TOP 5" | "EXCLUSIVE" | "SIGNALS" | "VALIDATION" | "ERRORS";
+export type AtlasControlTab = "overview" | "top-signal" | "top5" | "top3" | "signals" | "activity" | "health";
+export type AtlasActivityFilter = "ALL" | "TOP SIGNAL" | "TOP 5" | "EXCLUSIVE" | "SIGNALS" | "VALIDATION" | "ERRORS";
 type AtlasControlSportFilter = "ALL" | string;
 
 export type AtlasControlCenterData = {
@@ -2165,6 +2165,37 @@ export function OverviewSportFilter({
   );
 }
 
+const atlasControlTabs: Array<{ id: AtlasControlTab; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "top-signal", label: "Top Signal" },
+  { id: "top5", label: "Top 5" },
+  { id: "top3", label: "Top 3" },
+  { id: "signals", label: "Signals Detected" },
+];
+
+export function AtlasControlCenterTabBar({
+  tab,
+  onTab,
+}: {
+  tab: AtlasControlTab;
+  onTab: (tab: AtlasControlTab) => void;
+}) {
+  return (
+    <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
+      {atlasControlTabs.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onTab(item.id)}
+          className={`min-w-max flex-1 border-r border-white/8 px-3 py-2 text-[10px] font-black uppercase last:border-r-0 ${tab === item.id ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function AtlasControlCenterOverview({
   data,
   loading,
@@ -2175,6 +2206,7 @@ export function AtlasControlCenterOverview({
   onToggleLeaders,
   onRefresh,
   onOpenTop5,
+  onOpenTop3,
   onOpenSignals,
   selectedSport,
   onSportChange,
@@ -2192,6 +2224,7 @@ export function AtlasControlCenterOverview({
   onToggleLeaders: () => void;
   onRefresh: () => void;
   onOpenTop5?: () => void;
+  onOpenTop3?: () => void;
   onOpenSignals?: () => void;
   selectedSport?: AtlasControlSportFilter;
   onSportChange?: (sport: AtlasControlSportFilter) => void;
@@ -2260,7 +2293,7 @@ export function AtlasControlCenterOverview({
             title="Exclusive Top 3"
             rows={(data.exclusiveTop3?.currentInternalRanking ?? []).slice(0, 3)}
             empty="No Exclusive Top 3 ranking yet."
-            action={onOpenSignals ? <button type="button" onClick={onOpenSignals}>Open Exclusive Top 3 →</button> : null}
+            action={onOpenTop3 ? <button type="button" onClick={onOpenTop3}>Open Exclusive Top 3 →</button> : null}
           />
           <ControlSignalPreview
             title="Signals Detected"
@@ -2274,7 +2307,7 @@ export function AtlasControlCenterOverview({
   );
 }
 
-function AtlasControlCenterPanel({
+export function AtlasControlCenterPanel({
   data,
   loading,
   error,
@@ -2283,6 +2316,8 @@ function AtlasControlCenterPanel({
   engineDetailsOpen,
   leadersExpanded,
   selectedSport,
+  showHeader = true,
+  showSportFilter = true,
   onTab,
   onActivityFilter,
   onToggleEngineDetails,
@@ -2298,6 +2333,8 @@ function AtlasControlCenterPanel({
   engineDetailsOpen: boolean;
   leadersExpanded: boolean;
   selectedSport: AtlasControlSportFilter;
+  showHeader?: boolean;
+  showSportFilter?: boolean;
   onTab: (tab: AtlasControlTab) => void;
   onActivityFilter: (filter: AtlasActivityFilter) => void;
   onToggleEngineDetails: () => void;
@@ -2305,14 +2342,6 @@ function AtlasControlCenterPanel({
   onSportChange: (sport: AtlasControlSportFilter) => void;
   onRefresh: () => void;
 }) {
-  const tabs: Array<{ id: AtlasControlTab; label: string }> = [
-    { id: "overview", label: "Overview" },
-    { id: "top-signal", label: "Top Signal" },
-    { id: "top5", label: "Top 5" },
-    { id: "signals", label: "Signals Detected" },
-    { id: "activity", label: "Activity" },
-    { id: "health", label: "Health" },
-  ];
   const activityFilters: AtlasActivityFilter[] = ["ALL", "TOP SIGNAL", "TOP 5", "EXCLUSIVE", "SIGNALS", "VALIDATION", "ERRORS"];
   const filteredData = filterAtlasControlCenterData(data, selectedSport);
   const summary = filteredData?.summary;
@@ -2320,38 +2349,31 @@ function AtlasControlCenterPanel({
   const sportOptions = getAtlasControlSports(data);
   return (
     <section className="grid gap-2.5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Atlas Control Center</p>
-          <h1 className="text-[24px] font-black uppercase tracking-[-0.03em] text-white">Signal Engines</h1>
-          <p className="text-xs font-bold text-white/45">Live operational view of today’s Signal Engines.</p>
-        </div>
-        <button onClick={onRefresh} disabled={loading} className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-[10px] font-black uppercase text-cyan-200 disabled:opacity-50">
-          {loading ? "Loading" : "Refresh"}
-        </button>
-      </div>
+      {showHeader ? (
+        <>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Atlas Control Center</p>
+              <h1 className="text-[24px] font-black uppercase tracking-[-0.03em] text-white">Signal Engines</h1>
+              <p className="text-xs font-bold text-white/45">Live operational view of today’s Signal Engines.</p>
+            </div>
+            <button onClick={onRefresh} disabled={loading} className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-[10px] font-black uppercase text-cyan-200 disabled:opacity-50">
+              {loading ? "Loading" : "Refresh"}
+            </button>
+          </div>
 
-      <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-bold text-white/45">
-        <span>Last updated: {formatAdminTime(summary?.generatedAt)}</span>
-        <span>{formatAdminDate(summary?.slateDate)}</span>
-      </div>
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-bold text-white/45">
+            <span>Last updated: {formatAdminTime(summary?.generatedAt)}</span>
+            <span>{formatAdminDate(summary?.slateDate)}</span>
+          </div>
+        </>
+      ) : null}
       {error ? <p className="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-2 text-xs font-bold text-yellow-100">{error}</p> : null}
       {data?.errors?.length ? <p className="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-2 text-xs font-bold text-yellow-100">{data.errors.join(" · ")}</p> : null}
 
-      {data ? <OverviewSportFilter sports={sportOptions} selectedSport={selectedSport} onSportChange={onSportChange} /> : null}
+      {data && showSportFilter ? <OverviewSportFilter sports={sportOptions} selectedSport={selectedSport} onSportChange={onSportChange} /> : null}
 
-      <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => onTab(item.id)}
-            className={`min-w-max flex-1 border-r border-white/8 px-3 py-2 text-[10px] font-black uppercase last:border-r-0 ${tab === item.id ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      <AtlasControlCenterTabBar tab={tab} onTab={onTab} />
 
       {!data && loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">Loading Control Center...</p> : null}
       {!data && !loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">No Control Center data available.</p> : null}
@@ -2369,6 +2391,7 @@ function AtlasControlCenterPanel({
               onToggleLeaders={onToggleLeaders}
               onRefresh={onRefresh}
               onOpenTop5={() => onTab("top5")}
+              onOpenTop3={() => onTab("top3")}
               onOpenSignals={() => onTab("signals")}
               showChrome={false}
             />
@@ -2404,11 +2427,8 @@ function AtlasControlCenterPanel({
             </>
           ) : null}
 
-          {tab === "signals" ? (
+          {tab === "top3" ? (
             <>
-              <ControlSection title="Frozen Signals Detected">
-                <ControlSignalsDetectedList rows={filteredData.signalsDetected ?? []} />
-              </ControlSection>
               <ControlSection title="Exclusive Top 3 Internal Ranking" action={filteredData.exclusiveTop3?.frozen ? "Frozen" : "Live"}>
                 <ControlRankingList rows={filteredData.exclusiveTop3?.currentInternalRanking ?? []} empty="No Exclusive Top 3 ranking yet." />
               </ControlSection>
@@ -2416,6 +2436,12 @@ function AtlasControlCenterPanel({
                 <ControlActivityList rows={(filteredData.exclusiveTop3?.movementHistory ?? []).map((row: any) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
               </ControlSection>
             </>
+          ) : null}
+
+          {tab === "signals" ? (
+            <ControlSection title="Frozen Signals Detected">
+              <ControlSignalsDetectedList rows={filteredData.signalsDetected ?? []} />
+            </ControlSection>
           ) : null}
 
           {tab === "activity" ? (
