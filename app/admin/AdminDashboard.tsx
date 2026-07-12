@@ -142,6 +142,7 @@ type PerformanceCenterData = {
 };
 
 type AtlasControlTab = "overview" | "top-signal" | "top5" | "signals" | "activity" | "health";
+type AtlasActivityFilter = "ALL" | "TOP SIGNAL" | "TOP 5" | "EXCLUSIVE" | "SIGNALS" | "VALIDATION" | "ERRORS";
 
 type AtlasControlCenterData = {
   summary: any;
@@ -154,6 +155,7 @@ type AtlasControlCenterData = {
   exclusiveTop3: any;
   liveActivity: any[];
   operationsTimeline: any[];
+  marketPulse?: any;
   dataSources?: string[];
   errors?: string[];
 };
@@ -1626,6 +1628,12 @@ function controlSigned(value: unknown) {
   return `${parsed > 0 ? "+" : ""}${parsed}`;
 }
 
+function controlDeltaPct(value: unknown) {
+  const parsed = adminNumber(value);
+  if (parsed === null) return "—";
+  return `${parsed > 0 ? "+" : ""}${(parsed * 100).toFixed(1)}%`;
+}
+
 function controlTone(value?: string | null) {
   const status = String(value ?? "").toUpperCase();
   if (["HEALTHY", "SUCCESS", "READY", "PUBLISHED", "CONFIRMED", "HIGH", "UP"].includes(status)) return "text-emerald-300";
@@ -1681,37 +1689,71 @@ function ControlTopSignalHero({ data }: { data: any | null }) {
     );
   }
   return (
-    <AdminShellCard className="border-purple-400/45 p-3 shadow-[0_0_26px_rgba(168,85,247,0.10)]">
+    <AdminShellCard className="border-purple-400/45 p-2.5 shadow-[0_0_26px_rgba(168,85,247,0.10)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-300">Top Signal Engine</p>
-          <h2 className="mt-1 text-[22px] font-black leading-tight text-white">{data.currentLeader}</h2>
+          <h2 className="mt-0.5 text-[20px] font-black leading-tight text-white">{data.currentLeader}</h2>
           <p className="text-xs font-bold text-white/50">{data.event} · {data.market}</p>
         </div>
         <span className={`rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black uppercase ${controlTone(data.candidateStatus)}`}>
           {data.candidateStatus}
         </span>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mt-2 grid grid-cols-4 gap-1.5">
         <ControlMiniMetric label="Atlas Probability" value={controlPct(data.atlasProbability)} tone="text-emerald-300" />
         <ControlMiniMetric label="Edge" value={formatAdminEdge(data.edge)} tone="text-cyan-300" />
         <ControlMiniMetric label="Score" value={controlScore(data.engineScore)} tone="text-white" />
         <ControlMiniMetric label="Odds" value={formatAdminOdds(data.odds) || "N/A"} tone="text-white" />
       </div>
-      <div className="mt-3 grid gap-2 border-t border-white/10 pt-3 text-xs sm:grid-cols-4">
+      <div className="mt-2 grid grid-cols-3 gap-2 border-t border-white/10 pt-2 text-xs">
         <div><span className="text-white/38">Leader Since</span><p className="font-black text-white">{formatAdminTime(data.leaderSince)}</p></div>
-        <div><span className="text-white/38">Consecutive Hours</span><p className="font-black text-white">{data.consecutiveHoursAsLeader ?? 0}</p></div>
         <div><span className="text-white/38">Stability</span><p className={`font-black ${controlTone(data.stability)}`}>{data.stability}</p></div>
         <div><span className="text-white/38">Publish Window</span><p className="font-black text-white">{data.estimatedPublicationWindow}</p></div>
       </div>
-      <div className="mt-3 rounded-lg border border-white/8 bg-black/15 p-2 text-xs">
-        <div className="flex items-center justify-between gap-2">
-          <span className="font-black uppercase text-white/50">Second Place Candidate</span>
-          <span className="font-black text-white/35">{data.secondPlaceCandidate ? "Available" : "No same-run second place in history"}</span>
+      <details className="mt-2 rounded-lg border border-white/8 bg-black/15 p-2 text-xs">
+        <summary className="cursor-pointer font-black uppercase text-cyan-300">Open Engine Details →</summary>
+        <div className="mt-2 grid gap-2">
+          <p className="text-white/60">Consecutive Hours: <span className="font-black text-white">{data.consecutiveHoursAsLeader ?? 0}</span></p>
+          <SecondPlaceCandidate candidate={data.secondPlaceCandidate} />
         </div>
-        {data.secondPlaceCandidate ? <p className="mt-1 text-white">{data.secondPlaceCandidate.event}</p> : null}
-      </div>
+      </details>
     </AdminShellCard>
+  );
+}
+
+function ControlTopSignalStrength({ strength }: { strength?: any }) {
+  if (!strength) return null;
+  return (
+    <ControlSection title="Top Signal Strength">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ControlMiniMetric label="Leader Score" value={controlScore(strength.leaderScore)} />
+        <ControlMiniMetric label="Second Score" value={controlScore(strength.secondPlaceScore)} />
+        <ControlMiniMetric label="Score Gap" value={controlSigned(strength.scoreGap)} tone="text-cyan-300" />
+        <ControlMiniMetric label="Probability Gap" value={controlDeltaPct(strength.probabilityGap)} tone="text-emerald-300" />
+        <ControlMiniMetric label="Edge Gap" value={controlDeltaPct(strength.edgeGap)} tone="text-cyan-300" />
+        <ControlMiniMetric label="Leader Time" value={strength.leaderDuration ?? "N/A"} />
+        <ControlMiniMetric label="Leader Changes" value={strength.leaderChangesToday ?? 0} />
+        <ControlMiniMetric label="Stability" value={strength.stability ?? "IDLE"} tone={controlTone(strength.stability)} />
+      </div>
+    </ControlSection>
+  );
+}
+
+function SecondPlaceCandidate({ candidate }: { candidate: any | null }) {
+  if (!candidate) return <p className="text-xs font-bold text-white/45">No qualified second candidate.</p>;
+  return (
+    <div className="rounded-lg border border-white/8 bg-white/[0.025] p-2">
+      <p className="text-[10px] font-black uppercase text-white/45">Second Place Candidate</p>
+      <p className="mt-1 text-sm font-black text-white">{candidate.selection}</p>
+      <p className="text-[11px] text-white/45">{candidate.event} · {candidate.market}</p>
+      <div className="mt-2 grid grid-cols-4 gap-1.5">
+        <ControlMiniMetric label="Odds" value={formatAdminOdds(candidate.odds) || "N/A"} />
+        <ControlMiniMetric label="Prob" value={controlPct(candidate.atlasProbability)} />
+        <ControlMiniMetric label="Edge" value={formatAdminEdge(candidate.edge)} />
+        <ControlMiniMetric label="Score" value={controlScore(candidate.score)} />
+      </div>
+    </div>
   );
 }
 
@@ -1720,15 +1762,16 @@ function ControlRankingList({ rows, empty, compact = false }: { rows: any[]; emp
   return (
     <div className="overflow-hidden rounded-xl border border-white/10">
       {rows.map((row) => (
-        <div key={`${row.gameId}-${row.rank}`} className={`grid grid-cols-[26px_minmax(0,1fr)_54px_60px_52px] items-center gap-2 border-b border-white/8 px-2.5 last:border-b-0 ${compact ? "py-1.5" : "py-2"}`}>
+        <div key={`${row.gameId}-${row.rank}`} className={`grid grid-cols-[26px_minmax(0,1fr)_44px_54px_48px_42px] items-center gap-2 border-b border-white/8 px-2.5 last:border-b-0 ${compact ? "py-1.5" : "py-2"}`}>
           <span className="text-[13px] font-black text-white">#{row.rank}</span>
           <div className="min-w-0">
             <p className="truncate text-[13px] font-black text-white">{row.selection}</p>
-            <p className="truncate text-[10px] font-bold text-white/40">{row.event}</p>
+            <p className="truncate text-[10px] font-bold text-white/40">{row.previousRank ? `Prev #${row.previousRank}` : "New"} · {row.event}</p>
           </div>
           <span className="text-[10px] font-black text-white">{row.market}</span>
           <span className="text-right text-[11px] font-black text-emerald-300">{controlPct(row.atlasProbability)}</span>
           <span className={`text-right text-[10px] font-black ${controlTone(row.trend)}`}>{row.trend}</span>
+          <span className="text-right text-[10px] font-black text-white/55">{controlDeltaPct(row.probabilityDelta)}</span>
         </div>
       ))}
     </div>
@@ -1747,11 +1790,21 @@ function ControlSignalsDetectedList({ rows }: { rows: any[] }) {
           </div>
           <span className="text-[10px] font-black text-white">{row.market}</span>
           <span className="text-right text-[11px] font-black text-emerald-300">{controlPct(row.atlasProbability)}</span>
-          <span className="text-right text-[10px] font-black text-cyan-300">{row.exclusiveTop3Rank ? `Top 3 #${row.exclusiveTop3Rank}` : "Frozen"}</span>
+          <span className="text-right text-[10px] font-black text-cyan-300">{row.exclusiveTop3Rank ? `#${row.exclusiveTop3Rank} ${row.exclusiveTrend}` : "Frozen Yes"}</span>
         </div>
       ))}
     </div>
   );
+}
+
+function activityEngineTone(engine: string, severity?: string) {
+  if (String(severity).toUpperCase() === "ERROR") return "border-red-400/50 text-red-300 bg-red-400";
+  if (engine.includes("Top Signal")) return "border-purple-400/50 text-purple-300 bg-purple-400";
+  if (engine.includes("Premium")) return "border-cyan-400/50 text-cyan-300 bg-cyan-400";
+  if (engine.includes("Exclusive")) return "border-sky-400/50 text-sky-300 bg-sky-400";
+  if (engine.includes("Signals")) return "border-emerald-400/50 text-emerald-300 bg-emerald-400";
+  if (engine.includes("Validation")) return "border-yellow-400/50 text-yellow-300 bg-yellow-400";
+  return "border-white/20 text-white/60 bg-white";
 }
 
 function ControlActivityList({ rows }: { rows: any[] }) {
@@ -1759,9 +1812,12 @@ function ControlActivityList({ rows }: { rows: any[] }) {
   return (
     <div className="grid gap-1">
       {rows.slice(0, 18).map((row, index) => (
-        <div key={`${row.timestamp}-${index}`} className="grid grid-cols-[58px_82px_minmax(0,1fr)] items-center gap-2 border-b border-white/8 py-1.5 last:border-b-0">
+        <div key={`${row.timestamp}-${index}`} className={`grid grid-cols-[58px_92px_minmax(0,1fr)] items-center gap-2 border-b border-l-2 border-b-white/8 py-1.5 pl-2 last:border-b-0 ${activityEngineTone(row.engine, row.severity).split(" ")[0]}`}>
           <span className="text-[10px] font-bold text-white/45">{formatAdminTime(row.timestamp)}</span>
-          <span className={`text-[9px] font-black uppercase ${controlTone(row.severity)}`}>{row.engine}</span>
+          <span className={`flex items-center gap-1 text-[9px] font-black uppercase ${activityEngineTone(row.engine, row.severity).split(" ")[1]}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${activityEngineTone(row.engine, row.severity).split(" ")[2]}`} />
+            {row.engine}
+          </span>
           <div className="min-w-0">
             <p className="truncate text-[12px] font-black text-white">{row.event}</p>
             <p className="truncate text-[10px] text-white/42">{row.affectedSignal} · {row.description}</p>
@@ -1777,10 +1833,11 @@ function ControlHealthTable({ rows }: { rows: any[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-white/10">
       {rows.map((row) => (
-        <div key={row.engine} className="grid grid-cols-[minmax(0,1fr)_70px_66px_54px] items-center gap-2 border-b border-white/8 px-2.5 py-2 text-xs last:border-b-0">
+        <div key={row.engine} className="grid grid-cols-[minmax(0,1fr)_64px_54px_52px_42px] items-center gap-2 border-b border-white/8 px-2.5 py-2 text-xs last:border-b-0">
           <span className="truncate font-black text-white">{row.engine}</span>
           <span className={`text-[10px] font-black uppercase ${controlTone(row.status)}`}>{row.status}</span>
           <span className="text-[10px] font-bold text-white/45">{row.latency}</span>
+          <span className="text-[10px] font-bold text-white/45">{row.lastDuration ?? "—"}</span>
           <span className="text-right text-[10px] font-black text-white">{row.rowsProcessed}</span>
         </div>
       ))}
@@ -1792,12 +1849,13 @@ function ControlOperationsTimeline({ rows }: { rows: any[] }) {
   return (
     <div className="grid gap-1">
       {rows.map((row) => (
-        <div key={row.stage} className="grid grid-cols-[86px_minmax(0,1fr)_58px] gap-2 border-b border-white/8 py-2 last:border-b-0">
+        <div key={row.stage} className="grid grid-cols-[76px_minmax(0,1fr)_46px_54px] gap-2 border-b border-white/8 py-2 last:border-b-0">
           <span className="text-[10px] font-black uppercase text-cyan-300">{row.scheduledTime}</span>
           <div className="min-w-0">
             <p className="truncate text-[12px] font-black text-white">{row.stage}</p>
-            <p className="truncate text-[10px] text-white/40">Last {row.lastExecutionEt ?? "N/A"} · Next {row.nextExecution ?? "N/A"}</p>
+            <p className="truncate text-[10px] text-white/40">Last {row.lastExecutionEt ?? "N/A"} · Next {row.nextExecution ?? "N/A"} · {row.result}</p>
           </div>
+          <span className="text-right text-[10px] font-black text-white">{row.rowsProcessed}</span>
           <span className={`text-right text-[10px] font-black uppercase ${controlTone(row.health)}`}>{row.health}</span>
         </div>
       ))}
@@ -1805,19 +1863,69 @@ function ControlOperationsTimeline({ rows }: { rows: any[] }) {
   );
 }
 
+function ControlMarketPulse({ pulse }: { pulse?: any }) {
+  if (!pulse) return null;
+  return (
+    <ControlSection title="Atlas Market Pulse">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ControlMiniMetric label="Top Signal Stability" value={pulse.topSignalStability ?? "IDLE"} tone={controlTone(pulse.topSignalStability)} />
+        <ControlMiniMetric label="Top 5 Volatility" value={pulse.top5Volatility ?? "LOW"} tone={controlTone(pulse.top5Volatility)} />
+        <ControlMiniMetric label="Exclusive Volatility" value={pulse.exclusiveTop3Volatility ?? "LOW"} tone={controlTone(pulse.exclusiveTop3Volatility)} />
+        <ControlMiniMetric label="Market Movement" value={pulse.marketMovement ?? 0} />
+        <ControlMiniMetric label="Improving" value={pulse.signalsImproving ?? 0} tone="text-emerald-300" />
+        <ControlMiniMetric label="Weakening" value={pulse.signalsWeakening ?? 0} tone="text-yellow-300" />
+        <ControlMiniMetric label="Leader Changes" value={pulse.leaderChanges ?? 0} />
+        <ControlMiniMetric label="Qualified" value={pulse.qualifiedCandidates ?? 0} tone="text-cyan-300" />
+      </div>
+    </ControlSection>
+  );
+}
+
+function ControlChangeReasons({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">Reason not available from current snapshots.</p>;
+  return (
+    <div className="grid gap-2">
+      {rows.slice(-8).reverse().map((row, index) => (
+        <div key={`${row.timestamp}-${index}`} className="rounded-lg border border-white/8 bg-black/15 p-2">
+          <p className="text-[10px] font-black uppercase text-cyan-300">{formatAdminTime(row.timestamp)} · {row.event}</p>
+          <p className="mt-1 text-sm font-black text-white">{row.signal}</p>
+          <ul className="mt-1 grid gap-1">
+            {(row.reasons ?? []).map((reason: string) => <li key={reason} className="text-[11px] font-bold text-white/55">- {reason}</li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function filterActivity(rows: any[], filter: AtlasActivityFilter) {
+  if (filter === "ALL") return rows;
+  if (filter === "ERRORS") return rows.filter((row) => String(row.severity).toUpperCase() === "ERROR");
+  if (filter === "TOP SIGNAL") return rows.filter((row) => String(row.engine).includes("Top Signal"));
+  if (filter === "TOP 5") return rows.filter((row) => String(row.engine).includes("Premium"));
+  if (filter === "EXCLUSIVE") return rows.filter((row) => String(row.engine).includes("Exclusive"));
+  if (filter === "SIGNALS") return rows.filter((row) => String(row.engine).includes("Signals"));
+  if (filter === "VALIDATION") return rows.filter((row) => String(row.engine).includes("Validation"));
+  return rows;
+}
+
 function AtlasControlCenterPanel({
   data,
   loading,
   error,
   tab,
+  activityFilter,
   onTab,
+  onActivityFilter,
   onRefresh,
 }: {
   data: AtlasControlCenterData | null;
   loading: boolean;
   error: string | null;
   tab: AtlasControlTab;
+  activityFilter: AtlasActivityFilter;
   onTab: (tab: AtlasControlTab) => void;
+  onActivityFilter: (filter: AtlasActivityFilter) => void;
   onRefresh: () => void;
 }) {
   const tabs: Array<{ id: AtlasControlTab; label: string }> = [
@@ -1828,7 +1936,9 @@ function AtlasControlCenterPanel({
     { id: "activity", label: "Activity" },
     { id: "health", label: "Health" },
   ];
+  const activityFilters: AtlasActivityFilter[] = ["ALL", "TOP SIGNAL", "TOP 5", "EXCLUSIVE", "SIGNALS", "VALIDATION", "ERRORS"];
   const summary = data?.summary;
+  const filteredActivity = filterActivity(data?.liveActivity ?? [], activityFilter);
   return (
     <section className="grid gap-2.5">
       <div className="flex items-start justify-between gap-3">
@@ -1871,6 +1981,7 @@ function AtlasControlCenterPanel({
             <>
               <ControlHealthStrip rows={data.engineHealth} />
               <ControlTopSignalHero data={data.topSignal} />
+              <ControlTopSignalStrength strength={data.topSignal?.strength} />
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <ControlMiniMetric label="Sports" value={(summary?.sportsAvailable ?? []).join(", ") || "N/A"} />
                 <ControlMiniMetric label="Games Inspected" value={summary?.gamesInspected ?? 0} />
@@ -1888,14 +1999,22 @@ function AtlasControlCenterPanel({
               <ControlSection title="Signals Detected Summary">
                 <ControlSignalsDetectedList rows={(data.signalsDetected ?? []).slice(0, 6)} />
               </ControlSection>
+              <ControlMarketPulse pulse={data.marketPulse} />
             </>
           ) : null}
 
           {tab === "top-signal" ? (
             <>
               <ControlTopSignalHero data={data.topSignal} />
+              <ControlTopSignalStrength strength={data.topSignal?.strength} />
+              <ControlSection title="Second Place Candidate">
+                <SecondPlaceCandidate candidate={data.topSignal?.secondPlaceCandidate ?? null} />
+              </ControlSection>
               <ControlSection title="Top Signal Leader Timeline">
                 <ControlActivityList rows={(data.topSignalTimeline ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.status, event: row.candidate, affectedSignal: row.market, description: `${controlPct(row.probability)} · ${formatAdminEdge(row.edge)} · score ${controlScore(row.score)}`, severity: row.status === "PUBLISHED" ? "SUCCESS" : "INFO" }))} />
+              </ControlSection>
+              <ControlSection title="Why Atlas Changed">
+                <ControlChangeReasons rows={data.topSignal?.changeReasons ?? []} />
               </ControlSection>
             </>
           ) : null}
@@ -1909,7 +2028,7 @@ function AtlasControlCenterPanel({
                 <ControlRankingList rows={data.top5?.officialFrozenTop5 ?? []} empty="Official Top 5 has not frozen yet." />
               </ControlSection>
               <ControlSection title="Top 5 Movement History">
-                <ControlActivityList rows={(data.top5Movement ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.trend, event: row.event, affectedSignal: "", description: `Position change ${row.positionChange ?? "N/A"}`, severity: "INFO" }))} />
+                <ControlActivityList rows={(data.top5Movement ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
               </ControlSection>
             </>
           ) : null}
@@ -1922,13 +2041,23 @@ function AtlasControlCenterPanel({
               <ControlSection title="Exclusive Top 3 Internal Ranking" action={data.exclusiveTop3?.frozen ? "Frozen" : "Live"}>
                 <ControlRankingList rows={data.exclusiveTop3?.currentInternalRanking ?? []} empty="No Exclusive Top 3 ranking yet." />
               </ControlSection>
+              <ControlSection title="Exclusive Top 3 Movement">
+                <ControlActivityList rows={(data.exclusiveTop3?.movementHistory ?? []).map((row: any) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
+              </ControlSection>
             </>
           ) : null}
 
           {tab === "activity" ? (
             <>
+              <div className="scrollbar-hide flex gap-2 overflow-x-auto">
+                {activityFilters.map((item) => (
+                  <button key={item} type="button" onClick={() => onActivityFilter(item)} className={`min-w-max rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase ${activityFilter === item ? "border-cyan-300/45 bg-cyan-300/12 text-cyan-200" : "border-white/10 bg-white/[0.03] text-white/50"}`}>
+                    {item}
+                  </button>
+                ))}
+              </div>
               <ControlSection title="Live Engine Activity">
-                <ControlActivityList rows={data.liveActivity ?? []} />
+                <ControlActivityList rows={filteredActivity} />
               </ControlSection>
               <ControlSection title="Daily Operations Timeline">
                 <ControlOperationsTimeline rows={data.operationsTimeline ?? []} />
@@ -2117,6 +2246,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [controlLoading, setControlLoading] = useState(true);
   const [controlError, setControlError] = useState<string | null>(null);
   const [controlTab, setControlTab] = useState<AtlasControlTab>("overview");
+  const [controlActivityFilter, setControlActivityFilter] = useState<AtlasActivityFilter>("ALL");
   const [cronRunning, setCronRunning] = useState<string | null>(null);
   const [cronResult, setCronResult] = useState<string | null>(null);
   const [researchView, setResearchView] = useState<"summary" | "system">("summary");
@@ -2529,7 +2659,9 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       loading={controlLoading}
       error={controlError}
       tab={controlTab}
+      activityFilter={controlActivityFilter}
       onTab={setControlTab}
+      onActivityFilter={setControlActivityFilter}
       onRefresh={() => void loadControlCenter()}
     />
   );

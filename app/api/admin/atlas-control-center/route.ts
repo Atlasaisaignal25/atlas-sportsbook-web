@@ -101,6 +101,30 @@ function scoreOf(row: DbRow | null | undefined) {
   return num(row?.score) ?? num(row?.pick_ranking) ?? 0;
 }
 
+function candidateFromRow(row: DbRow | null | undefined) {
+  if (!row) return null;
+  return {
+    sport: row.sport,
+    event: eventName(row),
+    market: marketLabel(row),
+    selection: pickLabel(row),
+    odds: num(row.odds),
+    atlasProbability: num(row.atlas_probability),
+    edge: num(row.edge),
+    score: scoreOf(row),
+    status: row.status,
+    gameId: row.game_id,
+    runAt: row.run_at,
+  };
+}
+
+function delta(current: unknown, previous: unknown) {
+  const next = num(current);
+  const prev = num(previous);
+  if (next === null || prev === null) return null;
+  return next - prev;
+}
+
 function publicPickRows(rows: DbRow[]) {
   return rows.filter((row) => {
     const status = String(row.status ?? "").toUpperCase();
@@ -128,9 +152,10 @@ function previousRun(rows: DbRow[], engine: string, runType: string, currentRunA
 }
 
 function rankingRows(current: DbRow[], previous: DbRow[]) {
-  const previousByGame = new Map(previous.map((row) => [String(row.game_id), Number(row.rank)]));
+  const previousByGame = new Map(previous.map((row) => [String(row.game_id), row]));
   return current.map((row) => {
-    const previousRank = previousByGame.get(String(row.game_id)) ?? null;
+    const previousRow = previousByGame.get(String(row.game_id)) ?? null;
+    const previousRank = previousRow ? Number(previousRow.rank) : null;
     const rank = Number(row.rank ?? 0);
     const positionChange = previousRank === null ? null : previousRank - rank;
     const trendChange = positionChange ?? 0;
@@ -148,6 +173,9 @@ function rankingRows(current: DbRow[], previous: DbRow[]) {
       previousRank,
       positionChange,
       trend,
+      probabilityDelta: previousRow ? delta(row.atlas_probability, previousRow.atlas_probability) : null,
+      edgeDelta: previousRow ? delta(row.edge, previousRow.edge) : null,
+      scoreDelta: previousRow ? delta(scoreOf(row), scoreOf(previousRow)) : null,
       status: row.status,
       frozen: Boolean(row.frozen),
       published: Boolean(row.published),
@@ -156,6 +184,45 @@ function rankingRows(current: DbRow[], previous: DbRow[]) {
       gameId: row.game_id,
     };
   });
+}
+
+function rankingMovement(current: ReturnType<typeof rankingRows>, previous: DbRow[]) {
+  const currentIds = new Set(current.map((row) => String(row.gameId)));
+  const moved = current.map((row) => ({
+    timestamp: row.runAt,
+    signal: row.selection,
+    event: row.previousRank === null
+      ? `${row.selection} entered at #${row.rank}`
+      : row.trend === "SAME"
+        ? `${row.selection} held #${row.rank}`
+        : `${row.selection} moved #${row.previousRank} to #${row.rank}`,
+    previousRank: row.previousRank,
+    newRank: row.rank,
+    probabilityDelta: row.probabilityDelta,
+    edgeDelta: row.edgeDelta,
+    scoreDelta: row.scoreDelta,
+    movementType: row.previousRank === null ? "ENTERED" : row.trend === "UP" ? "MOVED UP" : row.trend === "DOWN" ? "MOVED DOWN" : "HELD",
+    trend: row.trend,
+    positionChange: row.positionChange,
+    gameId: row.gameId,
+  }));
+  const exited = previous
+    .filter((row) => !currentIds.has(String(row.game_id)))
+    .map((row) => ({
+      timestamp: row.run_at,
+      signal: pickLabel(row),
+      event: `${pickLabel(row)} exited ranking`,
+      previousRank: Number(row.rank ?? 0),
+      newRank: null,
+      probabilityDelta: null,
+      edgeDelta: null,
+      scoreDelta: null,
+      movementType: "EXITED",
+      trend: "OUT",
+      positionChange: null,
+      gameId: row.game_id,
+    }));
+  return [...moved, ...exited];
 }
 
 function stability(latest: DbRow | null, timeline: DbRow[], secondPlace: DbRow | null) {
@@ -186,6 +253,37 @@ function activitySeverity(status: string) {
   if (["DOWNGRADED", "PASSED_OVER", "STALE_SOURCE"].includes(value)) return "WARNING";
   if (["REMOVED", "WITHDRAWN", "ERROR"].includes(value)) return "ERROR";
   return "INFO";
+}
+
+function changeReasons(timeline: DbRow[]) {
+  return timeline.map((row, index) => {
+    const previous = timeline[index - 1] ?? null;
+    const reasons: string[] = [];
+    if (previous) {
+      const probabilityDelta = delta(row.atlas_probability, previous.atlas_probability);
+      const edgeDelta = delta(row.edge, previous.edge);
+      const scoreDelta = delta(scoreOf(row), scoreOf(previous));
+      if (probabilityDelta !== null && probabilityDelta !== 0) reasons.push(`Atlas Probability ${probabilityDelta > 0 ? "increased" : "decreased"} ${Math.abs(probabilityDelta * 100).toFixed(1)}%.`);
+      if (edgeDelta !== null && edgeDelta !== 0) reasons.push(`Edge ${edgeDelta > 0 ? "improved" : "weakened"} ${Math.abs(edgeDelta * 100).toFixed(1)}%.`);
+      if (scoreDelta !== null && scoreDelta !== 0) reasons.push(`Engine score moved ${scoreDelta > 0 ? "+" : ""}${scoreDelta.toFixed(1)}.`);
+      if (previous.game_id !== row.game_id) reasons.push(`${pickLabel(row)} became leader over ${pickLabel(previous)}.`);
+    }
+    return {
+      timestamp: row.run_at,
+      signal: pickLabel(row),
+      event: previous && previous.game_id === row.game_id ? "HELD" : "NEW LEADER",
+      reasons: reasons.length ? reasons : ["Reason not available from current snapshots."],
+    };
+  });
+}
+
+function volatility(rows: Array<{ trend?: string; probabilityDelta?: number | null; scoreDelta?: number | null }>) {
+  const movementCount = rows.filter((row) => row.trend && row.trend !== "SAME").length;
+  const deltaCount = rows.filter((row) => Math.abs(row.probabilityDelta ?? 0) > 0 || Math.abs(row.scoreDelta ?? 0) > 0).length;
+  const total = movementCount + deltaCount;
+  if (total >= 4) return "HIGH";
+  if (total >= 2) return "MEDIUM";
+  return "LOW";
 }
 
 export async function GET() {
@@ -227,8 +325,6 @@ export async function GET() {
   const activeSignals = (activeSignalsQuery.data ?? []) as DbRow[];
   const activePicks = publicPickRows(activePicksQuery.data ?? []);
 
-  const topSignalLeader = topSignalTimelineRaw.at(-1) ?? null;
-  const topSignalSecondPlace = null;
   const latestPremiumInternal = latestRun(top5History, "PREMIUM_TOP5", "INTERNAL_RANKING");
   const premiumPrevious = previousRun(top5History, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
   const latestPremiumFrozen = latestRun(top5History, "PREMIUM_TOP5", "OFFICIAL_FREEZE");
@@ -240,6 +336,15 @@ export async function GET() {
   const officialTop5Rows = rankingRows(latestPremiumFrozen, []);
   const officialTop3Rows = rankingRows(latestExclusiveFrozen, []);
   const firstStartTime = firstStart([...signalsHistory, ...top5History, ...activeSignals]);
+  const topSignalLeader = topSignalTimelineRaw.at(-1) ?? null;
+  const eligibleTopSignalCandidates = latestPremiumInternal
+    .filter((row) => {
+      const odds = num(row.odds);
+      return odds !== null && odds >= -160 && odds <= 120;
+    })
+    .toSorted((a, b) => scoreOf(b) - scoreOf(a));
+  const topSignalSecondPlace =
+    eligibleTopSignalCandidates.find((row) => row.game_id !== topSignalLeader?.game_id) ?? null;
 
   const topSignalTimeline = topSignalTimelineRaw.map((row, index) => {
     const previous = topSignalTimelineRaw[index - 1];
@@ -261,6 +366,9 @@ export async function GET() {
       status,
     };
   });
+  const leaderChangesToday = topSignalTimeline.filter((row) => row.status === "NEW LEADER").length;
+  const longestLeaderStreak = topSignalTimelineRaw.reduce((max, row) => Math.max(max, Number(row.consecutive_leader_hours ?? 1)), 0);
+  const topSignalChangeReasons = changeReasons(topSignalTimelineRaw);
 
   const signalsWithTop3Rank = signalsHistory.map((row) => {
     const top3 = latestTop3Rows.find((item) => item.gameId === row.game_id) ?? officialTop3Rows.find((item) => item.gameId === row.game_id);
@@ -279,6 +387,11 @@ export async function GET() {
       active,
       superseded,
       exclusiveTop3Rank: top3?.rank ?? null,
+      exclusivePreviousRank: top3?.previousRank ?? null,
+      exclusiveTrend: top3?.trend ?? "OUT",
+      exclusivePositionChange: top3?.positionChange ?? null,
+      exclusiveProbabilityDelta: top3?.probabilityDelta ?? null,
+      exclusiveScoreDelta: top3?.scoreDelta ?? null,
       exclusiveStatus: top3?.status ?? "NOT_TOP3",
       status: row.status,
       gameId: row.game_id,
@@ -331,17 +444,24 @@ export async function GET() {
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 40);
 
-  const top5Movement = latestTop5Rows
-    .filter((row) => row.trend !== "SAME")
-    .map((row) => ({
-      timestamp: row.runAt,
-      event: row.previousRank === null
-        ? `${row.selection} entered Top 5 at #${row.rank}`
-        : `${row.selection} moved #${row.previousRank} to #${row.rank}`,
-      trend: row.trend,
-      positionChange: row.positionChange,
-      gameId: row.gameId,
-    }));
+  const top5Movement = rankingMovement(latestTop5Rows, premiumPrevious);
+  const exclusiveMovement = rankingMovement(latestTop3Rows, exclusivePrevious);
+  const topSignalLeaderCandidate = topSignalLeader ? candidateFromRow(topSignalLeader) : null;
+  const topSignalSecondCandidate = candidateFromRow(topSignalSecondPlace);
+  const leaderScore = topSignalLeader ? scoreOf(topSignalLeader) : null;
+  const secondScore = topSignalSecondPlace ? scoreOf(topSignalSecondPlace) : null;
+  const topSignalStrength = {
+    leaderScore,
+    secondPlaceScore: secondScore,
+    scoreGap: leaderScore !== null && secondScore !== null ? leaderScore - secondScore : null,
+    probabilityGap: delta(topSignalLeader?.atlas_probability, topSignalSecondPlace?.atlas_probability),
+    edgeGap: delta(topSignalLeader?.edge, topSignalSecondPlace?.edge),
+    leaderDuration: topSignalLeader ? `${Number(topSignalLeader.consecutive_leader_hours ?? 1)}h` : "N/A",
+    leaderChangesToday,
+    longestLeaderStreak,
+    currentLeaderStreak: Number(topSignalLeader?.consecutive_leader_hours ?? 0),
+    stability: stability(topSignalLeader, topSignalTimelineRaw, topSignalSecondPlace),
+  };
 
   const topSignal = topSignalLeader
     ? {
@@ -361,8 +481,13 @@ export async function GET() {
         nextFinalReview: finalReview(topSignalLeader.start_time),
         estimatedPublicationWindow: publicationWindow(topSignalLeader.start_time),
         candidateStatus: topSignalLeader.status ?? "CANDIDATE",
-        secondPlaceCandidate: null,
-        leaderSeparation: null,
+        secondPlaceCandidate: topSignalSecondCandidate,
+        secondPlace: topSignalSecondCandidate,
+        strength: topSignalStrength,
+        timeline: topSignalTimeline,
+        changeReasons: topSignalChangeReasons,
+        leader: topSignalLeaderCandidate,
+        leaderSeparation: topSignalStrength.scoreGap,
         lastRun: topSignalLeader.run_at,
       }
     : null;
@@ -375,18 +500,20 @@ export async function GET() {
   const blockedPublications = [...activeSignals, ...activePicks].filter((row) => row.publication_blocked).length;
 
   const healthRows = [
-    { engine: "Signals Detected Engine", lastRun: signalsLastRun, nextRun: "Tomorrow 7:00 AM ET", rowsProcessed: signalsHistory.length, errors },
-    { engine: "Top 3 Exclusive Engine", lastRun: currentExclusiveLastRun, nextRun: dateTimeET(addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop3Rows.length || officialTop3Rows.length, errors: [] },
-    { engine: "Top 5 Premium Engine", lastRun: currentPremiumLastRun, nextRun: dateTimeET(addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop5Rows.length || officialTop5Rows.length, errors: [] },
-    { engine: "Top Signal Engine", lastRun: topSignalLeader?.run_at ?? null, nextRun: dateTimeET(addMinutes(topSignalLeader?.run_at, ENGINE_RECALC_MINUTES)), rowsProcessed: topSignalLeader ? 1 : 0, errors: [] },
-    { engine: "Validation Engine", lastRun: validationLastRun, nextRun: "30 min before event", rowsProcessed: activePicks.filter((row) => row.final_validated_at).length, errors: [] },
-    { engine: "Daily Pipeline", lastRun: [signalsLastRun, currentPremiumLastRun, currentExclusiveLastRun, topSignalLeader?.run_at].filter(Boolean).sort().at(-1) ?? null, nextRun: "Hourly", rowsProcessed: signalsHistory.length + latestTop5Rows.length + latestTop3Rows.length + (topSignalLeader ? 1 : 0), errors },
-    { engine: "Postgame Grading", lastRun: null, nextRun: "Postgame", rowsProcessed: 0, errors: [] },
+    { engine: "Signals Detected Engine", lastRun: signalsLastRun, nextRun: "Tomorrow 7:00 AM ET", rowsProcessed: signalsHistory.length, errors, lastDuration: null },
+    { engine: "Top 3 Exclusive Engine", lastRun: currentExclusiveLastRun, nextRun: dateTimeET(addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop3Rows.length || officialTop3Rows.length, errors: [], lastDuration: null },
+    { engine: "Top 5 Premium Engine", lastRun: currentPremiumLastRun, nextRun: dateTimeET(addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop5Rows.length || officialTop5Rows.length, errors: [], lastDuration: null },
+    { engine: "Top Signal Engine", lastRun: topSignalLeader?.run_at ?? null, nextRun: dateTimeET(addMinutes(topSignalLeader?.run_at, ENGINE_RECALC_MINUTES)), rowsProcessed: topSignalLeader ? 1 : 0, errors: [], lastDuration: null },
+    { engine: "Validation Engine", lastRun: validationLastRun, nextRun: "30 min before event", rowsProcessed: activePicks.filter((row) => row.final_validated_at).length, errors: [], lastDuration: null },
+    { engine: "Daily Pipeline", lastRun: [signalsLastRun, currentPremiumLastRun, currentExclusiveLastRun, topSignalLeader?.run_at].filter(Boolean).sort().at(-1) ?? null, nextRun: "Hourly", rowsProcessed: signalsHistory.length + latestTop5Rows.length + latestTop3Rows.length + (topSignalLeader ? 1 : 0), errors, lastDuration: null },
+    { engine: "Postgame Grading", lastRun: null, nextRun: "Postgame", rowsProcessed: 0, errors: [], lastDuration: null },
   ].map((row) => ({
     ...row,
     status: engineStatus(row.lastRun, row.errors, row.rowsProcessed),
     lastRunEt: dateTimeET(row.lastRun),
     latency: row.lastRun ? `${Math.max(0, Math.round((Date.now() - new Date(row.lastRun).getTime()) / 60000))}m` : "N/A",
+    nextIn: row.lastRun && row.nextRun && row.nextRun !== "Hourly" ? row.nextRun : null,
+    lastDuration: row.lastDuration,
     errors: row.errors.length,
     staleSourceCount,
     blockedPublications,
@@ -406,6 +533,8 @@ export async function GET() {
     ...row,
     lastExecutionEt: dateTimeET(row.lastExecution),
     health: engineStatus(row.lastExecution, [], row.rowsProcessed),
+    duration: null,
+    errorCount: 0,
   }));
 
   const statuses = activePicks.reduce((counts: Record<string, number>, row) => {
@@ -431,6 +560,18 @@ export async function GET() {
     blocked: blockedPublications,
     staleSources: staleSourceCount,
   };
+  const improvingRows = [...latestTop5Rows, ...latestTop3Rows].filter((row) => (row.probabilityDelta ?? 0) > 0 || (row.scoreDelta ?? 0) > 0);
+  const weakeningRows = [...latestTop5Rows, ...latestTop3Rows].filter((row) => (row.probabilityDelta ?? 0) < 0 || (row.scoreDelta ?? 0) < 0);
+  const marketPulse = {
+    topSignalStability: topSignalStrength.stability,
+    top5Volatility: volatility(latestTop5Rows),
+    exclusiveTop3Volatility: volatility(latestTop3Rows),
+    marketMovement: [...latestTop5Rows, ...latestTop3Rows].filter((row) => Math.abs(row.edgeDelta ?? 0) > 0).length,
+    signalsImproving: improvingRows.length,
+    signalsWeakening: weakeningRows.length,
+    leaderChanges: leaderChangesToday,
+    qualifiedCandidates: latestPremiumInternal.length,
+  };
 
   return NextResponse.json({
     summary,
@@ -439,7 +580,18 @@ export async function GET() {
     topSignalTimeline,
     top5: {
       currentInternalRanking: latestTop5Rows,
+      currentRanking: latestTop5Rows,
       officialFrozenTop5: officialTop5Rows,
+      frozenRanking: officialTop5Rows,
+      movementHistory: top5Movement,
+      summary: {
+        lastRecalculation: currentPremiumLastRun,
+        nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
+        publicationCutoff: finalReview(firstStartTime),
+        frozen: officialTop5Rows.length > 0,
+        published: officialTop5Rows.some((row) => row.published),
+        volatility: marketPulse.top5Volatility,
+      },
       lastRecalculation: currentPremiumLastRun,
       nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
       publicationCutoff: finalReview(firstStartTime),
@@ -448,16 +600,27 @@ export async function GET() {
     },
     top5Movement,
     signalsDetected: signalsWithTop3Rank,
+    signalsDetectedDetail: {
+      frozenSignals: signalsWithTop3Rank,
+      exclusiveRanking: latestTop3Rows,
+      movement: exclusiveMovement,
+    },
     exclusiveTop3: {
       currentInternalRanking: latestTop3Rows,
+      currentRanking: latestTop3Rows,
       officialFrozenTop3: officialTop3Rows,
+      frozenRanking: officialTop3Rows,
+      movementHistory: exclusiveMovement,
       lastRecalculation: currentExclusiveLastRun,
+      nextRecalculation: addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES),
       publicationCutoff: finalReview(firstStartTime),
       frozen: officialTop3Rows.length > 0,
       published: officialTop3Rows.some((row) => row.published),
     },
     liveActivity: activity,
+    activity,
     operationsTimeline,
+    marketPulse,
     dataSources: ["signals_detected_history", "top5_history", "top_signal_history", "atlas_core_mlb_signals", "atlas_core_mlb_picks"],
     errors,
   });
