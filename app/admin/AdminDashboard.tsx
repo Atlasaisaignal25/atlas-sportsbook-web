@@ -1797,6 +1797,9 @@ function ControlLeadersToday({ rows }: { rows: any[] }) {
 function ControlOverviewDetails({ data, summary }: { data: AtlasControlCenterData; summary?: any }) {
   return (
     <div className="grid gap-2 pt-2">
+      <ControlSection title="Second Place Candidate">
+        <SecondPlaceCandidate candidate={data.topSignal?.secondPlaceCandidate ?? null} />
+      </ControlSection>
       <ControlTopSignalStrength strength={data.topSignal?.strength} />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <ControlMiniMetric label="Sports" value={(summary?.sportsAvailable ?? []).join(", ") || "N/A"} />
@@ -1804,9 +1807,6 @@ function ControlOverviewDetails({ data, summary }: { data: AtlasControlCenterDat
         <ControlMiniMetric label="Signals Detected" value={summary?.signalsDetected ?? 0} tone="text-cyan-300" />
         <ControlMiniMetric label="Stale Sources" value={summary?.staleSources ?? 0} tone={(summary?.staleSources ?? 0) ? "text-yellow-300" : "text-emerald-300"} />
       </div>
-      <ControlSection title="Second Place Candidate">
-        <SecondPlaceCandidate candidate={data.topSignal?.secondPlaceCandidate ?? null} />
-      </ControlSection>
       <ControlSection title="Why Atlas Changed">
         <ControlChangeReasons rows={data.topSignal?.changeReasons ?? []} />
       </ControlSection>
@@ -1878,16 +1878,8 @@ function ControlTopSignalStrength({ strength }: { strength?: any }) {
 function SecondPlaceCandidate({ candidate }: { candidate: any | null }) {
   if (!candidate) return <p className="text-xs font-bold text-white/45">No qualified second candidate.</p>;
   return (
-    <div className="rounded-lg border border-white/8 bg-white/[0.025] p-2">
-      <p className="text-[10px] font-black uppercase text-white/45">Second Place Candidate</p>
-      <p className="mt-1 text-sm font-black text-white">{candidate.selection}</p>
-      <p className="text-[11px] text-white/45">{candidate.event} · {candidate.market}</p>
-      <div className="mt-2 grid grid-cols-4 gap-1.5">
-        <ControlMiniMetric label="Odds" value={formatAdminOdds(candidate.odds) || "N/A"} />
-        <ControlMiniMetric label="Prob" value={controlPct(candidate.atlasProbability)} />
-        <ControlMiniMetric label="Edge" value={formatAdminEdge(candidate.edge)} />
-        <ControlMiniMetric label="Score" value={controlScore(candidate.score)} />
-      </div>
+    <div className="overflow-hidden rounded-xl border border-white/10">
+      <ControlSignalRow row={{ ...candidate, currentRank: 2, trend: candidate.status ?? "CANDIDATE" }} rank={2} premium />
     </div>
   );
 }
@@ -2121,6 +2113,13 @@ function AtlasControlCenterPanel({
               <ControlEngineStatusBar rows={data.engineHealth} summary={summary} />
               <ControlTopSignalCurrentLeader data={data.topSignal} />
               <ControlLeadersToday rows={data.topSignal?.leadersToday ?? []} />
+              <AdminShellCard className="p-2.5">
+                <button type="button" onClick={onToggleEngineDetails} className="flex w-full items-center justify-between text-[11px] font-black uppercase text-cyan-300">
+                  <span>{engineDetailsOpen ? "Hide Engine Details ↑" : "Open Engine Details →"}</span>
+                  <span className="text-white/35">{engineDetailsOpen ? "Expanded" : "Compact"}</span>
+                </button>
+                {engineDetailsOpen ? <ControlOverviewDetails data={data} summary={summary} /> : null}
+              </AdminShellCard>
               <ControlSignalPreview
                 title="Premium Top 5"
                 rows={(data.top5?.currentInternalRanking ?? []).slice(0, 5)}
@@ -2139,13 +2138,6 @@ function AtlasControlCenterPanel({
                 empty="No frozen Signals Detected rows yet."
                 action={<button type="button" onClick={() => onTab("signals")}>View All Signals →</button>}
               />
-              <AdminShellCard className="p-2.5">
-                <button type="button" onClick={onToggleEngineDetails} className="flex w-full items-center justify-between text-[11px] font-black uppercase text-cyan-300">
-                  <span>{engineDetailsOpen ? "Hide Engine Details ↑" : "Open Engine Details →"}</span>
-                  <span className="text-white/35">{engineDetailsOpen ? "Expanded" : "Compact"}</span>
-                </button>
-                {engineDetailsOpen ? <ControlOverviewDetails data={data} summary={summary} /> : null}
-              </AdminShellCard>
             </>
           ) : null}
 
