@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/app/lib/adminAuth";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
+import { getAtlasCoreMlbConfig } from "@/app/lib/mlb-engine/atlas-core/atlas-core-config";
+import { resolveMlbSlateWindow, timestampBelongsToMlbSlate } from "@/app/lib/mlb-engine/slate-date";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +10,8 @@ type DbRow = Record<string, any>;
 
 const ET_TIMEZONE = "America/New_York";
 const ENGINE_RECALC_MINUTES = 60;
+const TOP_SIGNAL_MIN_ODDS = Number(process.env.TOP_SIGNAL_MIN_ODDS ?? process.env.ATLAS_TOP_SIGNAL_MIN_ODDS ?? -160);
+const TOP_SIGNAL_MAX_ODDS = Number(process.env.TOP_SIGNAL_MAX_ODDS ?? process.env.ATLAS_TOP_SIGNAL_MAX_ODDS ?? 120);
 
 function todayET() {
   return new Date().toLocaleDateString("en-CA", { timeZone: ET_TIMEZONE });
@@ -79,7 +83,7 @@ function num(value: unknown) {
 
 function eventName(row: DbRow | null | undefined) {
   if (!row) return "N/A";
-  return `${row.away_team ?? "Away"} @ ${row.home_team ?? "Home"}`;
+  return row.event ?? `${row.away_team ?? row.awayTeam ?? "Away"} @ ${row.home_team ?? row.homeTeam ?? "Home"}`;
 }
 
 function marketLabel(row: DbRow | null | undefined) {
@@ -98,7 +102,172 @@ function pickLabel(row: DbRow | null | undefined) {
 }
 
 function scoreOf(row: DbRow | null | undefined) {
-  return num(row?.score) ?? num(row?.pick_ranking) ?? 0;
+  return num(row?.score) ?? num(row?.engineScore) ?? num(row?.pick_ranking) ?? 0;
+}
+
+function sourceMetadata(params: { engine: string; table: string; rows: DbRow[]; timestampField?: string }) {
+  const timestampField = params.timestampField ?? "run_at";
+  const latestTimestamp = params.rows
+    .map((row) => row[timestampField] ?? row.updated_at ?? row.created_at ?? null)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+  return {
+    engine: params.engine,
+    table: params.table,
+    rowCount: params.rows.length,
+    latestTimestamp,
+  };
+}
+
+function normalizeName(value: string) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/&/g, "and")
+    .replace(/'/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function teamsKey(homeTeam: string, awayTeam: string) {
+  return `${normalizeName(homeTeam)}|${normalizeName(awayTeam)}`;
+}
+
+function edgeMarket(row: DbRow) {
+  const market = String(row.market ?? "").toUpperCase();
+  if (market === "MONEYLINE") return "h2h";
+  if (market === "RUN_LINE") return "spreads";
+  return "totals";
+}
+
+function edgeLine(row: DbRow) {
+  const context = row.market_context ?? {};
+  const market = String(row.market ?? "").toUpperCase();
+  if (market === "RUN_LINE") {
+    return row.direction === "HOME" ? num(context.homePoint) : row.direction === "AWAY" ? num(context.awayPoint) : null;
+  }
+  if (market === "TOTALS") return num(context.point);
+  return null;
+}
+
+function edgeOutcome(row: DbRow) {
+  const market = String(row.market ?? "").toUpperCase();
+  if (market === "TOTALS") return row.direction === "UNDER" ? "under" : "over";
+  if (row.direction === "HOME") return row.home_team_name;
+  if (row.direction === "AWAY") return row.away_team_name;
+  return "";
+}
+
+function edgePickLabel(row: DbRow) {
+  const market = String(row.market ?? "").toUpperCase();
+  if (market === "TOTALS") {
+    const line = edgeLine(row);
+    return `${row.direction === "UNDER" ? "Under" : "Over"}${line === null ? "" : ` ${line}`}`;
+  }
+  const team = row.direction === "HOME" ? row.home_team_name : row.away_team_name;
+  if (market === "RUN_LINE") {
+    const line = edgeLine(row);
+    return `${team}${line === null ? "" : ` (${line > 0 ? "+" : ""}${line})`}`;
+  }
+  return `${team} ML`;
+}
+
+function edgeOdds(row: DbRow, oddsRows: DbRow[]) {
+  const context = row.market_context ?? {};
+  const contextPrice =
+    row.direction === "HOME"
+      ? num(context.homePrice)
+      : row.direction === "AWAY"
+        ? num(context.awayPrice)
+        : row.direction === "OVER"
+          ? num(context.overPrice)
+          : row.direction === "UNDER"
+            ? num(context.underPrice)
+            : null;
+  if (contextPrice !== null) return contextPrice;
+
+  const market = edgeMarket(row);
+  const line = edgeLine(row);
+  const teamKey = teamsKey(row.home_team_name, row.away_team_name);
+  const outcome = normalizeName(edgeOutcome(row));
+  const odds = oddsRows.find((item) => {
+    if (teamsKey(item.home_team, item.away_team) !== teamKey) return false;
+    if (item.market_key !== market) return false;
+    if (normalizeName(item.outcome_name) !== outcome) return false;
+    const point = num(item.point);
+    return line === null || point === null || Number(point) === Number(line);
+  });
+  return num(odds?.price);
+}
+
+function topSignalGameStart(row: DbRow, oddsByTeams: Map<string, DbRow>) {
+  return oddsByTeams.get(teamsKey(row.home_team_name, row.away_team_name))?.commence_time ?? null;
+}
+
+function topSignalMarketStatus(row: DbRow) {
+  const context = row.market_context ?? {};
+  return String(context.status ?? context.gameStatus ?? context.eventStatus ?? context.state ?? "").toUpperCase();
+}
+
+function topSignalMinutesUntilStart(startTime: string | null) {
+  if (!startTime) return null;
+  const start = new Date(startTime);
+  if (Number.isNaN(start.getTime())) return null;
+  return (start.getTime() - Date.now()) / 60000;
+}
+
+function isPregameTopSignalCandidate(row: DbRow, startTime: string | null) {
+  const status = topSignalMarketStatus(row);
+  const blockedStatuses = new Set(["LIVE", "IN_PROGRESS", "FINAL", "CANCELLED", "CANCELED", "POSTPONED"]);
+  if (blockedStatuses.has(status)) return false;
+  const allowedStatuses = new Set(["", "PRE_GAME", "PREGAME", "NOT_STARTED", "PENDING", "SCHEDULED"]);
+  if (!allowedStatuses.has(status)) return false;
+  const minutes = topSignalMinutesUntilStart(startTime);
+  return minutes !== null && minutes > 0;
+}
+
+function probabilityFirstEdges(edges: DbRow[]) {
+  const grouped = new Map<string, DbRow[]>();
+  for (const edge of edges) {
+    if (!grouped.has(edge.official_game_id)) grouped.set(edge.official_game_id, []);
+    grouped.get(edge.official_game_id)?.push(edge);
+  }
+  return Array.from(grouped.values())
+    .map((gameEdges) => gameEdges.toSorted((a, b) => {
+      const probabilityDiff = (num(b.atlas_probability) ?? -1) - (num(a.atlas_probability) ?? -1);
+      if (probabilityDiff !== 0) return probabilityDiff;
+      return (num(b.edge) ?? -1) - (num(a.edge) ?? -1);
+    }).find((edge) => num(edge.atlas_probability) !== null))
+    .filter((edge): edge is DbRow => Boolean(edge));
+}
+
+function topSignalGate(edge: DbRow, decision?: DbRow, projection?: DbRow) {
+  const config = getAtlasCoreMlbConfig();
+  const probability = num(edge.atlas_probability);
+  const edgeValue = num(edge.edge) ?? 0;
+  const conviction = num(decision?.conviction_score) ?? 0;
+  const consensus = num(decision?.consensus_score) ?? 0;
+  const confidence = num(decision?.decision_confidence_score) ?? 0;
+  const warnings: string[] = [];
+  if (probability === null) warnings.push("Atlas probability unavailable.");
+  if (!projection || projection.projection_availability !== "AVAILABLE") warnings.push("Projection unavailable or partial.");
+  if (!decision || decision.no_pick || String(decision.decision ?? "").includes("NO_PICK")) warnings.push("Decision is NO_PICK or unavailable.");
+  if (edge.direction === "NONE") warnings.push("Selected probability market has no positive market edge direction.");
+  if (edgeValue < config.minFinalPickEdge) warnings.push("Edge below Final Pick Gate.");
+  if (conviction < config.minFinalPickConvictionScore) warnings.push("Conviction below Final Pick Gate.");
+  if (consensus < config.minFinalPickConsensusScore) warnings.push("Consensus below Final Pick Gate.");
+  return {
+    passed: warnings.length === 0,
+    probability,
+    edgeValue,
+    conviction,
+    consensus,
+    confidence,
+    ranking: Math.round((probability ?? 0) * 10000 + edgeValue * 100 + conviction * 1.2 + consensus * 0.9 + confidence * 0.8),
+    warnings,
+  };
 }
 
 function candidateFromRow(row: DbRow | null | undefined) {
@@ -106,17 +275,17 @@ function candidateFromRow(row: DbRow | null | undefined) {
   return {
     sport: row.sport,
     event: eventName(row),
-    awayTeam: row.away_team ?? null,
-    homeTeam: row.home_team ?? null,
+    awayTeam: row.away_team ?? row.awayTeam ?? null,
+    homeTeam: row.home_team ?? row.homeTeam ?? null,
     market: marketLabel(row),
     selection: pickLabel(row),
     odds: num(row.odds),
-    atlasProbability: num(row.atlas_probability),
+    atlasProbability: num(row.atlas_probability) ?? num(row.atlasProbability),
     edge: num(row.edge),
     score: scoreOf(row),
     status: row.status,
-    gameId: row.game_id,
-    runAt: row.run_at,
+    gameId: row.game_id ?? row.gameId,
+    runAt: row.run_at ?? row.runAt,
   };
 }
 
@@ -331,6 +500,106 @@ function volatility(rows: Array<{ trend?: string; probabilityDelta?: number | nu
   return "LOW";
 }
 
+async function loadTopSignalEligibleCandidates(params: {
+  supabase: ReturnType<typeof getSupabaseAdmin>;
+  slateDate: string;
+  activeSessionId?: string | null;
+  publishedGameIds: Set<string>;
+}) {
+  const { startUtc, endUtc } = resolveMlbSlateWindow();
+  const [edges, decisions, projections, odds] = await Promise.all([
+    params.supabase
+      .from("mlb_market_edge_research_snapshots")
+      .select("official_game_id,home_team_name,away_team_name,market,atlas_probability,market_probability,edge,value_percent,direction,classification,market_context,source_versions,snapshot_hash,captured_at,slate_date,freshness_status,freshness_reason")
+      .eq("model_version", "mlb_market_edge_research_v1")
+      .eq("slate_date", params.slateDate)
+      .eq("canonical", true)
+      .gte("captured_at", startUtc)
+      .lt("captured_at", endUtc)
+      .limit(300),
+    params.supabase
+      .from("mlb_decision_research_snapshots")
+      .select("official_game_id,decision,consensus_grade,consensus_score,conviction_grade,conviction_score,decision_confidence_score,no_pick,feature_hash,model_version,captured_at,slate_date,freshness_status,freshness_reason")
+      .eq("model_version", "mlb_decision_engine_v1")
+      .eq("slate_date", params.slateDate)
+      .eq("canonical", true)
+      .gte("captured_at", startUtc)
+      .lt("captured_at", endUtc)
+      .limit(300),
+    params.supabase
+      .from("mlb_projection_research_snapshots")
+      .select("official_game_id,projection_availability,feature_hash,model_version,captured_at,slate_date,freshness_status,freshness_reason")
+      .eq("model_version", "mlb_projection_research_v1")
+      .eq("slate_date", params.slateDate)
+      .eq("canonical", true)
+      .gte("captured_at", startUtc)
+      .lt("captured_at", endUtc)
+      .limit(300),
+    params.supabase
+      .from("market_odds_snapshots")
+      .select("event_id,commence_time,home_team,away_team,market_key,outcome_name,point,price,captured_at")
+      .eq("sport", "MLB")
+      .gte("commence_time", startUtc)
+      .lt("commence_time", endUtc)
+      .order("captured_at", { ascending: false })
+      .limit(5000),
+  ]);
+  if (edges.error) throw edges.error;
+  if (decisions.error) throw decisions.error;
+  if (projections.error) throw projections.error;
+  if (odds.error) throw odds.error;
+
+  const decisionByGame = new Map(((decisions.data ?? []) as DbRow[]).map((row) => [row.official_game_id, row]));
+  const projectionByGame = new Map(((projections.data ?? []) as DbRow[]).map((row) => [row.official_game_id, row]));
+  const oddsRows = ((odds.data ?? []) as DbRow[]).filter((row) => timestampBelongsToMlbSlate(row.commence_time, params.slateDate));
+  const oddsByTeams = new Map<string, DbRow>();
+  for (const row of oddsRows) {
+    const key = teamsKey(row.home_team, row.away_team);
+    if (!oddsByTeams.has(key)) oddsByTeams.set(key, row);
+  }
+
+  return probabilityFirstEdges((edges.data ?? []) as DbRow[])
+    .map((edge) => {
+      const startTime = topSignalGameStart(edge, oddsByTeams);
+      const decision = decisionByGame.get(edge.official_game_id);
+      const projection = projectionByGame.get(edge.official_game_id);
+      const gate = topSignalGate(edge, decision, projection);
+      return { edge, startTime, gate };
+    })
+    .filter((item) => timestampBelongsToMlbSlate(item.startTime, params.slateDate))
+    .filter((item) => item.gate.passed)
+    .filter((item) => {
+      const oddsValue = edgeOdds(item.edge, oddsRows);
+      return oddsValue !== null && oddsValue >= TOP_SIGNAL_MIN_ODDS && oddsValue <= TOP_SIGNAL_MAX_ODDS;
+    })
+    .filter((item) => !params.publishedGameIds.has(item.edge.official_game_id))
+    .filter((item) => isPregameTopSignalCandidate(item.edge, item.startTime))
+    .toSorted((a, b) => b.gate.ranking - a.gate.ranking)
+    .map((item, index) => ({
+      sport: "MLB",
+      event: `${item.edge.away_team_name ?? "Away"} @ ${item.edge.home_team_name ?? "Home"}`,
+      awayTeam: item.edge.away_team_name ?? null,
+      homeTeam: item.edge.home_team_name ?? null,
+      gameId: item.edge.official_game_id,
+      market: marketLabel({ market: edgeMarket(item.edge) }),
+      selection: edgePickLabel(item.edge),
+      odds: edgeOdds(item.edge, oddsRows),
+      atlasProbability: item.gate.probability,
+      edge: item.gate.edgeValue,
+      score: item.gate.ranking,
+      currentRank: index + 1,
+      rank: index + 1,
+      status: "ELIGIBLE",
+      sessionId: params.activeSessionId ?? null,
+      startTime: item.startTime,
+      source: {
+        engine: "TOP_SIGNAL",
+        table: "mlb_market_edge_research_snapshots",
+        rowId: item.edge.snapshot_hash ?? item.edge.official_game_id,
+      },
+    }));
+}
+
 export async function GET() {
   const session = await getAdminSession();
   if (!session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -366,16 +635,18 @@ export async function GET() {
 
   const signalsHistory = (signalsQuery.data ?? []) as DbRow[];
   const top5History = (top5Query.data ?? []) as DbRow[];
+  const exclusiveHistory = top5History.filter((row) => row.engine === "EXCLUSIVE_TOP3");
+  const premiumHistory = top5History.filter((row) => row.engine === "PREMIUM_TOP5");
   const topSignalTimelineRaw = ((topSignalQuery.data ?? []) as DbRow[]).slice().reverse();
   const activeSignals = (activeSignalsQuery.data ?? []) as DbRow[];
   const activePicks = publicPickRows(activePicksQuery.data ?? []);
 
-  const latestPremiumInternal = latestRun(top5History, "PREMIUM_TOP5", "INTERNAL_RANKING");
-  const premiumPrevious = previousRun(top5History, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
-  const latestPremiumFrozen = latestRun(top5History, "PREMIUM_TOP5", "OFFICIAL_FREEZE");
-  const latestExclusiveInternal = latestRun(top5History, "EXCLUSIVE_TOP3", "INTERNAL_RANKING");
-  const exclusivePrevious = previousRun(top5History, "EXCLUSIVE_TOP3", "INTERNAL_RANKING", latestExclusiveInternal[0]?.run_at);
-  const latestExclusiveFrozen = latestRun(top5History, "EXCLUSIVE_TOP3", "OFFICIAL_FREEZE");
+  const latestPremiumInternal = latestRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING");
+  const premiumPrevious = previousRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
+  const latestPremiumFrozen = latestRun(premiumHistory, "PREMIUM_TOP5", "OFFICIAL_FREEZE");
+  const latestExclusiveInternal = latestRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING");
+  const exclusivePrevious = previousRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING", latestExclusiveInternal[0]?.run_at);
+  const latestExclusiveFrozen = latestRun(exclusiveHistory, "EXCLUSIVE_TOP3", "OFFICIAL_FREEZE");
   const latestTop5Rows = rankingRows(latestPremiumInternal, premiumPrevious);
   const latestTop3Rows = rankingRows(latestExclusiveInternal, exclusivePrevious);
   const officialTop5Rows = rankingRows(latestPremiumFrozen, []);
@@ -383,14 +654,20 @@ export async function GET() {
   const firstStartTime = firstStart([...signalsHistory, ...top5History, ...activeSignals]);
   const topSignalLeader = topSignalTimelineRaw.at(-1) ?? null;
   const officialTopSignalRow = topSignalTimelineRaw.filter((row) => Boolean(row.published)).at(-1) ?? null;
-  const eligibleTopSignalCandidates = latestPremiumInternal
-    .filter((row) => {
-      const odds = num(row.odds);
-      return odds !== null && odds >= -160 && odds <= 120;
-    })
-    .toSorted((a, b) => scoreOf(b) - scoreOf(a));
+  const topSignalPublishedGameIds = new Set(topSignalTimelineRaw.filter((row) => Boolean(row.published)).map((row) => String(row.game_id)));
+  let eligibleTopSignalCandidates: DbRow[] = [];
+  try {
+    eligibleTopSignalCandidates = await loadTopSignalEligibleCandidates({
+      supabase,
+      slateDate,
+      activeSessionId: topSignalLeader?.session_id ?? null,
+      publishedGameIds: topSignalPublishedGameIds,
+    });
+  } catch (error) {
+    errors.push(`top_signal_eligible_candidates: ${error instanceof Error ? error.message : String(error)}`);
+  }
   const topSignalSecondPlace =
-    eligibleTopSignalCandidates.find((row) => row.game_id !== topSignalLeader?.game_id) ?? null;
+    eligibleTopSignalCandidates.find((row) => String(row.gameId ?? row.game_id) !== String(topSignalLeader?.game_id ?? "")) ?? null;
 
   const topSignalTimeline = topSignalTimelineRaw.map((row, index) => {
     const previous = topSignalTimelineRaw[index - 1];
@@ -460,7 +737,7 @@ export async function GET() {
   const leaderChangesToday = topSignalTimeline.filter((row) => ["Leader Established", "Leader Replaced"].includes(row.status)).length;
   const longestLeaderStreak = topSignalTimelineRaw.reduce((max, row) => Math.max(max, Number(row.consecutive_leader_hours ?? 1)), 0);
   const topSignalChangeReasons = changeReasons(topSignalTimelineRaw);
-  const topSignalCurrentRank = new Map(eligibleTopSignalCandidates.map((row, index) => [String(row.game_id), index + 1]));
+  const topSignalCurrentRank = new Map(eligibleTopSignalCandidates.map((row, index) => [String(row.gameId ?? row.game_id), index + 1]));
   const leadersByIdentity = new Map<string, DbRow[]>();
   for (const row of topSignalTimelineRaw) {
     const key = `${row.sport}:${row.game_id}:${marketLabel(row)}:${pickLabel(row)}:${row.line ?? ""}`;
@@ -470,7 +747,7 @@ export async function GET() {
     .map(([signalIdentity, rows]) => {
       const first = rows[0];
       const last = rows.at(-1) ?? first;
-      const currentCandidate = eligibleTopSignalCandidates.find((row) => row.game_id === last.game_id) ?? last;
+      const currentCandidate = eligibleTopSignalCandidates.find((row) => String(row.gameId ?? row.game_id) === String(last.game_id)) ?? last;
       const currentRank = topSignalCurrentRank.get(String(last.game_id)) ?? null;
       const previousRank = rows.length > 1 ? topSignalCurrentRank.get(String(rows.at(-2)?.game_id)) ?? null : null;
       const previousDistinctLeader = topSignalTimelineRaw
@@ -495,13 +772,13 @@ export async function GET() {
         edge: num(currentCandidate.edge),
         score: scoreOf(currentCandidate),
         event: eventName(currentCandidate),
-        awayTeam: currentCandidate.away_team ?? null,
-        homeTeam: currentCandidate.home_team ?? null,
+        awayTeam: currentCandidate.away_team ?? currentCandidate.awayTeam ?? null,
+        homeTeam: currentCandidate.home_team ?? currentCandidate.homeTeam ?? null,
         market: marketLabel(currentCandidate),
         selection: pickLabel(currentCandidate),
         odds: num(currentCandidate.odds),
         status: currentCandidate.status,
-        gameId: currentCandidate.game_id,
+        gameId: currentCandidate.game_id ?? currentCandidate.gameId,
       };
     })
     .sort((a, b) => (a.currentRank ?? 999) - (b.currentRank ?? 999));
@@ -597,7 +874,7 @@ export async function GET() {
     leaderScore,
     secondPlaceScore: secondScore,
     scoreGap: leaderScore !== null && secondScore !== null ? leaderScore - secondScore : null,
-    probabilityGap: delta(topSignalLeader?.atlas_probability, topSignalSecondPlace?.atlas_probability),
+    probabilityGap: delta(topSignalLeader?.atlas_probability, topSignalSecondPlace?.atlas_probability ?? topSignalSecondPlace?.atlasProbability),
     edgeGap: delta(topSignalLeader?.edge, topSignalSecondPlace?.edge),
     leaderSince: topSignalLeaderSince,
     leaderDuration: topSignalLeaderTime,
@@ -752,11 +1029,92 @@ export async function GET() {
     leaderChanges: leaderChangesToday,
     qualifiedCandidates: latestPremiumInternal.length,
   };
+  const signalsDetectedSource = sourceMetadata({ engine: "SIGNALS_DETECTED", table: "signals_detected_history", rows: signalsHistory });
+  const exclusiveSource = sourceMetadata({ engine: "EXCLUSIVE_TOP3", table: "top5_history", rows: exclusiveHistory });
+  const premiumSource = sourceMetadata({ engine: "PREMIUM_TOP5", table: "top5_history", rows: premiumHistory });
+  const topSignalSource = sourceMetadata({ engine: "TOP_SIGNAL", table: "top_signal_history", rows: topSignalTimelineRaw });
+  const signalsDetectedProduct = {
+    engineRows: signalsWithTop3Rank,
+    frozenRows: signalsWithTop3Rank,
+    source: signalsDetectedSource,
+    summary: {
+      lastRun: signalsLastRun,
+      rowCount: signalsWithTop3Rank.length,
+      frozen: signalsWithTop3Rank.length > 0,
+    },
+  };
+  const premiumTop5Product = {
+    engineRows: latestTop5Rows,
+    currentInternalRanking: latestTop5Rows,
+    currentRanking: latestTop5Rows,
+    officialRows: officialTop5Rows,
+    officialFrozenTop5: officialTop5Rows,
+    frozenRanking: officialTop5Rows,
+    movementHistory: top5Movement,
+    source: premiumSource,
+    summary: {
+      lastRecalculation: currentPremiumLastRun,
+      nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
+      publicationCutoff: finalReview(firstStartTime),
+      frozen: officialTop5Rows.length > 0,
+      published: officialTop5Rows.some((row) => row.published),
+      volatility: marketPulse.top5Volatility,
+      rowCount: latestTop5Rows.length || officialTop5Rows.length,
+    },
+    lastRecalculation: currentPremiumLastRun,
+    nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
+    publicationCutoff: finalReview(firstStartTime),
+    frozen: officialTop5Rows.length > 0,
+    published: officialTop5Rows.some((row) => row.published),
+  };
+  const exclusiveTop3Product = {
+    engineRows: latestTop3Rows,
+    currentInternalRanking: latestTop3Rows,
+    currentRanking: latestTop3Rows,
+    officialRows: officialTop3Rows,
+    officialFrozenTop3: officialTop3Rows,
+    frozenRanking: officialTop3Rows,
+    movementHistory: exclusiveMovement,
+    source: exclusiveSource,
+    summary: {
+      lastRecalculation: currentExclusiveLastRun,
+      nextRecalculation: addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES),
+      publicationCutoff: finalReview(firstStartTime),
+      frozen: officialTop3Rows.length > 0,
+      published: officialTop3Rows.some((row) => row.published),
+      sourcePool: "SIGNALS_DETECTED",
+      rowCount: latestTop3Rows.length || officialTop3Rows.length,
+    },
+    lastRecalculation: currentExclusiveLastRun,
+    nextRecalculation: addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES),
+    publicationCutoff: finalReview(firstStartTime),
+    frozen: officialTop3Rows.length > 0,
+    published: officialTop3Rows.some((row) => row.published),
+  };
+  const topSignalProduct = topSignal
+    ? {
+        ...topSignal,
+        engineRows: topSignalTimeline,
+        eligibleCandidates: eligibleTopSignalCandidates,
+        currentLeader: topSignal.currentLeader,
+        leadersToday,
+        sessions: topSignalSessions,
+        officialRows: officialTopSignal ? [officialTopSignal] : [],
+        source: topSignalSource,
+        summary: {
+          lastRun: topSignalLeader?.run_at ?? null,
+          rowCount: topSignalTimelineRaw.length,
+          eligibleCandidates: eligibleTopSignalCandidates.length,
+          currentLeader: topSignal.currentLeader,
+          published: Boolean(officialTopSignal),
+        },
+      }
+    : null;
 
   return NextResponse.json({
     summary,
     engineHealth: healthRows,
-    topSignal,
+    topSignal: topSignalProduct,
     officialProducts: {
       topSignal: officialTopSignal,
       premiumTop5: officialTop5Rows,
@@ -779,44 +1137,21 @@ export async function GET() {
       },
     },
     topSignalTimeline,
-    top5: {
-      currentInternalRanking: latestTop5Rows,
-      currentRanking: latestTop5Rows,
-      officialFrozenTop5: officialTop5Rows,
-      frozenRanking: officialTop5Rows,
-      movementHistory: top5Movement,
-      summary: {
-        lastRecalculation: currentPremiumLastRun,
-        nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
-        publicationCutoff: finalReview(firstStartTime),
-        frozen: officialTop5Rows.length > 0,
-        published: officialTop5Rows.some((row) => row.published),
-        volatility: marketPulse.top5Volatility,
-      },
-      lastRecalculation: currentPremiumLastRun,
-      nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
-      publicationCutoff: finalReview(firstStartTime),
-      frozen: officialTop5Rows.length > 0,
-      published: officialTop5Rows.some((row) => row.published),
-    },
+    premiumTop5: premiumTop5Product,
+    top5: premiumTop5Product,
     top5Movement,
-    signalsDetected: signalsWithTop3Rank,
+    signalsDetected: signalsDetectedProduct,
     signalsDetectedDetail: {
       frozenSignals: signalsWithTop3Rank,
       exclusiveRanking: latestTop3Rows,
       movement: exclusiveMovement,
     },
-    exclusiveTop3: {
-      currentInternalRanking: latestTop3Rows,
-      currentRanking: latestTop3Rows,
-      officialFrozenTop3: officialTop3Rows,
-      frozenRanking: officialTop3Rows,
-      movementHistory: exclusiveMovement,
-      lastRecalculation: currentExclusiveLastRun,
-      nextRecalculation: addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES),
-      publicationCutoff: finalReview(firstStartTime),
-      frozen: officialTop3Rows.length > 0,
-      published: officialTop3Rows.some((row) => row.published),
+    exclusiveTop3: exclusiveTop3Product,
+    productSources: {
+      signalsDetected: signalsDetectedSource,
+      exclusiveTop3: exclusiveSource,
+      premiumTop5: premiumSource,
+      topSignal: topSignalSource,
     },
     liveActivity: activity,
     activity,

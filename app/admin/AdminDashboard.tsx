@@ -164,11 +164,13 @@ export type AtlasControlCenterData = {
     productStatus: any;
   };
   topSignalTimeline: any[];
+  premiumTop5?: any;
   top5: any;
   top5Movement: any[];
-  signalsDetected: any[];
+  signalsDetected: any;
   signalsDetectedDetail?: any;
   exclusiveTop3: any;
+  productSources?: any;
   liveActivity: any[];
   operationsTimeline: any[];
   marketPulse?: any;
@@ -1893,6 +1895,14 @@ function ControlOverviewDetails({ data, summary }: { data: AtlasControlCenterDat
       <ControlSection title="Why Atlas Changed">
         <ControlChangeReasons rows={data.topSignal?.changeReasons ?? []} />
       </ControlSection>
+      <ControlSection title="Product Sources">
+        <div className="grid gap-1.5">
+          <ControlMiniMetric label="Signals Detected" value={sourceLabel(data.signalsDetected?.source ?? data.productSources?.signalsDetected)} tone="text-cyan-300" />
+          <ControlMiniMetric label="Exclusive Top 3" value={sourceLabel(data.exclusiveTop3?.source ?? data.productSources?.exclusiveTop3)} tone="text-sky-300" />
+          <ControlMiniMetric label="Premium Top 5" value={sourceLabel(premiumProduct(data)?.source ?? data.productSources?.premiumTop5)} tone="text-cyan-300" />
+          <ControlMiniMetric label="Top Signal" value={sourceLabel(data.topSignal?.source ?? data.productSources?.topSignal)} tone="text-purple-300" />
+        </div>
+      </ControlSection>
       <ControlMarketPulse pulse={data.marketPulse} />
     </div>
   );
@@ -2220,6 +2230,20 @@ function filterControlRows<T extends any[]>(rows: T | undefined, sport: AtlasCon
   return rows.filter((row) => rowMatchesControlSport(row, sport)) as T;
 }
 
+function signalProductRows(product: any, key: "engineRows" | "frozenRows" = "engineRows") {
+  if (Array.isArray(product)) return product;
+  return Array.isArray(product?.[key]) ? product[key] : [];
+}
+
+function premiumProduct(data: AtlasControlCenterData | null) {
+  return data?.premiumTop5 ?? data?.top5 ?? {};
+}
+
+function sourceLabel(source: any) {
+  if (!source) return "N/A";
+  return `${source.engine ?? "N/A"} · ${source.table ?? "N/A"} · ${source.rowCount ?? 0} rows`;
+}
+
 export function getAtlasControlSports(data: AtlasControlCenterData | null) {
   const dynamicSports = (data?.summary?.sportsAvailable ?? [])
     .map(normalizeControlSport)
@@ -2231,30 +2255,34 @@ export function filterAtlasControlCenterData(data: AtlasControlCenterData | null
   if (!data || sport === "ALL") return data;
   const topSignalMatches = rowMatchesControlSport(data.topSignal, sport);
   const leadersToday = filterControlRows(data.topSignal?.leadersToday, sport);
+  const eligibleCandidates = filterControlRows(data.topSignal?.eligibleCandidates, sport);
   const secondPlaceCandidate = rowMatchesControlSport(data.topSignal?.secondPlaceCandidate, sport)
     ? data.topSignal?.secondPlaceCandidate
     : null;
-  const topSignal = topSignalMatches || leadersToday.length || secondPlaceCandidate
+  const topSignal = topSignalMatches || leadersToday.length || secondPlaceCandidate || eligibleCandidates.length
     ? {
         ...data.topSignal,
         leadersToday,
+        eligibleCandidates,
         secondPlaceCandidate,
       }
     : null;
   const officialTopSignalMatches = rowMatchesControlSport(data.officialProducts?.topSignal, sport);
   const officialTopSignal = officialTopSignalMatches ? data.officialProducts?.topSignal : null;
-  const top5Rows = filterControlRows(data.top5?.currentInternalRanking ?? [], sport);
-  const officialTop5Rows = filterControlRows(data.top5?.officialFrozenTop5 ?? [], sport);
+  const premium = premiumProduct(data);
+  const top5Rows = filterControlRows(premium?.engineRows ?? premium?.currentInternalRanking ?? [], sport);
+  const officialTop5Rows = filterControlRows(premium?.officialRows ?? premium?.officialFrozenTop5 ?? [], sport);
   const exclusiveRows = filterControlRows(data.exclusiveTop3?.currentInternalRanking ?? [], sport);
-  const officialExclusiveRows = filterControlRows(data.exclusiveTop3?.officialFrozenTop3 ?? [], sport);
-  const signalsDetected = filterControlRows(data.signalsDetected ?? [], sport);
+  const officialExclusiveRows = filterControlRows(data.exclusiveTop3?.officialRows ?? data.exclusiveTop3?.officialFrozenTop3 ?? [], sport);
+  const signalsDetectedEngineRows = filterControlRows(signalProductRows(data.signalsDetected, "engineRows"), sport);
+  const signalsDetectedFrozenRows = filterControlRows(signalProductRows(data.signalsDetected, "frozenRows"), sport);
 
   return {
     ...data,
     summary: {
       ...data.summary,
       topSignalCurrentLeader: topSignal?.currentLeader ?? "NO_QUALIFIED_SIGNAL",
-      signalsDetected: signalsDetected.length,
+      signalsDetected: signalsDetectedEngineRows.length,
       premiumTop5Candidates: top5Rows.length || officialTop5Rows.length,
       exclusiveTop3Candidates: exclusiveRows.length || officialExclusiveRows.length,
     },
@@ -2264,27 +2292,44 @@ export function filterAtlasControlCenterData(data: AtlasControlCenterData | null
       topSignal: officialTopSignal,
       premiumTop5: officialTop5Rows,
       exclusiveTop3: officialExclusiveRows,
-      signalsDetected,
+      signalsDetected: signalsDetectedFrozenRows,
     },
     topSignalTimeline: filterControlRows(data.topSignalTimeline ?? [], sport),
-    top5: {
-      ...data.top5,
+    premiumTop5: {
+      ...premium,
+      engineRows: top5Rows,
       currentInternalRanking: top5Rows,
       currentRanking: top5Rows,
+      officialRows: officialTop5Rows,
+      officialFrozenTop5: officialTop5Rows,
+      frozenRanking: officialTop5Rows,
+    },
+    top5: {
+      ...premium,
+      engineRows: top5Rows,
+      currentInternalRanking: top5Rows,
+      currentRanking: top5Rows,
+      officialRows: officialTop5Rows,
       officialFrozenTop5: officialTop5Rows,
       frozenRanking: officialTop5Rows,
     },
     top5Movement: filterControlRows(data.top5Movement ?? [], sport),
-    signalsDetected,
+    signalsDetected: {
+      ...data.signalsDetected,
+      engineRows: signalsDetectedEngineRows,
+      frozenRows: signalsDetectedFrozenRows,
+    },
     signalsDetectedDetail: {
       ...data.signalsDetectedDetail,
-      frozenSignals: signalsDetected,
+      frozenSignals: signalsDetectedFrozenRows,
       exclusiveRanking: exclusiveRows,
     },
     exclusiveTop3: {
       ...data.exclusiveTop3,
+      engineRows: exclusiveRows,
       currentInternalRanking: exclusiveRows,
       currentRanking: exclusiveRows,
+      officialRows: officialExclusiveRows,
       officialFrozenTop3: officialExclusiveRows,
       frozenRanking: officialExclusiveRows,
       movementHistory: filterControlRows(data.exclusiveTop3?.movementHistory ?? [], sport),
@@ -2445,7 +2490,7 @@ export function AtlasControlCenterOverview({
           </AdminShellCard>
           <ControlSignalPreview
             title="Premium Top 5"
-            rows={(data.top5?.currentInternalRanking ?? []).slice(0, 5)}
+            rows={(premiumProduct(data)?.engineRows ?? premiumProduct(data)?.currentInternalRanking ?? []).slice(0, 5)}
             empty="No Premium Top 5 ranking yet."
             action={onOpenTop5 ? <button type="button" onClick={onOpenTop5}>Open Top 5 →</button> : null}
           />
@@ -2457,7 +2502,7 @@ export function AtlasControlCenterOverview({
           />
           <ControlSignalPreview
             title="Signals Detected"
-            rows={(data.signalsDetected ?? []).slice(0, 5)}
+            rows={signalProductRows(data.signalsDetected, "engineRows").slice(0, 5)}
             empty="No frozen Signals Detected rows yet."
             action={onOpenSignals ? <button type="button" onClick={onOpenSignals}>View All Signals →</button> : null}
           />
@@ -2627,15 +2672,15 @@ export function AtlasControlCenterPanel({
           {tab === "top5" ? (
             mode === "live" ? (
               <>
-              <ControlSection title="Current Internal Ranking" action={`Next ${formatAdminTime(filteredData.top5?.nextRecalculation)}`}>
-                <ControlRankingList rows={filteredData.top5?.currentInternalRanking ?? []} empty="No current Premium Top 5 ranking." />
+              <ControlSection title="Current Internal Ranking" action={`Next ${formatAdminTime(premiumProduct(filteredData)?.nextRecalculation)}`}>
+                <ControlRankingList rows={premiumProduct(filteredData)?.engineRows ?? premiumProduct(filteredData)?.currentInternalRanking ?? []} empty="No current Premium Top 5 ranking." />
               </ControlSection>
               <ControlSection title="Top 5 Movement History">
                 <ControlActivityList rows={(filteredData.top5Movement ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
               </ControlSection>
               </>
             ) : (
-              <ControlSection title="Official Frozen Top 5" action={filteredData.top5?.frozen ? "Frozen" : "Pending"}>
+              <ControlSection title="Official Frozen Top 5" action={premiumProduct(filteredData)?.frozen ? "Frozen" : "Pending"}>
                 <ControlRankingList rows={filteredData.officialProducts?.premiumTop5 ?? []} empty="Official Top 5 has not frozen yet." />
               </ControlSection>
             )
@@ -2661,9 +2706,9 @@ export function AtlasControlCenterPanel({
           {tab === "signals" ? (
             mode === "live" ? (
               <ControlSignalPreview
-                title="Current Signals Ranking"
-                rows={filteredData.exclusiveTop3?.currentInternalRanking ?? []}
-                empty="No current signals ranking yet."
+                title="Signals Detected"
+                rows={signalProductRows(filteredData.signalsDetected, "engineRows")}
+                empty="No Signals Detected rows yet."
               />
             ) : (
               <ControlSection title="Frozen Signals Detected">
