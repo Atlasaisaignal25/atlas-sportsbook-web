@@ -1718,12 +1718,13 @@ function ControlMatchLogos({ awayTeam, homeTeam, size = "sm" }: { awayTeam?: str
   );
 }
 
-function ControlSignalRow({ row, rank, premium = false }: { row: any; rank?: number | null; premium?: boolean }) {
+function ControlSignalRow({ row, rank, premium = false }: { row: any; rank?: number | string | null; premium?: boolean }) {
   const displayRank = rank ?? row.currentRank ?? row.rank ?? row.exclusiveTop3Rank ?? null;
+  const rankText = row.rankLabel ?? (displayRank ? `#${displayRank}` : null);
   return (
     <div className={`grid grid-cols-[92px_minmax(0,1fr)_52px_44px] items-center gap-2 border-b border-white/8 px-2.5 py-2 last:border-b-0 ${premium ? "border-l-2 border-l-purple-400/50" : ""}`}>
       <div className="flex items-center gap-1">
-        {displayRank ? <span className="w-5 text-[12px] font-black text-white">#{displayRank}</span> : null}
+        {rankText ? <span className="w-8 text-[11px] font-black uppercase text-white">{rankText}</span> : null}
         <ControlMatchLogos awayTeam={row.awayTeam} homeTeam={row.homeTeam} />
       </div>
       <div className="min-w-0">
@@ -1783,12 +1784,19 @@ function ControlTopSignalCurrentLeader({ data }: { data: any | null }) {
   );
 }
 
-function ControlLeadersToday({ rows }: { rows: any[] }) {
+function ControlLeadersToday({ rows, secondPlace, expanded, onToggle }: { rows: any[]; secondPlace?: any | null; expanded: boolean; onToggle: () => void }) {
+  const secondPlaceRow = secondPlace && !rows.some((row) => row.gameId === secondPlace.gameId)
+    ? { ...secondPlace, rankLabel: "2nd", trend: secondPlace.status ?? "CANDIDATE" }
+    : null;
+  const visibleRows = expanded ? rows : rows.slice(0, 3);
+  const rowsToShow = secondPlaceRow ? [...visibleRows, secondPlaceRow] : visibleRows;
+  const canExpand = rows.length > 3;
   return (
     <ControlSignalPreview
       title="Top Signal Leaders Today"
-      rows={rows}
+      rows={rowsToShow}
       empty="No Top Signal leader history yet."
+      action={canExpand ? <button type="button" onClick={onToggle}>{expanded ? "View Less ↑" : "View More ↓"}</button> : null}
       premium
     />
   );
@@ -1797,9 +1805,6 @@ function ControlLeadersToday({ rows }: { rows: any[] }) {
 function ControlOverviewDetails({ data, summary }: { data: AtlasControlCenterData; summary?: any }) {
   return (
     <div className="grid gap-2 pt-2">
-      <ControlSection title="Second Place Candidate">
-        <SecondPlaceCandidate candidate={data.topSignal?.secondPlaceCandidate ?? null} />
-      </ControlSection>
       <ControlTopSignalStrength strength={data.topSignal?.strength} />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <ControlMiniMetric label="Sports" value={(summary?.sportsAvailable ?? []).join(", ") || "N/A"} />
@@ -2043,9 +2048,11 @@ function AtlasControlCenterPanel({
   tab,
   activityFilter,
   engineDetailsOpen,
+  leadersExpanded,
   onTab,
   onActivityFilter,
   onToggleEngineDetails,
+  onToggleLeaders,
   onRefresh,
 }: {
   data: AtlasControlCenterData | null;
@@ -2054,9 +2061,11 @@ function AtlasControlCenterPanel({
   tab: AtlasControlTab;
   activityFilter: AtlasActivityFilter;
   engineDetailsOpen: boolean;
+  leadersExpanded: boolean;
   onTab: (tab: AtlasControlTab) => void;
   onActivityFilter: (filter: AtlasActivityFilter) => void;
   onToggleEngineDetails: () => void;
+  onToggleLeaders: () => void;
   onRefresh: () => void;
 }) {
   const tabs: Array<{ id: AtlasControlTab; label: string }> = [
@@ -2112,7 +2121,12 @@ function AtlasControlCenterPanel({
             <>
               <ControlEngineStatusBar rows={data.engineHealth} summary={summary} />
               <ControlTopSignalCurrentLeader data={data.topSignal} />
-              <ControlLeadersToday rows={data.topSignal?.leadersToday ?? []} />
+              <ControlLeadersToday
+                rows={data.topSignal?.leadersToday ?? []}
+                secondPlace={data.topSignal?.secondPlaceCandidate ?? null}
+                expanded={leadersExpanded}
+                onToggle={onToggleLeaders}
+              />
               <AdminShellCard className="p-2.5">
                 <button type="button" onClick={onToggleEngineDetails} className="flex w-full items-center justify-between text-[11px] font-black uppercase text-cyan-300">
                   <span>{engineDetailsOpen ? "Hide Engine Details ↑" : "Open Engine Details →"}</span>
@@ -2386,6 +2400,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [controlTab, setControlTab] = useState<AtlasControlTab>("overview");
   const [controlActivityFilter, setControlActivityFilter] = useState<AtlasActivityFilter>("ALL");
   const [controlEngineDetailsOpen, setControlEngineDetailsOpen] = useState(false);
+  const [controlLeadersExpanded, setControlLeadersExpanded] = useState(false);
   const [cronRunning, setCronRunning] = useState<string | null>(null);
   const [cronResult, setCronResult] = useState<string | null>(null);
   const [researchView, setResearchView] = useState<"summary" | "system">("summary");
@@ -2800,9 +2815,11 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       tab={controlTab}
       activityFilter={controlActivityFilter}
       engineDetailsOpen={controlEngineDetailsOpen}
+      leadersExpanded={controlLeadersExpanded}
       onTab={setControlTab}
       onActivityFilter={setControlActivityFilter}
       onToggleEngineDetails={() => setControlEngineDetailsOpen((open) => !open)}
+      onToggleLeaders={() => setControlLeadersExpanded((open) => !open)}
       onRefresh={() => void loadControlCenter()}
     />
   );
