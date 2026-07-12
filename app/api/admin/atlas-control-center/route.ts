@@ -500,6 +500,116 @@ function volatility(rows: Array<{ trend?: string; probabilityDelta?: number | nu
   return "LOW";
 }
 
+function historyResult(row: DbRow) {
+  const result = String(row.result ?? row.outcome ?? "").toUpperCase();
+  return ["WON", "LOST", "PUSH"].includes(result) ? result : null;
+}
+
+function historyUnits(row: DbRow) {
+  const units = num(row.units);
+  if (units !== null) return units;
+  const result = historyResult(row);
+  if (result === "WON") {
+    const odds = num(row.odds);
+    if (odds === null) return 1;
+    return odds > 0 ? odds / 100 : 100 / Math.abs(odds);
+  }
+  if (result === "LOST") return -1;
+  if (result === "PUSH") return 0;
+  return null;
+}
+
+function compactMarket(row: DbRow) {
+  const market = marketLabel(row);
+  if (market === "ML") return "Moneyline";
+  if (market === "SPREADS") return "Spread";
+  if (market === "TOTALS") return "Totals";
+  return market || "Other";
+}
+
+function historyRow(row: DbRow, product: string, sourceTable: string) {
+  const result = historyResult(row);
+  const units = historyUnits(row);
+  return {
+    id: row.id,
+    product,
+    sourceTable,
+    sport: row.sport,
+    date: row.slate_date ?? row.date ?? row.created_at ?? row.run_at,
+    slateDate: row.slate_date ?? row.date ?? null,
+    event: eventName(row),
+    awayTeam: row.away_team ?? row.awayTeam ?? null,
+    homeTeam: row.home_team ?? row.homeTeam ?? null,
+    selection: pickLabel(row),
+    market: marketLabel(row),
+    marketGroup: compactMarket(row),
+    line: num(row.line),
+    odds: num(row.odds),
+    result,
+    units,
+    roi: units,
+    finalScore: row.home_score !== undefined || row.away_score !== undefined
+      ? `${row.away_score ?? "-"}-${row.home_score ?? "-"}`
+      : row.final_score ?? null,
+    status: row.status ?? (row.published ? "Published" : "Pending"),
+    published: Boolean(row.published),
+    publishedAt: row.publication_time ?? row.run_at ?? row.created_at,
+    rank: row.rank ?? null,
+    gameId: row.game_id ?? null,
+  };
+}
+
+function historySummary(rows: ReturnType<typeof historyRow>[]) {
+  const graded = rows.filter((row) => row.result);
+  const wins = graded.filter((row) => row.result === "WON").length;
+  const losses = graded.filter((row) => row.result === "LOST").length;
+  const pushes = graded.filter((row) => row.result === "PUSH").length;
+  const decisions = wins + losses;
+  const units = graded.reduce((sum, row) => sum + (row.units ?? 0), 0);
+  const lastResults = graded
+    .slice()
+    .sort((a, b) => new Date(b.publishedAt ?? b.date ?? 0).getTime() - new Date(a.publishedAt ?? a.date ?? 0).getTime());
+  const streakResult = lastResults[0]?.result ?? null;
+  let streak = 0;
+  for (const row of lastResults) {
+    if (row.result !== streakResult || row.result === "PUSH") break;
+    streak += 1;
+  }
+  return {
+    record: `${wins}-${losses}${pushes ? `-${pushes}` : ""}`,
+    wins,
+    losses,
+    pushes,
+    winRate: decisions ? wins / decisions : null,
+    roi: graded.length ? units / graded.length : null,
+    units,
+    currentStreak: streakResult && streak ? { result: streakResult, count: streak } : null,
+    totalSignals: rows.length,
+    gradedSignals: graded.length,
+  };
+}
+
+function marketPerformance(rows: ReturnType<typeof historyRow>[]) {
+  const markets = new Map<string, ReturnType<typeof historyRow>[]>();
+  for (const row of rows.filter((item) => item.result)) {
+    markets.set(row.marketGroup, [...(markets.get(row.marketGroup) ?? []), row]);
+  }
+  return Array.from(markets.entries()).map(([market, marketRows]) => ({
+    market,
+    ...historySummary(marketRows),
+  })).sort((a, b) => (b.winRate ?? -1) - (a.winRate ?? -1));
+}
+
+function historySection(product: string, sourceTable: string, rows: DbRow[]) {
+  const normalized = rows.map((row) => historyRow(row, product, sourceTable));
+  return {
+    source: sourceMetadata({ engine: product, table: sourceTable, rows }),
+    rows: normalized,
+    summary: historySummary(normalized),
+    marketPerformance: marketPerformance(normalized),
+  };
+}
+
 async function loadTopSignalEligibleCandidates(params: {
   supabase: ReturnType<typeof getSupabaseAdmin>;
   slateDate: string;
@@ -615,12 +725,18 @@ export async function GET() {
     topSignalQuery,
     activeSignalsQuery,
     activePicksQuery,
+    historySignalsQuery,
+    historyTop5Query,
+    historyTopSignalQuery,
   ] = await Promise.all([
     supabase.from("signals_detected_history").select("*").eq("slate_date", slateDate).order("rank", { ascending: true }),
     supabase.from("top5_history").select("*").eq("slate_date", slateDate).order("run_at", { ascending: false }).order("rank", { ascending: true }),
     supabase.from("top_signal_history").select("*").eq("slate_date", slateDate).order("run_at", { ascending: false }).limit(48),
     supabase.from("atlas_core_mlb_signals").select("*").eq("date", slateDate).order("start_time", { ascending: true }),
     supabase.from("atlas_core_mlb_picks").select("*").eq("date", slateDate).order("rank", { ascending: true }),
+    supabase.from("signals_detected_history").select("*").order("slate_date", { ascending: false }).order("rank", { ascending: true }).limit(2000),
+    supabase.from("top5_history").select("*").order("slate_date", { ascending: false }).order("run_at", { ascending: false }).order("rank", { ascending: true }).limit(3000),
+    supabase.from("top_signal_history").select("*").order("slate_date", { ascending: false }).order("run_at", { ascending: false }).limit(1000),
   ]);
 
   for (const [label, result] of Object.entries({
@@ -629,6 +745,9 @@ export async function GET() {
     top_signal_history: topSignalQuery,
     atlas_core_mlb_signals: activeSignalsQuery,
     atlas_core_mlb_picks: activePicksQuery,
+    history_signals_detected_history: historySignalsQuery,
+    history_top5_history: historyTop5Query,
+    history_top_signal_history: historyTopSignalQuery,
   })) {
     if (result.error) errors.push(`${label}: ${result.error.message}`);
   }
@@ -637,6 +756,12 @@ export async function GET() {
   const top5History = (top5Query.data ?? []) as DbRow[];
   const exclusiveHistory = top5History.filter((row) => row.engine === "EXCLUSIVE_TOP3");
   const premiumHistory = top5History.filter((row) => row.engine === "PREMIUM_TOP5");
+  const allSignalsHistory = (historySignalsQuery.data ?? []) as DbRow[];
+  const allTop5History = (historyTop5Query.data ?? []) as DbRow[];
+  const allTopSignalHistory = (historyTopSignalQuery.data ?? []) as DbRow[];
+  const allExclusiveHistory = allTop5History.filter((row) => row.engine === "EXCLUSIVE_TOP3" && row.run_type === "OFFICIAL_FREEZE" && row.published);
+  const allPremiumHistory = allTop5History.filter((row) => row.engine === "PREMIUM_TOP5" && row.run_type === "OFFICIAL_FREEZE" && row.published);
+  const allPublishedTopSignalHistory = allTopSignalHistory.filter((row) => row.engine === "TOP_SIGNAL" && row.published);
   const topSignalTimelineRaw = ((topSignalQuery.data ?? []) as DbRow[]).slice().reverse();
   const activeSignals = (activeSignalsQuery.data ?? []) as DbRow[];
   const activePicks = publicPickRows(activePicksQuery.data ?? []);
@@ -1029,6 +1154,33 @@ export async function GET() {
     leaderChanges: leaderChangesToday,
     qualifiedCandidates: latestPremiumInternal.length,
   };
+  const signalsReachedPremium = new Set(allPremiumHistory.map((row) => String(row.game_id)));
+  const signalsReachedTopSignal = new Set(allPublishedTopSignalHistory.map((row) => String(row.game_id)));
+  const signalsAnalyticsRows = allSignalsHistory.map((row) => ({
+    ...historyRow(row, "SIGNALS_DETECTED", "signals_detected_history"),
+    reachedPremium: signalsReachedPremium.has(String(row.game_id)),
+    reachedTopSignal: signalsReachedTopSignal.has(String(row.game_id)),
+  }));
+  const signalsDetectedCount = signalsAnalyticsRows.length;
+  const signalsValidatedCount = signalsAnalyticsRows.filter((row) => row.reachedPremium || row.reachedTopSignal).length;
+  const historyCenter = {
+    topSignal: historySection("TOP_SIGNAL", "top_signal_history", allPublishedTopSignalHistory),
+    premiumTop5: historySection("PREMIUM_TOP5", "top5_history", allPremiumHistory),
+    exclusiveTop3: historySection("EXCLUSIVE_TOP3", "top5_history", allExclusiveHistory),
+    signalsAnalytics: {
+      source: sourceMetadata({ engine: "SIGNALS_DETECTED", table: "signals_detected_history", rows: allSignalsHistory }),
+      rows: signalsAnalyticsRows,
+      summary: {
+        detected: signalsDetectedCount,
+        validated: signalsValidatedCount,
+        rejected: Math.max(0, signalsDetectedCount - signalsValidatedCount),
+        hitRate: signalsDetectedCount ? signalsValidatedCount / signalsDetectedCount : null,
+        conversionRate: signalsDetectedCount ? signalsReachedPremium.size / signalsDetectedCount : null,
+        reachedPremium: signalsReachedPremium.size,
+        reachedTopSignal: signalsReachedTopSignal.size,
+      },
+    },
+  };
   const signalsDetectedSource = sourceMetadata({ engine: "SIGNALS_DETECTED", table: "signals_detected_history", rows: signalsHistory });
   const exclusiveSource = sourceMetadata({ engine: "EXCLUSIVE_TOP3", table: "top5_history", rows: exclusiveHistory });
   const premiumSource = sourceMetadata({ engine: "PREMIUM_TOP5", table: "top5_history", rows: premiumHistory });
@@ -1153,6 +1305,7 @@ export async function GET() {
       premiumTop5: premiumSource,
       topSignal: topSignalSource,
     },
+    historyCenter,
     liveActivity: activity,
     activity,
     operationsTimeline,

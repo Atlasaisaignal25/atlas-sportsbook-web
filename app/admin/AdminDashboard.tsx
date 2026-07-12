@@ -150,7 +150,8 @@ type PerformanceCenterData = {
 export type AtlasControlTab = "overview" | "top-signal" | "top5" | "top3" | "signals" | "activity" | "health";
 export type AtlasActivityFilter = "ALL" | "TOP SIGNAL" | "TOP 5" | "EXCLUSIVE" | "SIGNALS" | "VALIDATION" | "ERRORS";
 type AtlasControlSportFilter = "ALL" | string;
-export type AtlasControlMode = "live" | "official";
+export type AtlasControlMode = "live" | "history";
+type AtlasHistoryRange = "TODAY" | "YESTERDAY" | "LAST_7" | "LAST_14" | "LAST_30" | "SEASON" | "ALL_TIME" | "CUSTOM";
 
 export type AtlasControlCenterData = {
   summary: any;
@@ -171,6 +172,7 @@ export type AtlasControlCenterData = {
   signalsDetectedDetail?: any;
   exclusiveTop3: any;
   productSources?: any;
+  historyCenter?: any;
   liveActivity: any[];
   operationsTimeline: any[];
   marketPulse?: any;
@@ -2244,6 +2246,300 @@ function sourceLabel(source: any) {
   return `${source.engine ?? "N/A"} · ${source.table ?? "N/A"} · ${source.rowCount ?? 0} rows`;
 }
 
+function historyDateValue(row: any) {
+  const value = row?.slateDate ?? row?.date ?? row?.publishedAt;
+  if (!value) return null;
+  const date = new Date(String(value).includes("T") ? value : `${value}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function rangeWindow(range: AtlasHistoryRange, customStart: string, customEnd: string) {
+  const now = new Date();
+  const end = new Date(now);
+  const start = new Date(now);
+  const setStartDays = (days: number) => {
+    start.setDate(end.getDate() - days + 1);
+    start.setHours(0, 0, 0, 0);
+  };
+  end.setHours(23, 59, 59, 999);
+  if (range === "TODAY") setStartDays(1);
+  if (range === "YESTERDAY") {
+    start.setDate(end.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    end.setDate(end.getDate() - 1);
+  }
+  if (range === "LAST_7") setStartDays(7);
+  if (range === "LAST_14") setStartDays(14);
+  if (range === "LAST_30") setStartDays(30);
+  if (range === "SEASON") {
+    start.setMonth(2, 1);
+    start.setHours(0, 0, 0, 0);
+  }
+  if (range === "ALL_TIME") return { start: null, end: null };
+  if (range === "CUSTOM") {
+    const customStartDate = customStart ? new Date(`${customStart}T00:00:00`) : null;
+    const customEndDate = customEnd ? new Date(`${customEnd}T23:59:59`) : null;
+    return {
+      start: customStartDate && !Number.isNaN(customStartDate.getTime()) ? customStartDate : null,
+      end: customEndDate && !Number.isNaN(customEndDate.getTime()) ? customEndDate : null,
+    };
+  }
+  return { start, end };
+}
+
+function filterHistoryRows(rows: any[], range: AtlasHistoryRange, customStart: string, customEnd: string) {
+  const window = rangeWindow(range, customStart, customEnd);
+  return (rows ?? []).filter((row) => {
+    const date = historyDateValue(row);
+    if (!date) return false;
+    if (window.start && date < window.start) return false;
+    if (window.end && date > window.end) return false;
+    return true;
+  });
+}
+
+function historyStats(rows: any[]) {
+  const graded = rows.filter((row) => row.result === "WON" || row.result === "LOST" || row.result === "PUSH");
+  const wins = graded.filter((row) => row.result === "WON").length;
+  const losses = graded.filter((row) => row.result === "LOST").length;
+  const pushes = graded.filter((row) => row.result === "PUSH").length;
+  const decisions = wins + losses;
+  const units = graded.reduce((sum, row) => sum + (adminNumber(row.units) ?? 0), 0);
+  const sorted = graded.slice().sort((a, b) => (historyDateValue(b)?.getTime() ?? 0) - (historyDateValue(a)?.getTime() ?? 0));
+  const streakResult = sorted[0]?.result;
+  let streak = 0;
+  for (const row of sorted) {
+    if (row.result !== streakResult || row.result === "PUSH") break;
+    streak += 1;
+  }
+  return {
+    wins,
+    losses,
+    pushes,
+    record: `${wins}-${losses}${pushes ? `-${pushes}` : ""}`,
+    winRate: decisions ? wins / decisions : null,
+    roi: graded.length ? units / graded.length : null,
+    units,
+    currentStreak: streakResult && streak ? { result: streakResult, count: streak } : null,
+    totalSignals: rows.length,
+    gradedSignals: graded.length,
+  };
+}
+
+function historyMarketRows(rows: any[]) {
+  const grouped = new Map<string, any[]>();
+  rows.filter((row) => row.result).forEach((row) => grouped.set(row.marketGroup ?? row.market ?? "Other", [...(grouped.get(row.marketGroup ?? row.market ?? "Other") ?? []), row]));
+  return Array.from(grouped.entries()).map(([market, marketRows]) => ({ market, ...historyStats(marketRows) }));
+}
+
+function resultIcon(result?: string | null) {
+  if (result === "WON") return "✅";
+  if (result === "LOST") return "❌";
+  if (result === "PUSH") return "➖";
+  return "•";
+}
+
+function streakLabel(streak: any) {
+  if (!streak) return "No streak";
+  const label = streak.result === "WON" ? "Wins" : streak.result === "LOST" ? "Losses" : "Pushes";
+  return `${streak.result === "WON" ? "🔥 " : ""}${streak.count} ${label}`;
+}
+
+function HistoryRangeFilters({
+  range,
+  customStart,
+  customEnd,
+  onRange,
+  onCustomStart,
+  onCustomEnd,
+}: {
+  range: AtlasHistoryRange;
+  customStart: string;
+  customEnd: string;
+  onRange: (range: AtlasHistoryRange) => void;
+  onCustomStart: (value: string) => void;
+  onCustomEnd: (value: string) => void;
+}) {
+  const ranges: Array<[AtlasHistoryRange, string]> = [
+    ["TODAY", "Today"],
+    ["YESTERDAY", "Yesterday"],
+    ["LAST_7", "Last 7"],
+    ["LAST_14", "Last 14"],
+    ["LAST_30", "Last 30"],
+    ["SEASON", "Season"],
+    ["ALL_TIME", "All Time"],
+    ["CUSTOM", "Custom"],
+  ];
+  return (
+    <div className="grid gap-2">
+      <div className="scrollbar-hide flex gap-1.5 overflow-x-auto rounded-xl border border-white/10 bg-[#061223] p-1">
+        {ranges.map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onRange(id)}
+            className={`min-w-max rounded-lg px-2.5 py-1.5 text-[9px] font-black uppercase ${range === id ? "bg-cyan-400/15 text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.28)]" : "text-white/48"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {range === "CUSTOM" ? (
+        <div className="grid grid-cols-2 gap-2">
+          <input type="date" value={customStart} onChange={(event) => onCustomStart(event.target.value)} className="rounded-lg border border-white/10 bg-black/25 px-2 py-2 text-[11px] font-bold text-white" />
+          <input type="date" value={customEnd} onChange={(event) => onCustomEnd(event.target.value)} className="rounded-lg border border-white/10 bg-black/25 px-2 py-2 text-[11px] font-bold text-white" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function exportHistorySummary(title: string, rows: any[]) {
+  const stats = historyStats(rows);
+  const markets = historyMarketRows(rows).slice(0, 3);
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, "#020814");
+  gradient.addColorStop(1, "#06172a");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "rgba(34,211,238,0.45)";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(48, 48, canvas.width - 96, canvas.height - 96);
+  ctx.fillStyle = "#22d3ee";
+  ctx.font = "700 34px Arial";
+  ctx.fillText("ATLAS SIGNALS", 72, 120);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "800 62px Arial";
+  ctx.fillText(title, 72, 210);
+  ctx.font = "800 48px Arial";
+  ctx.fillText(`Record ${stats.record}`, 72, 320);
+  ctx.fillText(`Win Rate ${controlPct(stats.winRate)}`, 72, 390);
+  ctx.fillText(`ROI ${controlDeltaPct(stats.roi)}`, 72, 460);
+  ctx.fillText(streakLabel(stats.currentStreak), 72, 530);
+  ctx.fillStyle = "#a7f3d0";
+  ctx.font = "700 36px Arial";
+  ctx.fillText("Market Performance", 72, 650);
+  ctx.fillStyle = "#ffffff";
+  markets.forEach((market, index) => {
+    ctx.fillText(`${market.market}: ${market.record} · ${controlPct(market.winRate)} · ${controlDeltaPct(market.roi)}`, 72, 720 + index * 58);
+  });
+  ctx.fillStyle = "#22d3ee";
+  ctx.font = "700 30px Arial";
+  ctx.fillText("Generated by Atlas History Center", 72, 1260);
+  const link = document.createElement("a");
+  link.download = `${title.toLowerCase().replace(/\s+/g, "-")}-summary.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function HistoryComparison({ rows, range, customStart, customEnd }: { rows: any[]; range: AtlasHistoryRange; customStart: string; customEnd: string }) {
+  if (range === "ALL_TIME" || range === "CUSTOM") return null;
+  const currentWindow = rangeWindow(range, customStart, customEnd);
+  if (!currentWindow.start || !currentWindow.end) return null;
+  const duration = currentWindow.end.getTime() - currentWindow.start.getTime();
+  const previousStart = new Date(currentWindow.start.getTime() - duration - 1);
+  const previousEnd = new Date(currentWindow.start.getTime() - 1);
+  const previousRows = rows.filter((row) => {
+    const date = historyDateValue(row);
+    return date && date >= previousStart && date <= previousEnd;
+  });
+  const current = historyStats(rows);
+  const previous = historyStats(previousRows);
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      <ControlMiniMetric label="Win Rate" value={`${controlPct(current.winRate)} ${controlDeltaPct((current.winRate ?? 0) - (previous.winRate ?? 0))}`} tone="text-emerald-300" />
+      <ControlMiniMetric label="ROI" value={`${controlDeltaPct(current.roi)} ${controlDeltaPct((current.roi ?? 0) - (previous.roi ?? 0))}`} tone="text-cyan-300" />
+      <ControlMiniMetric label="Moneyline" value={controlPct(historyStats(rows.filter((row) => row.marketGroup === "Moneyline")).winRate)} />
+    </div>
+  );
+}
+
+function HistoryProductSection({ title, section, range, customStart, customEnd }: { title: string; section: any; range: AtlasHistoryRange; customStart: string; customEnd: string }) {
+  const rows = filterHistoryRows(section?.rows ?? [], range, customStart, customEnd);
+  const stats = historyStats(rows);
+  const markets = historyMarketRows(rows);
+  const recent = rows.slice().sort((a, b) => (historyDateValue(b)?.getTime() ?? 0) - (historyDateValue(a)?.getTime() ?? 0)).slice(0, 12);
+  return (
+    <ControlSection title={title} action={<button type="button" onClick={() => exportHistorySummary(title, rows)}>Export Summary</button>}>
+      <div className="grid gap-2">
+        <div className="grid grid-cols-5 gap-1.5">
+          <ControlMiniMetric label="Record" value={stats.record} />
+          <ControlMiniMetric label="Win Rate" value={controlPct(stats.winRate)} tone="text-emerald-300" />
+          <ControlMiniMetric label="ROI" value={controlDeltaPct(stats.roi)} tone="text-cyan-300" />
+          <ControlMiniMetric label="Streak" value={streakLabel(stats.currentStreak)} />
+          <ControlMiniMetric label="Signals" value={stats.totalSignals} />
+        </div>
+        <div className="overflow-hidden rounded-xl border border-white/10 bg-black/15">
+          <div className="grid grid-cols-[1fr_52px_52px_52px] border-b border-white/8 px-2.5 py-1.5 text-[9px] font-black uppercase text-white/42">
+            <span>Market</span><span>W-L</span><span>Win %</span><span>ROI</span>
+          </div>
+          {(markets.length ? markets : [{ market: "No graded sample", record: "0-0", winRate: null, roi: null }]).map((market) => (
+            <div key={market.market} className="grid grid-cols-[1fr_52px_52px_52px] border-b border-white/8 px-2.5 py-1.5 text-[11px] font-bold text-white last:border-b-0">
+              <span>{market.market}</span><span>{market.record}</span><span className="text-emerald-300">{controlPct(market.winRate)}</span><span className="text-cyan-300">{controlDeltaPct(market.roi)}</span>
+            </div>
+          ))}
+        </div>
+        <HistoryComparison rows={rows} range={range} customStart={customStart} customEnd={customEnd} />
+        <div className="overflow-hidden rounded-xl border border-white/10 bg-black/15">
+          {(recent.length ? recent : [{ id: "empty", selection: "No official graded history yet", market: "N/A", finalScore: null, result: null, slateDate: null }]).map((row) => (
+            <div key={row.id} className="grid grid-cols-[24px_minmax(0,1fr)_52px_48px_64px] items-center gap-2 border-b border-white/8 px-2.5 py-2 last:border-b-0">
+              <span className="text-[14px]">{resultIcon(row.result)}</span>
+              <div className="min-w-0">
+                <p className="truncate text-[12px] font-black text-white">{row.selection}</p>
+                <p className="truncate text-[9px] font-bold text-white/40">{row.event ?? ""}</p>
+              </div>
+              <span className="text-[9px] font-black uppercase text-cyan-300">{row.market}</span>
+              <span className="text-[10px] font-black text-white">{row.finalScore ?? "—"}</span>
+              <span className="text-right text-[9px] font-black text-white/50">{row.slateDate ? formatAdminDate(row.slateDate) : "—"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </ControlSection>
+  );
+}
+
+function SignalsAnalyticsSection({ section, range, customStart, customEnd }: { section: any; range: AtlasHistoryRange; customStart: string; customEnd: string }) {
+  const rows = filterHistoryRows(section?.rows ?? [], range, customStart, customEnd);
+  const detected = rows.length;
+  const reachedPremium = new Set(rows.filter((row) => row.reachedPremium).map((row) => row.gameId)).size;
+  const reachedTopSignal = new Set(rows.filter((row) => row.reachedTopSignal).map((row) => row.gameId)).size;
+  const validated = rows.filter((row) => row.reachedPremium || row.reachedTopSignal).length;
+  return (
+    <ControlSection title="Signals Analytics">
+      <div className="grid grid-cols-3 gap-1.5">
+        <ControlMiniMetric label="Detected" value={detected} tone="text-cyan-300" />
+        <ControlMiniMetric label="Validated" value={validated} tone="text-emerald-300" />
+        <ControlMiniMetric label="Rejected" value={Math.max(0, detected - validated)} tone="text-yellow-300" />
+        <ControlMiniMetric label="Hit Rate" value={controlPct(detected ? validated / detected : null)} />
+        <ControlMiniMetric label="Reached Premium" value={reachedPremium} />
+        <ControlMiniMetric label="Reached Top Signal" value={reachedTopSignal} tone="text-purple-300" />
+      </div>
+    </ControlSection>
+  );
+}
+
+function AtlasHistoryCenter({ data }: { data: AtlasControlCenterData }) {
+  const [range, setRange] = useState<AtlasHistoryRange>("TODAY");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const history = data.historyCenter ?? {};
+  return (
+    <div className="grid gap-2.5">
+      <HistoryRangeFilters range={range} customStart={customStart} customEnd={customEnd} onRange={setRange} onCustomStart={setCustomStart} onCustomEnd={setCustomEnd} />
+      <HistoryProductSection title="Top Signal" section={history.topSignal} range={range} customStart={customStart} customEnd={customEnd} />
+      <HistoryProductSection title="Premium Top 5" section={history.premiumTop5} range={range} customStart={customStart} customEnd={customEnd} />
+      <HistoryProductSection title="Exclusive Top 3" section={history.exclusiveTop3} range={range} customStart={customStart} customEnd={customEnd} />
+      <SignalsAnalyticsSection section={history.signalsAnalytics} range={range} customStart={customStart} customEnd={customEnd} />
+    </div>
+  );
+}
+
 export function getAtlasControlSports(data: AtlasControlCenterData | null) {
   const dynamicSports = (data?.summary?.sportsAvailable ?? [])
     .map(normalizeControlSport)
@@ -2586,7 +2882,7 @@ export function AtlasControlCenterPanel({
         <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 bg-[#061223]">
           {([
             ["live", "Live Engine"],
-            ["official", "Official Products"],
+            ["history", "History"],
           ] as const).map(([id, label]) => (
             <button
               key={id}
@@ -2600,12 +2896,15 @@ export function AtlasControlCenterPanel({
         </div>
       ) : null}
 
-      <AtlasControlCenterTabBar tab={tab} onTab={onTab} />
+      {mode === "live" ? <AtlasControlCenterTabBar tab={tab} onTab={onTab} /> : null}
 
       {!data && loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">Loading Control Center...</p> : null}
       {!data && !loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">No Control Center data available.</p> : null}
 
       {filteredData ? (
+        mode === "history" ? (
+          <AtlasHistoryCenter data={filteredData} />
+        ) : (
         <>
           {tab === "overview" ? (
             mode === "live" ? (
@@ -2748,6 +3047,7 @@ export function AtlasControlCenterPanel({
             </>
           ) : null}
         </>
+        )
       ) : null}
     </section>
   );
