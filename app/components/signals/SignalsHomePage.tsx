@@ -7,6 +7,7 @@ import { PrecisionRevealSheet } from "./PrecisionRevealSheet";
 import { SignalDetectedDetailSheet } from "./SignalDetectedDetailSheet";
 import type { SignalDetectedRow } from "./SignalDetectedFeed";
 import { SignalInfoBar } from "./SignalInfoBar";
+import { OfficialSportSelectorRow } from "./OfficialSportSelectorRow";
 import { SportSignalRail } from "./SportSignalRail";
 import type { SportCode, SportSignalViewModel } from "./SportSignalCard";
 import { SportLineIcon } from "./sportVisuals";
@@ -1134,40 +1135,11 @@ function FrameSportSelectorRow({
   onSelectSport: (sport: SelectedSport) => void;
 }) {
   return (
-    <div className="pointer-events-auto absolute left-[3.1%] right-[3.1%] top-[18.6%] z-40">
-      <div className="absolute -inset-x-2 -top-3 -bottom-6 rounded-[15px] bg-[#030814]/[0.99] shadow-[0_-10px_22px_rgba(3,8,20,0.92),0_12px_24px_rgba(3,8,20,0.95)]" />
-      <div className="relative grid grid-cols-6 gap-[5px]">
-        {selectedSportOptions.map((option) => {
-          const active = selectedSport === option.sport;
-          const sportCode = option.sport === "all" ? null : selectedSportToSportCode[option.sport];
-
-          return (
-            <button
-              key={option.sport}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onSelectSport(option.sport)}
-              className={`grid h-[40px] place-items-center rounded-[8px] border px-1 py-0.5 transition ${
-                active
-                  ? "border-cyan-300 bg-cyan-400/8 text-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.16)]"
-                  : "border-white/18 bg-[#050b16]/95 text-white/78"
-              }`}
-            >
-              <span className={active ? "text-cyan-300" : "text-white/80"}>
-                {option.sport === "all" ? (
-                  <TrophyIcon className="h-[22px] w-[22px]" />
-                ) : (
-                  <SportLineIcon sport={sportCode as SportCode} className="h-[22px] w-[22px]" alt="" />
-                )}
-              </span>
-              <span className="mt-0.5 max-w-full truncate text-center text-[7.5px] font-bold leading-none">
-                {option.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <OfficialSportSelectorRow
+      selectedSport={selectedSport}
+      onSelectSport={(sport) => onSelectSport(sport as SelectedSport)}
+      className="absolute left-[3.1%] right-[3.1%] top-[18.6%] z-40"
+    />
   );
 }
 

@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { teamBranding } from "@/app/lib/teamBranding";
+import {
+  OfficialSportSelectorRow,
+  officialSportCodeToSelectedSport,
+  officialSelectedSportToSportCode,
+  type OfficialSelectedSport,
+} from "@/app/components/signals/OfficialSportSelectorRow";
 
 type StatusCounts = {
   won: number;
@@ -2095,10 +2101,6 @@ function normalizeControlSport(value: unknown) {
   return sport;
 }
 
-function controlSportMeta(sport: string) {
-  return atlasControlSportOptions.find((item) => item.id === sport) ?? { id: sport, label: sport, icon: "•" };
-}
-
 function rowMatchesControlSport(row: any, sport: AtlasControlSportFilter) {
   if (sport === "ALL") return true;
   return normalizeControlSport(row?.sport) === sport;
@@ -2191,23 +2193,25 @@ export function OverviewSportFilter({
   selectedSport: AtlasControlSportFilter;
   onSportChange: (sport: AtlasControlSportFilter) => void;
 }) {
+  const normalizedSelected = normalizeControlSport(selectedSport);
+  const officialSelected: OfficialSelectedSport =
+    normalizedSelected === "ALL"
+      ? "all"
+      : officialSportCodeToSelectedSport[normalizedSelected as keyof typeof officialSportCodeToSelectedSport] ?? "all";
   return (
-    <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
-      {sports.map((sport) => {
-        const active = selectedSport === sport;
-        const meta = sport === "ALL" ? { label: "ALL", icon: "●" } : controlSportMeta(sport);
-        return (
-          <button
-            key={sport}
-            type="button"
-            onClick={() => onSportChange(sport)}
-            className={`flex min-w-[92px] flex-1 items-center justify-center gap-2 border-r border-white/8 px-3 py-2.5 text-[11px] font-black uppercase last:border-r-0 ${active ? "border-cyan-400/45 bg-cyan-400/10 text-white shadow-[inset_0_0_0_1px_rgba(34,211,238,0.28)]" : "text-white/62"}`}
-          >
-            <span className="text-[17px]">{meta.icon}</span>
-            {meta.label}
-          </button>
-        );
-      })}
+    <div className="relative h-[70px] overflow-visible rounded-xl border border-white/10 bg-[#030814]/95 px-3 pt-3 shadow-[0_0_22px_rgba(34,211,238,0.07)]">
+      <OfficialSportSelectorRow
+        selectedSport={officialSelected}
+        onSelectSport={(sport) => {
+          if (sport === "all") {
+            onSportChange("ALL");
+            return;
+          }
+          const code = officialSelectedSportToSportCode[sport];
+          onSportChange(code);
+        }}
+        framed={false}
+      />
     </div>
   );
 }
