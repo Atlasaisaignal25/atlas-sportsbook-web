@@ -5,6 +5,7 @@ import {
 } from "@/app/lib/mlb-engine/marketFeatures";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
 import { getRecentSnapshots } from "@/lib/market-impact/odds/snapshotRepository";
+import { resolveMlbSlateDate } from "@/app/lib/mlb-engine/slate-date";
 import { loadLatestCanonicalBullpenTeamFeatures } from "../bullpen/bullpen-feature-repository";
 import {
   buildAtlasDecisionResearch,
@@ -93,6 +94,7 @@ async function loadCanonicalProjectionRows() {
     .from("mlb_projection_research_snapshots")
     .select("official_game_id,home_team_id,home_team_name,away_team_id,away_team_name,projected_home_runs,projected_away_runs,projected_total_runs,home_win_probability,away_win_probability,projection_confidence_score,projection_availability,component_breakdown,captured_at")
     .eq("model_version", "mlb_projection_research_v1")
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(200);
@@ -213,6 +215,7 @@ export async function buildDecisionResearchSnapshots(asOf = new Date().toISOStri
 }
 
 export function buildDecisionResearchRows(decisions: DecisionResearchSnapshot[]) {
+  const slateDate = resolveMlbSlateDate();
   return decisions.map((decision) => {
     const payload = {
       officialGameId: decision.officialGameId,
@@ -223,8 +226,10 @@ export function buildDecisionResearchRows(decisions: DecisionResearchSnapshot[])
       decision: decision.decision,
       noPick: decision.noPick,
       modelVersion: decision.modelVersion,
+      slateDate,
     };
     return {
+      slate_date: slateDate,
       official_game_id: decision.officialGameId,
       home_team_id: decision.homeTeamId,
       home_team_name: decision.homeTeamName,
@@ -248,6 +253,9 @@ export function buildDecisionResearchRows(decisions: DecisionResearchSnapshot[])
       feature_hash: featureHash(payload),
       canonical: true,
       captured_at: decision.capturedAt,
+      source_updated_at: decision.capturedAt,
+      freshness_status: "FRESH",
+      freshness_reason: "CAPTURED_FOR_CURRENT_ET_SLATE",
     };
   });
 }
@@ -272,13 +280,14 @@ export async function insertDecisionResearchSnapshotsDeduped(decisions: Decision
       invalid_reason: "SUPERSEDED_BY_MLB_DECISION_RESEARCH_CAPTURE",
     })
     .eq("model_version", MLB_DECISION_RESEARCH_VERSION)
+    .eq("slate_date", rows[0]?.slate_date)
     .not("feature_hash", "in", `(${quotedHashes})`)
     .eq("canonical", true);
   if (markOld.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markOld.error.message] };
 
   const markCurrent = await supabase
     .from(TABLE)
-    .update({ canonical: true, superseded_at: null, invalid_reason: null })
+    .update({ canonical: true, superseded_at: null, invalid_reason: null, freshness_status: "FRESH", freshness_reason: "CAPTURED_FOR_CURRENT_ET_SLATE" })
     .in("feature_hash", hashes);
   if (markCurrent.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markCurrent.error.message] };
 
@@ -305,11 +314,13 @@ export async function getDecisionResearchStatus() {
     .from(TABLE)
     .select("id", { count: "exact", head: true })
     .eq("model_version", MLB_DECISION_RESEARCH_VERSION)
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true);
   const { data, error: latestError } = await supabase
     .from(TABLE)
-    .select("official_game_id,home_team_name,away_team_name,consensus_grade,consensus_side,consensus_score,module_agreement,conviction_grade,conviction_score,decision,no_pick,no_pick_reasons,decision_confidence_score,decision_confidence_tier,input_coverage,component_breakdown,captured_at")
+    .select("official_game_id,home_team_name,away_team_name,consensus_grade,consensus_side,consensus_score,module_agreement,conviction_grade,conviction_score,decision,no_pick,no_pick_reasons,decision_confidence_score,decision_confidence_tier,input_coverage,component_breakdown,captured_at,slate_date,freshness_status,freshness_reason")
     .eq("model_version", MLB_DECISION_RESEARCH_VERSION)
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(200);

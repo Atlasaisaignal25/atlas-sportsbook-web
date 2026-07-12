@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
+import { resolveMlbSlateDate } from "@/app/lib/mlb-engine/slate-date";
 import { loadLatestCanonicalBullpenTeamFeatures } from "../bullpen/bullpen-feature-repository";
 import { loadLatestCanonicalWeatherParkFeatures } from "../weather/weather-feature-repository";
 import {
@@ -129,6 +130,7 @@ export async function buildMlbProjectionResearchSnapshots(asOf = new Date().toIS
 }
 
 export function buildProjectionResearchRows(projections: MlbProjectionResearchSnapshot[]) {
+  const slateDate = resolveMlbSlateDate();
   return projections.map((projection) => {
     const payload = {
       officialGameId: projection.officialGameId,
@@ -141,8 +143,10 @@ export function buildProjectionResearchRows(projections: MlbProjectionResearchSn
       awayWinProbability: projection.awayWinProbability,
       componentBreakdown: projection.componentBreakdown,
       modelVersion: projection.modelVersion,
+      slateDate,
     };
     return {
+      slate_date: slateDate,
       official_game_id: projection.officialGameId,
       home_team_id: projection.homeTeamId,
       home_team_name: projection.homeTeamName,
@@ -165,6 +169,9 @@ export function buildProjectionResearchRows(projections: MlbProjectionResearchSn
       feature_hash: featureHash(payload),
       canonical: true,
       captured_at: projection.capturedAt,
+      source_updated_at: projection.capturedAt,
+      freshness_status: "FRESH",
+      freshness_reason: "CAPTURED_FOR_CURRENT_ET_SLATE",
     };
   });
 }
@@ -188,12 +195,13 @@ export async function insertProjectionResearchSnapshotsDeduped(projections: MlbP
       invalid_reason: "SUPERSEDED_BY_MLB_PROJECTION_RESEARCH_CAPTURE",
     })
     .eq("model_version", MLB_PROJECTION_RESEARCH_VERSION)
+    .eq("slate_date", rows[0]?.slate_date)
     .not("feature_hash", "in", `(${quotedHashes})`)
     .eq("canonical", true);
   if (markOld.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markOld.error.message] };
   const markCurrent = await supabase
     .from(TABLE)
-    .update({ canonical: true, superseded_at: null, invalid_reason: null })
+    .update({ canonical: true, superseded_at: null, invalid_reason: null, freshness_status: "FRESH", freshness_reason: "CAPTURED_FOR_CURRENT_ET_SLATE" })
     .in("feature_hash", hashes);
   if (markCurrent.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markCurrent.error.message] };
   const inserted = data?.length ?? 0;
@@ -219,11 +227,13 @@ export async function getProjectionResearchStatus() {
     .from(TABLE)
     .select("id", { count: "exact", head: true })
     .eq("model_version", MLB_PROJECTION_RESEARCH_VERSION)
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true);
   const { data, error: latestError } = await supabase
     .from(TABLE)
-    .select("official_game_id,home_team_name,away_team_name,projected_home_runs,projected_away_runs,projected_total_runs,home_win_probability,away_win_probability,fair_moneyline_home,fair_moneyline_away,projection_confidence_score,projection_confidence_tier,projection_availability,component_breakdown,captured_at")
+    .select("official_game_id,home_team_name,away_team_name,projected_home_runs,projected_away_runs,projected_total_runs,home_win_probability,away_win_probability,fair_moneyline_home,fair_moneyline_away,projection_confidence_score,projection_confidence_tier,projection_availability,component_breakdown,captured_at,slate_date,freshness_status,freshness_reason")
     .eq("model_version", MLB_PROJECTION_RESEARCH_VERSION)
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(200);

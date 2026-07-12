@@ -5,11 +5,11 @@
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/atlas-core-morning-scan",
+      "path": "/api/cron/atlas-core-daily-pipeline-morning",
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/atlas-core-live-validation",
+      "path": "/api/cron/atlas-core-daily-pipeline",
       "schedule": "*/5 * * * *"
     },
     {

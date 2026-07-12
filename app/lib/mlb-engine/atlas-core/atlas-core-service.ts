@@ -1,8 +1,12 @@
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
 import { ATLAS_CORE_MLB_VERSION, currentHourET, getAtlasCoreMlbConfig, todayET } from "./atlas-core-config";
+import { isFreshForMlbSlate, resolveMlbSlateDate, resolveMlbSlateWindow, timestampBelongsToMlbSlate } from "@/app/lib/mlb-engine/slate-date";
 import { captureValidationHistory, gradeValidationHistory } from "@/app/lib/mlb-engine/sports-intelligence/validation-history/validation-history-repository";
 import { calculatePerformanceAnalytics } from "@/app/lib/mlb-engine/sports-intelligence/performance/performance-analytics-repository";
 import { analyzeLearningInsights } from "@/app/lib/mlb-engine/sports-intelligence/learning/learning-repository";
+import { buildMlbProjectionResearchSnapshots, insertProjectionResearchSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/projection-research/projection-research-repository";
+import { buildDecisionResearchSnapshots, insertDecisionResearchSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/decision-research/decision-research-repository";
+import { buildMarketEdgeResearchSnapshots, insertMarketEdgeSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/market-edge/market-edge-repository";
 
 type MarketEdgeRow = {
   official_game_id: string;
@@ -19,6 +23,9 @@ type MarketEdgeRow = {
   source_versions: Record<string, unknown> | null;
   snapshot_hash: string | null;
   captured_at: string;
+  slate_date?: string | null;
+  freshness_status?: string | null;
+  freshness_reason?: string | null;
 };
 
 type DecisionRow = {
@@ -33,6 +40,9 @@ type DecisionRow = {
   feature_hash: string | null;
   model_version: string | null;
   captured_at: string;
+  slate_date?: string | null;
+  freshness_status?: string | null;
+  freshness_reason?: string | null;
 };
 
 type ProjectionRow = {
@@ -41,6 +51,9 @@ type ProjectionRow = {
   feature_hash: string | null;
   model_version: string | null;
   captured_at: string;
+  slate_date?: string | null;
+  freshness_status?: string | null;
+  freshness_reason?: string | null;
 };
 
 type OddsRow = {
@@ -151,6 +164,17 @@ function sourceDateFromStart(startTime?: string | null) {
   return date.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 }
 
+function freshnessReason(row: { captured_at?: string | null; slate_date?: string | null; freshness_status?: string | null }, slateDate: string, expectedStatus = "FRESH") {
+  if (row.slate_date !== slateDate) return `SLATE_DATE_MISMATCH:${row.slate_date ?? "missing"}`;
+  if (!isFreshForMlbSlate(row.captured_at, slateDate)) return `CAPTURED_AT_NOT_CURRENT_SLATE:${row.captured_at ?? "missing"}`;
+  if (row.freshness_status && row.freshness_status !== expectedStatus) return `FRESHNESS_STATUS_${row.freshness_status}`;
+  return null;
+}
+
+function isFreshSnapshot(row: { captured_at?: string | null; slate_date?: string | null; freshness_status?: string | null }, slateDate: string) {
+  return freshnessReason(row, slateDate) === null;
+}
+
 function rankScore(params: { probability: number | null; edge: number | null; conviction: number | null; consensus: number | null; confidence: number | null }) {
   return Math.round(
     (params.probability ?? 0) * 10000 +
@@ -163,49 +187,65 @@ function rankScore(params: { probability: number | null; edge: number | null; co
 
 async function loadCanonicalRows() {
   const supabase = getSupabaseAdmin();
+  const { slateDate, startUtc, endUtc } = resolveMlbSlateWindow();
   const [edges, decisions, projections, odds] = await Promise.all([
     supabase
       .from("mlb_market_edge_research_snapshots")
-      .select("official_game_id,home_team_name,away_team_name,market,atlas_probability,market_probability,edge,value_percent,direction,classification,market_context,source_versions,snapshot_hash,captured_at")
+      .select("official_game_id,home_team_name,away_team_name,market,atlas_probability,market_probability,edge,value_percent,direction,classification,market_context,source_versions,snapshot_hash,captured_at,slate_date,freshness_status,freshness_reason")
       .eq("model_version", "mlb_market_edge_research_v1")
+      .eq("slate_date", slateDate)
       .eq("canonical", true)
+      .gte("captured_at", startUtc)
+      .lt("captured_at", endUtc)
       .limit(300),
     supabase
       .from("mlb_decision_research_snapshots")
-      .select("official_game_id,decision,consensus_grade,consensus_score,conviction_grade,conviction_score,decision_confidence_score,no_pick,feature_hash,model_version,captured_at")
+      .select("official_game_id,decision,consensus_grade,consensus_score,conviction_grade,conviction_score,decision_confidence_score,no_pick,feature_hash,model_version,captured_at,slate_date,freshness_status,freshness_reason")
       .eq("model_version", "mlb_decision_engine_v1")
+      .eq("slate_date", slateDate)
       .eq("canonical", true)
+      .gte("captured_at", startUtc)
+      .lt("captured_at", endUtc)
       .limit(300),
     supabase
       .from("mlb_projection_research_snapshots")
-      .select("official_game_id,projection_availability,feature_hash,model_version,captured_at")
+      .select("official_game_id,projection_availability,feature_hash,model_version,captured_at,slate_date,freshness_status,freshness_reason")
       .eq("model_version", "mlb_projection_research_v1")
+      .eq("slate_date", slateDate)
       .eq("canonical", true)
+      .gte("captured_at", startUtc)
+      .lt("captured_at", endUtc)
       .limit(300),
     supabase
       .from("market_odds_snapshots")
       .select("event_id,commence_time,home_team,away_team,market_key,outcome_name,point,price,captured_at")
       .eq("sport", "MLB")
+      .gte("commence_time", startUtc)
+      .lt("commence_time", endUtc)
       .order("captured_at", { ascending: false })
       .limit(5000),
   ]);
   if (edges.error) throw edges.error;
   if (decisions.error) throw decisions.error;
   if (projections.error) throw projections.error;
-  const decisionByGame = new Map(((decisions.data ?? []) as DecisionRow[]).map((row) => [row.official_game_id, row]));
-  const projectionByGame = new Map(((projections.data ?? []) as ProjectionRow[]).map((row) => [row.official_game_id, row]));
+  const decisionRows = ((decisions.data ?? []) as DecisionRow[]).filter((row) => isFreshSnapshot(row, slateDate));
+  const projectionRows = ((projections.data ?? []) as ProjectionRow[]).filter((row) => isFreshSnapshot(row, slateDate));
+  const edgeRows = ((edges.data ?? []) as MarketEdgeRow[]).filter((row) => isFreshSnapshot(row, slateDate));
+  const decisionByGame = new Map(decisionRows.map((row) => [row.official_game_id, row]));
+  const projectionByGame = new Map(projectionRows.map((row) => [row.official_game_id, row]));
   const oddsByTeams = new Map<string, OddsRow>();
-  const oddsRows = (odds.data ?? []) as OddsRow[];
+  const oddsRows = ((odds.data ?? []) as OddsRow[]).filter((row) => timestampBelongsToMlbSlate(row.commence_time, slateDate));
   for (const row of oddsRows) {
     const key = teamsKey(row.home_team, row.away_team);
     if (!oddsByTeams.has(key)) oddsByTeams.set(key, row);
   }
   return {
-    edges: (edges.data ?? []) as MarketEdgeRow[],
+    edges: edgeRows,
     decisionByGame,
     projectionByGame,
     oddsByTeams,
     oddsRows,
+    slateDate,
   };
 }
 
@@ -251,10 +291,13 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
   if (!params.force && currentHourET() !== config.morningScanHourEt) {
     return { enabled: true, skipped: true, reason: "Morning scan runs only at 7:00 AM ET." };
   }
-  const { edges, projectionByGame, decisionByGame, oddsByTeams, oddsRows } = await loadCanonicalRows();
+  const { edges, projectionByGame, decisionByGame, oddsByTeams, oddsRows, slateDate } = await loadCanonicalRows();
   const date = todayET();
   const scanAt = new Date().toISOString();
-  const opportunities = selectMorningOpportunities(edges);
+  const opportunities = selectMorningOpportunities(edges).filter((edge) => {
+    const startTime = gameStart(edge, oddsByTeams);
+    return Boolean(projectionByGame.get(edge.official_game_id)) && Boolean(decisionByGame.get(edge.official_game_id)) && timestampBelongsToMlbSlate(startTime, slateDate);
+  });
   const rows = opportunities.map((edge) => {
     const startTime = gameStart(edge, oddsByTeams);
     return {
@@ -273,6 +316,8 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
         decision: decisionByGame.get(edge.official_game_id)?.model_version ?? null,
       },
       metadata: {
+        freshnessStatus: "FRESH",
+        slateDate,
         frozenBy: "7AM_MORNING_SCAN",
         opportunityClassification: edge.classification,
         detectedPick: pickLabel(edge),
@@ -286,11 +331,26 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
         detectedAt: scanAt,
       },
       frozen: true,
+      publication_blocked: false,
+      publication_block_reason: null,
       updated_at: scanAt,
     };
   });
-  if (rows.length === 0) return { enabled: true, scanned: edges.length, inserted: 0, skippedDuplicates: 0 };
   const supabase = getSupabaseAdmin();
+  if (rows.length === 0) {
+    await supabase
+      .from("atlas_core_mlb_signals")
+      .update({
+        stage: "STALE_SOURCE",
+        publication_blocked: true,
+        publication_block_reason: "BLOCKED_STALE_UPSTREAM",
+        metadata: { publicationBlocked: true, publicationBlockReason: "BLOCKED_STALE_UPSTREAM", slateDate },
+        updated_at: scanAt,
+      })
+      .eq("date", date)
+      .eq("stage", "SIGNALS_DETECTED");
+    return { enabled: true, scanned: edges.length, inserted: 0, skippedDuplicates: 0, publicationBlocked: true, publicationBlockReason: "BLOCKED_STALE_UPSTREAM" };
+  }
   const { data, error } = await supabase
     .from("atlas_core_mlb_signals")
     .upsert(rows, { onConflict: "date,game_id" })
@@ -305,7 +365,7 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
       .eq("stage", "SIGNALS_DETECTED")
       .not("game_id", "in", `(${keepIds.map((id) => `"${id}"`).join(",")})`);
   }
-  return { enabled: true, scanned: edges.length, signalsDetected: rows.length, upserted: data?.length ?? 0 };
+  return { enabled: true, scanned: edges.length, signalsDetected: rows.length, upserted: data?.length ?? 0, slateDate, freshnessGate: "PASSED" };
 }
 
 function gate(edge: MarketEdgeRow, decision?: DecisionRow, projection?: ProjectionRow) {
@@ -319,9 +379,11 @@ function gate(edge: MarketEdgeRow, decision?: DecisionRow, projection?: Projecti
   const confidence = numberValue(decision?.decision_confidence_score) ?? 0;
   if (probability === null) warnings.push("Atlas probability unavailable.");
   else reasons.push(`Highest probability market selected (${Math.round(probability * 10000) / 100}%).`);
-  if (projection?.projection_availability !== "AVAILABLE") warnings.push("Projection unavailable or partial.");
+  if (!projection) warnings.push("STALE_PROJECTION_SNAPSHOT");
+  else if (projection?.projection_availability !== "AVAILABLE") warnings.push("Projection unavailable or partial.");
   else reasons.push("Projection AVAILABLE");
-  if (!decision || decision.no_pick || String(decision.decision ?? "").includes("NO_PICK")) warnings.push("Decision is NO_PICK or unavailable.");
+  if (!decision) warnings.push("STALE_DECISION_SNAPSHOT");
+  else if (decision.no_pick || String(decision.decision ?? "").includes("NO_PICK")) warnings.push("Decision is NO_PICK or unavailable.");
   else reasons.push("Decision passed");
   if (edge.direction === "NONE") warnings.push("Selected probability market has no positive market edge direction.");
   if (edgeValue < config.minFinalPickEdge) warnings.push("Edge below Final Pick Gate.");
@@ -337,14 +399,16 @@ function gate(edge: MarketEdgeRow, decision?: DecisionRow, projection?: Projecti
 export async function runAtlasCoreLiveValidation() {
   const config = getAtlasCoreMlbConfig();
   if (!config.enabled || config.legacyRollbackEnabled) return { enabled: false, skipped: true, reason: "Atlas Core MLB disabled or rollback enabled." };
-  const { edges, decisionByGame, projectionByGame, oddsByTeams, oddsRows } = await loadCanonicalRows();
+  const { edges, decisionByGame, projectionByGame, oddsByTeams, oddsRows, slateDate } = await loadCanonicalRows();
   const selectedMarkets = selectHighestProbabilityMarketByGame(edges);
   const candidates = selectedMarkets
     .map((edge) => {
       const decision = decisionByGame.get(edge.official_game_id);
       const projection = projectionByGame.get(edge.official_game_id);
-      return { edge, decision, projection, gate: gate(edge, decision, projection) };
+      const startTime = gameStart(edge, oddsByTeams);
+      return { edge, decision, projection, gate: gate(edge, decision, projection), startTime };
     })
+    .filter((item) => timestampBelongsToMlbSlate(item.startTime, slateDate))
     .filter((item) => item.gate.passed)
     .toSorted((a, b) => b.gate.ranking - a.gate.ranking);
 
@@ -385,10 +449,28 @@ export async function runAtlasCoreLiveValidation() {
       source_versions: { atlasCore: ATLAS_CORE_MLB_VERSION, projection: item.projection?.model_version, decision: item.decision?.model_version, marketEdge: item.edge.source_versions },
       source_snapshot_hashes: { projection: item.projection?.feature_hash, decision: item.decision?.feature_hash, marketEdge: item.edge.snapshot_hash },
       published_at: now,
+      publication_blocked: false,
+      publication_block_reason: null,
       updated_at: now,
     };
   });
   const supabase = getSupabaseAdmin();
+  if (rows.length === 0) {
+    await supabase
+      .from("atlas_core_mlb_picks")
+      .update({
+        status: "STALE_SOURCE",
+        rank: null,
+        is_top_signal: false,
+        publication_blocked: true,
+        publication_block_reason: "BLOCKED_STALE_UPSTREAM",
+        warnings: ["BLOCKED_STALE_UPSTREAM"],
+        updated_at: now,
+      })
+      .eq("date", date)
+      .in("status", ["VALIDATED", "CONFIRMED"]);
+    return { enabled: true, candidates: candidates.length, publishedTop5: 0, topSignalPublished: false, slateDate, publicationBlocked: true, publicationBlockReason: "BLOCKED_STALE_UPSTREAM" };
+  }
   if (rows.length) {
     const { error } = await supabase.from("atlas_core_mlb_picks").upsert(rows, { onConflict: "date,game_id" });
     if (error) throw error;
@@ -402,7 +484,33 @@ export async function runAtlasCoreLiveValidation() {
       .not("game_id", "in", `(${keepIds.map((id) => `"${id}"`).join(",")})`)
       .eq("status", "VALIDATED");
   }
-  return { enabled: true, candidates: candidates.length, publishedTop5: rows.length, topSignalPublished: Boolean(topSignalId), topSignalGameId: topSignalId };
+  return { enabled: true, candidates: candidates.length, publishedTop5: rows.length, topSignalPublished: Boolean(topSignalId), topSignalGameId: topSignalId, slateDate, freshnessGate: "PASSED" };
+}
+
+export async function runAtlasCoreDailyPipeline(mode: "MORNING" | "LIVE") {
+  const slateDate = resolveMlbSlateDate();
+  const projectionCapture = await buildMlbProjectionResearchSnapshots();
+  const projectionStorage = await insertProjectionResearchSnapshotsDeduped(projectionCapture.projections);
+  const decisionCapture = await buildDecisionResearchSnapshots();
+  const decisionStorage = await insertDecisionResearchSnapshotsDeduped(decisionCapture.decisions);
+  const marketEdgeCapture = await buildMarketEdgeResearchSnapshots();
+  const marketEdgeStorage = await insertMarketEdgeSnapshotsDeduped(marketEdgeCapture.marketEdges);
+  const atlasCore = mode === "MORNING" ? await runAtlasCoreMorningScan({ force: true }) : await runAtlasCoreLiveValidation();
+
+  return {
+    ok: true,
+    mode,
+    slateDate,
+    projection: { games: projectionCapture.projections.length, inserted: projectionStorage.inserted, skipped: projectionStorage.skipped, errors: projectionStorage.errors },
+    decision: { games: decisionCapture.decisions.length, inserted: decisionStorage.inserted, skipped: decisionStorage.skipped, errors: decisionStorage.errors },
+    marketEdge: { markets: marketEdgeCapture.marketEdges.length, inserted: marketEdgeStorage.inserted, skipped: marketEdgeStorage.skipped, errors: marketEdgeStorage.errors },
+    atlasCore,
+    pipelineHealth:
+      projectionStorage.errors.length === 0 &&
+      decisionStorage.errors.length === 0 &&
+      marketEdgeStorage.errors.length === 0 &&
+      !(atlasCore as any).publicationBlocked,
+  };
 }
 
 function selectTopSignal<T extends { gate: { ranking: number }; edge: { official_game_id: string } }>(items: T[], minimumSeparation: number) {

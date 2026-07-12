@@ -6,6 +6,7 @@ import {
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
 import { getRecentSnapshots } from "@/lib/market-impact/odds/snapshotRepository";
 import type { OddsSnapshot } from "@/types/oddsMovement";
+import { resolveMlbSlateDate, timestampBelongsToMlbSlate } from "@/app/lib/mlb-engine/slate-date";
 import {
   buildMarketEdgeSnapshots,
   MLB_MARKET_EDGE_RESEARCH_VERSION,
@@ -214,6 +215,7 @@ async function loadCanonicalProjectionRows() {
     .from("mlb_projection_research_snapshots")
     .select("official_game_id,home_team_id,home_team_name,away_team_id,away_team_name,projected_home_runs,projected_away_runs,projected_total_runs,home_win_probability,away_win_probability,fair_moneyline_home,fair_moneyline_away,captured_at")
     .eq("model_version", "mlb_projection_research_v1")
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(200);
@@ -227,6 +229,7 @@ async function loadCanonicalDecisionRows() {
     .from("mlb_decision_research_snapshots")
     .select("official_game_id,decision")
     .eq("model_version", "mlb_decision_engine_v1")
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(200);
@@ -241,7 +244,8 @@ export async function buildMarketEdgeResearchSnapshots(asOf = new Date().toISOSt
     loadCanonicalDecisionRows(),
   ]);
   const oddsByGame = new Map<string, OddsSnapshot[]>();
-  for (const snapshot of oddsSnapshots) {
+  const slateDate = resolveMlbSlateDate();
+  for (const snapshot of oddsSnapshots.filter((snapshot) => timestampBelongsToMlbSlate(snapshot.commenceTime, slateDate))) {
     const key = gameKey(snapshot.homeTeam, snapshot.awayTeam);
     oddsByGame.set(key, [...(oddsByGame.get(key) ?? []), snapshot]);
   }
@@ -292,6 +296,7 @@ export async function buildMarketEdgeResearchSnapshots(asOf = new Date().toISOSt
 }
 
 export function buildMarketEdgeRows(edges: MarketEdgeSnapshot[]) {
+  const slateDate = resolveMlbSlateDate();
   return edges.map((edge) => {
     const payload = {
       officialGameId: edge.officialGameId,
@@ -302,8 +307,10 @@ export function buildMarketEdgeRows(edges: MarketEdgeSnapshot[]) {
       direction: edge.direction,
       classification: edge.classification,
       modelVersion: edge.modelVersion,
+      slateDate,
     };
     return {
+      slate_date: slateDate,
       official_game_id: edge.officialGameId,
       home_team_id: edge.homeTeamId ?? null,
       home_team_name: edge.homeTeamName,
@@ -322,6 +329,9 @@ export function buildMarketEdgeRows(edges: MarketEdgeSnapshot[]) {
       snapshot_hash: snapshotHash(payload),
       canonical: true,
       captured_at: edge.capturedAt,
+      source_updated_at: edge.marketContext?.latestUpdatedAt ?? edge.capturedAt,
+      freshness_status: "FRESH",
+      freshness_reason: "CAPTURED_FOR_CURRENT_ET_SLATE",
     };
   });
 }
@@ -345,12 +355,13 @@ export async function insertMarketEdgeSnapshotsDeduped(edges: MarketEdgeSnapshot
       invalid_reason: "SUPERSEDED_BY_MLB_MARKET_EDGE_RESEARCH_CAPTURE",
     })
     .eq("model_version", MLB_MARKET_EDGE_RESEARCH_VERSION)
+    .eq("slate_date", rows[0]?.slate_date)
     .not("snapshot_hash", "in", `(${quotedHashes})`)
     .eq("canonical", true);
   if (markOld.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markOld.error.message] };
   const markCurrent = await supabase
     .from(TABLE)
-    .update({ canonical: true, superseded_at: null, invalid_reason: null })
+    .update({ canonical: true, superseded_at: null, invalid_reason: null, freshness_status: "FRESH", freshness_reason: "CAPTURED_FOR_CURRENT_ET_SLATE" })
     .in("snapshot_hash", hashes);
   if (markCurrent.error) return { attempted: rows.length, inserted: data?.length ?? 0, skipped: 0, errors: [markCurrent.error.message] };
   const inserted = data?.length ?? 0;
@@ -376,11 +387,13 @@ export async function getMarketEdgeResearchStatus() {
     .from(TABLE)
     .select("id", { count: "exact", head: true })
     .eq("model_version", MLB_MARKET_EDGE_RESEARCH_VERSION)
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true);
   const { data, error: latestError } = await supabase
     .from(TABLE)
-    .select("official_game_id,home_team_name,away_team_name,market,atlas_probability,market_probability,edge,value_percent,direction,classification,market_context,captured_at")
+    .select("official_game_id,home_team_name,away_team_name,market,atlas_probability,market_probability,edge,value_percent,direction,classification,market_context,captured_at,slate_date,freshness_status,freshness_reason")
     .eq("model_version", MLB_MARKET_EDGE_RESEARCH_VERSION)
+    .eq("slate_date", resolveMlbSlateDate())
     .eq("canonical", true)
     .order("captured_at", { ascending: false })
     .limit(300);

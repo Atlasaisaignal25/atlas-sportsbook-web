@@ -97,6 +97,7 @@ import {
   getLearningEngineStatus,
 } from "@/app/lib/mlb-engine/sports-intelligence/learning/learning-repository";
 import { MLB_LEARNING_ENGINE_VERSION } from "@/app/lib/mlb-engine/sports-intelligence/learning/learning-engine";
+import { resolveMlbSlateDate, resolveMlbSlateWindow } from "@/app/lib/mlb-engine/slate-date";
 
 export const dynamic = "force-dynamic";
 
@@ -908,6 +909,77 @@ async function officialPickConsistencyAudit() {
   };
 }
 
+async function dailyFreshnessAudit() {
+  const supabase = getSupabaseAdmin();
+  const { slateDate, startUtc, endUtc } = resolveMlbSlateWindow();
+  const staleFilter = (query: any) => query.eq("canonical", true).or(`slate_date.neq.${slateDate},slate_date.is.null,captured_at.lt.${startUtc},captured_at.gte.${endUtc}`);
+  const [
+    projectionFresh,
+    projectionStale,
+    decisionFresh,
+    decisionStale,
+    marketEdgeFresh,
+    marketEdgeStale,
+    signals,
+    picks,
+    latestProjection,
+    latestDecision,
+    latestMarketEdge,
+  ] = await Promise.all([
+    supabase.from("mlb_projection_research_snapshots").select("id", { count: "exact", head: true }).eq("model_version", MLB_PROJECTION_RESEARCH_VERSION).eq("canonical", true).eq("slate_date", slateDate).gte("captured_at", startUtc).lt("captured_at", endUtc),
+    staleFilter(supabase.from("mlb_projection_research_snapshots").select("id", { count: "exact", head: true }).eq("model_version", MLB_PROJECTION_RESEARCH_VERSION)),
+    supabase.from("mlb_decision_research_snapshots").select("id", { count: "exact", head: true }).eq("model_version", MLB_DECISION_RESEARCH_VERSION).eq("canonical", true).eq("slate_date", slateDate).gte("captured_at", startUtc).lt("captured_at", endUtc),
+    staleFilter(supabase.from("mlb_decision_research_snapshots").select("id", { count: "exact", head: true }).eq("model_version", MLB_DECISION_RESEARCH_VERSION)),
+    supabase.from("mlb_market_edge_research_snapshots").select("id", { count: "exact", head: true }).eq("model_version", MLB_MARKET_EDGE_RESEARCH_VERSION).eq("canonical", true).eq("slate_date", slateDate).gte("captured_at", startUtc).lt("captured_at", endUtc),
+    staleFilter(supabase.from("mlb_market_edge_research_snapshots").select("id", { count: "exact", head: true }).eq("model_version", MLB_MARKET_EDGE_RESEARCH_VERSION)),
+    supabase.from("atlas_core_mlb_signals").select("id,stage,updated_at,metadata", { count: "exact" }).eq("date", slateDate),
+    supabase.from("atlas_core_mlb_picks").select("id,status,rank,is_top_signal,updated_at,warnings", { count: "exact" }).eq("date", slateDate),
+    supabase.from("mlb_projection_research_snapshots").select("captured_at").eq("model_version", MLB_PROJECTION_RESEARCH_VERSION).eq("canonical", true).order("captured_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("mlb_decision_research_snapshots").select("captured_at").eq("model_version", MLB_DECISION_RESEARCH_VERSION).eq("canonical", true).order("captured_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("mlb_market_edge_research_snapshots").select("captured_at").eq("model_version", MLB_MARKET_EDGE_RESEARCH_VERSION).eq("canonical", true).order("captured_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const signalRows = signals.data ?? [];
+  const pickRows = picks.data ?? [];
+  const blockedSignals = signalRows.filter((row: any) => row.stage === "STALE_SOURCE").length;
+  const blockedPicks = pickRows.filter((row: any) => row.status === "STALE_SOURCE").length;
+  const publishedGames =
+    signalRows.filter((row: any) => row.stage === "SIGNALS_DETECTED").length +
+    pickRows.filter((row: any) => ["VALIDATED", "CONFIRMED"].includes(row.status)).length;
+  const errors = [
+    projectionFresh.error?.message,
+    projectionStale.error?.message,
+    decisionFresh.error?.message,
+    decisionStale.error?.message,
+    marketEdgeFresh.error?.message,
+    marketEdgeStale.error?.message,
+    signals.error?.message,
+    picks.error?.message,
+    latestProjection.error?.message,
+    latestDecision.error?.message,
+    latestMarketEdge.error?.message,
+  ].filter(Boolean);
+
+  return {
+    slateDate,
+    projectionFreshCount: projectionFresh.count ?? 0,
+    projectionStaleCount: projectionStale.count ?? 0,
+    decisionFreshCount: decisionFresh.count ?? 0,
+    decisionStaleCount: decisionStale.count ?? 0,
+    marketEdgeFreshCount: marketEdgeFresh.count ?? 0,
+    marketEdgeStaleCount: marketEdgeStale.count ?? 0,
+    blockedGames: blockedSignals + blockedPicks,
+    publishedGames,
+    upstreamLatestCaptureTimes: {
+      projection: latestProjection.data?.captured_at ?? null,
+      decision: latestDecision.data?.captured_at ?? null,
+      marketEdge: latestMarketEdge.data?.captured_at ?? null,
+    },
+    pipelineLastRun: [latestProjection.data?.captured_at, latestDecision.data?.captured_at, latestMarketEdge.data?.captured_at].filter(Boolean).sort().at(-1) ?? null,
+    pipelineHealth: errors.length === 0 && (projectionFresh.count ?? 0) > 0 && (decisionFresh.count ?? 0) > 0 && (marketEdgeFresh.count ?? 0) > 0 && blockedSignals + blockedPicks === 0,
+    errors,
+  };
+}
+
 function learningEngineAudit(
   enabled: boolean,
   status: Awaited<ReturnType<typeof getLearningEngineStatus>>,
@@ -1043,7 +1115,7 @@ export async function GET(request: Request) {
     );
     const movementFeatures = buildMarketMovementFeatureMap(consensusMovement);
     const sportsFlags = getMlbSportsIntelligenceFlags();
-    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus, performanceAnalyticsStatus, learningEngineStatus, officialPickConsistency] = await Promise.all([
+    const [lineupPersistence, lineupChanges, starterVerification, offensiveSnapshotStatus, offensiveBaselineStatus, bullpenSnapshotStatus, bullpenBaselineStatus, weatherSnapshotStatus, teamStrengthStatus, teamIntelligenceStatus, teamQualityResearchStatus, pitcherQualityStatus, projectionResearchStatus, decisionResearchStatus, marketEdgeResearchStatus, validationHistoryStatus, performanceAnalyticsStatus, learningEngineStatus, officialPickConsistency, dailyFreshness] = await Promise.all([
       getLineupPersistenceStatus(),
       getLineupChangeStatus(details),
       getStarterVerificationStatus(details),
@@ -1063,6 +1135,7 @@ export async function GET(request: Request) {
       getPerformanceAnalyticsStatus(),
       getLearningEngineStatus(),
       officialPickConsistencyAudit(),
+      dailyFreshnessAudit(),
     ]);
     const sportsContext = auditContextFromRows(publicSignals, liveTop5);
     const pitcherContexts = auditContextsFromRows(publicSignals, liveTop5, requestedEventId);
@@ -1141,6 +1214,7 @@ export async function GET(request: Request) {
         featureKeys: movementFeatures.size,
         examples: consensusMovement.slice(0, 3),
       },
+      dailyFreshness,
       sportsIntelligence: sportsIntelligenceAuditSummary({
         enabled:
           sportsFlags.sportsIntelligenceEnabled &&
