@@ -1632,6 +1632,12 @@ function controlPct(value: unknown) {
   return `${pctValue.toFixed(1)}%`;
 }
 
+function controlPctNumber(value: unknown) {
+  const parsed = adminNumber(value);
+  if (parsed === null) return null;
+  return Math.max(0, Math.min(100, Math.abs(parsed) <= 1 ? parsed * 100 : parsed));
+}
+
 function controlScore(value: unknown) {
   const parsed = adminNumber(value);
   if (parsed === null) return "N/A";
@@ -1652,9 +1658,9 @@ function controlDeltaPct(value: unknown) {
 
 function controlTone(value?: string | null) {
   const status = String(value ?? "").toUpperCase();
-  if (["HEALTHY", "SUCCESS", "READY", "PUBLISHED", "CONFIRMED", "HIGH", "UP"].includes(status)) return "text-emerald-300";
-  if (["WARNING", "PARTIAL", "MEDIUM", "DOWN"].includes(status)) return "text-yellow-300";
-  if (["ERROR", "LOW", "REMOVED", "WITHDRAWN", "DOWNGRADED"].includes(status)) return "text-red-300";
+  if (["HEALTHY", "SUCCESS", "READY", "PUBLISHED", "CONFIRMED", "HIGH", "UP", "CONFIDENCE IMPROVED", "REVIEW PASSED", "CURRENT LEADER"].includes(status)) return "text-emerald-300";
+  if (["WARNING", "PARTIAL", "MEDIUM", "DOWN", "STABLE", "PREVIOUS LEADER", "FORMER LEADER"].includes(status)) return "text-yellow-300";
+  if (["ERROR", "LOW", "REMOVED", "WITHDRAWN", "DOWNGRADED", "CONFIDENCE REDUCED", "REVIEW FAILED"].includes(status)) return "text-red-300";
   return "text-cyan-300";
 }
 
@@ -1830,6 +1836,32 @@ function ProductStatusPanel({ status }: { status?: any }) {
   );
 }
 
+function LeaderConfidenceIndicator({ data }: { data: any }) {
+  const probability = controlPctNumber(data.atlasProbability) ?? 0;
+  const edge = Math.min(100, Math.max(0, Math.abs(adminNumber(data.edge) ?? 0) * 1250));
+  const score = adminNumber(data.engineScore) ?? null;
+  return (
+    <div className="mt-2 rounded-lg border border-white/8 bg-black/15 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/62">Leader Confidence</p>
+        <p className={`text-[10px] font-black uppercase ${controlTone(data.stability)}`}>{data.stability ?? "IDLE"}</p>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-[linear-gradient(90deg,#22d3ee,#34d399,#facc15)] shadow-[0_0_14px_rgba(34,211,238,0.35)]"
+          style={{ width: `${probability}%` }}
+        />
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-1 text-[9px] font-bold text-white/48">
+        <span>Prob <b className="text-white">{controlPct(data.atlasProbability)}</b></span>
+        <span>Edge <b className="text-white">{formatAdminEdge(data.edge)}</b></span>
+        <span>Score <b className="text-white">{score === null ? "N/A" : controlScore(score)}</b></span>
+        <span>Edge Strength <b className="text-white">{edge.toFixed(0)}%</b></span>
+      </div>
+    </div>
+  );
+}
+
 function ControlLeadersToday({ rows, secondPlace, expanded, onToggle }: { rows: any[]; secondPlace?: any | null; expanded: boolean; onToggle: () => void }) {
   const secondPlaceRow = secondPlace && !rows.some((row) => row.gameId === secondPlace.gameId)
     ? { ...secondPlace, rankLabel: "2nd", trend: secondPlace.status ?? "CANDIDATE" }
@@ -1892,8 +1924,10 @@ function ControlTopSignalHero({ data }: { data: any | null }) {
         <ControlMiniMetric label="Score" value={controlScore(data.engineScore)} tone="text-white" />
         <ControlMiniMetric label="Odds" value={formatAdminOdds(data.odds) || "N/A"} tone="text-white" />
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-2 border-t border-white/10 pt-2 text-xs">
+      <LeaderConfidenceIndicator data={data} />
+      <div className="mt-2 grid grid-cols-2 gap-2 border-t border-white/10 pt-2 text-xs sm:grid-cols-4">
         <div><span className="text-white/38">Leader Since</span><p className="font-black text-white">{formatAdminTime(data.leaderSince)}</p></div>
+        <div><span className="text-white/38">Leader Time</span><p className="font-black text-white">{data.leaderTime ?? "N/A"}</p></div>
         <div><span className="text-white/38">Stability</span><p className={`font-black ${controlTone(data.stability)}`}>{data.stability}</p></div>
         <div><span className="text-white/38">Publish Window</span><p className="font-black text-white">{data.estimatedPublicationWindow}</p></div>
       </div>
@@ -1922,6 +1956,11 @@ function ControlTopSignalStrength({ strength }: { strength?: any }) {
         <ControlMiniMetric label="Leader Changes" value={strength.leaderChangesToday ?? 0} />
         <ControlMiniMetric label="Stability" value={strength.stability ?? "IDLE"} tone={controlTone(strength.stability)} />
       </div>
+      {strength.scoreConsistencyNote ? (
+        <p className="mt-2 rounded-lg border border-yellow-300/15 bg-yellow-300/8 p-2 text-[11px] font-bold leading-snug text-yellow-100/75">
+          {strength.scoreConsistencyNote}
+        </p>
+      ) : null}
     </ControlSection>
   );
 }
@@ -1983,6 +2022,38 @@ function activityEngineTone(engine: string, severity?: string) {
   if (engine.includes("Signals")) return "border-emerald-400/50 text-emerald-300 bg-emerald-400";
   if (engine.includes("Validation")) return "border-yellow-400/50 text-yellow-300 bg-yellow-400";
   return "border-white/20 text-white/60 bg-white";
+}
+
+function ControlTopSignalStoryTimeline({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No Top Signal story yet.</p>;
+  return (
+    <div className="grid gap-2">
+      {rows.slice(-10).reverse().map((row, index) => (
+        <div key={`${row.timestamp}-${index}`} className="rounded-xl border border-white/10 bg-black/15 p-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-300">{formatAdminTime(row.timestamp)}</p>
+              <p className="mt-1 break-words text-[14px] font-black leading-tight text-white">{row.candidate}</p>
+              <p className="mt-0.5 break-words text-[10px] font-bold text-white/42">{row.event} · {row.market}</p>
+            </div>
+            <span className={`shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-black uppercase ${controlTone(row.status)}`}>
+              {row.status}
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-1.5">
+            <ControlMiniMetric label="Probability" value={controlPct(row.probability)} tone="text-emerald-300" />
+            <ControlMiniMetric label="Edge" value={formatAdminEdge(row.edge)} tone="text-cyan-300" />
+            <ControlMiniMetric label="Score" value={controlScore(row.score)} />
+          </div>
+          <div className="mt-2 grid grid-cols-3 gap-2 border-t border-white/8 pt-2 text-[9px] font-bold text-white/42">
+            <span>Prob Δ <b className={controlTone((row.probabilityDelta ?? 0) >= 0 ? "UP" : "DOWN")}>{controlDeltaPct(row.probabilityDelta)}</b></span>
+            <span>Edge Δ <b className={controlTone((row.edgeDelta ?? 0) >= 0 ? "UP" : "DOWN")}>{controlDeltaPct(row.edgeDelta)}</b></span>
+            <span>Leader Time <b className="text-white">{row.leaderTime ?? "N/A"}</b></span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ControlActivityList({ rows }: { rows: any[] }) {
@@ -2060,10 +2131,11 @@ function ControlMarketPulse({ pulse }: { pulse?: any }) {
 }
 
 function ControlChangeReasons({ rows }: { rows: any[] }) {
-  if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">Reason not available from current snapshots.</p>;
+  const meaningfulRows = rows.filter((row) => Array.isArray(row.reasons) && row.reasons.length > 0);
+  if (!meaningfulRows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No meaningful engine changes detected.</p>;
   return (
     <div className="grid gap-2">
-      {rows.slice(-8).reverse().map((row, index) => (
+      {meaningfulRows.slice(-8).reverse().map((row, index) => (
         <div key={`${row.timestamp}-${index}`} className="rounded-lg border border-white/8 bg-black/15 p-2">
           <p className="text-[10px] font-black uppercase text-cyan-300">{formatAdminTime(row.timestamp)} · {row.event}</p>
           <p className="mt-1 text-sm font-black text-white">{row.signal}</p>
@@ -2503,8 +2575,8 @@ export function AtlasControlCenterPanel({
                 <ControlSection title="Second Place Candidate">
                   <SecondPlaceCandidate candidate={filteredData.topSignal?.secondPlaceCandidate ?? null} />
                 </ControlSection>
-                <ControlSection title="Top Signal Leader Timeline">
-                  <ControlActivityList rows={(filteredData.topSignalTimeline ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.status, event: row.candidate, affectedSignal: row.market, description: `${controlPct(row.probability)} · ${formatAdminEdge(row.edge)} · score ${controlScore(row.score)}`, severity: row.status === "PUBLISHED" ? "SUCCESS" : "INFO" }))} />
+                <ControlSection title="Top Signal Story">
+                  <ControlTopSignalStoryTimeline rows={filteredData.topSignalTimeline ?? []} />
                 </ControlSection>
                 <ControlSection title="Why Atlas Changed">
                   <ControlChangeReasons rows={filteredData.topSignal?.changeReasons ?? []} />

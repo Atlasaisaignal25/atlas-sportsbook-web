@@ -259,6 +259,37 @@ function activitySeverity(status: string) {
   return "INFO";
 }
 
+function minutesBetween(start?: string | null, end?: string | null) {
+  if (!start || !end) return null;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
+  return Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
+}
+
+function durationLabel(minutes: number | null) {
+  if (minutes === null) return "N/A";
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours <= 0) return `${rest}m`;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
+
+function topSignalStoryStatus(row: DbRow, previous: DbRow | null) {
+  const rawStatus = String(row.status ?? "").toUpperCase();
+  if (Boolean(row.published)) return "Published";
+  if (["REMOVED", "WITHDRAWN"].includes(rawStatus)) return "Removed";
+  if (["FAILED", "REVIEW_FAILED", "DOWNGRADED"].includes(rawStatus)) return "Review Failed";
+  if (["READY", "CONFIRMED", "VALIDATED"].includes(rawStatus)) return previous ? "Review Passed" : "Leader Established";
+  if (!previous) return "Leader Established";
+  if (previous.game_id !== row.game_id) return "Leader Replaced";
+
+  const probabilityDelta = delta(row.atlas_probability, previous.atlas_probability);
+  if (probabilityDelta !== null && probabilityDelta > 0.0005) return "Confidence Improved";
+  if (probabilityDelta !== null && probabilityDelta < -0.0005) return "Confidence Reduced";
+  return "Stable";
+}
+
 function changeReasons(timeline: DbRow[]) {
   return timeline.map((row, index) => {
     const previous = timeline[index - 1] ?? null;
@@ -275,8 +306,8 @@ function changeReasons(timeline: DbRow[]) {
     return {
       timestamp: row.run_at,
       signal: pickLabel(row),
-      event: previous && previous.game_id === row.game_id ? "HELD" : "NEW LEADER",
-      reasons: reasons.length ? reasons : ["Reason not available from current snapshots."],
+      event: topSignalStoryStatus(row, previous),
+      reasons,
     };
   });
 }
@@ -353,11 +384,11 @@ export async function GET() {
 
   const topSignalTimeline = topSignalTimelineRaw.map((row, index) => {
     const previous = topSignalTimelineRaw[index - 1];
-    const status = row.published
-      ? "PUBLISHED"
-      : previous && previous.game_id === row.game_id
-        ? "HELD"
-        : "NEW LEADER";
+    const status = topSignalStoryStatus(row, previous ?? null);
+    const leaderSince = topSignalTimelineRaw.find((item) => item.game_id === row.game_id)?.run_at ?? row.run_at;
+    const probabilityDelta = previous ? delta(row.atlas_probability, previous.atlas_probability) : null;
+    const edgeDelta = previous ? delta(row.edge, previous.edge) : null;
+    const scoreDelta = previous ? delta(scoreOf(row), scoreOf(previous)) : null;
     return {
       timestamp: row.run_at,
       timestampEt: timeET(row.run_at),
@@ -370,10 +401,17 @@ export async function GET() {
       probability: num(row.atlas_probability),
       edge: num(row.edge),
       score: scoreOf(row),
+      probabilityDelta,
+      edgeDelta,
+      scoreDelta,
+      ranking: index + 1,
+      leaderSince,
+      leaderTime: durationLabel(minutesBetween(leaderSince, row.run_at)),
+      rawStatus: row.status,
       status,
     };
   });
-  const leaderChangesToday = topSignalTimeline.filter((row) => row.status === "NEW LEADER").length;
+  const leaderChangesToday = topSignalTimeline.filter((row) => ["Leader Established", "Leader Replaced"].includes(row.status)).length;
   const longestLeaderStreak = topSignalTimelineRaw.reduce((max, row) => Math.max(max, Number(row.consecutive_leader_hours ?? 1)), 0);
   const topSignalChangeReasons = changeReasons(topSignalTimelineRaw);
   const topSignalCurrentRank = new Map(eligibleTopSignalCandidates.map((row, index) => [String(row.game_id), index + 1]));
@@ -389,13 +427,15 @@ export async function GET() {
       const currentCandidate = eligibleTopSignalCandidates.find((row) => row.game_id === last.game_id) ?? last;
       const currentRank = topSignalCurrentRank.get(String(last.game_id)) ?? null;
       const previousRank = rows.length > 1 ? topSignalCurrentRank.get(String(rows.at(-2)?.game_id)) ?? null : null;
+      const previousDistinctLeader = topSignalTimelineRaw
+        .slice()
+        .reverse()
+        .find((row) => row.game_id !== topSignalLeader?.game_id);
       const trend = last.game_id === topSignalLeader?.game_id
-        ? "NEW LEADER"
-        : previousRank !== null && currentRank !== null && currentRank < previousRank
-          ? "UP"
-          : previousRank !== null && currentRank !== null && currentRank > previousRank
-            ? "DOWN"
-            : "SAME";
+        ? "CURRENT LEADER"
+        : previousDistinctLeader?.game_id === last.game_id
+          ? "PREVIOUS LEADER"
+          : "FORMER LEADER";
       return {
         signalIdentity,
         currentRank,
@@ -478,10 +518,10 @@ export async function GET() {
     ...topSignalTimeline.map((row) => ({
       timestamp: row.timestamp,
       engine: "Top Signal",
-      event: row.status === "PUBLISHED" ? "Top Signal published" : row.status === "HELD" ? "Top Signal candidate held" : "Top Signal leader changed",
+      event: row.status === "Published" ? "Top Signal published" : row.status,
       affectedSignal: row.candidate,
       description: `${row.event} · ${row.market}`,
-      severity: row.status === "PUBLISHED" ? "SUCCESS" : "INFO",
+      severity: row.status === "Published" ? "SUCCESS" : "INFO",
     })),
     ...activePicks.map((row) => ({
       timestamp: row.final_validated_at ?? row.updated_at ?? row.published_at,
@@ -502,17 +542,26 @@ export async function GET() {
   const topSignalSecondCandidate = candidateFromRow(topSignalSecondPlace);
   const leaderScore = topSignalLeader ? scoreOf(topSignalLeader) : null;
   const secondScore = topSignalSecondPlace ? scoreOf(topSignalSecondPlace) : null;
+  const edgeMovedWithStableScore = topSignalTimeline.some((row) => Math.abs(row.edgeDelta ?? 0) > 0 && Math.abs(row.scoreDelta ?? 0) === 0);
+  const topSignalLeaderSince = topSignalLeader
+    ? topSignalTimelineRaw.find((row) => row.game_id === topSignalLeader.game_id)?.run_at ?? topSignalLeader.run_at
+    : null;
+  const topSignalLeaderTime = durationLabel(minutesBetween(topSignalLeaderSince, new Date().toISOString()));
   const topSignalStrength = {
     leaderScore,
     secondPlaceScore: secondScore,
     scoreGap: leaderScore !== null && secondScore !== null ? leaderScore - secondScore : null,
     probabilityGap: delta(topSignalLeader?.atlas_probability, topSignalSecondPlace?.atlas_probability),
     edgeGap: delta(topSignalLeader?.edge, topSignalSecondPlace?.edge),
-    leaderDuration: topSignalLeader ? `${Number(topSignalLeader.consecutive_leader_hours ?? 1)}h` : "N/A",
+    leaderSince: topSignalLeaderSince,
+    leaderDuration: topSignalLeaderTime,
     leaderChangesToday,
     longestLeaderStreak,
     currentLeaderStreak: Number(topSignalLeader?.consecutive_leader_hours ?? 0),
     stability: stability(topSignalLeader, topSignalTimelineRaw, topSignalSecondPlace),
+    scoreConsistencyNote: edgeMovedWithStableScore
+      ? "Edge moved while score stayed unchanged. Current score model can remain stable when weighted inputs offset each other."
+      : null,
   };
 
   const topSignal = topSignalLeader
@@ -529,7 +578,8 @@ export async function GET() {
         marketProbability: null,
         edge: num(topSignalLeader.edge),
         engineScore: scoreOf(topSignalLeader),
-        leaderSince: topSignalTimelineRaw.find((row) => row.game_id === topSignalLeader.game_id)?.run_at ?? topSignalLeader.run_at,
+        leaderSince: topSignalLeaderSince,
+        leaderTime: topSignalLeaderTime,
         consecutiveHoursAsLeader: Number(topSignalLeader.consecutive_leader_hours ?? 1),
         stability: stability(topSignalLeader, topSignalTimelineRaw, topSignalSecondPlace),
         nextFinalReview: finalReview(topSignalLeader.start_time),
