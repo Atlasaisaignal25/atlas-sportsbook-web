@@ -141,6 +141,23 @@ type PerformanceCenterData = {
   totals: { top5Graded: number; topSignalGraded: number; globalGraded: number };
 };
 
+type AtlasControlTab = "overview" | "top-signal" | "top5" | "signals" | "activity" | "health";
+
+type AtlasControlCenterData = {
+  summary: any;
+  engineHealth: any[];
+  topSignal: any | null;
+  topSignalTimeline: any[];
+  top5: any;
+  top5Movement: any[];
+  signalsDetected: any[];
+  exclusiveTop3: any;
+  liveActivity: any[];
+  operationsTimeline: any[];
+  dataSources?: string[];
+  errors?: string[];
+};
+
 type ResearchGame = {
   id: string;
   header: { awayTeam: string; homeTeam: string; time: string; status: string; league: string };
@@ -1187,7 +1204,7 @@ function ResearchGameCard({ game }: { game: ResearchGame }) {
   );
 }
 
-type AdminSection = "operations" | "research" | "performance" | "more";
+type AdminSection = "control" | "operations" | "research" | "performance" | "more";
 
 function AtlasAdminLogo() {
   return (
@@ -1590,6 +1607,353 @@ function BusinessSnapshot({ operations }: { operations?: AdminOperations }) {
   );
 }
 
+function controlPct(value: unknown) {
+  const parsed = adminNumber(value);
+  if (parsed === null) return "N/A";
+  const pctValue = Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
+  return `${pctValue.toFixed(1)}%`;
+}
+
+function controlScore(value: unknown) {
+  const parsed = adminNumber(value);
+  if (parsed === null) return "N/A";
+  return parsed.toFixed(1);
+}
+
+function controlSigned(value: unknown) {
+  const parsed = adminNumber(value);
+  if (parsed === null) return "N/A";
+  return `${parsed > 0 ? "+" : ""}${parsed}`;
+}
+
+function controlTone(value?: string | null) {
+  const status = String(value ?? "").toUpperCase();
+  if (["HEALTHY", "SUCCESS", "READY", "PUBLISHED", "CONFIRMED", "HIGH", "UP"].includes(status)) return "text-emerald-300";
+  if (["WARNING", "PARTIAL", "MEDIUM", "DOWN"].includes(status)) return "text-yellow-300";
+  if (["ERROR", "LOW", "REMOVED", "WITHDRAWN", "DOWNGRADED"].includes(status)) return "text-red-300";
+  return "text-cyan-300";
+}
+
+function ControlMiniMetric({ label, value, tone }: { label: string; value: React.ReactNode; tone?: string }) {
+  return (
+    <div className="rounded-lg border border-white/8 bg-black/15 px-2.5 py-2">
+      <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/42">{label}</p>
+      <p className={`mt-1 truncate text-[15px] font-black ${tone ?? "text-white"}`}>{value}</p>
+    </div>
+  );
+}
+
+function ControlSection({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <AdminShellCard className="p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-[15px] font-black uppercase tracking-[0.02em] text-white">{title}</h2>
+        {action ? <div className="text-[10px] font-black uppercase text-cyan-300">{action}</div> : null}
+      </div>
+      {children}
+    </AdminShellCard>
+  );
+}
+
+function ControlHealthStrip({ rows }: { rows: any[] }) {
+  const visible = rows.slice(0, 4);
+  return (
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+      {visible.map((row) => (
+        <AdminShellCard key={row.engine} className="p-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-[10px] font-black uppercase text-white/70">{row.engine}</span>
+            <span className={`text-[9px] font-black uppercase ${controlTone(row.status)}`}>{row.status}</span>
+          </div>
+          <p className="mt-1 text-[10px] font-bold text-white/42">Last {row.lastRunEt ?? "N/A"}</p>
+        </AdminShellCard>
+      ))}
+    </div>
+  );
+}
+
+function ControlTopSignalHero({ data }: { data: any | null }) {
+  if (!data) {
+    return (
+      <ControlSection title="Top Signal Engine">
+        <p className="py-6 text-center text-sm font-bold text-white/45">NO_QUALIFIED_SIGNAL</p>
+      </ControlSection>
+    );
+  }
+  return (
+    <AdminShellCard className="border-purple-400/45 p-3 shadow-[0_0_26px_rgba(168,85,247,0.10)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-300">Top Signal Engine</p>
+          <h2 className="mt-1 text-[22px] font-black leading-tight text-white">{data.currentLeader}</h2>
+          <p className="text-xs font-bold text-white/50">{data.event} · {data.market}</p>
+        </div>
+        <span className={`rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black uppercase ${controlTone(data.candidateStatus)}`}>
+          {data.candidateStatus}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ControlMiniMetric label="Atlas Probability" value={controlPct(data.atlasProbability)} tone="text-emerald-300" />
+        <ControlMiniMetric label="Edge" value={formatAdminEdge(data.edge)} tone="text-cyan-300" />
+        <ControlMiniMetric label="Score" value={controlScore(data.engineScore)} tone="text-white" />
+        <ControlMiniMetric label="Odds" value={formatAdminOdds(data.odds) || "N/A"} tone="text-white" />
+      </div>
+      <div className="mt-3 grid gap-2 border-t border-white/10 pt-3 text-xs sm:grid-cols-4">
+        <div><span className="text-white/38">Leader Since</span><p className="font-black text-white">{formatAdminTime(data.leaderSince)}</p></div>
+        <div><span className="text-white/38">Consecutive Hours</span><p className="font-black text-white">{data.consecutiveHoursAsLeader ?? 0}</p></div>
+        <div><span className="text-white/38">Stability</span><p className={`font-black ${controlTone(data.stability)}`}>{data.stability}</p></div>
+        <div><span className="text-white/38">Publish Window</span><p className="font-black text-white">{data.estimatedPublicationWindow}</p></div>
+      </div>
+      <div className="mt-3 rounded-lg border border-white/8 bg-black/15 p-2 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-black uppercase text-white/50">Second Place Candidate</span>
+          <span className="font-black text-white/35">{data.secondPlaceCandidate ? "Available" : "No same-run second place in history"}</span>
+        </div>
+        {data.secondPlaceCandidate ? <p className="mt-1 text-white">{data.secondPlaceCandidate.event}</p> : null}
+      </div>
+    </AdminShellCard>
+  );
+}
+
+function ControlRankingList({ rows, empty, compact = false }: { rows: any[]; empty: string; compact?: boolean }) {
+  if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">{empty}</p>;
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/10">
+      {rows.map((row) => (
+        <div key={`${row.gameId}-${row.rank}`} className={`grid grid-cols-[26px_minmax(0,1fr)_54px_60px_52px] items-center gap-2 border-b border-white/8 px-2.5 last:border-b-0 ${compact ? "py-1.5" : "py-2"}`}>
+          <span className="text-[13px] font-black text-white">#{row.rank}</span>
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-black text-white">{row.selection}</p>
+            <p className="truncate text-[10px] font-bold text-white/40">{row.event}</p>
+          </div>
+          <span className="text-[10px] font-black text-white">{row.market}</span>
+          <span className="text-right text-[11px] font-black text-emerald-300">{controlPct(row.atlasProbability)}</span>
+          <span className={`text-right text-[10px] font-black ${controlTone(row.trend)}`}>{row.trend}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ControlSignalsDetectedList({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No frozen Signals Detected rows yet.</p>;
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/10">
+      {rows.map((row) => (
+        <div key={row.gameId} className="grid grid-cols-[minmax(0,1fr)_52px_56px_58px] items-center gap-2 border-b border-white/8 px-2.5 py-2 last:border-b-0">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-black text-white">{row.selection}</p>
+            <p className="truncate text-[10px] font-bold text-white/40">{row.event}</p>
+          </div>
+          <span className="text-[10px] font-black text-white">{row.market}</span>
+          <span className="text-right text-[11px] font-black text-emerald-300">{controlPct(row.atlasProbability)}</span>
+          <span className="text-right text-[10px] font-black text-cyan-300">{row.exclusiveTop3Rank ? `Top 3 #${row.exclusiveTop3Rank}` : "Frozen"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ControlActivityList({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No live activity yet.</p>;
+  return (
+    <div className="grid gap-1">
+      {rows.slice(0, 18).map((row, index) => (
+        <div key={`${row.timestamp}-${index}`} className="grid grid-cols-[58px_82px_minmax(0,1fr)] items-center gap-2 border-b border-white/8 py-1.5 last:border-b-0">
+          <span className="text-[10px] font-bold text-white/45">{formatAdminTime(row.timestamp)}</span>
+          <span className={`text-[9px] font-black uppercase ${controlTone(row.severity)}`}>{row.engine}</span>
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-black text-white">{row.event}</p>
+            <p className="truncate text-[10px] text-white/42">{row.affectedSignal} · {row.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ControlHealthTable({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="rounded-lg border border-white/10 bg-black/15 p-4 text-center text-sm font-bold text-white/45">No engine health available.</p>;
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/10">
+      {rows.map((row) => (
+        <div key={row.engine} className="grid grid-cols-[minmax(0,1fr)_70px_66px_54px] items-center gap-2 border-b border-white/8 px-2.5 py-2 text-xs last:border-b-0">
+          <span className="truncate font-black text-white">{row.engine}</span>
+          <span className={`text-[10px] font-black uppercase ${controlTone(row.status)}`}>{row.status}</span>
+          <span className="text-[10px] font-bold text-white/45">{row.latency}</span>
+          <span className="text-right text-[10px] font-black text-white">{row.rowsProcessed}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ControlOperationsTimeline({ rows }: { rows: any[] }) {
+  return (
+    <div className="grid gap-1">
+      {rows.map((row) => (
+        <div key={row.stage} className="grid grid-cols-[86px_minmax(0,1fr)_58px] gap-2 border-b border-white/8 py-2 last:border-b-0">
+          <span className="text-[10px] font-black uppercase text-cyan-300">{row.scheduledTime}</span>
+          <div className="min-w-0">
+            <p className="truncate text-[12px] font-black text-white">{row.stage}</p>
+            <p className="truncate text-[10px] text-white/40">Last {row.lastExecutionEt ?? "N/A"} · Next {row.nextExecution ?? "N/A"}</p>
+          </div>
+          <span className={`text-right text-[10px] font-black uppercase ${controlTone(row.health)}`}>{row.health}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AtlasControlCenterPanel({
+  data,
+  loading,
+  error,
+  tab,
+  onTab,
+  onRefresh,
+}: {
+  data: AtlasControlCenterData | null;
+  loading: boolean;
+  error: string | null;
+  tab: AtlasControlTab;
+  onTab: (tab: AtlasControlTab) => void;
+  onRefresh: () => void;
+}) {
+  const tabs: Array<{ id: AtlasControlTab; label: string }> = [
+    { id: "overview", label: "Overview" },
+    { id: "top-signal", label: "Top Signal" },
+    { id: "top5", label: "Top 5" },
+    { id: "signals", label: "Signals Detected" },
+    { id: "activity", label: "Activity" },
+    { id: "health", label: "Health" },
+  ];
+  const summary = data?.summary;
+  return (
+    <section className="grid gap-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Atlas Control Center</p>
+          <h1 className="text-[24px] font-black uppercase tracking-[-0.03em] text-white">Signal Engines</h1>
+          <p className="text-xs font-bold text-white/45">Live operational view of today’s Signal Engines.</p>
+        </div>
+        <button onClick={onRefresh} disabled={loading} className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-[10px] font-black uppercase text-cyan-200 disabled:opacity-50">
+          {loading ? "Loading" : "Refresh"}
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-bold text-white/45">
+        <span>Last updated: {formatAdminTime(summary?.generatedAt)}</span>
+        <span>{formatAdminDate(summary?.slateDate)}</span>
+      </div>
+      {error ? <p className="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-2 text-xs font-bold text-yellow-100">{error}</p> : null}
+      {data?.errors?.length ? <p className="rounded-xl border border-yellow-300/25 bg-yellow-300/10 p-2 text-xs font-bold text-yellow-100">{data.errors.join(" · ")}</p> : null}
+
+      <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
+        {tabs.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onTab(item.id)}
+            className={`min-w-max flex-1 border-r border-white/8 px-3 py-2 text-[10px] font-black uppercase last:border-r-0 ${tab === item.id ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {!data && loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">Loading Control Center...</p> : null}
+      {!data && !loading ? <p className="rounded-xl border border-white/10 bg-white/[0.025] p-4 text-sm font-bold text-white/55">No Control Center data available.</p> : null}
+
+      {data ? (
+        <>
+          {tab === "overview" ? (
+            <>
+              <ControlHealthStrip rows={data.engineHealth} />
+              <ControlTopSignalHero data={data.topSignal} />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <ControlMiniMetric label="Sports" value={(summary?.sportsAvailable ?? []).join(", ") || "N/A"} />
+                <ControlMiniMetric label="Games Inspected" value={summary?.gamesInspected ?? 0} />
+                <ControlMiniMetric label="Signals Detected" value={summary?.signalsDetected ?? 0} tone="text-cyan-300" />
+                <ControlMiniMetric label="Stale Sources" value={summary?.staleSources ?? 0} tone={(summary?.staleSources ?? 0) ? "text-yellow-300" : "text-emerald-300"} />
+              </div>
+              <div className="grid gap-2 md:grid-cols-2">
+                <ControlSection title="Premium Top 5" action={`Last ${formatAdminTime(data.top5?.lastRecalculation)}`}>
+                  <ControlRankingList rows={data.top5?.currentInternalRanking ?? []} empty="No Premium Top 5 ranking yet." compact />
+                </ControlSection>
+                <ControlSection title="Exclusive Top 3" action={`Last ${formatAdminTime(data.exclusiveTop3?.lastRecalculation)}`}>
+                  <ControlRankingList rows={data.exclusiveTop3?.currentInternalRanking ?? []} empty="No Exclusive Top 3 ranking yet." compact />
+                </ControlSection>
+              </div>
+              <ControlSection title="Signals Detected Summary">
+                <ControlSignalsDetectedList rows={(data.signalsDetected ?? []).slice(0, 6)} />
+              </ControlSection>
+            </>
+          ) : null}
+
+          {tab === "top-signal" ? (
+            <>
+              <ControlTopSignalHero data={data.topSignal} />
+              <ControlSection title="Top Signal Leader Timeline">
+                <ControlActivityList rows={(data.topSignalTimeline ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.status, event: row.candidate, affectedSignal: row.market, description: `${controlPct(row.probability)} · ${formatAdminEdge(row.edge)} · score ${controlScore(row.score)}`, severity: row.status === "PUBLISHED" ? "SUCCESS" : "INFO" }))} />
+              </ControlSection>
+            </>
+          ) : null}
+
+          {tab === "top5" ? (
+            <>
+              <ControlSection title="Current Internal Ranking" action={`Next ${formatAdminTime(data.top5?.nextRecalculation)}`}>
+                <ControlRankingList rows={data.top5?.currentInternalRanking ?? []} empty="No current Premium Top 5 ranking." />
+              </ControlSection>
+              <ControlSection title="Official Frozen Top 5" action={data.top5?.frozen ? "Frozen" : "Pending"}>
+                <ControlRankingList rows={data.top5?.officialFrozenTop5 ?? []} empty="Official Top 5 has not frozen yet." />
+              </ControlSection>
+              <ControlSection title="Top 5 Movement History">
+                <ControlActivityList rows={(data.top5Movement ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.trend, event: row.event, affectedSignal: "", description: `Position change ${row.positionChange ?? "N/A"}`, severity: "INFO" }))} />
+              </ControlSection>
+            </>
+          ) : null}
+
+          {tab === "signals" ? (
+            <>
+              <ControlSection title="Frozen Signals Detected">
+                <ControlSignalsDetectedList rows={data.signalsDetected ?? []} />
+              </ControlSection>
+              <ControlSection title="Exclusive Top 3 Internal Ranking" action={data.exclusiveTop3?.frozen ? "Frozen" : "Live"}>
+                <ControlRankingList rows={data.exclusiveTop3?.currentInternalRanking ?? []} empty="No Exclusive Top 3 ranking yet." />
+              </ControlSection>
+            </>
+          ) : null}
+
+          {tab === "activity" ? (
+            <>
+              <ControlSection title="Live Engine Activity">
+                <ControlActivityList rows={data.liveActivity ?? []} />
+              </ControlSection>
+              <ControlSection title="Daily Operations Timeline">
+                <ControlOperationsTimeline rows={data.operationsTimeline ?? []} />
+              </ControlSection>
+            </>
+          ) : null}
+
+          {tab === "health" ? (
+            <>
+              <ControlSection title="Engine Health">
+                <ControlHealthTable rows={data.engineHealth ?? []} />
+              </ControlSection>
+              <ControlSection title="Data Sources">
+                <div className="flex flex-wrap gap-2">
+                  {(data.dataSources ?? []).map((source) => <span key={source} className="rounded-lg border border-cyan-300/15 bg-cyan-300/10 px-2 py-1 text-[10px] font-black text-cyan-200">{source}</span>)}
+                </div>
+              </ControlSection>
+            </>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 const performanceSports: Array<{ id: PerformanceSport; label: string; icon: string }> = [
   { id: "MLB", label: "MLB", icon: "⚾" },
   { id: "NBA", label: "NBA", icon: "🏀" },
@@ -1749,11 +2113,15 @@ function MarketCards({ rows }: { rows: Array<PerformanceMetricSet & { market: st
 export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [controlCenter, setControlCenter] = useState<AtlasControlCenterData | null>(null);
+  const [controlLoading, setControlLoading] = useState(true);
+  const [controlError, setControlError] = useState<string | null>(null);
+  const [controlTab, setControlTab] = useState<AtlasControlTab>("overview");
   const [cronRunning, setCronRunning] = useState<string | null>(null);
   const [cronResult, setCronResult] = useState<string | null>(null);
   const [researchView, setResearchView] = useState<"summary" | "system">("summary");
   const [selectedSystemGameId, setSelectedSystemGameId] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<AdminSection>("operations");
+  const [activeSection, setActiveSection] = useState<AdminSection>("control");
   const [performanceSport, setPerformanceSport] = useState<PerformanceSport>("MLB");
   const [performanceView, setPerformanceView] = useState<PerformanceView>("overview");
   const [performancePeriod, setPerformancePeriod] = useState<PerformancePeriod>("this-month");
@@ -1799,6 +2167,26 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     setLoading(false);
   }
 
+  async function loadControlCenter(options: { silent?: boolean } = {}) {
+    if (!options.silent) setControlLoading(true);
+    setControlError(null);
+
+    try {
+      const response = await fetch("/api/admin/atlas-control-center", { cache: "no-store" });
+      const data = await response.json();
+
+      if (response.ok) {
+        setControlCenter(data);
+      } else {
+        setControlError(data?.error ?? "Unable to load Atlas Control Center");
+      }
+    } catch (error) {
+      setControlError(error instanceof Error ? error.message : "Unable to load Atlas Control Center");
+    } finally {
+      setControlLoading(false);
+    }
+  }
+
   async function runCron(path: string) {
     const confirmed = window.confirm(`Run ${path}? This will execute the existing cron now.`);
     if (!confirmed) return;
@@ -1836,6 +2224,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     if (savedPeriod && performancePeriods.some((item) => item.id === savedPeriod)) setPerformancePeriod(savedPeriod);
     if (savedPerfView && performanceViews.some((item) => item.id === savedPerfView)) setPerformanceView(savedPerfView);
     loadOverview();
+    loadControlCenter();
   }, []);
 
   useEffect(() => {
@@ -1849,8 +2238,17 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     if (activeSection === "performance") void loadPerformanceCenter(performanceSport, performancePeriod);
   }, [activeSection, performanceSport, performancePeriod, performanceView]);
 
+  useEffect(() => {
+    if (activeSection !== "control") return;
+    const interval = window.setInterval(() => {
+      void loadControlCenter({ silent: true });
+    }, 45000);
+    return () => window.clearInterval(interval);
+  }, [activeSection]);
+
   const operations = overview?.operations;
   const adminNav: Array<{ id: AdminSection; label: string; icon: string }> = [
+    { id: "control", label: "Control", icon: "⌁" },
     { id: "operations", label: "Operations", icon: "▱" },
     { id: "research", label: "Research", icon: "⌬" },
     { id: "performance", label: "Performance", icon: "▥" },
@@ -2125,6 +2523,17 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
     </section>
   );
 
+  const controlPanel = (
+    <AtlasControlCenterPanel
+      data={controlCenter}
+      loading={controlLoading}
+      error={controlError}
+      tab={controlTab}
+      onTab={setControlTab}
+      onRefresh={() => void loadControlCenter()}
+    />
+  );
+
   return (
     <main className="min-h-screen bg-[#020915] text-white">
       <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[210px] border-r border-white/10 bg-[#03101f] px-5 py-6 lg:block">
@@ -2179,6 +2588,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
           </div>
 
           {cronResult ? <div className="rounded-xl border border-cyan-400/20 bg-cyan-950/20 p-3 text-sm font-bold text-cyan-100">{cronResult}</div> : null}
+          {activeSection === "control" ? controlPanel : null}
           {activeSection === "operations" ? operationsPanel : null}
           {activeSection === "research" ? researchPanel : null}
           {activeSection === "performance" ? performancePanel : null}
@@ -2186,7 +2596,7 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t border-white/10 bg-[#020915]/98 px-2 pb-5 pt-3 backdrop-blur lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t border-white/10 bg-[#020915]/98 px-2 pb-5 pt-3 backdrop-blur lg:hidden">
         {adminNav.map((item) => (
           <button
             key={item.id}
