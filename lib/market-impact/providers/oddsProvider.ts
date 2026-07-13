@@ -73,6 +73,10 @@ function normalizeBookmakerName(bookmaker: OddsBookmaker) {
   return bookmaker.title?.trim() || bookmaker.key?.trim() || "Sportsbook";
 }
 
+function normalizeBookmakerKey(bookmaker: OddsBookmaker) {
+  return bookmaker.key?.trim() || normalizeBookmakerName(bookmaker).toLowerCase().replace(/[^a-z0-9]+/g, "_");
+}
+
 export async function fetchCurrentMlbOdds(apiKey: string) {
   const response = await fetch(fetchUrl(apiKey), { cache: "no-store" });
   const health: OddsProviderHealth = {
@@ -107,6 +111,7 @@ export function normalizeOddsSnapshots(games: OddsGame[], capturedAt = new Date(
 
     bookmakers.forEach((bookmaker) => {
       const bookmakerName = normalizeBookmakerName(bookmaker);
+      const bookmakerKey = normalizeBookmakerKey(bookmaker);
 
       (bookmaker.markets ?? []).forEach((market) => {
         if (!ODDS_MARKETS.includes(market.key as OddsSnapshot["marketKey"])) return;
@@ -121,6 +126,8 @@ export function normalizeOddsSnapshots(games: OddsGame[], capturedAt = new Date(
             homeTeam,
             awayTeam,
             bookmaker: bookmakerName,
+            bookmakerKey,
+            bookmakerName,
             marketKey: market.key as OddsSnapshot["marketKey"],
             outcomeName: outcome.name,
             point: typeof outcome.point === "number" ? outcome.point : undefined,

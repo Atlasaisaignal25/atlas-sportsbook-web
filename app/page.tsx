@@ -4187,6 +4187,7 @@ const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
 const [teamImpactEvents, setTeamImpactEvents] = useState<TeamImpactEvent[]>([]);
 const [marketImpactEvents, setMarketImpactEvents] = useState<MarketImpactEvent[]>([]);
 const [atlasIntelligenceEvents, setAtlasIntelligenceEvents] = useState<AtlasIntelligenceEvent[]>([]);
+const [expandedMarketImpactDetails, setExpandedMarketImpactDetails] = useState<Record<string, boolean>>({});
 const [pulseLoading, setPulseLoading] = useState(false);
 const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
   title: string;
@@ -6725,6 +6726,20 @@ function formatTeamImpactMarketLine(value: number | null) {
   return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
 }
 
+function getMarketConsensusLine(event: MarketImpactEvent) {
+  return `${event.booksMoved} of ${event.booksObserved} sportsbooks`;
+}
+
+function getMarketConsensusPercent(event: MarketImpactEvent) {
+  return `Consensus ${event.consensusPercent.toFixed(1)}%`;
+}
+
+function formatMarketDetailValue(line: number | null, odds: number | null) {
+  const lineText = line === null ? "" : formatTeamImpactMarketLine(line);
+  const oddsText = odds === null ? "" : odds > 0 ? `+${odds}` : `${odds}`;
+  return [lineText, oddsText].filter(Boolean).join(" ");
+}
+
 function getAtlasIntelligenceMatchupLabel(event: AtlasIntelligenceEvent) {
   const away = event.details.awayTeam;
   const home = event.details.homeTeam;
@@ -8783,6 +8798,8 @@ const subscriptionPlansBoard = (
                     : isMarketImpact
                       ? (item as MarketImpactEvent).impact
                       : (item as TeamImpactEvent).impact;
+                  const marketEvent = isMarketImpact ? (item as MarketImpactEvent) : null;
+                  const marketDetailsOpen = marketEvent ? Boolean(expandedMarketImpactDetails[marketEvent.eventId]) : false;
 
                   if (isIntelligenceImpact) {
                     const intelligence = item as AtlasIntelligenceEvent;
@@ -8918,6 +8935,19 @@ const subscriptionPlansBoard = (
                         <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
                           {eventLabel}
                         </p>
+                        {marketEvent ? (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-white/62">
+                              {getMarketConsensusLine(marketEvent)}
+                            </span>
+                            <span className="rounded-full border border-cyan-300/20 bg-cyan-300/8 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-cyan-200">
+                              {getMarketConsensusPercent(marketEvent)}
+                            </span>
+                            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-white/52">
+                              {marketEvent.consensusLevel}
+                            </span>
+                          </div>
+                        ) : null}
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
                           <span className="font-black text-white/82">{whyLabel}</span> {whyText}
                         </p>
@@ -8925,6 +8955,43 @@ const subscriptionPlansBoard = (
                           <span className="font-black text-white/82">{impactLabel}</span> {impactText}
                         </p>
                       </div>
+
+                      {marketEvent ? (
+                        <div className="mt-1.5 rounded-[12px] border border-white/10 bg-black/14">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedMarketImpactDetails((current) => ({
+                                ...current,
+                                [marketEvent.eventId]: !current[marketEvent.eventId],
+                              }))
+                            }
+                            className="flex w-full items-center justify-between px-2.5 py-2 text-left text-[10px] font-black uppercase tracking-[0.1em] text-cyan-200"
+                          >
+                            Open Details
+                            <span className="text-white/44">{marketDetailsOpen ? "Hide" : "Show"}</span>
+                          </button>
+                          {marketDetailsOpen ? (
+                            <div className="space-y-1 border-t border-white/10 px-2.5 py-2">
+                              <div className="grid grid-cols-2 gap-1 text-[9px] font-bold text-white/52">
+                                <p>First: {marketEvent.firstBookToMove ?? "N/A"}</p>
+                                <p>Latest: {marketEvent.latestBookToMove ?? "N/A"}</p>
+                              </div>
+                              {marketEvent.sportsbookDetails.slice(0, 8).map((detail) => (
+                                <div
+                                  key={`${marketEvent.eventId}-${detail.key}-${detail.movedAt}`}
+                                  className="grid grid-cols-[1fr_auto] gap-2 rounded-[8px] bg-white/[0.035] px-2 py-1 text-[9px] font-semibold text-white/58"
+                                >
+                                  <span className="truncate">{detail.name}</span>
+                                  <span className="text-white/72">
+                                    {formatMarketDetailValue(detail.oldLine, detail.oldOdds)} {"->"} {formatMarketDetailValue(detail.newLine, detail.newOdds)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
 
                       <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5">
                         <div className="min-w-0">

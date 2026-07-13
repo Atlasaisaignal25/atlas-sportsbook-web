@@ -17,6 +17,18 @@ create table if not exists public.market_impact_events (
   why text not null,
   impact text not null,
   published_at timestamptz not null,
+  books_observed integer not null default 1,
+  books_moved integer not null default 1,
+  consensus_percent numeric not null default 100,
+  consensus_level text not null default 'LOW CONSENSUS',
+  sportsbook_keys_moved text[] not null default '{}',
+  sportsbook_names_moved text[] not null default '{}',
+  first_book_to_move text,
+  first_move_at timestamptz,
+  latest_book_to_move text,
+  latest_move_at timestamptz,
+  movement_window_minutes integer,
+  sportsbook_details jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

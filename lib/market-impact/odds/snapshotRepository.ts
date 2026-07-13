@@ -10,6 +10,8 @@ type SnapshotRow = {
   home_team: string;
   away_team: string;
   bookmaker: string;
+  bookmaker_key?: string | null;
+  bookmaker_name?: string | null;
   market_key: string;
   outcome_name: string;
   point: number | null;
@@ -25,6 +27,8 @@ function toRow(snapshot: OddsSnapshot): SnapshotRow {
     home_team: snapshot.homeTeam,
     away_team: snapshot.awayTeam,
     bookmaker: snapshot.bookmaker,
+    bookmaker_key: snapshot.bookmakerKey ?? snapshot.bookmaker,
+    bookmaker_name: snapshot.bookmakerName ?? snapshot.bookmaker,
     market_key: snapshot.marketKey,
     outcome_name: snapshot.outcomeName,
     point: snapshot.point ?? null,
@@ -41,6 +45,8 @@ function fromRow(row: SnapshotRow): OddsSnapshot {
     homeTeam: row.home_team,
     awayTeam: row.away_team,
     bookmaker: row.bookmaker,
+    bookmakerKey: row.bookmaker_key ?? row.bookmaker,
+    bookmakerName: row.bookmaker_name ?? row.bookmaker,
     marketKey: row.market_key as OddsSnapshot["marketKey"],
     outcomeName: row.outcome_name,
     point: row.point ?? undefined,
@@ -65,7 +71,7 @@ export async function getLatestSnapshotsForSport(sport: "MLB"): Promise<Map<stri
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from(TABLE_NAME)
-    .select("sport,event_id,commence_time,home_team,away_team,bookmaker,market_key,outcome_name,point,price,captured_at")
+    .select("sport,event_id,commence_time,home_team,away_team,bookmaker,bookmaker_key,bookmaker_name,market_key,outcome_name,point,price,captured_at")
     .eq("sport", sport)
     .order("captured_at", { ascending: false })
     .limit(5000);
@@ -95,7 +101,7 @@ export async function insertSnapshotsDeduped(snapshots: OddsSnapshot[]) {
   const windowStart = new Date(new Date(capturedAt).getTime() - 5 * 60000).toISOString();
   const { data, error } = await supabase
     .from(TABLE_NAME)
-    .select("sport,event_id,commence_time,home_team,away_team,bookmaker,market_key,outcome_name,point,price,captured_at")
+    .select("sport,event_id,commence_time,home_team,away_team,bookmaker,bookmaker_key,bookmaker_name,market_key,outcome_name,point,price,captured_at")
     .eq("sport", "MLB")
     .gte("captured_at", windowStart);
 
@@ -117,7 +123,7 @@ export async function getRecentSnapshots(sport: "MLB", lookbackMinutes = 60): Pr
   const since = new Date(Date.now() - lookbackMinutes * 60000).toISOString();
   const { data, error } = await supabase
     .from(TABLE_NAME)
-    .select("sport,event_id,commence_time,home_team,away_team,bookmaker,market_key,outcome_name,point,price,captured_at")
+    .select("sport,event_id,commence_time,home_team,away_team,bookmaker,bookmaker_key,bookmaker_name,market_key,outcome_name,point,price,captured_at")
     .eq("sport", sport)
     .gte("captured_at", since)
     .order("captured_at", { ascending: true });

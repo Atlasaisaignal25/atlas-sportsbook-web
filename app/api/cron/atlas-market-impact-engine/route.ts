@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       endpoint: "/api/cron/atlas-market-impact-engine",
       marketImpactOnly: true,
       interpretation: "NONE",
+      apiUsage: "REUSED_SINGLE_ODDS_API_RESPONSE",
     });
   } catch (error) {
     return NextResponse.json(

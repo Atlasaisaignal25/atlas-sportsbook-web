@@ -12,6 +12,21 @@ import type {
 } from "@/types/marketImpactEvent";
 import type { PulseImpact } from "@/types/marketImpact";
 
+type SportsbookMovement = {
+  previous: OddsSnapshot;
+  current: OddsSnapshot;
+  market: MarketImpactMarket;
+  movementType: MarketImpactMovementType;
+  oldLine: number | null;
+  newLine: number | null;
+  oldOdds: number | null;
+  newOdds: number | null;
+  direction: MarketImpactDirection;
+  movementSize: number;
+  why: string;
+  impact: string;
+};
+
 function marketLabel(marketKey: OddsSnapshot["marketKey"]): MarketImpactMarket {
   if (marketKey === "spreads") return "Spread";
   if (marketKey === "totals") return "Totals";
@@ -58,35 +73,53 @@ function confidenceForSize(input: {
   return "LOW";
 }
 
+function slateDate(value: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
+function windowBucket(value: string) {
+  const windowMs = MARKET_IMPACT_THRESHOLDS.consensus.windowMinutes * 60000;
+  return Math.floor(new Date(value).getTime() / windowMs);
+}
+
+function consensusLevel(percent: number): MarketImpactEvent["consensusLevel"] {
+  if (percent >= MARKET_IMPACT_THRESHOLDS.consensus.highPercent) return "HIGH CONSENSUS";
+  if (percent >= MARKET_IMPACT_THRESHOLDS.consensus.mediumPercent) return "MEDIUM CONSENSUS";
+  return "LOW CONSENSUS";
+}
+
 function eventId(input: {
-  current: OddsSnapshot;
-  previous: OddsSnapshot;
+  sport: string;
+  eventId: string;
+  capturedAt: string;
+  marketKey: string;
+  outcomeName: string;
   movementType: MarketImpactMovementType;
-  oldLine: number | null;
-  newLine: number | null;
-  oldOdds: number | null;
-  newOdds: number | null;
+  direction: MarketImpactDirection;
 }) {
   return crypto
     .createHash("sha256")
     .update([
       MARKET_IMPACT_ENGINE_VERSION,
-      input.current.sport,
-      input.current.eventId,
-      input.current.bookmaker,
-      input.current.marketKey,
-      input.current.outcomeName,
+      slateDate(input.capturedAt),
+      input.sport,
+      input.eventId,
+      input.marketKey,
+      input.outcomeName,
       input.movementType,
-      input.oldLine ?? "",
-      input.newLine ?? "",
-      input.oldOdds ?? "",
-      input.newOdds ?? "",
+      input.direction,
+      windowBucket(input.capturedAt),
     ].join("|"))
     .digest("hex")
     .slice(0, 32);
 }
 
-function buildMarketImpactEvent(previous: OddsSnapshot | null, current: OddsSnapshot): MarketImpactEvent | null {
+function buildSportsbookMovement(previous: OddsSnapshot | null, current: OddsSnapshot): SportsbookMovement | null {
   if (!previous) return null;
 
   const market = marketLabel(current.marketKey);
@@ -132,15 +165,10 @@ function buildMarketImpactEvent(previous: OddsSnapshot | null, current: OddsSnap
 
   if (!movementType || direction === "NO_CHANGE") return null;
 
-  const confidence = confidenceForSize({ market, movementType, size: movementSize });
-
   return {
-    sport: "MLB",
-    eventId: eventId({ current, previous, movementType, oldLine, newLine, oldOdds, newOdds }),
-    homeTeam: current.homeTeam,
-    awayTeam: current.awayTeam,
+    previous,
+    current,
     market,
-    selection: current.outcomeName,
     movementType,
     oldLine,
     newLine,
@@ -148,11 +176,108 @@ function buildMarketImpactEvent(previous: OddsSnapshot | null, current: OddsSnap
     newOdds,
     direction,
     movementSize,
-    confidence,
     why,
     impact,
-    publishedAt: current.capturedAt,
   };
+}
+
+function observedBookCount(snapshots: OddsSnapshot[], movement: SportsbookMovement) {
+  const books = new Set<string>();
+  for (const snapshot of snapshots) {
+    if (
+      snapshot.eventId === movement.current.eventId &&
+      snapshot.marketKey === movement.current.marketKey &&
+      snapshot.outcomeName === movement.current.outcomeName &&
+      snapshot.price !== undefined
+    ) {
+      books.add(snapshot.bookmakerKey ?? snapshot.bookmaker);
+    }
+  }
+  return books.size;
+}
+
+function movementGroupKey(movement: SportsbookMovement) {
+  return [
+    movement.current.sport,
+    movement.current.eventId,
+    movement.current.marketKey,
+    movement.current.outcomeName,
+    movement.movementType,
+    movement.direction,
+    windowBucket(movement.current.capturedAt),
+  ].join("|");
+}
+
+function buildConsensusEvents(movements: SportsbookMovement[], snapshots: OddsSnapshot[]) {
+  const grouped = new Map<string, SportsbookMovement[]>();
+  for (const movement of movements) {
+    const key = movementGroupKey(movement);
+    grouped.set(key, [...(grouped.get(key) ?? []), movement]);
+  }
+
+  return [...grouped.values()].map((group): MarketImpactEvent => {
+    const sorted = [...group].sort((a, b) => new Date(a.current.capturedAt).getTime() - new Date(b.current.capturedAt).getTime());
+    const first = sorted[0];
+    const latest = sorted[sorted.length - 1];
+    const booksObserved = Math.max(observedBookCount(snapshots, first), group.length);
+    const bookKeys = Array.from(new Set(group.map((movement) => movement.current.bookmakerKey ?? movement.current.bookmaker)));
+    const bookNames = Array.from(new Set(group.map((movement) => movement.current.bookmakerName ?? movement.current.bookmaker)));
+    const consensusPercent = booksObserved > 0 ? (bookKeys.length / booksObserved) * 100 : 0;
+    const movementSize = Math.max(...group.map((movement) => movement.movementSize));
+    const confidence = bookKeys.length === 1
+      ? "LOW"
+      : consensusPercent >= MARKET_IMPACT_THRESHOLDS.consensus.highPercent
+        ? "HIGH"
+        : confidenceForSize({ market: latest.market, movementType: latest.movementType, size: movementSize });
+
+    return {
+      sport: "MLB",
+      eventId: eventId({
+        sport: latest.current.sport,
+        eventId: latest.current.eventId,
+        capturedAt: latest.current.capturedAt,
+        marketKey: latest.current.marketKey,
+        outcomeName: latest.current.outcomeName,
+        movementType: latest.movementType,
+        direction: latest.direction,
+      }),
+      homeTeam: latest.current.homeTeam,
+      awayTeam: latest.current.awayTeam,
+      market: latest.market,
+      selection: latest.current.outcomeName,
+      movementType: latest.movementType,
+      oldLine: first.oldLine,
+      newLine: latest.newLine,
+      oldOdds: first.oldOdds,
+      newOdds: latest.newOdds,
+      direction: latest.direction,
+      movementSize,
+      confidence,
+      why: latest.why,
+      impact: `${bookKeys.length} of ${booksObserved} sportsbooks moved. Consensus ${consensusPercent.toFixed(1)}%.`,
+      publishedAt: latest.current.capturedAt,
+      booksObserved,
+      booksMoved: bookKeys.length,
+      consensusPercent,
+      consensusLevel: consensusLevel(consensusPercent),
+      sportsbookKeysMoved: bookKeys,
+      sportsbookNamesMoved: bookNames,
+      firstBookToMove: first.current.bookmakerName ?? first.current.bookmaker,
+      firstMoveAt: first.current.capturedAt,
+      latestBookToMove: latest.current.bookmakerName ?? latest.current.bookmaker,
+      latestMoveAt: latest.current.capturedAt,
+      movementWindowMinutes: MARKET_IMPACT_THRESHOLDS.consensus.windowMinutes,
+      sportsbookDetails: sorted.map((movement) => ({
+        key: movement.current.bookmakerKey ?? movement.current.bookmaker,
+        name: movement.current.bookmakerName ?? movement.current.bookmaker,
+        oldLine: movement.oldLine,
+        newLine: movement.newLine,
+        oldOdds: movement.oldOdds,
+        newOdds: movement.newOdds,
+        movedAt: movement.current.capturedAt,
+      })),
+    };
+  });
 }
 
 export async function captureMarketImpactEvents(apiKey: string) {
@@ -160,12 +285,13 @@ export async function captureMarketImpactEvents(apiKey: string) {
   const { games, health } = await fetchCurrentMlbOdds(apiKey);
   const { snapshots } = normalizeOddsSnapshots(games, capturedAt);
   const previousSnapshots = await getLatestSnapshotsForSport("MLB");
-  const events = snapshots
+  const movements = snapshots
     .map((snapshot) => {
       const key = [snapshot.eventId, snapshot.bookmaker, snapshot.marketKey, snapshot.outcomeName].join(":");
-      return buildMarketImpactEvent(previousSnapshots.get(key) ?? null, snapshot);
+      return buildSportsbookMovement(previousSnapshots.get(key) ?? null, snapshot);
     })
-    .filter((event): event is MarketImpactEvent => Boolean(event));
+    .filter((movement): movement is SportsbookMovement => Boolean(movement));
+  const events = buildConsensusEvents(movements, snapshots);
   const snapshotWrite = await insertSnapshotsDeduped(snapshots);
   const eventWrite = await insertMarketImpactEventsDeduped(events);
 
@@ -177,8 +303,10 @@ export async function captureMarketImpactEvents(apiKey: string) {
     snapshotsCaptured: snapshots.length,
     snapshotsInserted: snapshotWrite.inserted,
     snapshotsSkipped: snapshotWrite.skipped,
+    sportsbookMovementsDetected: movements.length,
     eventsDetected: events.length,
     eventsInserted: eventWrite.inserted,
+    eventsUpdated: eventWrite.updated,
     eventsSkipped: eventWrite.skipped,
     errors: eventWrite.errors,
   };

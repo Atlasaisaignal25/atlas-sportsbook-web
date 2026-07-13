@@ -27,6 +27,26 @@ export type MarketImpactEvent = {
   why: string;
   impact: string;
   publishedAt: string;
+  booksObserved: number;
+  booksMoved: number;
+  consensusPercent: number;
+  consensusLevel: "LOW CONSENSUS" | "MEDIUM CONSENSUS" | "HIGH CONSENSUS";
+  sportsbookKeysMoved: string[];
+  sportsbookNamesMoved: string[];
+  firstBookToMove: string | null;
+  firstMoveAt: string | null;
+  latestBookToMove: string | null;
+  latestMoveAt: string | null;
+  movementWindowMinutes: number | null;
+  sportsbookDetails: Array<{
+    key: string;
+    name: string;
+    oldLine: number | null;
+    newLine: number | null;
+    oldOdds: number | null;
+    newOdds: number | null;
+    movedAt: string;
+  }>;
   createdAt?: string;
   updatedAt?: string;
 };

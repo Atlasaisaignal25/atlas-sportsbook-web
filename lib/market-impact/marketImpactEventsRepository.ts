@@ -22,6 +22,18 @@ type MarketImpactRow = {
   why: string;
   impact: string;
   published_at: string;
+  books_observed?: number | null;
+  books_moved?: number | null;
+  consensus_percent?: number | null;
+  consensus_level?: MarketImpactEvent["consensusLevel"] | null;
+  sportsbook_keys_moved?: string[] | null;
+  sportsbook_names_moved?: string[] | null;
+  first_book_to_move?: string | null;
+  first_move_at?: string | null;
+  latest_book_to_move?: string | null;
+  latest_move_at?: string | null;
+  movement_window_minutes?: number | null;
+  sportsbook_details?: MarketImpactEvent["sportsbookDetails"] | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -59,6 +71,18 @@ function toRow(event: MarketImpactEvent): MarketImpactRow {
     why: event.why,
     impact: event.impact,
     published_at: event.publishedAt,
+    books_observed: event.booksObserved,
+    books_moved: event.booksMoved,
+    consensus_percent: event.consensusPercent,
+    consensus_level: event.consensusLevel,
+    sportsbook_keys_moved: event.sportsbookKeysMoved,
+    sportsbook_names_moved: event.sportsbookNamesMoved,
+    first_book_to_move: event.firstBookToMove,
+    first_move_at: event.firstMoveAt,
+    latest_book_to_move: event.latestBookToMove,
+    latest_move_at: event.latestMoveAt,
+    movement_window_minutes: event.movementWindowMinutes,
+    sportsbook_details: event.sportsbookDetails,
   };
 }
 
@@ -82,36 +106,66 @@ function fromRow(row: MarketImpactRow): MarketImpactEvent {
     why: row.why,
     impact: row.impact,
     publishedAt: row.published_at,
+    booksObserved: row.books_observed ?? 1,
+    booksMoved: row.books_moved ?? 1,
+    consensusPercent: row.consensus_percent ?? 100,
+    consensusLevel: row.consensus_level ?? "LOW CONSENSUS",
+    sportsbookKeysMoved: row.sportsbook_keys_moved ?? [],
+    sportsbookNamesMoved: row.sportsbook_names_moved ?? [],
+    firstBookToMove: row.first_book_to_move ?? null,
+    firstMoveAt: row.first_move_at ?? null,
+    latestBookToMove: row.latest_book_to_move ?? null,
+    latestMoveAt: row.latest_move_at ?? null,
+    movementWindowMinutes: row.movement_window_minutes ?? null,
+    sportsbookDetails: row.sportsbook_details ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export async function insertMarketImpactEventsDeduped(events: MarketImpactEvent[]) {
-  if (events.length === 0) return { inserted: 0, skipped: 0, errors: [] as string[] };
+  if (events.length === 0) return { inserted: 0, updated: 0, skipped: 0, errors: [] as string[] };
 
   const supabase = getSupabaseAdmin();
   const rows = events.map(toRow);
   const eventIds = rows.map((row) => row.event_id);
   const existingResult = await supabase
     .from(TABLE)
-    .select("event_id")
+    .select("event_id,books_moved,latest_move_at")
     .in("event_id", eventIds);
 
   if (existingResult.error) {
-    return { inserted: 0, skipped: 0, errors: [existingResult.error.message] };
+    return { inserted: 0, updated: 0, skipped: 0, errors: [existingResult.error.message] };
   }
 
-  const existing = new Set((existingResult.data ?? []).map((row: { event_id: string }) => row.event_id));
+  const existing = new Map<string, { event_id: string; books_moved?: number | null; latest_move_at?: string | null }>(
+    (existingResult.data ?? []).map((row: { event_id: string; books_moved?: number | null; latest_move_at?: string | null }) => [row.event_id, row]),
+  );
   const inserts = rows.filter((row) => !existing.has(row.event_id));
-  const skipped = rows.length - inserts.length;
+  const updates = rows.filter((row) => {
+    const current = existing.get(row.event_id);
+    if (!current) return false;
+    const currentBooksMoved = current.books_moved ?? 0;
+    const rowBooksMoved = row.books_moved ?? 0;
+    const currentLatest = new Date(current.latest_move_at ?? 0).getTime();
+    const rowLatest = new Date(row.latest_move_at ?? 0).getTime();
+    return rowBooksMoved > currentBooksMoved || rowLatest > currentLatest;
+  });
+  const skipped = rows.length - inserts.length - updates.length;
 
-  if (inserts.length === 0) return { inserted: 0, skipped, errors: [] as string[] };
+  if (inserts.length === 0 && updates.length === 0) return { inserted: 0, updated: 0, skipped, errors: [] as string[] };
 
-  const { error } = await supabase.from(TABLE).insert(inserts);
-  if (error) return { inserted: 0, skipped, errors: [error.message] };
+  if (inserts.length > 0) {
+    const { error } = await supabase.from(TABLE).insert(inserts);
+    if (error) return { inserted: 0, updated: 0, skipped, errors: [error.message] };
+  }
 
-  return { inserted: inserts.length, skipped, errors: [] as string[] };
+  for (const row of updates) {
+    const { error } = await supabase.from(TABLE).update(row).eq("event_id", row.event_id);
+    if (error) return { inserted: inserts.length, updated: 0, skipped, errors: [error.message] };
+  }
+
+  return { inserted: inserts.length, updated: updates.length, skipped, errors: [] as string[] };
 }
 
 export async function listTodayMarketImpactEvents(input: {

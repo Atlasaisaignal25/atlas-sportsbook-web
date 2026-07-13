@@ -8,6 +8,8 @@ create table if not exists public.market_odds_snapshots (
   home_team text not null,
   away_team text not null,
   bookmaker text not null,
+  bookmaker_key text,
+  bookmaker_name text,
   market_key text not null,
   outcome_name text not null,
   point numeric null,

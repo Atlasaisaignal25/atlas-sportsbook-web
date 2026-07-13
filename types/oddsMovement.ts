@@ -9,6 +9,8 @@ export type OddsSnapshot = {
   homeTeam: string;
   awayTeam: string;
   bookmaker: string;
+  bookmakerKey?: string;
+  bookmakerName?: string;
   marketKey: OddsMarketKey;
   outcomeName: string;
   point?: number;
