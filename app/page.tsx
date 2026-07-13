@@ -21,6 +21,7 @@ import type { AtlasEvent, AtlasSource } from "@/types/atlasEvent";
 import type { PulseImpact, PulseSport } from "@/types/marketImpact";
 import type { TeamImpactEvent } from "@/types/teamImpact";
 import type { MarketImpactEvent } from "@/types/marketImpactEvent";
+import type { AtlasIntelligenceEvent } from "@/types/atlasIntelligenceEvent";
 import {
   SignalsHomePage,
   type PrecisionNotifyResult,
@@ -4184,6 +4185,7 @@ const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
 );
 const [teamImpactEvents, setTeamImpactEvents] = useState<TeamImpactEvent[]>([]);
 const [marketImpactEvents, setMarketImpactEvents] = useState<MarketImpactEvent[]>([]);
+const [atlasIntelligenceEvents, setAtlasIntelligenceEvents] = useState<AtlasIntelligenceEvent[]>([]);
 const [pulseLoading, setPulseLoading] = useState(false);
 const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
   title: string;
@@ -5104,19 +5106,23 @@ useEffect(() => {
         confidence: pulseImpactFilter,
         limit: "50",
       });
-      const [teamResponse, marketResponse] = await Promise.all([
+      const [teamResponse, marketResponse, intelligenceResponse] = await Promise.all([
         fetch(`/api/impact/team-impact?${params.toString()}`, { signal: controller.signal }),
         fetch(`/api/impact/market-impact?${params.toString()}`, { signal: controller.signal }),
+        fetch(`/api/impact/atlas-intelligence?${params.toString()}`, { signal: controller.signal }),
       ]);
       const teamData = (await teamResponse.json()) as { events?: TeamImpactEvent[] };
       const marketData = (await marketResponse.json()) as { events?: MarketImpactEvent[] };
+      const intelligenceData = (await intelligenceResponse.json()) as { events?: AtlasIntelligenceEvent[] };
 
       setTeamImpactEvents(Array.isArray(teamData.events) ? teamData.events : []);
       setMarketImpactEvents(Array.isArray(marketData.events) ? marketData.events : []);
+      setAtlasIntelligenceEvents(Array.isArray(intelligenceData.events) ? intelligenceData.events : []);
     } catch (error) {
       if (!controller.signal.aborted) {
         setTeamImpactEvents([]);
         setMarketImpactEvents([]);
+        setAtlasIntelligenceEvents([]);
       }
     } finally {
       if (!controller.signal.aborted) {
@@ -6281,7 +6287,8 @@ const currentFilteredTeamImpactEvents = teamImpactEvents
 
 type UnifiedImpactFeedItem =
   | { kind: "team"; item: TeamImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string }
-  | { kind: "market"; item: MarketImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string };
+  | { kind: "market"; item: MarketImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string }
+  | { kind: "intelligence"; item: AtlasIntelligenceEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string };
 
 const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
   ...currentFilteredTeamImpactEvents.map((item) => ({
@@ -6302,6 +6309,17 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
       confidence: item.confidence,
       sport: item.sport,
       id: `market-${item.eventId}`,
+    })),
+  ...atlasIntelligenceEvents
+    .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
+    .filter((item) => pulseImpactFilter === "ALL" || item.confidence === pulseImpactFilter)
+    .map((item) => ({
+      kind: "intelligence" as const,
+      item,
+      publishedAt: item.publishedAt,
+      confidence: item.confidence,
+      sport: item.sport,
+      id: `intelligence-${item.eventId}`,
     })),
 ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
@@ -6701,6 +6719,17 @@ function formatTeamImpactMarketLine(value: number | null) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "";
   if (value > 0) return `+${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}`;
   return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+}
+
+function getAtlasIntelligenceMatchupLabel(event: AtlasIntelligenceEvent) {
+  const away = event.details.awayTeam;
+  const home = event.details.homeTeam;
+  if (away && home && away !== home) return `${getDisplayAbbr(away)} vs ${getDisplayAbbr(home)}`;
+  return home || away || "Atlas Intelligence";
+}
+
+function getAtlasIntelligenceTimeline(event: AtlasIntelligenceEvent) {
+  return `${formatTeamImpactTimestamp(event.details.teamEventTime)} ${event.details.teamEventType} -> ${formatTeamImpactTimestamp(event.details.marketTime)} ${event.details.market} moved`;
 }
 
 const homeMembershipPlans = [
@@ -8676,23 +8705,62 @@ const subscriptionPlansBoard = (
                   const impactStyles = getPulseImpactClasses(feedItem.confidence);
                   const badgeSport = getTeamImpactSportBadge(feedItem.sport as TeamImpactEvent["sport"]);
                   const isMarketImpact = feedItem.kind === "market";
-                  const title = isMarketImpact ? getMarketImpactTitle(item as MarketImpactEvent) : getTeamImpactTitle(item as TeamImpactEvent);
-                  const matchup = isMarketImpact
+                  const isIntelligenceImpact = feedItem.kind === "intelligence";
+                  const title = isIntelligenceImpact
+                    ? "ATLAS INTELLIGENCE"
+                    : isMarketImpact
+                      ? getMarketImpactTitle(item as MarketImpactEvent)
+                      : getTeamImpactTitle(item as TeamImpactEvent);
+                  const matchup = isIntelligenceImpact
+                    ? getAtlasIntelligenceMatchupLabel(item as AtlasIntelligenceEvent)
+                    : isMarketImpact
                     ? `${getDisplayAbbr((item as MarketImpactEvent).awayTeam)} vs ${getDisplayAbbr((item as MarketImpactEvent).homeTeam)}`
                     : getTeamImpactMatchupLabel(item as TeamImpactEvent);
-                  const primaryTeam = isMarketImpact
+                  const primaryTeam = isIntelligenceImpact
+                    ? (item as AtlasIntelligenceEvent).details.homeTeam || (item as AtlasIntelligenceEvent).details.awayTeam || feedItem.sport
+                    : isMarketImpact
                     ? (item as MarketImpactEvent).homeTeam
                     : (item as TeamImpactEvent).homeTeam || (item as TeamImpactEvent).awayTeam || feedItem.sport;
-                  const secondaryTeam = isMarketImpact
+                  const secondaryTeam = isIntelligenceImpact
+                    ? (item as AtlasIntelligenceEvent).details.awayTeam
+                    : isMarketImpact
                     ? (item as MarketImpactEvent).awayTeam
                     : (item as TeamImpactEvent).awayTeam && (item as TeamImpactEvent).homeTeam
                       ? (item as TeamImpactEvent).awayTeam
                       : null;
-                  const eventLabel = isMarketImpact
+                  const eventLabel = isIntelligenceImpact
+                    ? "TEAM IMPACT -> MARKET IMPACT"
+                    : isMarketImpact
                     ? (item as MarketImpactEvent).movementType.replaceAll("_", " ")
                     : (item as TeamImpactEvent).eventType;
-                  const sourceLabel = isMarketImpact ? "Atlas Market Scan" : (item as TeamImpactEvent).source;
-                  const sourceUrl = isMarketImpact ? null : (item as TeamImpactEvent).sourceUrl;
+                  const sourceLabel = isIntelligenceImpact
+                    ? "Atlas Intelligence"
+                    : isMarketImpact
+                      ? "Atlas Market Scan"
+                      : (item as TeamImpactEvent).source;
+                  const sourceUrl = isMarketImpact || isIntelligenceImpact ? null : (item as TeamImpactEvent).sourceUrl;
+                  const detailLine = isIntelligenceImpact
+                    ? matchup
+                    : isMarketImpact
+                      ? getMarketImpactSelectionLabel(item as MarketImpactEvent)
+                      : matchup;
+                  const statusLabel = isIntelligenceImpact
+                    ? feedItem.confidence
+                    : isMarketImpact
+                      ? (item as MarketImpactEvent).direction
+                      : (item as TeamImpactEvent).status;
+                  const whyLabel = isIntelligenceImpact ? "SUMMARY:" : "WHY:";
+                  const whyText = isIntelligenceImpact
+                    ? (item as AtlasIntelligenceEvent).summary
+                    : isMarketImpact
+                      ? (item as MarketImpactEvent).why
+                      : (item as TeamImpactEvent).why;
+                  const impactLabel = isIntelligenceImpact ? "TIMELINE:" : "IMPACT:";
+                  const impactText = isIntelligenceImpact
+                    ? getAtlasIntelligenceTimeline(item as AtlasIntelligenceEvent)
+                    : isMarketImpact
+                      ? (item as MarketImpactEvent).impact
+                      : (item as TeamImpactEvent).impact;
 
                   return (
                     <article
@@ -8725,12 +8793,12 @@ const subscriptionPlansBoard = (
                               {title}
                             </h3>
                             <p className="mt-0.5 truncate text-[11px] font-bold leading-4 text-white/66">
-                              {isMarketImpact ? getMarketImpactSelectionLabel(item as MarketImpactEvent) : matchup}
+                              {detailLine}
                             </p>
                           </div>
                         </div>
                         <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/58">
-                          {isMarketImpact ? (item as MarketImpactEvent).direction : (item as TeamImpactEvent).status}
+                          {statusLabel}
                         </span>
                       </div>
 
@@ -8739,10 +8807,10 @@ const subscriptionPlansBoard = (
                           {eventLabel}
                         </p>
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
-                          <span className="font-black text-white/82">WHY:</span> {item.why}
+                          <span className="font-black text-white/82">{whyLabel}</span> {whyText}
                         </p>
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
-                          <span className="font-black text-white/82">IMPACT:</span> {item.impact}
+                          <span className="font-black text-white/82">{impactLabel}</span> {impactText}
                         </p>
                       </div>
 

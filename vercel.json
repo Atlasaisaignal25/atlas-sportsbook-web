@@ -49,6 +49,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/atlas-intelligence-engine",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/internal/mlb-sports-intelligence/lineups/capture",
       "schedule": "*/10 * * * *"
     },
