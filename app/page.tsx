@@ -27,6 +27,13 @@ import {
 } from "@/app/components/signals/SignalsHomePage";
 import { AtlasBottomNavigation } from "@/app/components/AtlasBottomNavigation";
 import { HowItWorksSheet } from "@/app/components/signals/HowItWorksSheet";
+import {
+  OfficialSportSelectorRow,
+  officialSelectedSportToSportCode,
+  officialSportCodeToSelectedSport,
+  type OfficialSelectedSport,
+} from "@/app/components/signals/OfficialSportSelectorRow";
+import { AtlasControlCenterTabBar } from "@/app/admin/AdminDashboard";
 
 
 
@@ -6213,24 +6220,26 @@ const sectionEyebrow =
     ? "My Atlas"
     : "Account";
 
-const pulseSportFilters: Array<{ label: string; value: "ALL" | PulseSport }> = [
-  { label: "All", value: "ALL" },
-  { label: "MLB", value: "MLB" },
-  { label: "NFL", value: "NFL" },
-  { label: "NBA", value: "NBA" },
-  { label: "NHL", value: "NHL" },
-  { label: "Soccer", value: "SOCCER" },
-  { label: "Tennis", value: "TENNIS" },
-  { label: "UFC", value: "UFC" },
-  { label: "NCAA", value: "NCAA" },
-];
-
 const pulseImpactFilters: Array<{ label: string; value: "ALL" | PulseImpact }> = [
-  { label: "All Impact", value: "ALL" },
+  { label: "All", value: "ALL" },
   { label: "High", value: "HIGH" },
   { label: "Medium", value: "MEDIUM" },
   { label: "Low", value: "LOW" },
 ];
+const pulseImpactTabItems = [
+  ...pulseImpactFilters.map((filter) => ({ id: filter.value, label: filter.label })),
+  { id: "FILTERS", label: "Filters" },
+];
+
+function pulseSportToOfficialSport(sport: "ALL" | PulseSport): OfficialSelectedSport {
+  if (sport === "ALL") return "all";
+  return officialSportCodeToSelectedSport[sport as keyof typeof officialSportCodeToSelectedSport] ?? "all";
+}
+
+function officialSportToPulseSport(sport: OfficialSelectedSport): "ALL" | PulseSport {
+  if (sport === "all") return "ALL";
+  return officialSelectedSportToSportCode[sport] as PulseSport;
+}
 
 const pulseBaseItems =
   pulseSportFilter === "MLB"
@@ -6243,48 +6252,77 @@ const pulseBaseItems =
     : createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === pulseSportFilter));
 
 const filteredPulseItems = pulseBaseItems.filter((item) => {
+  if (!isCurrentMarketImpactItem(item)) return false;
   const sportMatches = pulseSportFilter === "ALL" || item.sport === pulseSportFilter;
   const impactMatches = pulseImpactFilter === "ALL" || item.impact === pulseImpactFilter;
 
   return sportMatches && impactMatches;
 });
 
+const currentFilteredPulseItems = dedupeMarketImpactItems(filteredPulseItems);
+
 function getPulseImpactClasses(impact: PulseImpact) {
-  if (impact === "HIGH") {
-    return {
-      card: "border-orange-300/35 bg-orange-500/[0.055] shadow-[0_0_18px_rgba(251,113,133,0.10)]",
-      badge: "border-orange-300/45 bg-orange-400/12 text-orange-200",
-      dot: "bg-orange-300",
-    };
-  }
-
-  if (impact === "MEDIUM") {
-    return {
-      card: "border-amber-300/32 bg-amber-400/[0.045] shadow-[0_0_18px_rgba(251,191,36,0.08)]",
-      badge: "border-amber-300/45 bg-amber-300/12 text-amber-200",
-      dot: "bg-amber-300",
-    };
-  }
-
   return {
-    card: "border-emerald-300/28 bg-emerald-400/[0.04] shadow-[0_0_18px_rgba(52,211,153,0.07)]",
-    badge: "border-emerald-300/40 bg-emerald-300/10 text-emerald-200",
-    dot: "bg-emerald-300",
+    card: "border-cyan-300/18 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.075),transparent_38%),linear-gradient(180deg,rgba(6,18,31,0.86),rgba(3,8,20,0.94))] shadow-[0_0_18px_rgba(34,211,238,0.08)]",
+    badge: "border-white/10 bg-white/[0.045] text-white/58",
+    dot: impact === "HIGH" ? "bg-red-400" : impact === "MEDIUM" ? "bg-amber-300" : "bg-cyan-300",
   };
 }
 
-function getAtlasImpactScoreClasses(score?: number) {
-  const value = score ?? 0;
-
-  if (value >= 90) {
+function getAtlasImpactScoreClasses(impact: PulseImpact) {
+  if (impact === "HIGH") {
     return "border-red-300/50 bg-red-400/10 text-red-200";
   }
 
-  if (value >= 75) {
+  if (impact === "MEDIUM") {
     return "border-amber-300/50 bg-amber-300/10 text-amber-200";
   }
 
   return "border-cyan-300/45 bg-cyan-300/10 text-cyan-200";
+}
+
+function getMarketImpactTime(item: AtlasEvent) {
+  const value =
+    item.marketMovement?.detectedAt ??
+    item.lastUpdated ??
+    item.publishedAt ??
+    item.firstDetected;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function isCurrentMarketImpactItem(item: AtlasEvent) {
+  if (!item.isLiveData && !item.marketMovement) return false;
+
+  const timestamp = getMarketImpactTime(item);
+  if (timestamp === null) return false;
+
+  const now = Date.now();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  return timestamp >= startOfToday.getTime() && timestamp <= now + 10 * 60 * 1000;
+}
+
+function dedupeMarketImpactItems(items: AtlasEvent[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = [
+      item.groupedEventKey,
+      item.marketMovement
+        ? `${item.marketMovement.marketKey}-${item.marketMovement.awayTeam}-${item.marketMovement.homeTeam}`
+        : null,
+      item.title,
+    ]
+      .filter(Boolean)
+      .join("|")
+      .toLowerCase();
+
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function formatMarketMovementValue(point?: number, price?: number) {
@@ -8504,66 +8542,22 @@ const subscriptionPlansBoard = (
         ) : appSection === "news" ? (
           <div className="space-y-2.5">
             <section className="space-y-1.5">
-              <div
-                className="flex max-w-full gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                aria-label="Sport filters"
-              >
-                {pulseSportFilters.map((filter) => (
-                  <button
-                    key={`pulse-sport-${filter.value}`}
-                    type="button"
-                    aria-pressed={pulseSportFilter === filter.value}
-                    onClick={() => setPulseSportFilter(filter.value)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.06em] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${
-                      pulseSportFilter === filter.value
-                        ? "border-cyan-300 bg-cyan-300 text-black"
-                        : "border-white/10 bg-white/[0.04] text-white/58"
-                    }`}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
+              <div className="relative h-[70px] overflow-visible rounded-xl border border-white/10 bg-[#030814]/95 px-3 pt-3 shadow-[0_0_22px_rgba(34,211,238,0.07)]">
+                <OfficialSportSelectorRow
+                  selectedSport={pulseSportToOfficialSport(pulseSportFilter)}
+                  onSelectSport={(sport) => setPulseSportFilter(officialSportToPulseSport(sport))}
+                  framed={false}
+                />
               </div>
 
-              <div
-                className="flex max-w-full gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                aria-label="Impact filters"
-              >
-                {pulseImpactFilters.map((filter) => (
-                  <button
-                    key={`pulse-impact-${filter.value}`}
-                    type="button"
-                    aria-pressed={pulseImpactFilter === filter.value}
-                    onClick={() => setPulseImpactFilter(filter.value)}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[9.5px] font-black uppercase tracking-[0.04em] outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300/70 ${
-                      pulseImpactFilter === filter.value
-                        ? "border-cyan-300/70 bg-cyan-300/14 text-cyan-200"
-                        : "border-white/10 bg-white/[0.035] text-white/52"
-                    }`}
-                  >
-                    {filter.value !== "ALL" ? (
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          filter.value === "HIGH"
-                            ? "bg-red-400"
-                            : filter.value === "MEDIUM"
-                            ? "bg-amber-300"
-                            : "bg-emerald-300"
-                        }`}
-                      />
-                    ) : null}
-                    {filter.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  aria-label="Open impact filters"
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1.5 text-[9.5px] font-black uppercase tracking-[0.04em] text-white/52 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-300/70"
-                >
-                  <span aria-hidden="true">⌕</span>
-                  Filters
-                </button>
-              </div>
+              <AtlasControlCenterTabBar
+                tab={pulseImpactFilter}
+                items={pulseImpactTabItems}
+                onTab={(tab) => {
+                  if (tab === "FILTERS") return;
+                  setPulseImpactFilter(tab as "ALL" | PulseImpact);
+                }}
+              />
             </section>
 
             {pulseLoading ? (
@@ -8575,14 +8569,14 @@ const subscriptionPlansBoard = (
                   />
                 ))}
               </section>
-            ) : filteredPulseItems.length === 0 ? (
+            ) : currentFilteredPulseItems.length === 0 ? (
               <section className="rounded-[22px] border border-white/10 bg-white/[0.04] p-5 text-center">
                 <p className="text-[15px] font-black text-white">No market-impact updates right now.</p>
                 <p className="mt-1 text-[12px] font-semibold text-white/52">Atlas is still scanning.</p>
               </section>
             ) : (
               <section className="space-y-2.5">
-                {filteredPulseItems.map((item) => {
+                {currentFilteredPulseItems.map((item) => {
                   const impactStyles = getPulseImpactClasses(item.impact);
                   const sourceCount = item.sourceCount ?? item.sources?.length ?? 1;
                   const sources = item.sources ?? [];
@@ -8591,7 +8585,7 @@ const subscriptionPlansBoard = (
                   const displaySourceCount = isOddsOnlyEvent ? 1 : sourceCount;
                   const sourceLabel = isOddsOnlyEvent ? "Atlas Market Scan" : item.source;
                   const score = item.atlasImpactScore ?? 0;
-                  const scoreClasses = getAtlasImpactScoreClasses(score);
+                  const scoreClasses = getAtlasImpactScoreClasses(item.impact);
                   const scoreProgress = Math.max(0, Math.min(100, score));
                   const eventTypeLabel = item.marketMovement
                     ? "MARKET MOVEMENT"

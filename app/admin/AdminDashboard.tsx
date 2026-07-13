@@ -2674,16 +2674,18 @@ const atlasControlTabs: Array<{ id: AtlasControlTab; label: string }> = [
   { id: "signals", label: "Signals Detected" },
 ];
 
-export function AtlasControlCenterTabBar({
+export function AtlasControlCenterTabBar<T extends string = AtlasControlTab>({
   tab,
   onTab,
+  items = atlasControlTabs as Array<{ id: T; label: string }>,
 }: {
-  tab: AtlasControlTab;
-  onTab: (tab: AtlasControlTab) => void;
+  tab: T;
+  onTab: (tab: T) => void;
+  items?: Array<{ id: T; label: string }>;
 }) {
   return (
     <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
-      {atlasControlTabs.map((item) => (
+      {items.map((item) => (
         <button
           key={item.id}
           type="button"
