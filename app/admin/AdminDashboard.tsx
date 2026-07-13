@@ -2678,19 +2678,21 @@ export function AtlasControlCenterTabBar<T extends string = AtlasControlTab>({
   tab,
   onTab,
   items = atlasControlTabs as Array<{ id: T; label: string }>,
+  compact = false,
 }: {
   tab: T;
   onTab: (tab: T) => void;
   items?: Array<{ id: T; label: string }>;
+  compact?: boolean;
 }) {
   return (
-    <div className="scrollbar-hide flex overflow-x-auto rounded-xl border border-white/10 bg-[#061223]">
+    <div className={`${compact ? "grid overflow-hidden" : "scrollbar-hide flex overflow-x-auto"} rounded-xl border border-white/10 bg-[#061223]`} style={compact ? { gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` } : undefined}>
       {items.map((item) => (
         <button
           key={item.id}
           type="button"
           onClick={() => onTab(item.id)}
-          className={`min-w-max flex-1 border-r border-white/8 px-3 py-2 text-[10px] font-black uppercase last:border-r-0 ${tab === item.id ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
+          className={`${compact ? "min-w-0 px-0.5 py-2 text-[7px]" : "min-w-max flex-1 px-3 py-2 text-[10px] truncate"} border-r border-white/8 font-black uppercase last:border-r-0 ${tab === item.id ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
         >
           {item.label}
         </button>
