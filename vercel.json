@@ -49,6 +49,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/atlas-team-impact-engine",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/atlas-intelligence-engine",
       "schedule": "*/5 * * * *"
     },
