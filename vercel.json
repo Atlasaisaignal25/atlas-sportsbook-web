@@ -45,6 +45,10 @@
       "schedule": "*/10 * * * *"
     },
     {
+      "path": "/api/cron/atlas-market-impact-engine",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/internal/mlb-sports-intelligence/lineups/capture",
       "schedule": "*/10 * * * *"
     },

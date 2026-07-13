@@ -20,6 +20,7 @@ import { createAtlasEventsFromPulseItems } from "@/lib/market-impact/eventEngine
 import type { AtlasEvent, AtlasSource } from "@/types/atlasEvent";
 import type { PulseImpact, PulseSport } from "@/types/marketImpact";
 import type { TeamImpactEvent } from "@/types/teamImpact";
+import type { MarketImpactEvent } from "@/types/marketImpactEvent";
 import {
   SignalsHomePage,
   type PrecisionNotifyResult,
@@ -4182,6 +4183,7 @@ const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
   createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB"))
 );
 const [teamImpactEvents, setTeamImpactEvents] = useState<TeamImpactEvent[]>([]);
+const [marketImpactEvents, setMarketImpactEvents] = useState<MarketImpactEvent[]>([]);
 const [pulseLoading, setPulseLoading] = useState(false);
 const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
   title: string;
@@ -5102,15 +5104,19 @@ useEffect(() => {
         confidence: pulseImpactFilter,
         limit: "50",
       });
-      const response = await fetch(`/api/impact/team-impact?${params.toString()}`, {
-        signal: controller.signal,
-      });
-      const data = (await response.json()) as { events?: TeamImpactEvent[] };
+      const [teamResponse, marketResponse] = await Promise.all([
+        fetch(`/api/impact/team-impact?${params.toString()}`, { signal: controller.signal }),
+        fetch(`/api/impact/market-impact?${params.toString()}`, { signal: controller.signal }),
+      ]);
+      const teamData = (await teamResponse.json()) as { events?: TeamImpactEvent[] };
+      const marketData = (await marketResponse.json()) as { events?: MarketImpactEvent[] };
 
-      setTeamImpactEvents(Array.isArray(data.events) ? data.events : []);
+      setTeamImpactEvents(Array.isArray(teamData.events) ? teamData.events : []);
+      setMarketImpactEvents(Array.isArray(marketData.events) ? marketData.events : []);
     } catch (error) {
       if (!controller.signal.aborted) {
         setTeamImpactEvents([]);
+        setMarketImpactEvents([]);
       }
     } finally {
       if (!controller.signal.aborted) {
@@ -6273,6 +6279,32 @@ const currentFilteredTeamImpactEvents = teamImpactEvents
   .filter((item) => pulseImpactFilter === "ALL" || item.confidence === pulseImpactFilter)
   .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
+type UnifiedImpactFeedItem =
+  | { kind: "team"; item: TeamImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string }
+  | { kind: "market"; item: MarketImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string };
+
+const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
+  ...currentFilteredTeamImpactEvents.map((item) => ({
+    kind: "team" as const,
+    item,
+    publishedAt: item.publishedAt,
+    confidence: item.confidence,
+    sport: item.sport,
+    id: `team-${item.eventId}`,
+  })),
+  ...marketImpactEvents
+    .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
+    .filter((item) => pulseImpactFilter === "ALL" || item.confidence === pulseImpactFilter)
+    .map((item) => ({
+      kind: "market" as const,
+      item,
+      publishedAt: item.publishedAt,
+      confidence: item.confidence,
+      sport: item.sport,
+      id: `market-${item.eventId}`,
+    })),
+].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
 function getPulseImpactClasses(impact: PulseImpact) {
   return {
     card: "border-cyan-300/18 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.075),transparent_38%),linear-gradient(180deg,rgba(6,18,31,0.86),rgba(3,8,20,0.94))] shadow-[0_0_18px_rgba(34,211,238,0.08)]",
@@ -6647,6 +6679,28 @@ function formatTeamImpactTimestamp(value: string) {
     minute: "2-digit",
     timeZone: "America/New_York",
   }).format(date);
+}
+
+function getMarketImpactTitle(event: MarketImpactEvent) {
+  return `${event.market} Movement`;
+}
+
+function getMarketImpactSelectionLabel(event: MarketImpactEvent) {
+  if (event.market === "Totals") {
+    return `${event.selection} ${formatTeamImpactMarketLine(event.newLine)}`.trim();
+  }
+
+  if (event.market === "Spread" && event.newLine !== null) {
+    return `${event.selection} ${formatTeamImpactMarketLine(event.newLine)}`;
+  }
+
+  return event.selection;
+}
+
+function formatTeamImpactMarketLine(value: number | null) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "";
+  if (value > 0) return `+${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}`;
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
 }
 
 const homeMembershipPlans = [
@@ -8611,23 +8665,38 @@ const subscriptionPlansBoard = (
                   />
                 ))}
               </section>
-            ) : currentFilteredTeamImpactEvents.length === 0 ? (
+            ) : currentUnifiedImpactItems.length === 0 ? (
               <section className="rounded-[22px] border border-white/10 bg-white/[0.04] p-5 text-center">
                 <p className="text-[15px] font-black text-white">No Team Impact events detected today.</p>
               </section>
             ) : (
               <section className="space-y-2.5">
-                {currentFilteredTeamImpactEvents.map((item) => {
-                  const impactStyles = getPulseImpactClasses(item.confidence);
-                  const badgeSport = getTeamImpactSportBadge(item.sport);
-                  const title = getTeamImpactTitle(item);
-                  const matchup = getTeamImpactMatchupLabel(item);
-                  const primaryTeam = item.homeTeam || item.awayTeam || item.sport;
-                  const secondaryTeam = item.awayTeam && item.homeTeam ? item.awayTeam : null;
+                {currentUnifiedImpactItems.map((feedItem) => {
+                  const item = feedItem.item;
+                  const impactStyles = getPulseImpactClasses(feedItem.confidence);
+                  const badgeSport = getTeamImpactSportBadge(feedItem.sport as TeamImpactEvent["sport"]);
+                  const isMarketImpact = feedItem.kind === "market";
+                  const title = isMarketImpact ? getMarketImpactTitle(item as MarketImpactEvent) : getTeamImpactTitle(item as TeamImpactEvent);
+                  const matchup = isMarketImpact
+                    ? `${getDisplayAbbr((item as MarketImpactEvent).awayTeam)} vs ${getDisplayAbbr((item as MarketImpactEvent).homeTeam)}`
+                    : getTeamImpactMatchupLabel(item as TeamImpactEvent);
+                  const primaryTeam = isMarketImpact
+                    ? (item as MarketImpactEvent).homeTeam
+                    : (item as TeamImpactEvent).homeTeam || (item as TeamImpactEvent).awayTeam || feedItem.sport;
+                  const secondaryTeam = isMarketImpact
+                    ? (item as MarketImpactEvent).awayTeam
+                    : (item as TeamImpactEvent).awayTeam && (item as TeamImpactEvent).homeTeam
+                      ? (item as TeamImpactEvent).awayTeam
+                      : null;
+                  const eventLabel = isMarketImpact
+                    ? (item as MarketImpactEvent).movementType.replaceAll("_", " ")
+                    : (item as TeamImpactEvent).eventType;
+                  const sourceLabel = isMarketImpact ? "Atlas Market Scan" : (item as TeamImpactEvent).source;
+                  const sourceUrl = isMarketImpact ? null : (item as TeamImpactEvent).sourceUrl;
 
                   return (
                     <article
-                      key={item.eventId}
+                      key={feedItem.id}
                       className={`rounded-[16px] border px-3 py-2 ${impactStyles.card}`}
                     >
                       <div className="flex items-start justify-between gap-2.5">
@@ -8643,31 +8712,31 @@ const subscriptionPlansBoard = (
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-1">
                               <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-200">
-                                {item.sport}
+                                {feedItem.sport}
                               </span>
                               <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${impactStyles.badge}`}>
-                                {item.confidence} Confidence
+                                {feedItem.confidence} Confidence
                               </span>
                               <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-white/48">
-                                {formatTeamImpactTimestamp(item.publishedAt)}
+                                {formatTeamImpactTimestamp(feedItem.publishedAt)}
                               </span>
                             </div>
                             <h3 className="mt-1 min-w-0 truncate text-[15px] font-black leading-tight text-white">
                               {title}
                             </h3>
                             <p className="mt-0.5 truncate text-[11px] font-bold leading-4 text-white/66">
-                              {matchup}
+                              {isMarketImpact ? getMarketImpactSelectionLabel(item as MarketImpactEvent) : matchup}
                             </p>
                           </div>
                         </div>
                         <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/58">
-                          {item.status}
+                          {isMarketImpact ? (item as MarketImpactEvent).direction : (item as TeamImpactEvent).status}
                         </span>
                       </div>
 
                       <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-2.5 py-2">
                         <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
-                          {item.eventType}
+                          {eventLabel}
                         </p>
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
                           <span className="font-black text-white/82">WHY:</span> {item.why}
@@ -8680,12 +8749,12 @@ const subscriptionPlansBoard = (
                       <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5">
                         <div className="min-w-0">
                           <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-white/50">
-                            {item.source}
+                            {sourceLabel}
                           </p>
                         </div>
-                        {item.sourceUrl ? (
+                        {sourceUrl ? (
                           <a
-                            href={item.sourceUrl}
+                            href={sourceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="shrink-0 rounded-full border border-cyan-300/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200"
