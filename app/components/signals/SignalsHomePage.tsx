@@ -1350,9 +1350,11 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 0) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M17.5 5.5h2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="12" cy="12" r="5.5" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
+        <circle cx="12" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.1" opacity="0.45" />
+        <path d="M12 12 17.4 6.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <circle cx="17.4" cy="6.6" r="1.4" fill="currentColor" />
       </svg>
     );
   }
@@ -1360,8 +1362,9 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 1) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="2" />
-        <path d="m15.5 15.5 4.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M12 3.5 18 6v5.2c0 3.9-2.2 6.9-6 8.4-3.8-1.5-6-4.5-6-8.4V6l6-2.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <circle cx="11" cy="11" r="3.4" stroke="currentColor" strokeWidth="1.6" />
+        <path d="m13.6 13.6 3.3 3.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
@@ -1369,8 +1372,9 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 2) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <path d="M4 17l5-5 4 3 7-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M15 7h5v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5 19V9M11 19V13M17 19V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M4 16.5 9.2 11l4.4 2.8L20 6.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16.4 6.8H20v3.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -1378,37 +1382,93 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 3) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 12 17 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M17 4v3h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="6.4" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="m9.2 12.1 1.9 1.9 3.9-4.3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
 
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M8 4h8v3a4 4 0 0 1-8 0V4Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-      <path d="M8 6H5a3 3 0 0 0 3 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M16 6h3a3 3 0 0 1-3 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M12 11v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M9 20h6M10 16h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M8 4.5h8v3.2a4 4 0 0 1-8 0V4.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M8 6.4H5.3a3 3 0 0 0 3 4.7M16 6.4h2.7a3 3 0 0 1-3 4.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M12 11.5v4.2M9 20h6M10 15.8h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="m12 6.8.7 1.4 1.6.2-1.1 1.1.3 1.6-1.5-.8-1.5.8.3-1.6-1.1-1.1 1.6-.2.7-1.4Z" fill="currentColor" />
     </svg>
   );
 }
 
 function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
+  const stageStyles = [
+    {
+      state: "SCANNING",
+      text: "text-lime-300",
+      border: "border-lime-300/55",
+      bg: "bg-lime-300/[0.08]",
+      glow: "shadow-[0_0_18px_rgba(163,230,53,0.22)]",
+      line: "from-lime-300/20 via-lime-300/55 to-cyan-300/25",
+    },
+    {
+      state: "IN PROGRESS",
+      text: "text-cyan-300",
+      border: "border-cyan-300/55",
+      bg: "bg-cyan-300/[0.08]",
+      glow: "shadow-[0_0_18px_rgba(34,211,238,0.22)]",
+      line: "from-cyan-300/20 via-cyan-300/55 to-blue-400/25",
+    },
+    {
+      state: "ANALYZING",
+      text: "text-blue-300",
+      border: "border-blue-300/55",
+      bg: "bg-blue-300/[0.08]",
+      glow: "shadow-[0_0_18px_rgba(96,165,250,0.22)]",
+      line: "from-blue-300/20 via-blue-300/55 to-violet-300/25",
+    },
+    {
+      state: "REVIEWING",
+      text: "text-violet-300",
+      border: "border-violet-300/55",
+      bg: "bg-violet-300/[0.08]",
+      glow: "shadow-[0_0_18px_rgba(196,181,253,0.22)]",
+      line: "from-violet-300/20 via-violet-300/55 to-amber-300/25",
+    },
+    {
+      state: "READY",
+      text: "text-amber-300",
+      border: "border-amber-300/55",
+      bg: "bg-amber-300/[0.08]",
+      glow: "shadow-[0_0_18px_rgba(252,211,77,0.22)]",
+      line: "",
+    },
+  ];
+
   return (
     <section className="rounded-[17px] border border-white/14 bg-[radial-gradient(circle_at_top_left,rgba(0,213,255,0.08),transparent_36%),linear-gradient(180deg,rgba(6,18,31,0.92),rgba(3,8,20,0.96))] px-3 py-2 shadow-[0_0_18px_rgba(0,213,255,0.06)]">
       <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-cyan-300">TODAY'S ACTIVITY</h2>
-      <div className="mt-2 grid grid-cols-5 divide-x divide-white/14 text-center">
+      <div className="relative mt-2 grid grid-cols-5 text-center">
         {metrics.map((metric, index) => {
-          const colors = ["text-lime-300", "text-cyan-300", "text-cyan-300", "text-fuchsia-300", "text-amber-300"];
+          const style = stageStyles[index] ?? stageStyles[1];
+          const value = Number(metric.value);
+          const active = Number.isFinite(value) && value > 0;
 
           return (
-            <div key={metric.label} className="px-1">
-              <ActivityMetricIcon className={`mx-auto h-5 w-5 ${colors[index] ?? "text-cyan-300"}`} index={index} />
-              <p className="mt-1 text-[18px] font-black leading-none text-white">{metric.value}</p>
-              <p className="mt-1 text-[8.5px] font-semibold leading-tight text-white/62">{metric.label}</p>
+            <div key={metric.label} className="relative px-1">
+              {index < metrics.length - 1 ? (
+                <span className={`absolute left-[58%] right-[-42%] top-[18px] h-px bg-gradient-to-r ${style.line} opacity-70`} aria-hidden="true" />
+              ) : null}
+              <span
+                className={`relative z-10 mx-auto grid h-9 w-9 place-items-center rounded-full border bg-[#06101d] ${style.border} ${
+                  active ? `${style.glow} motion-safe:animate-pulse` : "shadow-[0_0_8px_rgba(148,163,184,0.08)] opacity-70"
+                }`}
+              >
+                <ActivityMetricIcon className={`h-5 w-5 ${style.text}`} index={index} />
+              </span>
+              <p className="mt-1.5 text-[22px] font-black leading-none tracking-[-0.04em] text-white">{metric.value}</p>
+              <p className="mt-1 min-h-[22px] text-[8px] font-semibold leading-tight text-white/64">{metric.label}</p>
+              <span className={`mt-1 inline-flex max-w-full items-center justify-center rounded-full border px-1.5 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] ${style.border} ${style.bg} ${active ? style.text : "text-white/35"}`}>
+                {active ? style.state : "INACTIVE"}
+              </span>
             </div>
           );
         })}
