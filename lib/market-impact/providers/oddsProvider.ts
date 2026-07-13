@@ -2,11 +2,7 @@ import type { AtlasEvent, AtlasMarketMovement } from "@/types/atlasEvent";
 import type { ConsensusMovement, OddsSnapshot } from "@/types/oddsMovement";
 import { calculateOddsMovement } from "@/lib/market-impact/odds/calculateOddsMovement";
 import { buildConsensusMovement } from "@/lib/market-impact/odds/buildConsensusMovement";
-import {
-  getLatestSnapshotsForSport,
-  getRecentSnapshots,
-  insertSnapshotsDeduped,
-} from "@/lib/market-impact/odds/snapshotRepository";
+import { getRecentSnapshots } from "@/lib/market-impact/odds/snapshotRepository";
 import { calculateAtlasImpactScore } from "@/lib/market-impact/impactScore";
 import { buildWhyItMatters } from "@/lib/market-impact/whyItMatters";
 import { formatAmericanPrice, formatPoint } from "@/lib/market-impact/odds/oddsConversion";
@@ -43,16 +39,6 @@ export type OddsProviderHealth = {
   requestsRemaining?: string | null;
   requestsUsed?: string | null;
   requestsCost?: string | null;
-};
-
-export type OddsSnapshotResult = {
-  ok: boolean;
-  health: OddsProviderHealth;
-  snapshotsCaptured: number;
-  snapshotsInserted: number;
-  snapshotsSkipped: number;
-  movementsDetected: number;
-  events: AtlasEvent[];
 };
 
 const ODDS_API_MLB_SPORT_KEY = "baseball_mlb";
@@ -268,31 +254,6 @@ export function atlasEventFromConsensusMovement(movement: ConsensusMovement): At
     publisherReliability: 96,
     groupedEventKey: `MARKET:${movement.eventId}:${movement.marketKey}:${movement.outcomeName}`,
     marketMovement,
-  };
-}
-
-export async function captureMlbOddsSnapshot(apiKey: string): Promise<OddsSnapshotResult> {
-  const capturedAt = new Date().toISOString();
-  const { games, health } = await fetchCurrentMlbOdds(apiKey);
-  const { snapshots, monitoredSportsbookCountByEvent } = normalizeOddsSnapshots(games, capturedAt);
-  const previousSnapshots = await getLatestSnapshotsForSport("MLB");
-  const movements = snapshots
-    .map((snapshot) => {
-      const key = [snapshot.eventId, snapshot.bookmaker, snapshot.marketKey, snapshot.outcomeName].join(":");
-      return calculateOddsMovement(previousSnapshots.get(key) ?? null, snapshot);
-    })
-    .filter((movement): movement is NonNullable<typeof movement> => Boolean(movement));
-  const consensus = buildConsensusMovement({ movements, monitoredSportsbookCountByEvent, now: new Date(capturedAt) });
-  const writeResult = await insertSnapshotsDeduped(snapshots);
-
-  return {
-    ok: true,
-    health,
-    snapshotsCaptured: snapshots.length,
-    snapshotsInserted: writeResult.inserted,
-    snapshotsSkipped: writeResult.skipped,
-    movementsDetected: consensus.length,
-    events: consensus.map(atlasEventFromConsensusMovement),
   };
 }
 

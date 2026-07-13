@@ -41,10 +41,6 @@
       "schedule": "*/10 * * * *"
     },
     {
-      "path": "/api/market-impact/odds/snapshot",
-      "schedule": "*/10 * * * *"
-    },
-    {
       "path": "/api/cron/atlas-market-impact-engine",
       "schedule": "*/5 * * * *"
     },
