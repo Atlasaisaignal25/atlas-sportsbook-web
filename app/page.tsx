@@ -6252,9 +6252,6 @@ const pulseImpactFilters: Array<{ label: string; value: ImpactFeedFilter }> = [
   { label: "TEAM", value: "TEAM" },
   { label: "MARKET", value: "MARKET" },
   { label: "INTELLIGENCE", value: "INTELLIGENCE" },
-  { label: "HIGH", value: "HIGH" },
-  { label: "MEDIUM", value: "MEDIUM" },
-  { label: "LOW", value: "LOW" },
 ];
 const pulseImpactTabItems = pulseImpactFilters.map((filter) => ({ id: filter.value, label: filter.label }));
 
@@ -6728,7 +6725,7 @@ function TerminalTeamMark({ teamName, sport, size = "sm" }: { teamName: string; 
 
   const sizeClass =
     size === "lg"
-      ? "h-[66px] w-[66px] p-1.5 text-[14px] border-white/15 bg-white/[0.055] shadow-[inset_0_1px_10px_rgba(255,255,255,0.05)]"
+      ? "h-[58px] w-[58px] p-1.5 text-[13px] border-white/15 bg-white/[0.055] shadow-[inset_0_1px_10px_rgba(255,255,255,0.05)]"
       : "h-6 w-6 p-0.5 text-[8px] border-white/10 bg-white/8";
 
   return (
@@ -8771,57 +8768,58 @@ const subscriptionPlansBoard = (
             )}
           </>
         ) : appSection === "news" ? (
-          <div className="space-y-3">
-            <section className="rounded-[22px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-2.5 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
+          <div className="space-y-2.5">
+            <section className="rounded-[20px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-2 shadow-[0_0_24px_rgba(34,211,238,0.075)]">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[15px] border border-cyan-300/22 bg-cyan-300/[0.07] shadow-[0_0_20px_rgba(34,211,238,0.13)]">
-                    <img src="/icon.png" alt="Atlas" className="h-7 w-7 object-contain" />
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] border border-cyan-300/22 bg-cyan-300/[0.07] shadow-[0_0_18px_rgba(34,211,238,0.12)]">
+                    <img src="/icon.png" alt="Atlas" className="h-6 w-6 object-contain" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="truncate text-[24px] font-black uppercase leading-[1.02] tracking-tight text-white">
+                    <h2 className="truncate text-[23px] font-black uppercase leading-none tracking-tight text-white">
                       MARKET IMPACT
                     </h2>
-                    <p className="mt-0.5 truncate text-[12px] font-bold text-white/58">
-                      Real-Time Event Moving Markets
+                    <p className="mt-0.5 truncate text-[11px] font-bold text-white/58">
+                      Live Intelligence Center
                     </p>
                     <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/38">
                       Last Update <span className="mx-1 text-cyan-300">•</span> {impactLastUpdateLabel}
                     </p>
                   </div>
                 </div>
-                <span className="mt-1 shrink-0 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.13em] text-emerald-200">
+                <span className="mt-0.5 shrink-0 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.13em] text-emerald-200">
                   Live
                 </span>
               </div>
 
-              <div className="mt-3 grid grid-cols-4 overflow-hidden rounded-[18px] border border-white/10 bg-black/18 shadow-[inset_0_1px_16px_rgba(255,255,255,0.025)]">
+              <div className="mt-2.5 grid grid-cols-4 overflow-hidden rounded-[16px] border border-white/10 bg-black/18 shadow-[inset_0_1px_14px_rgba(255,255,255,0.022)]">
                 {[
-                  { label: "Team Impact", value: impactTeamCount, sub: "Events", trend: impactTeamCount > 0 ? "↑ New" : "Stable", color: "text-sky-300", icon: "●●●" },
-                  { label: "Market Impact", value: impactMarketCount, sub: "Events", trend: impactMarketCount > 0 ? "↑ New" : "Stable", color: "text-orange-300", icon: "▥" },
-                  { label: "Atlas Intelligence", value: impactIntelligenceCount, sub: "Events", trend: impactIntelligenceCount > 0 ? "↑ New" : "Stable", color: "text-violet-300", icon: "◬" },
-                  { label: "Last Update", value: impactLastUpdateShortLabel, sub: "Today", trend: pulseLastUpdatedAt ? "Live" : "Stable", color: "text-cyan-200", icon: "◷" },
+                  { label: "Team Impact", value: impactTeamCount, trend: impactTeamCount > 0 ? "↑ New" : "", color: "text-sky-300", icon: "●●●" },
+                  { label: "Market Impact", value: impactMarketCount, trend: impactMarketCount > 0 ? "↑ New" : "", color: "text-orange-300", icon: "▥" },
+                  { label: "Atlas Intelligence", value: impactIntelligenceCount, trend: impactIntelligenceCount > 0 ? "↑ New" : "", color: "text-violet-300", icon: "◬" },
+                  { label: "Last Update", value: impactLastUpdateShortLabel, trend: pulseLastUpdatedAt ? "Live" : "", color: "text-cyan-200", icon: "◷" },
                 ].map((item, index) => (
                   <div
                     key={item.label}
-                    className={`min-w-0 px-2.5 py-2.5 ${index === 0 ? "" : "border-l border-white/10"}`}
+                    className={`min-w-0 px-2 py-2 ${index === 0 ? "" : "border-l border-white/10"}`}
                   >
-                    <div className={`text-[15px] font-black leading-none ${item.color}`}>{item.icon}</div>
-                    <p className="mt-1.5 truncate text-[7px] font-black uppercase tracking-[0.08em] text-white/44">
+                    <div className={`text-[13px] font-black leading-none ${item.color}`}>{item.icon}</div>
+                    <p className="mt-1 truncate text-[6.5px] font-black uppercase tracking-[0.07em] text-white/44">
                       {item.label}
                     </p>
-                    <p className={`mt-1 truncate text-[22px] font-black leading-none ${item.color}`}>
+                    <p className={`mt-0.5 truncate text-[20px] font-black leading-none ${item.color}`}>
                       {item.value}
                     </p>
-                    <p className={`mt-1 truncate text-[10px] font-bold ${item.color}`}>{item.sub}</p>
-                    <p className="mt-0.5 truncate text-[8px] font-black uppercase tracking-[0.08em] text-white/34">{item.trend}</p>
+                    {item.trend ? (
+                      <p className="mt-0.5 truncate text-[7px] font-black uppercase tracking-[0.08em] text-white/36">{item.trend}</p>
+                    ) : null}
                   </div>
                 ))}
               </div>
             </section>
 
-            <section className="space-y-2">
-              <div className="relative h-[58px] overflow-visible rounded-[18px] border border-white/10 bg-[#030814]/95 px-2 pt-2 shadow-[0_0_22px_rgba(34,211,238,0.07)]">
+            <section className="space-y-1.5">
+              <div className="relative h-[52px] overflow-visible rounded-[16px] border border-white/10 bg-[#030814]/95 px-1.5 pt-1.5 shadow-[0_0_20px_rgba(34,211,238,0.06)]">
                 <OfficialSportSelectorRow
                   selectedSport={pulseSportToOfficialSport(pulseSportFilter)}
                   onSelectSport={(sport) => setPulseSportFilter(officialSportToPulseSport(sport))}
@@ -8840,11 +8838,11 @@ const subscriptionPlansBoard = (
             </section>
 
             {pulseLoading ? (
-              <section className="space-y-2.5">
+              <section className="space-y-2">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <div
                     key={`pulse-loading-${index}`}
-                    className="h-[178px] animate-pulse rounded-[20px] border border-white/10 bg-white/[0.035]"
+                    className="h-[140px] animate-pulse rounded-[18px] border border-white/10 bg-white/[0.035]"
                   />
                 ))}
               </section>
@@ -8859,7 +8857,7 @@ const subscriptionPlansBoard = (
                 </p>
               </section>
             ) : (
-              <section className="space-y-3">
+              <section className="space-y-2.5">
                 {currentUnifiedImpactItems.map((feedItem) => {
                   const item = feedItem.item;
                   const badgeSport = getTeamImpactSportBadge(feedItem.sport as TeamImpactEvent["sport"]);
@@ -8884,22 +8882,12 @@ const subscriptionPlansBoard = (
                     : (item as TeamImpactEvent).awayTeam && (item as TeamImpactEvent).homeTeam
                       ? (item as TeamImpactEvent).awayTeam
                       : null;
-                  const eventLabel = isIntelligenceImpact
-                    ? "TEAM IMPACT -> MARKET IMPACT"
-                    : isMarketImpact
-                    ? (item as MarketImpactEvent).movementType.replaceAll("_", " ")
-                    : (item as TeamImpactEvent).eventType;
                   const sourceLabel = isIntelligenceImpact
                     ? "Atlas Intelligence"
                     : isMarketImpact
                       ? "Atlas Market Scan"
                       : (item as TeamImpactEvent).source;
                   const sourceUrl = isMarketImpact || isIntelligenceImpact ? null : (item as TeamImpactEvent).sourceUrl;
-                  const detailLine = isIntelligenceImpact
-                    ? matchup
-                    : isMarketImpact
-                      ? getMarketImpactSelectionLabel(item as MarketImpactEvent)
-                      : matchup;
                   const whyLabel = isIntelligenceImpact ? "SUMMARY:" : "WHY:";
                   const whyText = isIntelligenceImpact
                     ? (item as AtlasIntelligenceEvent).summary
@@ -8921,23 +8909,23 @@ const subscriptionPlansBoard = (
                     return (
                       <article
                         key={feedItem.id}
-                        className={`relative overflow-hidden rounded-[22px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.105),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3.5 pb-3.5 pt-0 ${accent.glow}`}
+                        className={`relative overflow-hidden rounded-[20px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.105),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3 pb-2.5 pt-0 ${accent.glow}`}
                       >
-                        <div className={`-mx-3.5 mb-3 flex items-center justify-between gap-3 border-b px-3.5 py-2 ${accent.banner}`}>
+                        <div className={`-mx-3 mb-2 flex items-center justify-between gap-3 border-b px-3 py-1.5 ${accent.banner}`}>
                           <div className="min-w-0">
-                            <p className={`text-[11px] font-black uppercase tracking-[0.12em] ${accent.text}`}>
+                            <p className={`truncate text-[10px] font-black uppercase tracking-[0.11em] ${accent.text}`}>
                               <span className="mr-1.5">{accent.icon}</span>{accent.label}
                             </p>
                           </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
+                          <div className="flex shrink-0 items-center gap-2.5">
+                            <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
                               {feedItem.confidence}
                             </span>
-                            <span className="text-[10px] font-black text-white/46">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
+                            <span className="text-[9px] font-black text-white/46">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
                           </div>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-[68px_1fr] gap-3">
+                        <div className="mt-2 grid grid-cols-[58px_1fr] gap-2.5">
                           <div className="relative grid place-items-center">
                             <TerminalTeamMark teamName={primaryTeam} sport={badgeSport} size="lg" />
                               {secondaryTeam ? (
@@ -8947,54 +8935,47 @@ const subscriptionPlansBoard = (
                               ) : null}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="truncate text-[21px] font-black leading-tight text-white">{getAtlasIntelligenceImpact(intelligence)}</h3>
-                            <p className="mt-0.5 truncate text-[14px] font-bold text-white/68">{matchup}</p>
-                            <span className="mt-2 inline-flex rounded-full border border-violet-300/24 bg-violet-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-violet-200">
+                            <h3 className="truncate text-[19px] font-black leading-tight text-white">{getAtlasIntelligenceImpact(intelligence)}</h3>
+                            <p className="mt-0.5 truncate text-[12px] font-bold text-white/64">{matchup}</p>
+                            <span className="mt-1 inline-flex rounded-full border border-violet-300/24 bg-violet-300/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-violet-200">
                               {feedItem.sport}
                             </span>
                           </div>
                         </div>
 
-                        <div className={`mt-3 rounded-[14px] border px-3 py-2 ${accent.panel}`}>
-                          <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${accent.text}`}>SUMMARY</p>
-                          <p className="mt-1 line-clamp-2 text-[12px] font-semibold leading-4 text-white/76">{intelligence.summary}</p>
+                        <div className={`mt-2 rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                          <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>SUMMARY</p>
+                          <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold leading-[14px] text-white/76">{intelligence.summary}</p>
                         </div>
 
-                        <div className="mt-2 grid grid-cols-[64px_1fr] gap-2 rounded-[14px] border border-violet-300/12 bg-black/16 px-3 py-2">
-                          <div className="space-y-2 text-[9px] font-black uppercase tracking-[0.08em] text-violet-200/72">
-                            <p>{formatTeamImpactTimestamp(intelligence.details.teamEventTime)}</p>
-                            <p>{formatTeamImpactTimestamp(intelligence.details.marketTime)}</p>
-                            <p>{formatTeamImpactTimestamp(intelligence.publishedAt)}</p>
-                          </div>
-                          <div className="space-y-2 text-[10px] font-bold leading-3 text-white/68">
-                            <p className="truncate">
-                              {intelligence.details.teamEventType}
-                            </p>
-                            <p className="truncate">
-                              {intelligence.details.market} {intelligence.details.marketMovementType.replaceAll("_", " ").toLowerCase()}
-                            </p>
-                            <p className="truncate text-cyan-200">
-                              Correlation detected
-                            </p>
-                          </div>
+                        <div className="mt-1.5 rounded-[12px] border border-violet-300/10 bg-black/14 px-2.5 py-1.5">
+                          <p className="truncate text-[9px] font-bold leading-3 text-white/62">
+                            <span className="font-black text-violet-200/72">{formatTeamImpactTimestamp(intelligence.details.teamEventTime)}</span>
+                            <span className="mx-1 text-white/28">·</span>
+                            {intelligence.details.teamEventType}
+                            <span className="mx-1.5 text-violet-300">→</span>
+                            <span className="font-black text-violet-200/72">{formatTeamImpactTimestamp(intelligence.publishedAt)}</span>
+                            <span className="mx-1 text-white/28">·</span>
+                            Market Reaction
+                          </p>
                         </div>
 
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <div className={`rounded-[14px] border px-3 py-2 ${accent.panel}`}>
-                            <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${accent.text}`}>WHY</p>
-                            <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-white/72">{getAtlasIntelligenceWhy(intelligence)}</p>
+                        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                          <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                            <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>WHY</p>
+                            <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{getAtlasIntelligenceWhy(intelligence)}</p>
                           </div>
-                          <div className={`rounded-[14px] border px-3 py-2 ${accent.panel}`}>
-                            <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${accent.text}`}>IMPACT</p>
-                            <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-white/72">{getAtlasIntelligenceImpact(intelligence)}</p>
+                          <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                            <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>IMPACT</p>
+                            <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{getAtlasIntelligenceImpact(intelligence)}</p>
                           </div>
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2">
-                          <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-white/50">
+                        <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-1.5">
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-white/50">
                             News + Market Correlation
                           </p>
-                          <span className={`text-[12px] font-black ${accent.text}`}>Source →</span>
+                          <span className={`text-[11px] font-black ${accent.text}`}>View Source →</span>
                         </div>
                       </article>
                     );
@@ -9003,87 +8984,87 @@ const subscriptionPlansBoard = (
                   return (
                     <article
                       key={feedItem.id}
-                      className={`relative overflow-hidden rounded-[22px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3.5 pb-3.5 pt-0 ${accent.glow}`}
+                      className={`relative overflow-hidden rounded-[20px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3 pb-2.5 pt-0 ${accent.glow}`}
                     >
-                      <div className={`-mx-3.5 mb-3 flex items-center justify-between gap-3 border-b px-3.5 py-2 ${accent.banner}`}>
-                        <p className={`min-w-0 truncate text-[11px] font-black uppercase tracking-[0.12em] ${accent.text}`}>
+                      <div className={`-mx-3 mb-2 flex items-center justify-between gap-3 border-b px-3 py-1.5 ${accent.banner}`}>
+                        <p className={`min-w-0 truncate text-[10px] font-black uppercase tracking-[0.11em] ${accent.text}`}>
                           <span className="mr-1.5">{accent.icon}</span>{accent.label}
                         </p>
-                        <div className="flex shrink-0 items-center gap-3">
-                          <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
+                        <div className="flex shrink-0 items-center gap-2.5">
+                          <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
                             {feedItem.confidence}
                           </span>
-                          <span className="text-[10px] font-black text-white/50">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
+                          <span className="text-[9px] font-black text-white/50">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
                         </div>
                       </div>
 
                       {marketEvent ? (
                         <>
-                          <div className="mt-3 grid grid-cols-[1fr_112px] gap-3">
+                          <div className="mt-2 grid grid-cols-[1fr_92px] gap-2.5">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <TerminalTeamMark teamName={marketEvent.awayTeam} sport={badgeSport} size="lg" />
-                                <span className="text-[26px] font-black text-orange-300/80">›</span>
+                                <span className="text-[22px] font-black text-orange-300/80">›</span>
                                 <TerminalTeamMark teamName={marketEvent.homeTeam} sport={badgeSport} size="lg" />
                               </div>
-                              <h3 className="mt-3 truncate text-[20px] font-black leading-tight text-white">
+                              <h3 className="mt-2 truncate text-[19px] font-black leading-tight text-white">
                                 {getMarketImpactSelectionLabel(marketEvent)}
                               </h3>
-                              <p className="mt-0.5 truncate text-[13px] font-bold text-white/58">{matchup}</p>
-                              <span className="mt-2 inline-flex rounded-full border border-orange-300/24 bg-orange-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-orange-200">
+                              <p className="mt-0.5 truncate text-[12px] font-bold text-white/58">{matchup}</p>
+                              <span className="mt-1 inline-flex rounded-full border border-orange-300/24 bg-orange-300/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-orange-200">
                                 {feedItem.sport}
                               </span>
                             </div>
-                            <div className="rounded-[16px] border border-orange-300/28 bg-orange-400/[0.06] px-2 py-3 text-center shadow-[0_0_20px_rgba(249,115,22,0.15)]">
-                              <p className="text-[26px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[12px] text-white/70"> of </span>{marketEvent.booksObserved}</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/60">Sportsbooks</p>
-                              <div className="my-2 h-px bg-orange-300/18" />
-                              <p className="text-[30px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/60">Consensus</p>
+                            <div className="rounded-[14px] border border-orange-300/24 bg-orange-400/[0.055] px-2 py-2 text-center shadow-[0_0_18px_rgba(249,115,22,0.12)]">
+                              <p className="text-[21px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[10px] text-white/70"> of </span>{marketEvent.booksObserved}</p>
+                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/56">Books</p>
+                              <div className="my-1.5 h-px bg-orange-300/16" />
+                              <p className="text-[25px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
+                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/56">Consensus</p>
                             </div>
                           </div>
 
-                          <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[16px] border border-white/10 bg-black/20 px-3 py-3 text-center">
+                          <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-black/18 px-2.5 py-2 text-center">
                             <div>
-                              <p className="truncate text-[23px] font-black text-white">{formatMarketDetailValue(marketEvent.oldLine, marketEvent.oldOdds) || "N/A"}</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/46">Open</p>
+                              <p className="truncate text-[20px] font-black text-white">{formatMarketDetailValue(marketEvent.oldLine, marketEvent.oldOdds) || "N/A"}</p>
+                              <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-white/46">Open</p>
                             </div>
-                            <span className="text-[30px] font-black text-orange-300">→</span>
+                            <span className="text-[24px] font-black text-orange-300">→</span>
                             <div>
-                              <p className="truncate text-[23px] font-black text-orange-300">{formatMarketDetailValue(marketEvent.newLine, marketEvent.newOdds) || "N/A"}</p>
-                              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/46">Now</p>
+                              <p className="truncate text-[20px] font-black text-orange-300">{formatMarketDetailValue(marketEvent.newLine, marketEvent.newOdds) || "N/A"}</p>
+                              <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-white/46">Now</p>
                             </div>
                           </div>
                         </>
                       ) : teamEvent ? (
-                        <div className="mt-3 grid grid-cols-[68px_1fr] gap-3">
+                        <div className="mt-2 grid grid-cols-[58px_1fr] gap-2.5">
                           <TerminalTeamMark teamName={primaryTeam} sport={badgeSport} size="lg" />
                           <div className="min-w-0">
-                            <h3 className="line-clamp-2 text-[22px] font-black leading-tight text-white">{teamEvent.eventType}</h3>
-                            <p className="mt-0.5 truncate text-[13px] font-bold text-white/64">{primaryTeam}</p>
-                            <span className="mt-2 inline-flex rounded-full border border-sky-300/24 bg-sky-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-sky-200">
+                            <h3 className="line-clamp-1 text-[20px] font-black leading-tight text-white">{teamEvent.eventType}</h3>
+                            <p className="mt-0.5 truncate text-[12px] font-bold text-white/64">{primaryTeam}</p>
+                            <span className="mt-1 inline-flex rounded-full border border-sky-300/24 bg-sky-300/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-sky-200">
                               {feedItem.sport}
                             </span>
                           </div>
                         </div>
                       ) : null}
 
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className={`rounded-[14px] border px-3 py-2 ${accent.panel}`}>
-                          <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{whyLabel.replace(":", "")}</p>
-                          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-white/72">{whyText}</p>
+                      <div className="mt-2 grid grid-cols-2 gap-1.5">
+                        <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                          <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{whyLabel.replace(":", "")}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{whyText}</p>
                         </div>
-                        <div className={`rounded-[14px] border px-3 py-2 ${accent.panel}`}>
-                          <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{impactLabel.replace(":", "")}</p>
-                          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-white/72">{impactText}</p>
+                        <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                          <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{impactLabel.replace(":", "")}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{impactText}</p>
                         </div>
                       </div>
 
-                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-2">
+                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5">
                         <div className="min-w-0">
-                          <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-white/50">
+                          <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-white/50">
                             {isMarketImpact
-                              ? `${marketEvent?.market ?? "Market"} • ${eventLabel}`
+                              ? `${marketEvent?.market ?? "Market"} • Strong Market Move`
                               : teamEvent
                               ? getTeamImpactCompactSummary(teamEvent)
                               : sourceLabel}
@@ -9094,12 +9075,12 @@ const subscriptionPlansBoard = (
                             href={sourceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`shrink-0 text-[12px] font-black ${accent.text}`}
+                            className={`shrink-0 text-[11px] font-black ${accent.text}`}
                           >
-                            Source →
+                            View Source →
                           </a>
                         ) : (
-                          <span className={`shrink-0 text-[12px] font-black ${accent.text}`}>Source →</span>
+                          <span className={`shrink-0 text-[11px] font-black ${accent.text}`}>View Source →</span>
                         )}
                       </div>
                     </article>
