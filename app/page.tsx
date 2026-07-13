@@ -236,6 +236,7 @@ const soccerTop5Data = soccerTop5 as { top5: Top5Entry[] };
 const sportsTabs = ["NHL", "NBA", "TOP", "MLB", "NFL", "SOCCER"] as const;
 type SportTab = (typeof sportsTabs)[number];
 type CheckoutSport = Exclude<SportTab, "TOP">;
+type ImpactFeedFilter = "ALL" | PulseImpact | "INTELLIGENCE";
 const checkoutSports = ["MLB", "NBA", "NHL", "SOCCER", "NFL"] as const satisfies readonly CheckoutSport[];
 const precisionDisplaySports = ["MLB", "NBA", "NFL", "NHL", "SOCCER"] as const satisfies readonly CheckoutSport[];
 const scoreBoardSports = ["MLB", "SOCCER"] as const satisfies readonly SportTab[];
@@ -4179,7 +4180,7 @@ async function handleLogout() {
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [appSection, setAppSection] = useState<AppSection>("signals");
 const [pulseSportFilter, setPulseSportFilter] = useState<"ALL" | PulseSport>("ALL");
-const [pulseImpactFilter, setPulseImpactFilter] = useState<"ALL" | PulseImpact>("ALL");
+const [pulseImpactFilter, setPulseImpactFilter] = useState<ImpactFeedFilter>("ALL");
 const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
   createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB"))
 );
@@ -5103,7 +5104,7 @@ useEffect(() => {
     try {
       const params = new URLSearchParams({
         sport: pulseSportFilter,
-        confidence: pulseImpactFilter,
+        confidence: pulseImpactFilter === "INTELLIGENCE" ? "ALL" : pulseImpactFilter,
         limit: "50",
       });
       const [teamResponse, marketResponse, intelligenceResponse] = await Promise.all([
@@ -6239,11 +6240,12 @@ const sectionEyebrow =
     ? "My Atlas"
     : "Account";
 
-const pulseImpactFilters: Array<{ label: string; value: "ALL" | PulseImpact }> = [
+const pulseImpactFilters: Array<{ label: string; value: ImpactFeedFilter }> = [
   { label: "All", value: "ALL" },
   { label: "High", value: "HIGH" },
   { label: "Medium", value: "MEDIUM" },
   { label: "Low", value: "LOW" },
+  { label: "Intelligence", value: "INTELLIGENCE" },
 ];
 const pulseImpactTabItems = [
   ...pulseImpactFilters.map((filter) => ({ id: filter.value, label: filter.label })),
@@ -6273,7 +6275,7 @@ const pulseBaseItems =
 const filteredPulseItems = pulseBaseItems.filter((item) => {
   if (!isCurrentMarketImpactItem(item)) return false;
   const sportMatches = pulseSportFilter === "ALL" || item.sport === pulseSportFilter;
-  const impactMatches = pulseImpactFilter === "ALL" || item.impact === pulseImpactFilter;
+  const impactMatches = pulseImpactFilter === "ALL" || (pulseImpactFilter !== "INTELLIGENCE" && item.impact === pulseImpactFilter);
 
   return sportMatches && impactMatches;
 });
@@ -6282,6 +6284,7 @@ const currentFilteredPulseItems = dedupeMarketImpactItems(filteredPulseItems);
 
 const currentFilteredTeamImpactEvents = teamImpactEvents
   .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
+  .filter((item) => pulseImpactFilter !== "INTELLIGENCE")
   .filter((item) => pulseImpactFilter === "ALL" || item.confidence === pulseImpactFilter)
   .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
@@ -6301,6 +6304,7 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
   })),
   ...marketImpactEvents
     .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
+    .filter((item) => pulseImpactFilter !== "INTELLIGENCE")
     .filter((item) => pulseImpactFilter === "ALL" || item.confidence === pulseImpactFilter)
     .map((item) => ({
       kind: "market" as const,
@@ -6312,7 +6316,7 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
     })),
   ...atlasIntelligenceEvents
     .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
-    .filter((item) => pulseImpactFilter === "ALL" || item.confidence === pulseImpactFilter)
+    .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "INTELLIGENCE" || item.confidence === pulseImpactFilter)
     .map((item) => ({
       kind: "intelligence" as const,
       item,
@@ -6730,6 +6734,20 @@ function getAtlasIntelligenceMatchupLabel(event: AtlasIntelligenceEvent) {
 
 function getAtlasIntelligenceTimeline(event: AtlasIntelligenceEvent) {
   return `${formatTeamImpactTimestamp(event.details.teamEventTime)} ${event.details.teamEventType} -> ${formatTeamImpactTimestamp(event.details.marketTime)} ${event.details.market} moved`;
+}
+
+function getAtlasIntelligenceConfidenceClass(confidence: PulseImpact) {
+  if (confidence === "HIGH") return "border-red-300/40 bg-red-400/12 text-red-200";
+  if (confidence === "MEDIUM") return "border-amber-300/40 bg-amber-300/12 text-amber-200";
+  return "border-sky-300/40 bg-sky-300/12 text-sky-200";
+}
+
+function getAtlasIntelligenceWhy(event: AtlasIntelligenceEvent) {
+  return `A ${event.details.teamEventType} was followed by measurable ${event.details.market} movement within ${event.details.minutesBetween} minutes.`;
+}
+
+function getAtlasIntelligenceImpact(event: AtlasIntelligenceEvent) {
+  return `The market reacted after the team update with a ${event.details.marketMovementType.replaceAll("_", " ").toLowerCase()}.`;
 }
 
 const homeMembershipPlans = [
@@ -8680,7 +8698,7 @@ const subscriptionPlansBoard = (
                 items={pulseImpactTabItems}
                 onTab={(tab) => {
                   if (tab === "FILTERS") return;
-                  setPulseImpactFilter(tab as "ALL" | PulseImpact);
+                  setPulseImpactFilter(tab as ImpactFeedFilter);
                 }}
               />
             </section>
@@ -8696,7 +8714,11 @@ const subscriptionPlansBoard = (
               </section>
             ) : currentUnifiedImpactItems.length === 0 ? (
               <section className="rounded-[22px] border border-white/10 bg-white/[0.04] p-5 text-center">
-                <p className="text-[15px] font-black text-white">No Team Impact events detected today.</p>
+                <p className="text-[15px] font-black text-white">
+                  {pulseImpactFilter === "INTELLIGENCE"
+                    ? "No Atlas Intelligence insights detected today."
+                    : "No Team Impact events detected today."}
+                </p>
               </section>
             ) : (
               <section className="space-y-2.5">
@@ -8761,6 +8783,96 @@ const subscriptionPlansBoard = (
                     : isMarketImpact
                       ? (item as MarketImpactEvent).impact
                       : (item as TeamImpactEvent).impact;
+
+                  if (isIntelligenceImpact) {
+                    const intelligence = item as AtlasIntelligenceEvent;
+                    const confidenceClass = getAtlasIntelligenceConfidenceClass(feedItem.confidence);
+
+                    return (
+                      <article
+                        key={feedItem.id}
+                        className="rounded-[16px] border border-cyan-300/22 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.11),transparent_34%),linear-gradient(180deg,rgba(6,18,31,0.9),rgba(3,8,20,0.96))] px-3 py-2 shadow-[0_0_20px_rgba(34,211,238,0.09)]"
+                      >
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex min-w-0 items-start gap-2.5">
+                            <div className="relative grid h-11 w-11 shrink-0 place-items-center">
+                              <TerminalTeamMark teamName={primaryTeam} sport={badgeSport} />
+                              {secondaryTeam ? (
+                                <span className="absolute -bottom-1 -right-1">
+                                  <TerminalTeamMark teamName={secondaryTeam} sport={badgeSport} />
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-1">
+                                <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-200">
+                                  {feedItem.sport}
+                                </span>
+                                <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${confidenceClass}`}>
+                                  {feedItem.confidence}
+                                </span>
+                                <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-white/48">
+                                  {formatTeamImpactTimestamp(feedItem.publishedAt)}
+                                </span>
+                              </div>
+                              <h3 className="mt-1 min-w-0 truncate text-[15px] font-black leading-tight text-white">
+                                ATLAS INTELLIGENCE
+                              </h3>
+                              <p className="mt-0.5 truncate text-[11px] font-bold leading-4 text-white/66">
+                                {matchup}
+                              </p>
+                            </div>
+                          </div>
+                          <span className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
+                            {feedItem.confidence}
+                          </span>
+                        </div>
+
+                        <div className="mt-2 rounded-[12px] border border-cyan-300/14 bg-black/18 px-2.5 py-2">
+                          <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
+                            Insight
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-[11px] font-semibold leading-4 text-white/72">
+                            {intelligence.summary}
+                          </p>
+                        </div>
+
+                        <div className="mt-1.5 grid grid-cols-[46px_1fr] gap-2 rounded-[12px] border border-white/10 bg-black/14 px-2.5 py-2">
+                          <div className="space-y-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/45">
+                            <p>{formatTeamImpactTimestamp(intelligence.details.teamEventTime)}</p>
+                            <p className="text-center text-cyan-300/70">v</p>
+                            <p>{formatTeamImpactTimestamp(intelligence.details.marketTime)}</p>
+                          </div>
+                          <div className="space-y-1 text-[10px] font-bold leading-3 text-white/66">
+                            <p className="truncate">
+                              <span className="text-white/86">Team Impact</span> · {intelligence.details.teamEventType}
+                            </p>
+                            <p className="truncate">
+                              <span className="text-white/86">Market Impact</span> · {intelligence.details.market} moved
+                            </p>
+                            <p className="truncate text-cyan-200">
+                              Atlas Insight
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-1.5 grid gap-1.5 rounded-[12px] border border-white/10 bg-black/14 px-2.5 py-2">
+                          <p className="line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
+                            <span className="font-black text-white/82">WHY:</span> {getAtlasIntelligenceWhy(intelligence)}
+                          </p>
+                          <p className="line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
+                            <span className="font-black text-white/82">IMPACT:</span> {getAtlasIntelligenceImpact(intelligence)}
+                          </p>
+                        </div>
+
+                        <div className="mt-1.5 border-t border-white/10 pt-1.5">
+                          <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-white/50">
+                            Atlas Intelligence
+                          </p>
+                        </div>
+                      </article>
+                    );
+                  }
 
                   return (
                     <article
