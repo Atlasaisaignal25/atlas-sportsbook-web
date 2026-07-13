@@ -626,6 +626,47 @@ function getSignalViewAllResultBadge(status?: string | null) {
   return null;
 }
 
+function getSignalDisplayStatus(row: SignalDetectedRow) {
+  const liveStatus = row.liveStatus?.trim().toUpperCase();
+  if (liveStatus) return liveStatus;
+
+  const normalized = row.status?.trim().toUpperCase();
+  if (["WON", "LOST", "PUSH", "LIVE", "FINAL"].includes(normalized)) return normalized;
+
+  return "PENDING";
+}
+
+function getSignalStatusClasses(status: string) {
+  const normalized = status.toUpperCase();
+
+  if (normalized === "LIVE") return "border-emerald-300/45 bg-emerald-400/10 text-emerald-200";
+  if (normalized === "FINAL") return "border-white/22 bg-white/8 text-white/78";
+  if (normalized === "WON") return "border-emerald-300/45 bg-emerald-400/10 text-emerald-200";
+  if (normalized === "LOST") return "border-rose-300/45 bg-rose-400/10 text-rose-200";
+  if (normalized === "PUSH") return "border-amber-300/45 bg-amber-300/10 text-amber-200";
+
+  return "border-cyan-300/45 bg-cyan-300/10 text-cyan-200";
+}
+
+function getSignalPrimaryTimeLabel(row: SignalDetectedRow) {
+  const status = getSignalDisplayStatus(row);
+
+  if (status === "LIVE" || status === "FINAL" || status === "WON" || status === "LOST" || status === "PUSH") {
+    return row.liveScore || row.displayTime || row.time;
+  }
+
+  return row.displayTime || row.time;
+}
+
+function getSignalSecondaryTimeLabel(row: SignalDetectedRow) {
+  const status = getSignalDisplayStatus(row);
+
+  if (status === "LIVE") return row.liveDetail || "Live";
+  if (status === "FINAL" || status === "WON" || status === "LOST" || status === "PUSH") return row.liveDetail || "Final";
+
+  return null;
+}
+
 function formatCountdown(minutes?: number | null) {
   if (minutes === null || minutes === undefined || minutes <= 0) return "";
   const hours = Math.floor(minutes / 60);
@@ -1384,6 +1425,10 @@ function FrameSignalDetectedFeed({
   onRetry,
   onRowOpen,
   onViewAll,
+  completedMode = false,
+  sportsActiveCount = 0,
+  gamesTrackedCount = 0,
+  upcomingGamesCount = 0,
 }: {
   rows: SignalDetectedRow[];
   count: number;
@@ -1392,14 +1437,19 @@ function FrameSignalDetectedFeed({
   onRetry?: () => void;
   onRowOpen: (row: SignalDetectedRow) => void;
   onViewAll?: () => void;
+  completedMode?: boolean;
+  sportsActiveCount?: number;
+  gamesTrackedCount?: number;
+  upcomingGamesCount?: number;
 }) {
   const visibleRows = sortSignalsByStartTime(rows).slice(0, 5);
+  const headerTitle = completedMode ? "TODAY'S COMPLETED SIGNALS" : "SIGNAL DETECTED";
 
   return (
     <section className="relative isolate overflow-hidden rounded-[17px] border border-white/14 bg-[linear-gradient(180deg,rgba(6,18,31,0.86),rgba(3,8,20,0.92))]">
       <div className="relative z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[rgba(5,12,24,0.94)] px-3 py-2.5 backdrop-blur-sm">
         <div className="flex min-w-0 items-center gap-2">
-          <h2 className="shrink-0 text-[14px] font-black uppercase tracking-[0.18em] text-cyan-300">SIGNAL DETECTED</h2>
+          <h2 className="shrink-0 text-[14px] font-black uppercase tracking-[0.18em] text-cyan-300">{headerTitle}</h2>
           <span className="truncate rounded-full bg-cyan-400/12 px-2.5 py-1 text-[9.5px] font-black text-cyan-300">All • {count} Signals</span>
         </div>
         <button
@@ -1431,7 +1481,10 @@ function FrameSignalDetectedFeed({
         <div className="relative z-10 bg-[rgba(3,8,20,0.42)]">
           {visibleRows.map((row) => {
             const label = getSportCompetitionLabel(row.sport);
-            const resultBadge = getSignalViewAllResultBadge(row.status);
+            const displayStatus = getSignalDisplayStatus(row);
+            const resultBadge = getSignalViewAllResultBadge(displayStatus);
+            const primaryTime = getSignalPrimaryTimeLabel(row);
+            const secondaryTime = getSignalSecondaryTimeLabel(row);
 
             return (
               <button
@@ -1460,9 +1513,16 @@ function FrameSignalDetectedFeed({
                       <span aria-hidden="true">{resultBadge.icon}</span>
                     </span>
                   ) : (
-                    <span className="rounded-[9px] border border-cyan-300/45 px-2 py-1 text-[10px] font-black uppercase text-cyan-300">{row.status}</span>
+                    <span className={`rounded-[9px] border px-2 py-1 text-[10px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
+                      {displayStatus === "PENDING" ? "Pending" : displayStatus}
+                    </span>
                   )}
-                  <span className="text-[11px] font-semibold text-white/58">{row.time}</span>
+                  <span className="min-w-0 text-right">
+                    <span className="block text-[11px] font-semibold leading-tight text-white/72">{primaryTime}</span>
+                    {secondaryTime ? (
+                      <span className="block text-[9px] font-black uppercase tracking-[0.08em] text-cyan-300/80">{secondaryTime}</span>
+                    ) : null}
+                  </span>
                 </div>
                 <span className="text-2xl font-light text-white/70">›</span>
               </button>
@@ -1470,9 +1530,25 @@ function FrameSignalDetectedFeed({
           })}
         </div>
       ) : (
-        <div className="px-4 py-8 text-center">
-          <p className="text-sm font-black text-white">No signals detected yet.</p>
-          <p className="mt-1 text-xs text-white/58">Atlas continues monitoring today’s market.</p>
+        <div className="px-4 py-4">
+          <div className="rounded-[16px] border border-cyan-300/16 bg-cyan-300/[0.055] px-4 py-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-300">Today's Monitoring</p>
+            <p className="mt-1 text-[13px] font-semibold text-white/74">Atlas is tracking the slate and will surface picks as they qualify.</p>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {[
+              ["Sports Active", String(Math.max(sportsActiveCount, 0))],
+              ["Games Tracked", String(Math.max(gamesTrackedCount, 0))],
+              ["Upcoming Games", String(Math.max(upcomingGamesCount, 0))],
+              ["Engine Status", loading ? "Scanning" : "Monitoring"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/42">{label}</p>
+                <p className="mt-1 text-[15px] font-black text-white">{value}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-center text-[11px] font-semibold text-white/46">Last Update: Live</p>
         </div>
       )}
     </section>
@@ -1682,8 +1758,7 @@ function BottomNavIcon({ section }: { section: SignalsHomeNavSection }) {
   if (section === "news") {
     return (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path d="M5 5.5h10.5A2.5 2.5 0 0 1 18 8v10.5H7.5A2.5 2.5 0 0 1 5 16V5.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M8 9h6M8 12h3M18 9h1.2A1.8 1.8 0 0 1 21 10.8V16a2.5 2.5 0 0 1-2.5 2.5H18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M13 2.8 4.8 13h6.1L9.7 21.2 19.2 9h-6.4L13 2.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -1989,6 +2064,10 @@ function SelectedSportSignalRow({
   sport: SelectedSport;
   onOpen: () => void;
 }) {
+  const displayStatus = getSignalDisplayStatus(row);
+  const primaryTime = getSignalPrimaryTimeLabel(row);
+  const secondaryTime = getSignalSecondaryTimeLabel(row);
+
   return (
     <button
       type="button"
@@ -1999,15 +2078,18 @@ function SelectedSportSignalRow({
         <SignalTeamLogoStack row={row} size="compact" />
         <span className="text-[7px] font-black uppercase text-white">{selectedSportLabels[sport]}</span>
       </span>
-      <span className="border-r border-cyan-300/20 pr-2 text-[12px] font-black leading-tight text-white">
-        {formatSelectedSportTime(row.time)}
+      <span className="border-r border-cyan-300/20 pr-2 text-[11px] font-black leading-tight text-white">
+        <span className="block">{formatSelectedSportTime(primaryTime)}</span>
+        {secondaryTime ? (
+          <span className="mt-0.5 block text-[8px] uppercase tracking-[0.08em] text-cyan-300/75">{secondaryTime}</span>
+        ) : null}
       </span>
       <span className="min-w-0">
         <span className="block truncate text-[12px] font-black text-white">{row.matchup}</span>
         <span className="mt-0.5 block truncate text-[11px] font-medium text-cyan-300">{formatSignalPickWithOdds(row)}</span>
       </span>
-      <span className="justify-self-end rounded-[7px] border border-cyan-300/50 px-2 py-1.5 text-[8px] font-black uppercase text-cyan-300">
-        {row.status || "Pending"}
+      <span className={`justify-self-end rounded-[7px] border px-2 py-1.5 text-[8px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
+        {displayStatus === "PENDING" ? "Pending" : displayStatus}
       </span>
       <span className="text-lg font-light text-white">›</span>
     </button>
@@ -2106,7 +2188,10 @@ function SignalExplorerSheet({
           ) : orderedRows.length ? (
             <div className="relative z-0 isolate overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(6,18,31,0.82),rgba(3,8,20,0.94))]">
               {orderedRows.map((row) => {
-                const resultBadge = getSignalViewAllResultBadge(row.status);
+                const displayStatus = getSignalDisplayStatus(row);
+                const resultBadge = getSignalViewAllResultBadge(displayStatus);
+                const primaryTime = getSignalPrimaryTimeLabel(row);
+                const secondaryTime = getSignalSecondaryTimeLabel(row);
 
                 return (
                   <button
@@ -2139,11 +2224,16 @@ function SignalExplorerSheet({
                         <span aria-hidden="true">{resultBadge.icon}</span>
                       </span>
                     ) : (
-                      <span className="justify-self-end rounded-[8px] border border-cyan-300/45 px-2 py-1 text-[9px] font-black uppercase text-cyan-300">
-                        {row.status || "Pending"}
+                      <span className={`justify-self-end rounded-[8px] border px-2 py-1 text-[9px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
+                        {displayStatus === "PENDING" ? "Pending" : displayStatus}
                       </span>
                     )}
-                    <span className="justify-self-end text-[10px] font-semibold text-white/58">{row.time}</span>
+                    <span className="justify-self-end text-right text-[10px] font-semibold leading-tight text-white/58">
+                      <span className="block">{primaryTime}</span>
+                      {secondaryTime ? (
+                        <span className="block text-[8px] uppercase tracking-[0.08em] text-cyan-300/75">{secondaryTime}</span>
+                      ) : null}
+                    </span>
                     <span className="text-xl font-light text-white/65">›</span>
                   </button>
                 );
@@ -2623,27 +2713,25 @@ function MyAtlasScreen({
 
   return (
     <main className="min-h-screen bg-[#020814] text-white">
-      <div className="mx-auto min-h-screen w-full max-w-md overflow-x-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-3.5 pb-[88px] pt-4">
-        <header className="mb-3">
+      <div className="mx-auto min-h-screen w-full max-w-md overflow-x-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-3.5 pb-[88px] pt-3">
+        <header className="mb-2.5">
           <div className="flex items-start justify-between gap-3">
-            <button type="button" onClick={() => onNavigate?.("signals")} className="flex items-center gap-2.5 text-left" aria-label="Back to Atlas home">
-              <img src="/icon.png" alt="Atlas Signals" className="h-8 w-8 object-contain" />
-              <div className="text-[9px] font-black uppercase leading-tight tracking-[0.30em] text-white">
-                Atlas<br /><span className="text-cyan-300">Signals</span>
-              </div>
-            </button>
+            <div className="min-w-0">
+              <h1 className="text-[28px] font-black uppercase leading-none tracking-[-0.035em]">My Atlas</h1>
+              <p className="mt-1 max-w-[320px] text-[11px] font-medium leading-snug text-white/58">Atlas Operational Overview</p>
+            </div>
             <button
               type="button"
               onClick={() => void loadControlCenter()}
-              className="grid h-9 w-9 place-items-center rounded-[11px] border border-cyan-300/20 bg-cyan-400/[0.07] text-[16px] font-black text-cyan-300"
+              disabled={loading}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[11px] border border-cyan-300/35 bg-cyan-400/[0.12] px-3 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,0.12)] disabled:opacity-60"
               aria-label="Refresh My Atlas"
               title="Refresh"
             >
-              ↻
+              <span className="text-[15px] leading-none">↻</span>
+              Refresh
             </button>
           </div>
-          <h1 className="mt-1.5 text-[26px] font-black uppercase leading-none tracking-[-0.035em]">My Atlas</h1>
-          <p className="mt-0.5 max-w-[320px] text-[11px] font-medium leading-snug text-white/58">Your Atlas operational overview.</p>
         </header>
 
         {error === "Admin access required." ? (
@@ -2730,14 +2818,13 @@ export function SignalsHomePage({
     const todayKey = getTodayKey();
     const isTodayBoard = activeDate === todayKey;
     const isPastBoard = activeDate < todayKey;
-    const filteredSignalRows =
-      selectedSport === "all"
-        ? isTodayBoard
-          ? getUpcomingSignalsBySport(signalRows, "all", now)
-          : sortSignalsByStartTime(getSignalsBySport(signalRows, "all"))
-        : isTodayBoard
-          ? getUpcomingSignalsBySport(signalRows, selectedSport, now)
-          : sortSignalsByStartTime(getSignalsBySport(signalRows, selectedSport));
+    const allSignalRows = sortSignalsByStartTime(getSignalsBySport(signalRows, selectedSport));
+    const upcomingSignalRows = getUpcomingSignalsBySport(signalRows, selectedSport, now);
+    const filteredSignalRows = isTodayBoard
+      ? upcomingSignalRows.length
+        ? upcomingSignalRows
+        : allSignalRows
+      : allSignalRows;
 
     return {
       sport: selectedSport,
@@ -2745,6 +2832,9 @@ export function SignalsHomePage({
       sportSignalCount: filteredSignalRows.length,
       sportTopSignalEndpoint: selectedSportTopSignalEndpoints[selectedSport],
       filteredSignalRows,
+      allSignalRows,
+      upcomingSignalRows,
+      completedMode: isTodayBoard && upcomingSignalRows.length === 0 && allSignalRows.length > 0,
       nextSignal: getNextSignalBySport(signalRows, selectedSport, now),
       emptyState: {
         title: isPastBoard ? "No Results Available" : "No Games Available",
@@ -2756,6 +2846,9 @@ export function SignalsHomePage({
   }, [activeDate, selectedSport, signalRows]);
 
   const activeSignalRows = selectedSportMode.filteredSignalRows;
+  const uniqueSignalSportsCount = new Set(signalRows.map((row) => row.sport)).size;
+  const upcomingSignalCount = selectedSportMode.upcomingSignalRows.length;
+  const trackedSignalCount = selectedSportMode.allSignalRows.length;
   const topPlayView = buildTopPlayViewModel(topPlay);
   const sportSignalViews = sports.map((sport) =>
     buildSportSignalViewModel(sport, topSignals?.[sport]),
@@ -2944,6 +3037,10 @@ export function SignalsHomePage({
                       onRetry={onRetry}
                       onRowOpen={(row) => setSelectedSignalRow(row)}
                       onViewAll={() => setSignalExplorerOpen(true)}
+                      completedMode={selectedSportMode.completedMode}
+                      sportsActiveCount={uniqueSignalSportsCount}
+                      gamesTrackedCount={trackedSignalCount}
+                      upcomingGamesCount={upcomingSignalCount}
                     />
                     <FrameTodayActivityCard metrics={activityMetrics} />
                   </div>

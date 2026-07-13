@@ -1174,12 +1174,12 @@ function LiveScoreboardRow({
   const statusLabel = game.completed
     ? "Final"
     : live
-    ? getMlbInningText(game)
+    ? getGameMinute(game)
     : "";
   const centerValue = hasScore
     ? `${awayScore}-${homeScore}`
     : live
-    ? getMlbInningText(game)
+    ? getGameMinute(game)
     : formatScoreboardTime(game.commence_time);
   const centerValueClass = hasScore
     ? "text-[19px]"
@@ -2688,18 +2688,7 @@ function BottomNavIcon({ itemKey }: { itemKey: AppSection }) {
   if (itemKey === "news") {
     return (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path
-          d="M5 5.5h10.5A2.5 2.5 0 0 1 18 8v10.5H7.5A2.5 2.5 0 0 1 5 16V5.5Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M8 9h6M8 12h3M18 9h1.2A1.8 1.8 0 0 1 21 10.8V16a2.5 2.5 0 0 1-2.5 2.5H18"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
+        <path d="M13 2.8 4.8 13h6.1L9.7 21.2 19.2 9h-6.4L13 2.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -3269,8 +3258,25 @@ function SignalDetectedRow({
   isLast: boolean;
   onOpen: () => void;
 }) {
-  const resultLabel = getSignalResultBadge(result);
+  const awayScore = getLiveScoreValue(game, game.away_team);
+  const homeScore = getLiveScoreValue(game, game.home_team);
+  const hasScore = awayScore !== "-" || homeScore !== "-";
+  const live = isGameLive(game);
+  const resultLabel =
+    result && getSignalResultBadge(result) !== "PENDING"
+      ? getSignalResultBadge(result)
+      : game.completed
+      ? "FINAL"
+      : live
+      ? "LIVE"
+      : "PENDING";
   const oddsLabel = formatAmericanOdds(odds ?? null);
+  const timeLabel = hasScore
+    ? `${awayScore}-${homeScore}`
+    : live
+    ? getGameMinute(game)
+    : formatTime(game.commence_time);
+  const detailLabel = game.completed ? "Final" : live ? getGameMinute(game) : null;
 
   return (
     <button
@@ -3304,14 +3310,23 @@ function SignalDetectedRow({
               ? "border-red-400/25 bg-red-500/15 text-red-300"
               : resultLabel === "PUSH"
               ? "border-yellow-400/25 bg-yellow-500/15 text-yellow-300"
+              : resultLabel === "FINAL"
+              ? "border-white/20 bg-white/8 text-white/70"
+              : resultLabel === "LIVE"
+              ? "border-green-400/25 bg-green-500/15 text-green-300"
               : "border-cyan-400/25 bg-cyan-400/10 text-cyan-300"
           }`}
         >
           {resultLabel}
         </span>
         <p className="mt-1 whitespace-nowrap text-[10px] font-medium text-white/45">
-          {formatTime(game.commence_time)}
+          {timeLabel}
         </p>
+        {detailLabel ? (
+          <p className="whitespace-nowrap text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300/70">
+            {detailLabel}
+          </p>
+        ) : null}
       </div>
 
       <span className="text-[20px] leading-none text-white/28">›</span>
@@ -6262,7 +6277,7 @@ const sectionEyebrow =
     : appSection === "challenges"
     ? "Weekly Board"
     : appSection === "news"
-    ? "Atlas Pulse"
+    ? ""
     : appSection === "alerts"
     ? "My Atlas"
     : "Account";
@@ -6880,6 +6895,24 @@ const subscriptionPlansBoard = (
             return [];
           }
 
+          const live = isGameLive(game);
+          const pickResult = getLivePickResult(game, livePickData) ?? "PENDING";
+          const awayScore = getLiveScoreValue(game, game.away_team);
+          const homeScore = getLiveScoreValue(game, game.home_team);
+          const hasScore = awayScore !== "-" || homeScore !== "-";
+          const liveStatus: "PENDING" | "LIVE" | "FINAL" | "WON" | "LOST" | "PUSH" =
+            pickResult !== "PENDING"
+              ? pickResult
+              : game.completed
+              ? "FINAL"
+              : live
+              ? "LIVE"
+              : "PENDING";
+          const liveScore = hasScore
+            ? `${getLiveDisplayName(game.away_team)} ${awayScore} · ${getLiveDisplayName(game.home_team)} ${homeScore}`
+            : null;
+          const liveDetail = game.completed ? "Final" : live ? getGameMinute(game) : null;
+
           return [
             {
               id: `${game.id}-${group.sport}`,
@@ -6890,6 +6923,10 @@ const subscriptionPlansBoard = (
               status: String(livePickData.status ?? "Pending"),
               time: formatTime(game.commence_time).toUpperCase(),
               startTime: game.commence_time,
+              liveStatus,
+              liveScore,
+              liveDetail,
+              displayTime: formatTime(game.commence_time).toUpperCase(),
             },
           ];
         })
@@ -6904,12 +6941,12 @@ const subscriptionPlansBoard = (
         const statusLabel = game.completed
           ? "Final"
           : live
-          ? getMlbInningText(game)
+          ? getGameMinute(game)
           : "";
         const centerValue = hasScore
           ? `${awayScore}-${homeScore}`
           : live
-          ? getMlbInningText(game)
+          ? getGameMinute(game)
           : formatScoreboardTime(game.commence_time);
 
         return {
@@ -7167,7 +7204,7 @@ const subscriptionPlansBoard = (
               className="fixed inset-0 z-10 mx-auto w-full max-w-md overflow-y-auto overscroll-contain"
               style={{ clipPath: "inset(19vh 0 0 0)" }}
             >
-            <div className="space-y-4 px-4 pb-8 pt-[19vh]">
+            <div className="space-y-4 px-4 pb-[108px] pt-[19vh]">
             <section className="rounded-[18px] border border-cyan-300/18 bg-[#07111d]/90 p-3 shadow-[0_0_24px_rgba(34,211,238,0.08)] backdrop-blur-md">
               <div className="grid grid-cols-[1fr_34px_1fr] items-center gap-2">
                 <div className="text-center">
@@ -7505,6 +7542,51 @@ const subscriptionPlansBoard = (
           </div>
         </div>
         </div>
+        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
+          <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-3 text-[11px]">
+            {[
+              { key: "challenges" as const, label: "Challenges" },
+              { key: "news" as const, label: "Impact" },
+              { key: "signals" as const, label: "Home" },
+              { key: "alerts" as const, label: "My Atlas" },
+              { key: "more" as const, label: "More" },
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                aria-label={item.label}
+                onClick={() => {
+                  if (item.key === "signals") {
+                    navigateAppState({ section: item.key, view: "live" });
+                    return;
+                  }
+
+                  navigateAppState({ section: item.key });
+                }}
+                className={`flex flex-col items-center rounded-2xl px-2 font-semibold transition-all ${
+                  item.key === "signals" ? "-mt-2 gap-0.5 py-1" : "gap-1 py-2"
+                } ${
+                    item.key === "more"
+                    ? "bg-cyan-400/10 text-cyan-300"
+                    : "text-white/45"
+                }`}
+              >
+                <span
+                  className={`flex items-center justify-center overflow-hidden rounded-full text-[10px] font-black ${
+                    item.key === "signals"
+                      ? "h-12 w-12 border border-cyan-300/30 bg-[#020916] shadow-[0_0_20px_rgba(34,211,238,0.22)]"
+                      : `h-6 w-6 ${
+                          item.key === "more" ? "bg-cyan-400 text-black" : "bg-white/10"
+                        }`
+                  }`}
+                >
+                  <BottomNavIcon itemKey={item.key} />
+                </span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
         </div>
       </main>
     );
@@ -7518,20 +7600,22 @@ const subscriptionPlansBoard = (
       }`}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center justify-between">
-  <div className="flex items-center gap-3">
-  <img
-    src="/icon.png"
-    alt="Atlas Signals"
-    className="h-8 w-8 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
-  />
+            {appSection === "news" ? null : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/icon.png"
+                    alt="Atlas Signals"
+                    className="h-8 w-8 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                  />
 
-  <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400/90">
-    {sectionEyebrow}
-  </p>
-</div>
-</div>
-            <h1 className={`mt-1 font-bold leading-none tracking-tight ${
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400/90">
+                    {sectionEyebrow}
+                  </p>
+                </div>
+              </div>
+            )}
+            <h1 className={`${appSection === "news" ? "mt-0" : "mt-1"} font-bold leading-none tracking-tight ${
               appSection === "signals" ? "text-[36px]" : appSection === "news" ? "text-[30px]" : "text-[40px]"
             }`}>
               {sectionTitle}
@@ -7542,7 +7626,7 @@ const subscriptionPlansBoard = (
               </p>
             ) : appSection === "news" ? (
               <p className="mt-1 text-[12px] font-semibold text-white/58">
-                Real-time events moving betting markets.
+                Real-Time Event Moving Markets
               </p>
             ) : null}
           </div>

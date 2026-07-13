@@ -15,6 +15,10 @@ export type SignalDetectedRow = {
   time: string;
   startTime?: string | null;
   detectedAt?: string | null;
+  liveStatus?: "PENDING" | "LIVE" | "FINAL" | "WON" | "LOST" | "PUSH";
+  liveScore?: string | null;
+  liveDetail?: string | null;
+  displayTime?: string | null;
 };
 
 function ArrowIcon() {
