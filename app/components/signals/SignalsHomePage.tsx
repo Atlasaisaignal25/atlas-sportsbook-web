@@ -1350,11 +1350,14 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 0) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
-        <circle cx="12" cy="12" r="5.5" stroke="currentColor" strokeWidth="1.2" opacity="0.55" />
-        <circle cx="12" cy="12" r="2.2" stroke="currentColor" strokeWidth="1.1" opacity="0.45" />
-        <path d="M12 12 17.4 6.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <circle cx="17.4" cy="6.6" r="1.4" fill="currentColor" />
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="0.85" opacity="0.35" />
+        <circle cx="12" cy="12" r="6.2" stroke="currentColor" strokeWidth="0.9" opacity="0.52" />
+        <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="0.85" opacity="0.42" />
+        <path d="M12 12 18.2 5.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" opacity="0.9" />
+        <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" opacity="0.55" />
+        <path d="M12 12h.01" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+        <circle cx="18.2" cy="5.8" r="1.6" fill="currentColor" />
+        <circle cx="18.2" cy="5.8" r="2.8" stroke="currentColor" strokeWidth="0.6" opacity="0.32" />
       </svg>
     );
   }
@@ -1362,9 +1365,11 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 1) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <path d="M12 3.5 18 6v5.2c0 3.9-2.2 6.9-6 8.4-3.8-1.5-6-4.5-6-8.4V6l6-2.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-        <circle cx="11" cy="11" r="3.4" stroke="currentColor" strokeWidth="1.6" />
-        <path d="m13.6 13.6 3.3 3.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M12 3.6 18.1 6v5.4c0 3.8-2.2 6.6-6.1 8.1-3.9-1.5-6.1-4.3-6.1-8.1V6L12 3.6Z" stroke="currentColor" strokeWidth="1.45" strokeLinejoin="round" />
+        <path d="M12 6.2 16 7.8v3.4c0 2.6-1.3 4.6-4 5.9-2.7-1.3-4-3.3-4-5.9V7.8l4-1.6Z" fill="currentColor" opacity="0.12" />
+        <circle cx="11.2" cy="11.3" r="3" stroke="currentColor" strokeWidth="1.55" />
+        <path d="m13.4 13.5 3.5 3.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M8.7 6.9 12 5.7l3.3 1.2" stroke="currentColor" strokeWidth="0.7" strokeLinecap="round" opacity="0.52" />
       </svg>
     );
   }
@@ -1372,9 +1377,13 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 2) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <path d="M5 19V9M11 19V13M17 19V6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M4 16.5 9.2 11l4.4 2.8L20 6.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M16.4 6.8H20v3.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5.2 18.6V12.4M10.6 18.6V9.9M16 18.6V6.9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M4.3 16.5 9 11.7l4.1 2.4 6.7-7.2" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16.3 6.9h3.5v3.5" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M5.2 18.6h13.6" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" opacity="0.42" />
+        <rect x="4.2" y="14.2" width="2" height="4.4" rx="0.8" fill="currentColor" opacity="0.12" />
+        <rect x="9.6" y="11.2" width="2" height="7.4" rx="0.8" fill="currentColor" opacity="0.12" />
+        <rect x="15" y="8.1" width="2" height="10.5" rx="0.8" fill="currentColor" opacity="0.12" />
       </svg>
     );
   }
@@ -1382,19 +1391,23 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
   if (index === 3) {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="6.4" stroke="currentColor" strokeWidth="1.7" />
-        <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        <path d="m9.2 12.1 1.9 1.9 3.9-4.3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="6.5" stroke="currentColor" strokeWidth="1.45" />
+        <circle cx="12" cy="12" r="3.8" stroke="currentColor" strokeWidth="0.75" opacity="0.35" />
+        <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" />
+        <path d="m9.1 12.1 1.9 1.9 4.1-4.4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7.8 7.8 6.6 6.6M16.2 7.8l1.2-1.2M7.8 16.2l-1.2 1.2M16.2 16.2l1.2 1.2" stroke="currentColor" strokeWidth="0.65" strokeLinecap="round" opacity="0.46" />
       </svg>
     );
   }
 
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      <path d="M8 4.5h8v3.2a4 4 0 0 1-8 0V4.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M8 6.4H5.3a3 3 0 0 0 3 4.7M16 6.4h2.7a3 3 0 0 1-3 4.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 11.5v4.2M9 20h6M10 15.8h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="m12 6.8.7 1.4 1.6.2-1.1 1.1.3 1.6-1.5-.8-1.5.8.3-1.6-1.1-1.1 1.6-.2.7-1.4Z" fill="currentColor" />
+      <path d="M7.8 4.4h8.4v3.3a4.2 4.2 0 0 1-8.4 0V4.4Z" fill="currentColor" opacity="0.12" />
+      <path d="M7.8 4.4h8.4v3.3a4.2 4.2 0 0 1-8.4 0V4.4Z" stroke="currentColor" strokeWidth="1.55" strokeLinejoin="round" />
+      <path d="M7.8 6.4H5.1a3.1 3.1 0 0 0 3.1 4.8M16.2 6.4h2.7a3.1 3.1 0 0 1-3.1 4.8" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" />
+      <path d="M12 11.6v4.3M8.9 20h6.2M10 15.9h4" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" />
+      <path d="m12 6.65.68 1.36 1.5.22-1.08 1.05.26 1.49L12 10.06l-1.36.71.26-1.49-1.08-1.05 1.5-.22L12 6.65Z" fill="currentColor" />
+      <path d="M16.4 3.8 17.2 3M17.7 5.4h1.2M15.7 5.1l.8.8" stroke="currentColor" strokeWidth="0.75" strokeLinecap="round" opacity="0.75" />
     </svg>
   );
 }
@@ -1475,8 +1488,8 @@ function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
                 />
               ) : null}
               <span
-                className={`relative z-10 mx-auto grid h-8 w-8 place-items-center rounded-full border bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.12),rgba(6,16,29,0.92)_42%,rgba(1,6,16,0.98))] ${style.border} ${
-                  active ? `${style.glow} motion-safe:animate-pulse` : "shadow-[0_0_8px_rgba(148,163,184,0.08),inset_0_0_10px_rgba(255,255,255,0.03)] opacity-72"
+                className={`relative z-10 mx-auto grid h-8 w-8 place-items-center rounded-full border bg-[radial-gradient(circle_at_34%_22%,rgba(255,255,255,0.20),rgba(255,255,255,0.05)_18%,rgba(6,16,29,0.94)_48%,rgba(1,6,16,0.99))] ${style.border} before:absolute before:inset-[3px] before:rounded-full before:border before:border-white/[0.055] before:content-[''] after:absolute after:left-[8px] after:top-[5px] after:h-[4px] after:w-[10px] after:rounded-full after:bg-white/14 after:blur-[1px] after:content-[''] ${
+                  active ? `${style.glow} motion-safe:animate-pulse` : "shadow-[0_0_8px_rgba(148,163,184,0.08),inset_0_0_10px_rgba(255,255,255,0.035)] opacity-72"
                 }`}
               >
                 <ActivityMetricIcon className={`h-[18px] w-[18px] ${style.text}`} index={index} />
