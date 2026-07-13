@@ -19,6 +19,7 @@ import { atlasPulseMock } from "@/app/data/atlasPulseMock";
 import { createAtlasEventsFromPulseItems } from "@/lib/market-impact/eventEngine";
 import type { AtlasEvent, AtlasSource } from "@/types/atlasEvent";
 import type { PulseImpact, PulseSport } from "@/types/marketImpact";
+import type { TeamImpactEvent } from "@/types/teamImpact";
 import {
   SignalsHomePage,
   type PrecisionNotifyResult,
@@ -4180,6 +4181,7 @@ const [pulseImpactFilter, setPulseImpactFilter] = useState<"ALL" | PulseImpact>(
 const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
   createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB"))
 );
+const [teamImpactEvents, setTeamImpactEvents] = useState<TeamImpactEvent[]>([]);
 const [pulseLoading, setPulseLoading] = useState(false);
 const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
   title: string;
@@ -5091,23 +5093,24 @@ useEffect(() => {
 
   const controller = new AbortController();
 
-  async function loadMarketImpactNews() {
+  async function loadTeamImpactEvents() {
     setPulseLoading(true);
 
     try {
-      const response = await fetch("/api/market-impact/news?sport=MLB&limit=20", {
+      const params = new URLSearchParams({
+        sport: pulseSportFilter,
+        confidence: pulseImpactFilter,
+        limit: "50",
+      });
+      const response = await fetch(`/api/impact/team-impact?${params.toString()}`, {
         signal: controller.signal,
       });
-      const data = (await response.json()) as { items?: AtlasEvent[] };
+      const data = (await response.json()) as { events?: TeamImpactEvent[] };
 
-      if (Array.isArray(data.items) && data.items.length > 0) {
-        setPulseMlbItems(data.items);
-      } else {
-        setPulseMlbItems(createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB")));
-      }
+      setTeamImpactEvents(Array.isArray(data.events) ? data.events : []);
     } catch (error) {
       if (!controller.signal.aborted) {
-        setPulseMlbItems(createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB")));
+        setTeamImpactEvents([]);
       }
     } finally {
       if (!controller.signal.aborted) {
@@ -5116,10 +5119,14 @@ useEffect(() => {
     }
   }
 
-  loadMarketImpactNews();
+  loadTeamImpactEvents();
+  const interval = window.setInterval(loadTeamImpactEvents, 5 * 60 * 1000);
 
-  return () => controller.abort();
-}, [appSection]);
+  return () => {
+    controller.abort();
+    window.clearInterval(interval);
+  };
+}, [appSection, pulseSportFilter, pulseImpactFilter]);
 
   useEffect(() => {
   async function loadGames() {
@@ -6261,6 +6268,11 @@ const filteredPulseItems = pulseBaseItems.filter((item) => {
 
 const currentFilteredPulseItems = dedupeMarketImpactItems(filteredPulseItems);
 
+const currentFilteredTeamImpactEvents = teamImpactEvents
+  .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
+  .filter((item) => pulseImpactFilter === "ALL" || item.confidence === pulseImpactFilter)
+  .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+
 function getPulseImpactClasses(impact: PulseImpact) {
   return {
     card: "border-cyan-300/18 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.075),transparent_38%),linear-gradient(180deg,rgba(6,18,31,0.86),rgba(3,8,20,0.94))] shadow-[0_0_18px_rgba(34,211,238,0.08)]",
@@ -6605,6 +6617,36 @@ function TerminalTeamMark({ teamName, sport }: { teamName: string; sport: SportT
       )}
     </span>
   );
+}
+
+function getTeamImpactSportBadge(sport: TeamImpactEvent["sport"]): SportTab {
+  return sport;
+}
+
+function getTeamImpactTitle(event: TeamImpactEvent) {
+  const team = event.homeTeam || event.awayTeam;
+  if (event.playerName && team) return `${team}: ${event.playerName}`;
+  if (team) return team;
+  return event.sport;
+}
+
+function getTeamImpactMatchupLabel(event: TeamImpactEvent) {
+  if (event.awayTeam && event.homeTeam && event.awayTeam !== event.homeTeam) {
+    return `${getDisplayAbbr(event.awayTeam)} vs ${getDisplayAbbr(event.homeTeam)}`;
+  }
+
+  return event.homeTeam || event.awayTeam || "Team Impact";
+}
+
+function formatTeamImpactTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Today";
+
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  }).format(date);
 }
 
 const homeMembershipPlans = [
@@ -8569,214 +8611,79 @@ const subscriptionPlansBoard = (
                   />
                 ))}
               </section>
-            ) : currentFilteredPulseItems.length === 0 ? (
+            ) : currentFilteredTeamImpactEvents.length === 0 ? (
               <section className="rounded-[22px] border border-white/10 bg-white/[0.04] p-5 text-center">
-                <p className="text-[15px] font-black text-white">No market-impact updates right now.</p>
-                <p className="mt-1 text-[12px] font-semibold text-white/52">Atlas is still scanning.</p>
+                <p className="text-[15px] font-black text-white">No Team Impact events detected today.</p>
               </section>
             ) : (
               <section className="space-y-2.5">
-                {currentFilteredPulseItems.map((item) => {
-                  const impactStyles = getPulseImpactClasses(item.impact);
-                  const sourceCount = item.sourceCount ?? item.sources?.length ?? 1;
-                  const sources = item.sources ?? [];
-                  const isOddsOnlyEvent =
-                    sources.length > 0 && sources.every((source) => source.provider === "OddsAPI");
-                  const displaySourceCount = isOddsOnlyEvent ? 1 : sourceCount;
-                  const sourceLabel = isOddsOnlyEvent ? "Atlas Market Scan" : item.source;
-                  const score = item.atlasImpactScore ?? 0;
-                  const scoreClasses = getAtlasImpactScoreClasses(item.impact);
-                  const scoreProgress = Math.max(0, Math.min(100, score));
-                  const eventTypeLabel = item.marketMovement
-                    ? "MARKET MOVEMENT"
-                    : item.category.replaceAll("_", " ");
-                  const subject = getTerminalEventSubject(item);
-                  const eventDetail = getTerminalEventDetail(item);
-                  const statusBadge = getTerminalStatusBadge(item);
-                  const gameContext = getTerminalGameContext(item);
-                  const atlasSummary = getTerminalAtlasSummary(item);
-                  const badgeSport = getTeamBadgeSport(item.sport);
-                  const markets = [
-                    item.primaryMarket,
-                    ...(item.otherMarkets ?? item.markets).filter((market) => market !== item.primaryMarket),
-                  ].slice(0, 4);
-                  const sourceDisplay = isOddsOnlyEvent
-                    ? "Atlas Market Scan"
-                    : displaySourceCount > 1
-                    ? sources
-                        .slice(0, 2)
-                        .map((source) => source.name)
-                        .filter(Boolean)
-                        .join(" + ") || `${displaySourceCount} Sources`
-                    : sourceLabel;
+                {currentFilteredTeamImpactEvents.map((item) => {
+                  const impactStyles = getPulseImpactClasses(item.confidence);
+                  const badgeSport = getTeamImpactSportBadge(item.sport);
+                  const title = getTeamImpactTitle(item);
+                  const matchup = getTeamImpactMatchupLabel(item);
+                  const primaryTeam = item.homeTeam || item.awayTeam || item.sport;
+                  const secondaryTeam = item.awayTeam && item.homeTeam ? item.awayTeam : null;
 
                   return (
                     <article
-                      key={item.id}
+                      key={item.eventId}
                       className={`rounded-[16px] border px-3 py-2 ${impactStyles.card}`}
                     >
                       <div className="flex items-start justify-between gap-2.5">
-                        <div className="min-w-0 flex-1">
-                          {item.marketMovement ? (
+                        <div className="flex min-w-0 items-start gap-2.5">
+                          <div className="relative grid h-11 w-11 shrink-0 place-items-center">
+                            <TerminalTeamMark teamName={primaryTeam} sport={badgeSport} />
+                            {secondaryTeam ? (
+                              <span className="absolute -bottom-1 -right-1">
+                                <TerminalTeamMark teamName={secondaryTeam} sport={badgeSport} />
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-1">
                               <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-cyan-200">
                                 {item.sport}
                               </span>
                               <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] ${impactStyles.badge}`}>
-                                {item.impact}
+                                {item.confidence} Confidence
                               </span>
                               <span className="rounded-full border border-white/10 bg-white/[0.045] px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.07em] text-white/48">
-                                {eventTypeLabel}
+                                {formatTeamImpactTimestamp(item.publishedAt)}
                               </span>
                             </div>
-                          ) : null}
-                          <div className={item.marketMovement ? "mt-1.5 flex items-baseline gap-2" : "flex items-baseline gap-2"}>
-                            <h3 className="min-w-0 truncate text-[15px] font-black leading-tight text-white">
-                              {subject}
+                            <h3 className="mt-1 min-w-0 truncate text-[15px] font-black leading-tight text-white">
+                              {title}
                             </h3>
-                            {statusBadge ? (
-                              <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.06em] text-white/62">
-                                {statusBadge}
-                              </span>
-                            ) : null}
+                            <p className="mt-0.5 truncate text-[11px] font-bold leading-4 text-white/66">
+                              {matchup}
+                            </p>
                           </div>
-                          <p className="mt-0.5 truncate text-[11px] font-bold leading-4 text-white/66">
-                            {eventDetail}
-                          </p>
-                          <p className="mt-0.5 truncate text-[10px] font-black uppercase tracking-[0.08em] text-white/38">
-                            {item.sport} · {item.impact} · {eventTypeLabel} · Confidence {item.confidence}%
-                          </p>
                         </div>
-                        <span
-                          className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border p-[2px] text-[12px] font-black ${scoreClasses}`}
-                          style={{
-                            background: `conic-gradient(currentColor ${scoreProgress * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
-                          }}
-                          aria-label={`Atlas Impact ${score}`}
-                        >
-                          <span className="grid h-full w-full place-items-center rounded-full bg-[#07111f]">
-                            {score}
-                          </span>
+                        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/58">
+                          {item.status}
                         </span>
                       </div>
 
-                      {gameContext.kind === "matchup" ? (
-                        <div className="mt-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-y border-white/10 py-1.5">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <TerminalTeamMark teamName={gameContext.awayTeam} sport={badgeSport} />
-                              <p className="truncate text-[11px] font-black text-white">
-                                {getDisplayAbbr(gameContext.awayTeam)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">vs</p>
-                            {gameContext.timeLabel ? (
-                              <p className="mt-0.5 whitespace-nowrap text-[9px] font-bold text-white/44">
-                                {gameContext.timeLabel}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex flex-row-reverse items-center gap-1.5">
-                              <TerminalTeamMark teamName={gameContext.homeTeam} sport={badgeSport} />
-                              <p className="truncate text-right text-[11px] font-black text-white">
-                                {getDisplayAbbr(gameContext.homeTeam)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : gameContext.kind === "team" ? (
-                        <div className="mt-1.5 flex items-center justify-between gap-2 border-y border-white/10 py-1.5">
-                          <div className="flex min-w-0 items-center gap-1.5">
-                            <TerminalTeamMark teamName={gameContext.team} sport={badgeSport} />
-                            <p className="truncate text-[11px] font-black text-white">
-                              {gameContext.team}
-                            </p>
-                          </div>
-                          {gameContext.timeLabel ? (
-                            <p className="shrink-0 text-[9px] font-bold uppercase tracking-[0.08em] text-white/42">
-                              {gameContext.timeLabel}
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div className="mt-1.5 rounded-[10px] border border-white/10 bg-black/18 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white/42">
-                          {gameContext.label}
-                        </div>
-                      )}
-
-                      {item.marketMovement ? (
-                        <div className="mt-1.5 grid grid-cols-[1fr_auto] items-end gap-3">
-                          <div className="min-w-0">
-                            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/38">
-                              {item.marketMovement.marketLabel}
-                            </p>
-                            <p className="mt-0.5 text-[18px] font-black leading-none text-white">
-                              {formatMarketMovementValue(
-                                item.marketMovement.previousPoint,
-                                item.marketMovement.previousPrice,
-                              )}{" "}
-                              <span className="text-cyan-300">↓</span>{" "}
-                              {formatMarketMovementValue(
-                                item.marketMovement.currentPoint,
-                                item.marketMovement.currentPrice,
-                              )}
-                            </p>
-                          </div>
-                          <p className="text-right text-[9px] font-bold uppercase leading-4 tracking-[0.05em] text-white/45">
-                            {item.marketMovement.sportsbookCount} Books<br />
-                            {Math.round(item.marketMovement.consensusPercent * 100)}% Consensus<br />
-                            {item.marketMovement.elapsedMinutes} min
-                          </p>
-                        </div>
-                      ) : item.category === "WEATHER" ? (
-                        <div className="mt-1.5 rounded-[10px] border border-white/10 bg-black/18 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-white/42">
-                          Weather details pending
-                        </div>
-                      ) : null}
-
-                      <div className="mt-1.5">
+                      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-2.5 py-2">
                         <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-300">
-                          Atlas Summary
+                          {item.eventType}
                         </p>
-                        <p className="mt-0.5 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/62">
-                          {atlasSummary}
+                        <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
+                          <span className="font-black text-white/82">WHY:</span> {item.why}
                         </p>
-                      </div>
-
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        {markets.map((market) => (
-                          <span
-                            key={`${item.id}-${market}`}
-                            className="rounded-full border border-cyan-300/18 bg-black/18 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.04em] text-white/52"
-                          >
-                            {market}
-                          </span>
-                        ))}
+                        <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-3 text-white/64">
+                          <span className="font-black text-white/82">IMPACT:</span> {item.impact}
+                        </p>
                       </div>
 
                       <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5">
                         <div className="min-w-0">
                           <p className="truncate text-[10px] font-black uppercase tracking-[0.1em] text-white/50">
-                            {sourceDisplay}
+                            {item.source}
                           </p>
                         </div>
-                        {!isOddsOnlyEvent && sourceCount > 1 && sources.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPulseSourcesSheet({
-                                title: item.title,
-                                sources,
-                              })
-                            }
-                            className="shrink-0 rounded-full border border-cyan-300/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200"
-                          >
-                            Read Sources
-                          </button>
-                        ) : item.sourceUrl ? (
+                        {item.sourceUrl ? (
                           <a
                             href={item.sourceUrl}
                             target="_blank"
