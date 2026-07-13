@@ -25,6 +25,7 @@ import {
   type PrecisionUnlockResult,
   type SignalsLiveRow,
 } from "@/app/components/signals/SignalsHomePage";
+import { AtlasBottomNavigation } from "@/app/components/AtlasBottomNavigation";
 import { HowItWorksSheet } from "@/app/components/signals/HowItWorksSheet";
 
 
@@ -2663,76 +2664,6 @@ function StripeTrustBar() {
         Trusted by serious bettors. Built for winners.
       </p>
     </div>
-  );
-}
-
-function BottomNavIcon({ itemKey }: { itemKey: AppSection }) {
-  if (itemKey === "challenges") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path
-          d="m6.5 12.2 3.2 3.2 7.8-8.1"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  if (itemKey === "scores") {
-    return <span className="text-[10px] font-black leading-none">0:0</span>;
-  }
-
-  if (itemKey === "news") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path d="M13 2.8 4.8 13h6.1L9.7 21.2 19.2 9h-6.4L13 2.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (itemKey === "signals") {
-    return (
-      <img
-        src="/signals-nav-logo.png"
-        alt=""
-        className="h-full w-full object-cover object-center"
-        aria-hidden="true"
-      />
-    );
-  }
-
-  if (itemKey === "alerts") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path
-          d="M18 9.6a6 6 0 0 0-12 0c0 7-2 7.4-2 8.4h16c0-1-2-.4-2-8.4Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M9.8 20a2.4 2.4 0 0 0 4.4 0"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path
-        d="M5 7h14M5 12h14M5 17h14"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
 
@@ -7542,51 +7473,19 @@ const subscriptionPlansBoard = (
           </div>
         </div>
         </div>
-        <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-          <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-3 text-[11px]">
-            {[
-              { key: "challenges" as const, label: "Challenges" },
-              { key: "news" as const, label: "Impact" },
-              { key: "signals" as const, label: "Home" },
-              { key: "alerts" as const, label: "My Atlas" },
-              { key: "more" as const, label: "More" },
-            ].map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                aria-label={item.label}
-                onClick={() => {
-                  if (item.key === "signals") {
-                    navigateAppState({ section: item.key, view: "live" });
-                    return;
-                  }
+        <AtlasBottomNavigation
+          activeSection="more"
+          placement="fixed"
+          zIndexClass="z-50"
+          onNavigate={(section) => {
+            if (section === "signals") {
+              navigateAppState({ section, view: "live" });
+              return;
+            }
 
-                  navigateAppState({ section: item.key });
-                }}
-                className={`flex flex-col items-center rounded-2xl px-2 font-semibold transition-all ${
-                  item.key === "signals" ? "-mt-2 gap-0.5 py-1" : "gap-1 py-2"
-                } ${
-                    item.key === "more"
-                    ? "bg-cyan-400/10 text-cyan-300"
-                    : "text-white/45"
-                }`}
-              >
-                <span
-                  className={`flex items-center justify-center overflow-hidden rounded-full text-[10px] font-black ${
-                    item.key === "signals"
-                      ? "h-12 w-12 border border-cyan-300/30 bg-[#020916] shadow-[0_0_20px_rgba(34,211,238,0.22)]"
-                      : `h-6 w-6 ${
-                          item.key === "more" ? "bg-cyan-400 text-black" : "bg-white/10"
-                        }`
-                  }`}
-                >
-                  <BottomNavIcon itemKey={item.key} />
-                </span>
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </nav>
+            navigateAppState({ section });
+          }}
+        />
         </div>
       </main>
     );
@@ -9892,53 +9791,17 @@ const subscriptionPlansBoard = (
         </div>
       ) : null}
 
-      <nav className="sticky bottom-0 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-        <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-3 text-[11px]">
-          {[
-            { key: "challenges" as const, label: "Challenges" },
-            { key: "news" as const, label: "Impact" },
-            { key: "signals" as const, label: "Home" },
-            { key: "alerts" as const, label: "My Atlas" },
-            { key: "more" as const, label: "More" },
-          ].map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              aria-label={item.label}
-              onClick={() => {
-                if (item.key === "signals") {
-                  navigateAppState({ section: item.key, view: "live" });
-                  return;
-                }
+      <AtlasBottomNavigation
+        activeSection={appSection}
+        onNavigate={(section) => {
+          if (section === "signals") {
+            navigateAppState({ section, view: "live" });
+            return;
+          }
 
-                navigateAppState({ section: item.key });
-              }}
-              className={`flex flex-col items-center rounded-2xl px-2 font-semibold transition-all ${
-                item.key === "signals" ? "-mt-2 gap-0.5 py-1" : "gap-1 py-2"
-              } ${
-                appSection === item.key
-                  ? "bg-cyan-400/10 text-cyan-300"
-                  : "text-white/45"
-              }`}
-            >
-              <span
-                className={`flex items-center justify-center overflow-hidden rounded-full text-[10px] font-black ${
-                  item.key === "signals"
-                    ? `h-12 w-12 border border-cyan-300/30 bg-[#020916] shadow-[0_0_20px_rgba(34,211,238,0.22)] ${
-                        appSection === item.key ? "ring-2 ring-cyan-300/40" : ""
-                      }`
-                    : `h-6 w-6 ${
-                        appSection === item.key ? "bg-cyan-400 text-black" : "bg-white/10"
-                      }`
-                }`}
-              >
-                <BottomNavIcon itemKey={item.key} />
-              </span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
+          navigateAppState({ section });
+        }}
+      />
     </div>
   </main>
 );

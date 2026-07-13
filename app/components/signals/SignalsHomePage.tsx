@@ -24,6 +24,7 @@ import {
   type AtlasControlMode,
   type AtlasControlTab,
 } from "../../admin/AdminDashboard";
+import { AtlasBottomNavigation } from "../AtlasBottomNavigation";
 
 export type SignalsHomePrecisionResponse = {
   productType?: "top_signal" | "top_play";
@@ -1842,105 +1843,6 @@ function LiveContent({
   );
 }
 
-function BottomNavIcon({ section }: { section: SignalsHomeNavSection }) {
-  if (section === "challenges") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path d="M8 5h8v4c0 4-1.8 7-4 7S8 13 8 9V5Z" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M8 7H5c0 3 1.3 5.1 4 5.8M16 7h3c0 3-1.3 5.1-4 5.8M10 20h4M12 16v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (section === "news") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path d="M13 2.8 4.8 13h6.1L9.7 21.2 19.2 9h-6.4L13 2.8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (section === "signals") {
-    return (
-      <img
-        src="/signals-nav-logo.png"
-        alt=""
-        className="h-full w-full object-cover object-center"
-      />
-    );
-  }
-
-  if (section === "alerts") {
-    return (
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M5 20a7 7 0 0 1 14 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-      <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BottomNav({
-  activeSection,
-  onNavigate,
-}: {
-  activeSection: SignalsHomeNavSection;
-  onNavigate?: (section: SignalsHomeNavSection) => void;
-}) {
-  const items: Array<{ section: SignalsHomeNavSection; label: string }> = [
-    { section: "challenges", label: "Challenges" },
-    { section: "news", label: "Impact" },
-    { section: "signals", label: "Home" },
-    { section: "alerts", label: "My Atlas" },
-    { section: "more", label: "More" },
-  ];
-
-  return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050816]/95 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-md grid-cols-5 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 text-[10px]">
-        {items.map((item) => {
-          const active = activeSection === item.section;
-
-          return (
-            <button
-              key={item.section}
-              type="button"
-              onClick={() => onNavigate?.(item.section)}
-              aria-label={`Open ${item.label}`}
-              className={`flex flex-col items-center rounded-2xl px-2 font-semibold transition-all ${
-                item.section === "signals" ? "-mt-1.5 gap-0.5 py-0.5" : "gap-0.5 py-1.5"
-              } ${
-                active
-                  ? "bg-cyan-400/10 text-cyan-300"
-                  : "text-white/45 hover:text-white/70"
-              }`}
-            >
-              <span
-                className={`flex items-center justify-center overflow-hidden rounded-full text-[10px] font-black ${
-                  item.section === "signals"
-                    ? `h-11 w-11 border border-cyan-300/30 bg-[#020916] shadow-[0_0_20px_rgba(34,211,238,0.22)] ${
-                        active ? "ring-2 ring-cyan-300/40" : ""
-                      }`
-                    : `h-5 w-5 ${active ? "bg-cyan-400 text-black" : "bg-white/10"}`
-                }`}
-              >
-                <BottomNavIcon section={item.section} />
-              </span>
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
 function HeaderBellIcon({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -2867,7 +2769,7 @@ function MyAtlasScreen({
           </>
         )}
       </div>
-      <BottomNav activeSection="alerts" onNavigate={onNavigate} />
+      <AtlasBottomNavigation activeSection="alerts" onNavigate={onNavigate} placement="fixed" />
     </main>
   );
 }
@@ -3255,7 +3157,7 @@ export function SignalsHomePage({
               )}
             </div>
 
-            <BottomNav activeSection={activeSection} onNavigate={onNavigate} />
+            <AtlasBottomNavigation activeSection={activeSection} onNavigate={onNavigate} placement="fixed" />
           </section>
       </div>
 
