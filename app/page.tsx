@@ -6363,33 +6363,45 @@ function getImpactAccent(kind: UnifiedImpactFeedItem["kind"]) {
       icon: "▥",
       text: "text-orange-300",
       border: "border-orange-400/36",
-      glow: "shadow-[0_0_24px_rgba(249,115,22,0.13)]",
-      rail: "before:bg-orange-400",
-      panel: "border-orange-400/18 bg-orange-400/[0.045]",
+      glow: "shadow-[0_0_30px_rgba(249,115,22,0.16)]",
+      banner: "border-orange-300/16 bg-orange-400/[0.07]",
+      panel: "border-orange-400/12 bg-orange-400/[0.03]",
     };
   }
 
   if (kind === "intelligence") {
     return {
       label: "ATLAS INTELLIGENCE",
-      icon: "AI",
+      icon: "◬",
       text: "text-violet-300",
       border: "border-violet-400/36",
-      glow: "shadow-[0_0_24px_rgba(168,85,247,0.13)]",
-      rail: "before:bg-violet-400",
-      panel: "border-violet-400/18 bg-violet-400/[0.045]",
+      glow: "shadow-[0_0_30px_rgba(168,85,247,0.16)]",
+      banner: "border-violet-300/16 bg-violet-400/[0.07]",
+      panel: "border-violet-400/12 bg-violet-400/[0.03]",
     };
   }
 
   return {
     label: "TEAM IMPACT",
-    icon: "•••",
+    icon: "●●●",
     text: "text-sky-300",
     border: "border-sky-400/34",
-    glow: "shadow-[0_0_24px_rgba(56,189,248,0.13)]",
-    rail: "before:bg-sky-400",
-    panel: "border-sky-400/18 bg-sky-400/[0.045]",
+    glow: "shadow-[0_0_30px_rgba(56,189,248,0.16)]",
+    banner: "border-sky-300/16 bg-sky-400/[0.07]",
+    panel: "border-sky-400/12 bg-sky-400/[0.03]",
   };
+}
+
+function getTeamImpactCompactSummary(item: TeamImpactEvent) {
+  const eventType = item.eventType.toLowerCase();
+
+  if (eventType.includes("bullpen")) return "Bullpen • Late Game Risk";
+  if (eventType.includes("pitcher") || eventType.includes("starter")) return "Pitcher • Rotation Impact";
+  if (eventType.includes("lineup") || eventType.includes("scratch")) return "Lineup • Availability";
+  if (eventType.includes("weather")) return "Weather • Game Context";
+  if (eventType.includes("injury") || eventType.includes("suspension")) return "Roster • Team Strength";
+
+  return `${item.eventType.replace(/\s+change$/i, "")} • Market Context`;
 }
 
 function getAtlasImpactScoreClasses(impact: PulseImpact) {
@@ -6716,7 +6728,7 @@ function TerminalTeamMark({ teamName, sport, size = "sm" }: { teamName: string; 
 
   const sizeClass =
     size === "lg"
-      ? "h-[58px] w-[58px] p-1.5 text-[14px] border-white/15 bg-white/[0.055] shadow-[inset_0_1px_10px_rgba(255,255,255,0.05)]"
+      ? "h-[66px] w-[66px] p-1.5 text-[14px] border-white/15 bg-white/[0.055] shadow-[inset_0_1px_10px_rgba(255,255,255,0.05)]"
       : "h-6 w-6 p-0.5 text-[8px] border-white/10 bg-white/8";
 
   return (
@@ -8760,17 +8772,17 @@ const subscriptionPlansBoard = (
           </>
         ) : appSection === "news" ? (
           <div className="space-y-3">
-            <section className="rounded-[24px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_34%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-3 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
+            <section className="rounded-[22px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-2.5 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] border border-cyan-300/30 bg-cyan-300/[0.08] text-[28px] font-black leading-none text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.16)]">
-                    ϟ
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[15px] border border-cyan-300/22 bg-cyan-300/[0.07] shadow-[0_0_20px_rgba(34,211,238,0.13)]">
+                    <img src="/icon.png" alt="Atlas" className="h-7 w-7 object-contain" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="truncate text-[25px] font-black uppercase leading-[1.05] tracking-tight text-white">
+                    <h2 className="truncate text-[24px] font-black uppercase leading-[1.02] tracking-tight text-white">
                       MARKET IMPACT
                     </h2>
-                    <p className="mt-1 truncate text-[12px] font-bold text-white/56">
+                    <p className="mt-0.5 truncate text-[12px] font-bold text-white/58">
                       Real-Time Event Moving Markets
                     </p>
                     <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/38">
@@ -8783,32 +8795,33 @@ const subscriptionPlansBoard = (
                 </span>
               </div>
 
-              <div className="mt-4 grid grid-cols-4 overflow-hidden rounded-[18px] border border-white/10 bg-black/18">
+              <div className="mt-3 grid grid-cols-4 overflow-hidden rounded-[18px] border border-white/10 bg-black/18 shadow-[inset_0_1px_16px_rgba(255,255,255,0.025)]">
                 {[
-                  { label: "Team Impact", value: impactTeamCount, sub: "Events", color: "text-sky-300", icon: "•••" },
-                  { label: "Market Impact", value: impactMarketCount, sub: "Events", color: "text-orange-300", icon: "▥" },
-                  { label: "Atlas Intel", value: impactIntelligenceCount, sub: "Events", color: "text-violet-300", icon: "AI" },
-                  { label: "Updated", value: impactLastUpdateShortLabel, sub: "Today", color: "text-cyan-200", icon: "◷" },
+                  { label: "Team Impact", value: impactTeamCount, sub: "Events", trend: impactTeamCount > 0 ? "↑ New" : "Stable", color: "text-sky-300", icon: "●●●" },
+                  { label: "Market Impact", value: impactMarketCount, sub: "Events", trend: impactMarketCount > 0 ? "↑ New" : "Stable", color: "text-orange-300", icon: "▥" },
+                  { label: "Atlas Intelligence", value: impactIntelligenceCount, sub: "Events", trend: impactIntelligenceCount > 0 ? "↑ New" : "Stable", color: "text-violet-300", icon: "◬" },
+                  { label: "Last Update", value: impactLastUpdateShortLabel, sub: "Today", trend: pulseLastUpdatedAt ? "Live" : "Stable", color: "text-cyan-200", icon: "◷" },
                 ].map((item, index) => (
                   <div
                     key={item.label}
-                    className={`min-w-0 px-2.5 py-3 ${index === 0 ? "" : "border-l border-white/10"}`}
+                    className={`min-w-0 px-2.5 py-2.5 ${index === 0 ? "" : "border-l border-white/10"}`}
                   >
-                    <div className={`text-[16px] font-black leading-none ${item.color}`}>{item.icon}</div>
-                    <p className="mt-2 truncate text-[8px] font-black uppercase tracking-[0.1em] text-white/46">
+                    <div className={`text-[15px] font-black leading-none ${item.color}`}>{item.icon}</div>
+                    <p className="mt-1.5 truncate text-[7px] font-black uppercase tracking-[0.08em] text-white/44">
                       {item.label}
                     </p>
                     <p className={`mt-1 truncate text-[22px] font-black leading-none ${item.color}`}>
                       {item.value}
                     </p>
                     <p className={`mt-1 truncate text-[10px] font-bold ${item.color}`}>{item.sub}</p>
+                    <p className="mt-0.5 truncate text-[8px] font-black uppercase tracking-[0.08em] text-white/34">{item.trend}</p>
                   </div>
                 ))}
               </div>
             </section>
 
             <section className="space-y-2">
-              <div className="relative h-[64px] overflow-visible rounded-[18px] border border-white/10 bg-[#030814]/95 px-2.5 pt-2.5 shadow-[0_0_22px_rgba(34,211,238,0.07)]">
+              <div className="relative h-[58px] overflow-visible rounded-[18px] border border-white/10 bg-[#030814]/95 px-2 pt-2 shadow-[0_0_22px_rgba(34,211,238,0.07)]">
                 <OfficialSportSelectorRow
                   selectedSport={pulseSportToOfficialSport(pulseSportFilter)}
                   onSelectSport={(sport) => setPulseSportFilter(officialSportToPulseSport(sport))}
@@ -8887,11 +8900,6 @@ const subscriptionPlansBoard = (
                     : isMarketImpact
                       ? getMarketImpactSelectionLabel(item as MarketImpactEvent)
                       : matchup;
-                  const statusLabel = isIntelligenceImpact
-                    ? feedItem.confidence
-                    : isMarketImpact
-                      ? (item as MarketImpactEvent).direction
-                      : (item as TeamImpactEvent).status;
                   const whyLabel = isIntelligenceImpact ? "SUMMARY:" : "WHY:";
                   const whyText = isIntelligenceImpact
                     ? (item as AtlasIntelligenceEvent).summary
@@ -8913,9 +8921,9 @@ const subscriptionPlansBoard = (
                     return (
                       <article
                         key={feedItem.id}
-                        className={`relative overflow-hidden rounded-[22px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.11),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3.5 py-3.5 ${accent.glow} before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] ${accent.rail}`}
+                        className={`relative overflow-hidden rounded-[22px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.105),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3.5 pb-3.5 pt-0 ${accent.glow}`}
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className={`-mx-3.5 mb-3 flex items-center justify-between gap-3 border-b px-3.5 py-2 ${accent.banner}`}>
                           <div className="min-w-0">
                             <p className={`text-[11px] font-black uppercase tracking-[0.12em] ${accent.text}`}>
                               <span className="mr-1.5">{accent.icon}</span>{accent.label}
@@ -8939,7 +8947,7 @@ const subscriptionPlansBoard = (
                               ) : null}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="truncate text-[20px] font-black leading-tight text-white">Atlas Intelligence</h3>
+                            <h3 className="truncate text-[21px] font-black leading-tight text-white">{getAtlasIntelligenceImpact(intelligence)}</h3>
                             <p className="mt-0.5 truncate text-[14px] font-bold text-white/68">{matchup}</p>
                             <span className="mt-2 inline-flex rounded-full border border-violet-300/24 bg-violet-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-violet-200">
                               {feedItem.sport}
@@ -8947,7 +8955,12 @@ const subscriptionPlansBoard = (
                           </div>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-[74px_1fr] gap-2 rounded-[14px] border border-violet-300/18 bg-black/20 px-3 py-2.5">
+                        <div className={`mt-3 rounded-[14px] border px-3 py-2 ${accent.panel}`}>
+                          <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${accent.text}`}>SUMMARY</p>
+                          <p className="mt-1 line-clamp-2 text-[12px] font-semibold leading-4 text-white/76">{intelligence.summary}</p>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-[64px_1fr] gap-2 rounded-[14px] border border-violet-300/12 bg-black/16 px-3 py-2">
                           <div className="space-y-2 text-[9px] font-black uppercase tracking-[0.08em] text-violet-200/72">
                             <p>{formatTeamImpactTimestamp(intelligence.details.teamEventTime)}</p>
                             <p>{formatTeamImpactTimestamp(intelligence.details.marketTime)}</p>
@@ -8990,23 +9003,23 @@ const subscriptionPlansBoard = (
                   return (
                     <article
                       key={feedItem.id}
-                      className={`relative overflow-hidden rounded-[22px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3.5 py-3.5 ${accent.glow} before:absolute before:inset-y-0 before:left-0 before:w-1 before:content-[''] ${accent.rail}`}
+                      className={`relative overflow-hidden rounded-[22px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3.5 pb-3.5 pt-0 ${accent.glow}`}
                     >
-                      <div className="flex items-start justify-between gap-3">
+                      <div className={`-mx-3.5 mb-3 flex items-center justify-between gap-3 border-b px-3.5 py-2 ${accent.banner}`}>
                         <p className={`min-w-0 truncate text-[11px] font-black uppercase tracking-[0.12em] ${accent.text}`}>
                           <span className="mr-1.5">{accent.icon}</span>{accent.label}
                         </p>
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-3">
                           <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
                             {feedItem.confidence}
                           </span>
-                          <span className="text-[10px] font-black text-white/46">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
+                          <span className="text-[10px] font-black text-white/50">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
                         </div>
                       </div>
 
                       {marketEvent ? (
                         <>
-                          <div className="mt-3 grid grid-cols-[1fr_98px] gap-3">
+                          <div className="mt-3 grid grid-cols-[1fr_112px] gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <TerminalTeamMark teamName={marketEvent.awayTeam} sport={badgeSport} size="lg" />
@@ -9021,11 +9034,11 @@ const subscriptionPlansBoard = (
                                 {feedItem.sport}
                               </span>
                             </div>
-                            <div className="rounded-[16px] border border-orange-300/28 bg-orange-400/[0.055] px-2 py-3 text-center shadow-[0_0_18px_rgba(249,115,22,0.12)]">
-                              <p className="text-[24px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[12px] text-white/70"> of </span>{marketEvent.booksObserved}</p>
+                            <div className="rounded-[16px] border border-orange-300/28 bg-orange-400/[0.06] px-2 py-3 text-center shadow-[0_0_20px_rgba(249,115,22,0.15)]">
+                              <p className="text-[26px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[12px] text-white/70"> of </span>{marketEvent.booksObserved}</p>
                               <p className="mt-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/60">Sportsbooks</p>
                               <div className="my-2 h-px bg-orange-300/18" />
-                              <p className="text-[24px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
+                              <p className="text-[30px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
                               <p className="mt-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/60">Consensus</p>
                             </div>
                           </div>
@@ -9046,8 +9059,8 @@ const subscriptionPlansBoard = (
                         <div className="mt-3 grid grid-cols-[68px_1fr] gap-3">
                           <TerminalTeamMark teamName={primaryTeam} sport={badgeSport} size="lg" />
                           <div className="min-w-0">
-                            <h3 className="line-clamp-2 text-[20px] font-black leading-tight text-white">{teamEvent.eventType}</h3>
-                            <p className="mt-0.5 truncate text-[15px] font-bold text-white/72">{primaryTeam}</p>
+                            <h3 className="line-clamp-2 text-[22px] font-black leading-tight text-white">{teamEvent.eventType}</h3>
+                            <p className="mt-0.5 truncate text-[13px] font-bold text-white/64">{primaryTeam}</p>
                             <span className="mt-2 inline-flex rounded-full border border-sky-300/24 bg-sky-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-sky-200">
                               {feedItem.sport}
                             </span>
@@ -9072,7 +9085,7 @@ const subscriptionPlansBoard = (
                             {isMarketImpact
                               ? `${marketEvent?.market ?? "Market"} • ${eventLabel}`
                               : teamEvent
-                              ? `${teamEvent.eventType} • ${statusLabel}`
+                              ? getTeamImpactCompactSummary(teamEvent)
                               : sourceLabel}
                           </p>
                         </div>

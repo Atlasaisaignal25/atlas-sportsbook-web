@@ -2692,7 +2692,7 @@ export function AtlasControlCenterTabBar<T extends string = AtlasControlTab>({
           key={item.id}
           type="button"
           onClick={() => onTab(item.id)}
-          className={`${compact ? "min-w-0 px-0.5 py-2 text-[7px]" : "min-w-max flex-1 px-3 py-2 text-[10px] truncate"} border-r border-white/8 font-black uppercase last:border-r-0 ${tab === item.id ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
+          className={`${compact ? "min-w-0 px-0.5 py-1.5 text-[7px]" : "min-w-max flex-1 px-3 py-2 text-[10px] truncate"} border-r border-white/8 font-black uppercase last:border-r-0 ${tab === item.id ? "bg-cyan-400/12 text-cyan-300" : "text-white/55"}`}
         >
           {item.label}
         </button>
