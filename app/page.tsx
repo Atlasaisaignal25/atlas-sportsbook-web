@@ -514,6 +514,81 @@ function getLogo(teamName: string, sport: SportTab) {
   return null;
 }
 
+function resolveTeamNameForSport(teamName: string | null | undefined, sport: SportTab) {
+  if (!teamName) return null;
+  if (teamBranding[teamName]) return teamName;
+
+  const normalized = getTeamLogoKey(teamName);
+  const sportAliases: Partial<Record<SportTab, Record<string, string>>> = {
+    MLB: {
+      ari: "Arizona Diamondbacks",
+      az: "Arizona Diamondbacks",
+      bal: "Baltimore Orioles",
+      chc: "Chicago Cubs",
+      cws: "Chicago White Sox",
+      kc: "Kansas City Royals",
+      laa: "Los Angeles Angels",
+      lad: "Los Angeles Dodgers",
+      nyy: "New York Yankees",
+      nym: "New York Mets",
+      sd: "San Diego Padres",
+      sf: "San Francisco Giants",
+      stl: "St. Louis Cardinals",
+      tb: "Tampa Bay Rays",
+      wsn: "Washington Nationals",
+      wsh: "Washington Nationals",
+      nat: "Washington Nationals",
+    },
+  };
+  const aliased = sportAliases[sport]?.[normalized];
+
+  if (aliased) return aliased;
+
+  const sportSegment = `/team-logos/${sport.toLowerCase()}/`;
+  const match = Object.entries(teamBranding).find(([name, data]) => {
+    if (!data.logo.includes(sportSegment)) return false;
+    return (
+      getTeamLogoKey(name) === normalized ||
+      getTeamLogoKey(data.shortName) === normalized ||
+      data.abbr.toLowerCase() === teamName.toLowerCase()
+    );
+  });
+
+  return match?.[0] ?? teamName;
+}
+
+function getSportDisplayTeamName(teamName: string | null | undefined, sport: SportTab) {
+  return resolveTeamNameForSport(teamName, sport) ?? teamName ?? "";
+}
+
+function getOfficialMatchupLabel(awayTeam: string | null | undefined, homeTeam: string | null | undefined, sport: SportTab) {
+  const away = getSportDisplayTeamName(awayTeam ?? "", sport);
+  const home = getSportDisplayTeamName(homeTeam ?? "", sport);
+
+  if (away && home && away !== home) return `${away} @ ${home}`;
+  return home || away || "Team Impact";
+}
+
+function getTeamImpactSubjectTeam(event: TeamImpactEvent, sport: SportTab) {
+  const home = getSportDisplayTeamName(event.homeTeam ?? "", sport);
+  const away = getSportDisplayTeamName(event.awayTeam ?? "", sport);
+  const candidates = [home, away].filter((team): team is string => Boolean(team));
+  const searchable = [event.why, event.impact, event.eventType, event.playerName].filter(Boolean).join(" ").toLowerCase();
+  const mentioned = candidates.find((team) => {
+    const branding = getTeamData(team);
+    const checks = [team, branding?.shortName, branding?.abbr].filter(Boolean).map((value) => value!.toLowerCase());
+    return checks.some((value) => searchable.includes(value));
+  });
+
+  return mentioned ?? home ?? away ?? event.sport;
+}
+
+function getPreviewSentence(text: string) {
+  const trimmed = text.replace(/\s+/g, " ").trim();
+  const sentence = trimmed.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim();
+  return sentence || trimmed;
+}
+
 function TeamBadge({
   teamName,
   sport,
@@ -6818,9 +6893,10 @@ function getTerminalAtlasSummary(item: AtlasEvent) {
 }
 
 function TerminalTeamMark({ teamName, sport, size = "sm" }: { teamName: string; sport: SportTab; size?: "sm" | "lg" }) {
-  const logo = getLogo(teamName, sport);
+  const displayTeamName = getSportDisplayTeamName(teamName, sport);
+  const logo = getLogo(displayTeamName, sport);
   const [logoFailed, setLogoFailed] = useState(false);
-  const normalizedTeamName = teamName.toLowerCase();
+  const normalizedTeamName = displayTeamName.toLowerCase();
   const isPlaceholder =
     normalizedTeamName.includes("tbd") ||
     normalizedTeamName.includes("player") ||
@@ -6845,12 +6921,12 @@ function TerminalTeamMark({ teamName, sport, size = "sm" }: { teamName: string; 
       {shouldUseLogo && logo ? (
         <img
           src={logo}
-          alt={teamName}
+          alt={displayTeamName}
           className="h-full w-full object-contain"
           onError={() => setLogoFailed(true)}
         />
       ) : (
-        getDisplayAbbr(teamName)
+        getDisplayAbbr(displayTeamName)
       )}
     </span>
   );
@@ -6892,7 +6968,7 @@ function getMarketImpactTitle(event: MarketImpactEvent) {
 
 function getMarketImpactSelectionLabel(event: MarketImpactEvent) {
   if (event.market === "Totals") {
-    return `${event.selection} ${formatTeamImpactMarketLine(event.newLine)}`.trim();
+    return `${event.selection} ${formatTeamImpactMarketLine(event.newLine)} Runs`.trim();
   }
 
   if (event.market === "Spread" && event.newLine !== null) {
@@ -6900,6 +6976,23 @@ function getMarketImpactSelectionLabel(event: MarketImpactEvent) {
   }
 
   return event.selection;
+}
+
+function getMarketImpactPrimaryTitle(event: MarketImpactEvent, sport: SportTab) {
+  if (event.market === "Totals") {
+    return `${event.selection} ${formatTeamImpactMarketLine(event.newLine)} Runs`.trim();
+  }
+
+  const selection = getDisplayName(getSportDisplayTeamName(event.selection, sport));
+  if (event.market === "Spread" && event.newLine !== null) {
+    return `${selection} ${formatTeamImpactMarketLine(event.newLine)}`;
+  }
+
+  if (event.market === "Moneyline") {
+    return `Moneyline ${selection}`;
+  }
+
+  return selection;
 }
 
 function formatTeamImpactMarketLine(value: number | null) {
@@ -8980,19 +9073,19 @@ const subscriptionPlansBoard = (
                   const matchup = isIntelligenceImpact
                     ? getAtlasIntelligenceMatchupLabel(item as AtlasIntelligenceEvent)
                     : isMarketImpact
-                    ? `${getDisplayAbbr((item as MarketImpactEvent).awayTeam)} vs ${getDisplayAbbr((item as MarketImpactEvent).homeTeam)}`
-                    : getTeamImpactMatchupLabel(item as TeamImpactEvent);
+                    ? getOfficialMatchupLabel((item as MarketImpactEvent).awayTeam, (item as MarketImpactEvent).homeTeam, badgeSport)
+                    : getOfficialMatchupLabel((item as TeamImpactEvent).awayTeam, (item as TeamImpactEvent).homeTeam, badgeSport);
                   const primaryTeam = isIntelligenceImpact
                     ? (item as AtlasIntelligenceEvent).details.homeTeam || (item as AtlasIntelligenceEvent).details.awayTeam || feedItem.sport
                     : isMarketImpact
-                    ? (item as MarketImpactEvent).homeTeam
-                    : (item as TeamImpactEvent).homeTeam || (item as TeamImpactEvent).awayTeam || feedItem.sport;
+                    ? getSportDisplayTeamName((item as MarketImpactEvent).homeTeam, badgeSport)
+                    : getTeamImpactSubjectTeam(item as TeamImpactEvent, badgeSport);
                   const secondaryTeam = isIntelligenceImpact
                     ? (item as AtlasIntelligenceEvent).details.awayTeam
                     : isMarketImpact
-                    ? (item as MarketImpactEvent).awayTeam
+                    ? getSportDisplayTeamName((item as MarketImpactEvent).awayTeam, badgeSport)
                     : (item as TeamImpactEvent).awayTeam && (item as TeamImpactEvent).homeTeam
-                      ? (item as TeamImpactEvent).awayTeam
+                      ? getSportDisplayTeamName((item as TeamImpactEvent).awayTeam === primaryTeam ? (item as TeamImpactEvent).homeTeam : (item as TeamImpactEvent).awayTeam, badgeSport)
                       : null;
                   const sourceLabel = isIntelligenceImpact
                     ? "Atlas Intelligence"
@@ -9002,22 +9095,22 @@ const subscriptionPlansBoard = (
                   const sourceUrl = isMarketImpact || isIntelligenceImpact ? null : (item as TeamImpactEvent).sourceUrl;
                   const whyLabel = isIntelligenceImpact ? "SUMMARY:" : "WHY:";
                   const whyText = isIntelligenceImpact
-                    ? (item as AtlasIntelligenceEvent).summary
+                    ? getPreviewSentence((item as AtlasIntelligenceEvent).summary)
                     : isMarketImpact
-                      ? (item as MarketImpactEvent).why
-                      : (item as TeamImpactEvent).why;
+                      ? getPreviewSentence((item as MarketImpactEvent).why)
+                      : getPreviewSentence((item as TeamImpactEvent).why);
                   const impactLabel = isIntelligenceImpact ? "TIMELINE:" : "IMPACT:";
                   const impactText = isIntelligenceImpact
-                    ? getAtlasIntelligenceTimeline(item as AtlasIntelligenceEvent)
+                    ? getPreviewSentence(getAtlasIntelligenceTimeline(item as AtlasIntelligenceEvent))
                     : isMarketImpact
-                      ? (item as MarketImpactEvent).impact
-                      : (item as TeamImpactEvent).impact;
+                      ? getPreviewSentence((item as MarketImpactEvent).impact)
+                      : getPreviewSentence((item as TeamImpactEvent).impact);
                   const marketEvent = isMarketImpact ? (item as MarketImpactEvent) : null;
                   const teamEvent = !isMarketImpact && !isIntelligenceImpact ? (item as TeamImpactEvent) : null;
                   const detailTitle = isIntelligenceImpact
                     ? getAtlasIntelligenceImpact(item as AtlasIntelligenceEvent)
                     : isMarketImpact && marketEvent
-                      ? getMarketImpactSelectionLabel(marketEvent)
+                      ? getMarketImpactPrimaryTitle(marketEvent, badgeSport)
                       : teamEvent
                         ? teamEvent.eventType
                         : accent.label;
@@ -9200,7 +9293,7 @@ const subscriptionPlansBoard = (
                                 <TerminalTeamMark teamName={marketEvent.homeTeam} sport={badgeSport} size="lg" />
                               </div>
                               <h3 className="mt-1.5 truncate text-[18px] font-black leading-tight text-white">
-                                {getMarketImpactSelectionLabel(marketEvent)}
+                                {getMarketImpactPrimaryTitle(marketEvent, badgeSport)}
                               </h3>
                               <p className="mt-0.5 truncate text-[12px] font-bold text-white/58">{matchup}</p>
                               <span className="mt-1 inline-flex rounded-full border border-orange-300/24 bg-orange-300/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-orange-200">
