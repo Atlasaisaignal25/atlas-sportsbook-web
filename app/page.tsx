@@ -6407,6 +6407,90 @@ function getTeamImpactCompactSummary(item: TeamImpactEvent) {
   return `${item.eventType.replace(/\s+change$/i, "")} • Market Context`;
 }
 
+type ImpactAccent = ReturnType<typeof getImpactAccent>;
+type ExpandableImpactDetail = "why" | "impact";
+
+function ExpandableImpactSection({
+  id,
+  label,
+  text,
+  accent,
+  isOpen,
+  onToggle,
+}: {
+  id: ExpandableImpactDetail;
+  label: string;
+  text: string;
+  accent: ImpactAccent;
+  isOpen: boolean;
+  onToggle: (id: ExpandableImpactDetail) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(id)}
+      aria-expanded={isOpen}
+      className={`group rounded-[11px] border px-2 py-1 text-left transition active:scale-[0.99] ${accent.panel} hover:border-white/18 hover:bg-white/[0.035]`}
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>
+          {label}
+        </span>
+        <span className={`text-[9px] font-black leading-none ${accent.text}`}>
+          {isOpen ? "⌃" : "⌄"}
+        </span>
+      </span>
+      <span
+        className={`mt-0.5 block text-[9.5px] font-semibold leading-[13px] text-white/72 ${
+          isOpen ? "max-h-40 overflow-y-auto pr-1" : "line-clamp-2"
+        }`}
+      >
+        {text}
+      </span>
+    </button>
+  );
+}
+
+function ExpandableImpactDetails({
+  whyLabel,
+  whyText,
+  impactLabel,
+  impactText,
+  accent,
+}: {
+  whyLabel: string;
+  whyText: string;
+  impactLabel: string;
+  impactText: string;
+  accent: ImpactAccent;
+}) {
+  const [openDetail, setOpenDetail] = useState<ExpandableImpactDetail | null>(null);
+  const handleToggle = (id: ExpandableImpactDetail) => {
+    setOpenDetail((current) => (current === id ? null : id));
+  };
+
+  return (
+    <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+      <ExpandableImpactSection
+        id="why"
+        label={whyLabel}
+        text={whyText}
+        accent={accent}
+        isOpen={openDetail === "why"}
+        onToggle={handleToggle}
+      />
+      <ExpandableImpactSection
+        id="impact"
+        label={impactLabel}
+        text={impactText}
+        accent={accent}
+        isOpen={openDetail === "impact"}
+        onToggle={handleToggle}
+      />
+    </div>
+  );
+}
+
 function getAtlasImpactScoreClasses(impact: PulseImpact) {
   if (impact === "HIGH") {
     return "border-red-300/50 bg-red-400/10 text-red-200";
@@ -8966,16 +9050,13 @@ const subscriptionPlansBoard = (
                           </p>
                         </div>
 
-                        <div className="mt-1 grid grid-cols-2 gap-1.5">
-                          <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
-                            <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>WHY</p>
-                            <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{getAtlasIntelligenceWhy(intelligence)}</p>
-                          </div>
-                          <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
-                            <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>IMPACT</p>
-                            <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{getAtlasIntelligenceImpact(intelligence)}</p>
-                          </div>
-                        </div>
+                        <ExpandableImpactDetails
+                          whyLabel="WHY"
+                          whyText={getAtlasIntelligenceWhy(intelligence)}
+                          impactLabel="IMPACT"
+                          impactText={getAtlasIntelligenceImpact(intelligence)}
+                          accent={accent}
+                        />
 
                         <div className="mt-1.5 flex items-center justify-between border-t border-white/10 pt-1">
                           <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-white/50">
@@ -9055,16 +9136,13 @@ const subscriptionPlansBoard = (
                         </div>
                       ) : null}
 
-                      <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                        <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
-                          <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{whyLabel.replace(":", "")}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{whyText}</p>
-                        </div>
-                        <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
-                          <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{impactLabel.replace(":", "")}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{impactText}</p>
-                        </div>
-                      </div>
+                      <ExpandableImpactDetails
+                        whyLabel={whyLabel.replace(":", "")}
+                        whyText={whyText}
+                        impactLabel={impactLabel.replace(":", "")}
+                        impactText={impactText}
+                        accent={accent}
+                      />
 
                       <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1">
                         <div className="min-w-0">
