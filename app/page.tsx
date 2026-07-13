@@ -4180,7 +4180,7 @@ async function handleLogout() {
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
 const [appSection, setAppSection] = useState<AppSection>("signals");
 const [pulseSportFilter, setPulseSportFilter] = useState<"ALL" | PulseSport>("ALL");
-const [pulseImpactFilter, setPulseImpactFilter] = useState<ImpactFeedFilter>("ALL");
+const [pulseImpactFilter, setPulseImpactFilter] = useState<ImpactFeedFilter>("TEAM");
 const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
   createAtlasEventsFromPulseItems(atlasPulseMock.filter((item) => item.sport === "MLB"))
 );
@@ -5094,6 +5094,12 @@ useEffect(() => {
     setActiveDay(resolveScheduleDay(dayFromUrl));
   }
 }, [searchParams]);
+
+useEffect(() => {
+  if (appSection === "news") {
+    setPulseImpactFilter("TEAM");
+  }
+}, [appSection]);
 
 useEffect(() => {
   if (appSection !== "news") return;
@@ -6336,7 +6342,7 @@ const impactMarketCount = marketImpactEvents.filter((item) => pulseSportFilter =
 const impactIntelligenceCount = atlasIntelligenceEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
 const impactLastUpdateLabel = pulseLastUpdatedAt ? formatTeamImpactTimestamp(pulseLastUpdatedAt) : "Live";
 const impactLastUpdateShortLabel = pulseLastUpdatedAt
-  ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: false, timeZone: "America/New_York" }).format(new Date(pulseLastUpdatedAt))
+  ? formatTeamImpactTimestamp(pulseLastUpdatedAt)
   : "Live";
 
 function getPulseImpactClasses(impact: PulseImpact) {
@@ -6725,7 +6731,7 @@ function TerminalTeamMark({ teamName, sport, size = "sm" }: { teamName: string; 
 
   const sizeClass =
     size === "lg"
-      ? "h-[58px] w-[58px] p-1.5 text-[13px] border-white/15 bg-white/[0.055] shadow-[inset_0_1px_10px_rgba(255,255,255,0.05)]"
+      ? "h-[52px] w-[52px] p-1 text-[12px] border-white/15 bg-white/[0.055] shadow-[inset_0_1px_10px_rgba(255,255,255,0.05)]"
       : "h-6 w-6 p-0.5 text-[8px] border-white/10 bg-white/8";
 
   return (
@@ -8769,17 +8775,17 @@ const subscriptionPlansBoard = (
           </>
         ) : appSection === "news" ? (
           <div className="space-y-2.5">
-            <section className="rounded-[20px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-2 shadow-[0_0_24px_rgba(34,211,238,0.075)]">
+            <section className="rounded-[19px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-1.5 shadow-[0_0_22px_rgba(34,211,238,0.07)]">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] border border-cyan-300/22 bg-cyan-300/[0.07] shadow-[0_0_18px_rgba(34,211,238,0.12)]">
-                    <img src="/icon.png" alt="Atlas" className="h-6 w-6 object-contain" />
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[13px] border border-cyan-300/22 bg-cyan-300/[0.07] shadow-[0_0_16px_rgba(34,211,238,0.12)]">
+                    <img src="/icon.png" alt="Atlas" className="h-5 w-5 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="truncate text-[23px] font-black uppercase leading-none tracking-tight text-white">
+                    <h2 className="truncate text-[22px] font-black uppercase leading-none tracking-tight text-white">
                       MARKET IMPACT
                     </h2>
-                    <p className="mt-0.5 truncate text-[11px] font-bold text-white/58">
+                    <p className="truncate text-[11px] font-bold text-white/58">
                       Live Intelligence Center
                     </p>
                     <p className="mt-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/38">
@@ -8792,7 +8798,7 @@ const subscriptionPlansBoard = (
                 </span>
               </div>
 
-              <div className="mt-2.5 grid grid-cols-4 overflow-hidden rounded-[16px] border border-white/10 bg-black/18 shadow-[inset_0_1px_14px_rgba(255,255,255,0.022)]">
+              <div className="mt-2 grid grid-cols-4 overflow-hidden rounded-[15px] border border-white/10 bg-black/18 shadow-[inset_0_1px_12px_rgba(255,255,255,0.02)]">
                 {[
                   { label: "Team Impact", value: impactTeamCount, trend: impactTeamCount > 0 ? "↑ New" : "", color: "text-sky-300", icon: "●●●" },
                   { label: "Market Impact", value: impactMarketCount, trend: impactMarketCount > 0 ? "↑ New" : "", color: "text-orange-300", icon: "▥" },
@@ -8801,17 +8807,17 @@ const subscriptionPlansBoard = (
                 ].map((item, index) => (
                   <div
                     key={item.label}
-                    className={`min-w-0 px-2 py-2 ${index === 0 ? "" : "border-l border-white/10"}`}
+                    className={`min-w-0 px-1.5 py-1.5 ${index === 0 ? "" : "border-l border-white/10"}`}
                   >
-                    <div className={`text-[13px] font-black leading-none ${item.color}`}>{item.icon}</div>
-                    <p className="mt-1 truncate text-[6.5px] font-black uppercase tracking-[0.07em] text-white/44">
+                    <div className={`text-[12px] font-black leading-none ${item.color}`}>{item.icon}</div>
+                    <p className="mt-0.5 truncate text-[6px] font-black uppercase tracking-[0.06em] text-white/44">
                       {item.label}
                     </p>
-                    <p className={`mt-0.5 truncate text-[20px] font-black leading-none ${item.color}`}>
+                    <p className={`mt-0.5 truncate text-[18px] font-black leading-none ${item.color}`}>
                       {item.value}
                     </p>
                     {item.trend ? (
-                      <p className="mt-0.5 truncate text-[7px] font-black uppercase tracking-[0.08em] text-white/36">{item.trend}</p>
+                      <p className="truncate text-[6.5px] font-black uppercase tracking-[0.08em] text-white/36">{item.trend}</p>
                     ) : null}
                   </div>
                 ))}
@@ -8819,7 +8825,7 @@ const subscriptionPlansBoard = (
             </section>
 
             <section className="space-y-1.5">
-              <div className="relative h-[52px] overflow-visible rounded-[16px] border border-white/10 bg-[#030814]/95 px-1.5 pt-1.5 shadow-[0_0_20px_rgba(34,211,238,0.06)]">
+              <div className="relative h-[48px] overflow-visible rounded-[15px] border border-white/10 bg-[#030814]/95 px-1.5 pt-1 shadow-[0_0_18px_rgba(34,211,238,0.055)]">
                 <OfficialSportSelectorRow
                   selectedSport={pulseSportToOfficialSport(pulseSportFilter)}
                   onSelectSport={(sport) => setPulseSportFilter(officialSportToPulseSport(sport))}
@@ -8857,7 +8863,7 @@ const subscriptionPlansBoard = (
                 </p>
               </section>
             ) : (
-              <section className="space-y-2.5">
+              <section className="space-y-2">
                 {currentUnifiedImpactItems.map((feedItem) => {
                   const item = feedItem.item;
                   const badgeSport = getTeamImpactSportBadge(feedItem.sport as TeamImpactEvent["sport"]);
@@ -8909,23 +8915,23 @@ const subscriptionPlansBoard = (
                     return (
                       <article
                         key={feedItem.id}
-                        className={`relative overflow-hidden rounded-[20px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.105),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3 pb-2.5 pt-0 ${accent.glow}`}
+                        className={`relative overflow-hidden rounded-[18px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.105),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-2.5 pb-2 pt-0 ${accent.glow}`}
                       >
-                        <div className={`-mx-3 mb-2 flex items-center justify-between gap-3 border-b px-3 py-1.5 ${accent.banner}`}>
+                        <div className={`-mx-2.5 mb-1.5 flex items-center justify-between gap-3 border-b px-2.5 py-1 ${accent.banner}`}>
                           <div className="min-w-0">
                             <p className={`truncate text-[10px] font-black uppercase tracking-[0.11em] ${accent.text}`}>
                               <span className="mr-1.5">{accent.icon}</span>{accent.label}
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2.5">
-                            <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
+                            <span className={`rounded-full border px-1.5 py-px text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
                               {feedItem.confidence}
                             </span>
                             <span className="text-[9px] font-black text-white/46">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
                           </div>
                         </div>
 
-                        <div className="mt-2 grid grid-cols-[58px_1fr] gap-2.5">
+                        <div className="mt-1.5 grid grid-cols-[52px_1fr] gap-2">
                           <div className="relative grid place-items-center">
                             <TerminalTeamMark teamName={primaryTeam} sport={badgeSport} size="lg" />
                               {secondaryTeam ? (
@@ -8935,7 +8941,7 @@ const subscriptionPlansBoard = (
                               ) : null}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="truncate text-[19px] font-black leading-tight text-white">{getAtlasIntelligenceImpact(intelligence)}</h3>
+                            <h3 className="truncate text-[18px] font-black leading-tight text-white">{getAtlasIntelligenceImpact(intelligence)}</h3>
                             <p className="mt-0.5 truncate text-[12px] font-bold text-white/64">{matchup}</p>
                             <span className="mt-1 inline-flex rounded-full border border-violet-300/24 bg-violet-300/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-violet-200">
                               {feedItem.sport}
@@ -8943,12 +8949,12 @@ const subscriptionPlansBoard = (
                           </div>
                         </div>
 
-                        <div className={`mt-2 rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                        <div className={`mt-1.5 rounded-[11px] border px-2 py-1 ${accent.panel}`}>
                           <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>SUMMARY</p>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] font-semibold leading-[14px] text-white/76">{intelligence.summary}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[13px] text-white/76">{intelligence.summary}</p>
                         </div>
 
-                        <div className="mt-1.5 rounded-[12px] border border-violet-300/10 bg-black/14 px-2.5 py-1.5">
+                        <div className="mt-1 rounded-[11px] border border-violet-300/10 bg-black/14 px-2 py-1">
                           <p className="truncate text-[9px] font-bold leading-3 text-white/62">
                             <span className="font-black text-violet-200/72">{formatTeamImpactTimestamp(intelligence.details.teamEventTime)}</span>
                             <span className="mx-1 text-white/28">·</span>
@@ -8960,22 +8966,22 @@ const subscriptionPlansBoard = (
                           </p>
                         </div>
 
-                        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                          <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                        <div className="mt-1 grid grid-cols-2 gap-1.5">
+                          <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
                             <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>WHY</p>
-                            <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{getAtlasIntelligenceWhy(intelligence)}</p>
+                            <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{getAtlasIntelligenceWhy(intelligence)}</p>
                           </div>
-                          <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                          <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
                             <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>IMPACT</p>
-                            <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{getAtlasIntelligenceImpact(intelligence)}</p>
+                            <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{getAtlasIntelligenceImpact(intelligence)}</p>
                           </div>
                         </div>
 
-                        <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-1.5">
+                        <div className="mt-1.5 flex items-center justify-between border-t border-white/10 pt-1">
                           <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-white/50">
                             News + Market Correlation
                           </p>
-                          <span className={`text-[11px] font-black ${accent.text}`}>View Source →</span>
+                          <span className={`text-[10px] font-black ${accent.text}`}>View Source →</span>
                         </div>
                       </article>
                     );
@@ -8984,14 +8990,14 @@ const subscriptionPlansBoard = (
                   return (
                     <article
                       key={feedItem.id}
-                      className={`relative overflow-hidden rounded-[20px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-3 pb-2.5 pt-0 ${accent.glow}`}
+                      className={`relative overflow-hidden rounded-[18px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-2.5 pb-2 pt-0 ${accent.glow}`}
                     >
-                      <div className={`-mx-3 mb-2 flex items-center justify-between gap-3 border-b px-3 py-1.5 ${accent.banner}`}>
+                      <div className={`-mx-2.5 mb-1.5 flex items-center justify-between gap-3 border-b px-2.5 py-1 ${accent.banner}`}>
                         <p className={`min-w-0 truncate text-[10px] font-black uppercase tracking-[0.11em] ${accent.text}`}>
                           <span className="mr-1.5">{accent.icon}</span>{accent.label}
                         </p>
                         <div className="flex shrink-0 items-center gap-2.5">
-                          <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
+                          <span className={`rounded-full border px-1.5 py-px text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
                             {feedItem.confidence}
                           </span>
                           <span className="text-[9px] font-black text-white/50">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
@@ -9000,14 +9006,14 @@ const subscriptionPlansBoard = (
 
                       {marketEvent ? (
                         <>
-                          <div className="mt-2 grid grid-cols-[1fr_92px] gap-2.5">
+                          <div className="mt-1.5 grid grid-cols-[1fr_82px] gap-2">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <TerminalTeamMark teamName={marketEvent.awayTeam} sport={badgeSport} size="lg" />
                                 <span className="text-[22px] font-black text-orange-300/80">›</span>
                                 <TerminalTeamMark teamName={marketEvent.homeTeam} sport={badgeSport} size="lg" />
                               </div>
-                              <h3 className="mt-2 truncate text-[19px] font-black leading-tight text-white">
+                              <h3 className="mt-1.5 truncate text-[18px] font-black leading-tight text-white">
                                 {getMarketImpactSelectionLabel(marketEvent)}
                               </h3>
                               <p className="mt-0.5 truncate text-[12px] font-bold text-white/58">{matchup}</p>
@@ -9015,33 +9021,33 @@ const subscriptionPlansBoard = (
                                 {feedItem.sport}
                               </span>
                             </div>
-                            <div className="rounded-[14px] border border-orange-300/24 bg-orange-400/[0.055] px-2 py-2 text-center shadow-[0_0_18px_rgba(249,115,22,0.12)]">
-                              <p className="text-[21px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[10px] text-white/70"> of </span>{marketEvent.booksObserved}</p>
+                            <div className="rounded-[12px] border border-orange-300/24 bg-orange-400/[0.055] px-1.5 py-1.5 text-center shadow-[0_0_16px_rgba(249,115,22,0.12)]">
+                              <p className="text-[18px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[9px] text-white/70"> of </span>{marketEvent.booksObserved}</p>
                               <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/56">Books</p>
-                              <div className="my-1.5 h-px bg-orange-300/16" />
-                              <p className="text-[25px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
+                              <div className="my-1 h-px bg-orange-300/16" />
+                              <p className="text-[22px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
                               <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/56">Consensus</p>
                             </div>
                           </div>
 
-                          <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-black/18 px-2.5 py-2 text-center">
+                          <div className="mt-1.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] border border-white/10 bg-black/18 px-2 py-1.5 text-center">
                             <div>
-                              <p className="truncate text-[20px] font-black text-white">{formatMarketDetailValue(marketEvent.oldLine, marketEvent.oldOdds) || "N/A"}</p>
+                              <p className="truncate text-[18px] font-black text-white">{formatMarketDetailValue(marketEvent.oldLine, marketEvent.oldOdds) || "N/A"}</p>
                               <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-white/46">Open</p>
                             </div>
-                            <span className="text-[24px] font-black text-orange-300">→</span>
+                            <span className="text-[21px] font-black text-orange-300">→</span>
                             <div>
-                              <p className="truncate text-[20px] font-black text-orange-300">{formatMarketDetailValue(marketEvent.newLine, marketEvent.newOdds) || "N/A"}</p>
+                              <p className="truncate text-[18px] font-black text-orange-300">{formatMarketDetailValue(marketEvent.newLine, marketEvent.newOdds) || "N/A"}</p>
                               <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-white/46">Now</p>
                             </div>
                           </div>
                         </>
                       ) : teamEvent ? (
-                        <div className="mt-2 grid grid-cols-[58px_1fr] gap-2.5">
+                        <div className="mt-1.5 grid grid-cols-[52px_1fr] gap-2">
                           <TerminalTeamMark teamName={primaryTeam} sport={badgeSport} size="lg" />
                           <div className="min-w-0">
-                            <h3 className="line-clamp-1 text-[20px] font-black leading-tight text-white">{teamEvent.eventType}</h3>
-                            <p className="mt-0.5 truncate text-[12px] font-bold text-white/64">{primaryTeam}</p>
+                            <h3 className="line-clamp-1 text-[18px] font-black leading-tight text-white">{teamEvent.eventType}</h3>
+                            <p className="truncate text-[11px] font-bold text-white/64">{primaryTeam}</p>
                             <span className="mt-1 inline-flex rounded-full border border-sky-300/24 bg-sky-300/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-sky-200">
                               {feedItem.sport}
                             </span>
@@ -9049,18 +9055,18 @@ const subscriptionPlansBoard = (
                         </div>
                       ) : null}
 
-                      <div className="mt-2 grid grid-cols-2 gap-1.5">
-                        <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                      <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                        <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
                           <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{whyLabel.replace(":", "")}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{whyText}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{whyText}</p>
                         </div>
-                        <div className={`rounded-[12px] border px-2.5 py-1.5 ${accent.panel}`}>
+                        <div className={`rounded-[11px] border px-2 py-1 ${accent.panel}`}>
                           <p className={`text-[9px] font-black uppercase tracking-[0.1em] ${accent.text}`}>{impactLabel.replace(":", "")}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[10px] font-semibold leading-[14px] text-white/72">{impactText}</p>
+                          <p className="mt-0.5 line-clamp-2 text-[9.5px] font-semibold leading-[13px] text-white/72">{impactText}</p>
                         </div>
                       </div>
 
-                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-1.5">
+                      <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1">
                         <div className="min-w-0">
                           <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-white/50">
                             {isMarketImpact
@@ -9075,12 +9081,12 @@ const subscriptionPlansBoard = (
                             href={sourceUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`shrink-0 text-[11px] font-black ${accent.text}`}
+                            className={`shrink-0 text-[10px] font-black ${accent.text}`}
                           >
                             View Source →
                           </a>
                         ) : (
-                          <span className={`shrink-0 text-[11px] font-black ${accent.text}`}>View Source →</span>
+                          <span className={`shrink-0 text-[10px] font-black ${accent.text}`}>View Source →</span>
                         )}
                       </div>
                     </article>
