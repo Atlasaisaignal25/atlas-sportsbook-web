@@ -1400,21 +1400,22 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
 }
 
 function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
+  const [lastUpdateLabel, setLastUpdateLabel] = useState<string | null>(null);
   const stageStyles = [
     {
       state: "SCANNING",
       text: "text-lime-300",
       border: "border-lime-300/55",
       bg: "bg-lime-300/[0.08]",
-      glow: "shadow-[0_0_18px_rgba(163,230,53,0.22)]",
+      glow: "shadow-[0_0_18px_rgba(163,230,53,0.26),inset_0_0_16px_rgba(163,230,53,0.08)]",
       line: "from-lime-300/20 via-lime-300/55 to-cyan-300/25",
     },
     {
-      state: "IN PROGRESS",
+      state: "REVIEWING",
       text: "text-cyan-300",
       border: "border-cyan-300/55",
       bg: "bg-cyan-300/[0.08]",
-      glow: "shadow-[0_0_18px_rgba(34,211,238,0.22)]",
+      glow: "shadow-[0_0_18px_rgba(34,211,238,0.26),inset_0_0_16px_rgba(34,211,238,0.08)]",
       line: "from-cyan-300/20 via-cyan-300/55 to-blue-400/25",
     },
     {
@@ -1422,15 +1423,15 @@ function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
       text: "text-blue-300",
       border: "border-blue-300/55",
       bg: "bg-blue-300/[0.08]",
-      glow: "shadow-[0_0_18px_rgba(96,165,250,0.22)]",
+      glow: "shadow-[0_0_18px_rgba(96,165,250,0.26),inset_0_0_16px_rgba(96,165,250,0.08)]",
       line: "from-blue-300/20 via-blue-300/55 to-violet-300/25",
     },
     {
-      state: "REVIEWING",
+      state: "WAITING",
       text: "text-violet-300",
       border: "border-violet-300/55",
       bg: "bg-violet-300/[0.08]",
-      glow: "shadow-[0_0_18px_rgba(196,181,253,0.22)]",
+      glow: "shadow-[0_0_18px_rgba(196,181,253,0.26),inset_0_0_16px_rgba(196,181,253,0.08)]",
       line: "from-violet-300/20 via-violet-300/55 to-amber-300/25",
     },
     {
@@ -1438,40 +1439,63 @@ function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
       text: "text-amber-300",
       border: "border-amber-300/55",
       bg: "bg-amber-300/[0.08]",
-      glow: "shadow-[0_0_18px_rgba(252,211,77,0.22)]",
+      glow: "shadow-[0_0_18px_rgba(252,211,77,0.28),inset_0_0_16px_rgba(252,211,77,0.08)]",
       line: "",
     },
   ];
 
+  useEffect(() => {
+    setLastUpdateLabel(
+      new Intl.DateTimeFormat(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date()),
+    );
+  }, []);
+
   return (
-    <section className="rounded-[17px] border border-white/14 bg-[radial-gradient(circle_at_top_left,rgba(0,213,255,0.08),transparent_36%),linear-gradient(180deg,rgba(6,18,31,0.92),rgba(3,8,20,0.96))] px-3 py-2 shadow-[0_0_18px_rgba(0,213,255,0.06)]">
+    <section className="rounded-[17px] border border-white/14 bg-[radial-gradient(circle_at_top_left,rgba(0,213,255,0.08),transparent_36%),linear-gradient(180deg,rgba(6,18,31,0.92),rgba(3,8,20,0.96))] px-3 py-1.5 shadow-[0_0_18px_rgba(0,213,255,0.06)]">
       <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-cyan-300">TODAY'S ACTIVITY</h2>
-      <div className="relative mt-2 grid grid-cols-5 text-center">
+      <div className="relative mt-1.5 grid grid-cols-5 text-center">
         {metrics.map((metric, index) => {
           const style = stageStyles[index] ?? stageStyles[1];
           const value = Number(metric.value);
           const active = Number.isFinite(value) && value > 0;
+          const nextValue = Number(metrics[index + 1]?.value ?? 0);
+          const nextActive = Number.isFinite(nextValue) && nextValue > 0;
 
           return (
             <div key={metric.label} className="relative px-1">
               {index < metrics.length - 1 ? (
-                <span className={`absolute left-[58%] right-[-42%] top-[18px] h-px bg-gradient-to-r ${style.line} opacity-70`} aria-hidden="true" />
+                <span
+                  className={`absolute left-[58%] right-[-42%] top-[16px] h-px bg-gradient-to-r ${style.line} ${
+                    active || nextActive ? "opacity-85 shadow-[0_0_8px_currentColor]" : "opacity-28"
+                  }`}
+                  aria-hidden="true"
+                />
               ) : null}
               <span
-                className={`relative z-10 mx-auto grid h-9 w-9 place-items-center rounded-full border bg-[#06101d] ${style.border} ${
-                  active ? `${style.glow} motion-safe:animate-pulse` : "shadow-[0_0_8px_rgba(148,163,184,0.08)] opacity-70"
+                className={`relative z-10 mx-auto grid h-8 w-8 place-items-center rounded-full border bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.12),rgba(6,16,29,0.92)_42%,rgba(1,6,16,0.98))] ${style.border} ${
+                  active ? `${style.glow} motion-safe:animate-pulse` : "shadow-[0_0_8px_rgba(148,163,184,0.08),inset_0_0_10px_rgba(255,255,255,0.03)] opacity-72"
                 }`}
               >
-                <ActivityMetricIcon className={`h-5 w-5 ${style.text}`} index={index} />
+                <ActivityMetricIcon className={`h-[18px] w-[18px] ${style.text}`} index={index} />
               </span>
-              <p className="mt-1.5 text-[22px] font-black leading-none tracking-[-0.04em] text-white">{metric.value}</p>
-              <p className="mt-1 min-h-[22px] text-[8px] font-semibold leading-tight text-white/64">{metric.label}</p>
-              <span className={`mt-1 inline-flex max-w-full items-center justify-center rounded-full border px-1.5 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] ${style.border} ${style.bg} ${active ? style.text : "text-white/35"}`}>
-                {active ? style.state : "INACTIVE"}
+              <p key={`${metric.label}-${metric.value}`} className="mt-1 text-[24px] font-black leading-none tracking-[-0.055em] text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.12)]">
+                {metric.value}
+              </p>
+              <p className="mt-0.5 min-h-[19px] text-[7.5px] font-semibold leading-tight text-white/66">{metric.label}</p>
+              <span className={`mt-0.5 inline-flex max-w-full items-center justify-center rounded-full border px-1.5 py-0.5 text-[6px] font-black uppercase tracking-[0.08em] ${style.border} ${style.bg} ${active ? style.text : "text-white/38"}`}>
+                {active ? style.state : "IDLE"}
               </span>
             </div>
           );
         })}
+      </div>
+      <div className="mt-1 flex justify-end">
+        <p className="text-[7px] font-black uppercase tracking-[0.14em] text-white/34">
+          Last Update <span className="text-cyan-300/70">{lastUpdateLabel ?? "Live"}</span>
+        </p>
       </div>
     </section>
   );
@@ -2946,7 +2970,7 @@ export function SignalsHomePage({
       value: sportSignalViews.filter((signal) => signal.status === "Final Review").length,
       tone: "purple",
     },
-    { label: "Top Play", value: topPlayReleased, tone: "gold" },
+    { label: "Top Signal", value: topPlayReleased, tone: "gold" },
   ];
 
   async function reserveNotification(
