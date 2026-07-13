@@ -4187,9 +4187,9 @@ const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
 const [teamImpactEvents, setTeamImpactEvents] = useState<TeamImpactEvent[]>([]);
 const [marketImpactEvents, setMarketImpactEvents] = useState<MarketImpactEvent[]>([]);
 const [atlasIntelligenceEvents, setAtlasIntelligenceEvents] = useState<AtlasIntelligenceEvent[]>([]);
-const [expandedMarketImpactDetails, setExpandedMarketImpactDetails] = useState<Record<string, boolean>>({});
 const [pulseLoading, setPulseLoading] = useState(false);
 const [pulseLastUpdatedAt, setPulseLastUpdatedAt] = useState<string | null>(null);
+const [impactDetailSheet, setImpactDetailSheet] = useState<ImpactDetailSheetState>(null);
 const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
   title: string;
   sources: AtlasSource[];
@@ -6408,28 +6408,37 @@ function getTeamImpactCompactSummary(item: TeamImpactEvent) {
 }
 
 type ImpactAccent = ReturnType<typeof getImpactAccent>;
-type ExpandableImpactDetail = "why" | "impact";
-
-function ExpandableImpactSection({
-  id,
-  label,
-  text,
-  accent,
-  isOpen,
-  onToggle,
-}: {
-  id: ExpandableImpactDetail;
-  label: string;
+type ImpactDetailKind = "WHY" | "IMPACT";
+type ImpactDetailSheetState = {
+  title: string;
+  subtitle: string;
+  label: ImpactDetailKind;
   text: string;
   accent: ImpactAccent;
-  isOpen: boolean;
-  onToggle: (id: ExpandableImpactDetail) => void;
+} | null;
+
+function joinImpactDetailLines(lines: Array<string | null | undefined>) {
+  return lines
+    .map((line) => line?.trim())
+    .filter((line): line is string => Boolean(line))
+    .join("\n\n");
+}
+
+function ImpactDetailButton({
+  label,
+  summary,
+  accent,
+  onOpen,
+}: {
+  label: string;
+  summary: string;
+  accent: ImpactAccent;
+  onOpen: () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={() => onToggle(id)}
-      aria-expanded={isOpen}
+      onClick={onOpen}
       className={`group rounded-[11px] border px-2 py-1 text-left transition active:scale-[0.99] ${accent.panel} hover:border-white/18 hover:bg-white/[0.035]`}
     >
       <span className="flex items-center justify-between gap-2">
@@ -6437,55 +6446,68 @@ function ExpandableImpactSection({
           {label}
         </span>
         <span className={`text-[9px] font-black leading-none ${accent.text}`}>
-          {isOpen ? "⌃" : "⌄"}
+          ⌄
         </span>
       </span>
-      <span
-        className={`mt-0.5 block text-[9.5px] font-semibold leading-[13px] text-white/72 ${
-          isOpen ? "max-h-40 overflow-y-auto pr-1" : "line-clamp-2"
-        }`}
-      >
-        {text}
+      <span className="mt-0.5 line-clamp-2 block text-[9.5px] font-semibold leading-[13px] text-white/72">
+        {summary}
       </span>
     </button>
   );
 }
 
-function ExpandableImpactDetails({
+function ImpactDetailButtons({
   whyLabel,
   whyText,
+  whyFullText,
   impactLabel,
   impactText,
+  impactFullText,
   accent,
+  title,
+  subtitle,
+  onOpen,
 }: {
   whyLabel: string;
   whyText: string;
+  whyFullText: string;
   impactLabel: string;
   impactText: string;
+  impactFullText: string;
   accent: ImpactAccent;
+  title: string;
+  subtitle: string;
+  onOpen: (detail: NonNullable<ImpactDetailSheetState>) => void;
 }) {
-  const [openDetail, setOpenDetail] = useState<ExpandableImpactDetail | null>(null);
-  const handleToggle = (id: ExpandableImpactDetail) => {
-    setOpenDetail((current) => (current === id ? null : id));
-  };
-
   return (
     <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-      <ExpandableImpactSection
-        id="why"
+      <ImpactDetailButton
         label={whyLabel}
-        text={whyText}
+        summary={whyText}
         accent={accent}
-        isOpen={openDetail === "why"}
-        onToggle={handleToggle}
+        onOpen={() =>
+          onOpen({
+            title,
+            subtitle,
+            label: "WHY",
+            text: whyFullText,
+            accent,
+          })
+        }
       />
-      <ExpandableImpactSection
-        id="impact"
+      <ImpactDetailButton
         label={impactLabel}
-        text={impactText}
+        summary={impactText}
         accent={accent}
-        isOpen={openDetail === "impact"}
-        onToggle={handleToggle}
+        onOpen={() =>
+          onOpen({
+            title,
+            subtitle,
+            label: "IMPACT",
+            text: impactFullText,
+            accent,
+          })
+        }
       />
     </div>
   );
@@ -8992,6 +9014,84 @@ const subscriptionPlansBoard = (
                       : (item as TeamImpactEvent).impact;
                   const marketEvent = isMarketImpact ? (item as MarketImpactEvent) : null;
                   const teamEvent = !isMarketImpact && !isIntelligenceImpact ? (item as TeamImpactEvent) : null;
+                  const detailTitle = isIntelligenceImpact
+                    ? getAtlasIntelligenceImpact(item as AtlasIntelligenceEvent)
+                    : isMarketImpact && marketEvent
+                      ? getMarketImpactSelectionLabel(marketEvent)
+                      : teamEvent
+                        ? teamEvent.eventType
+                        : accent.label;
+                  const detailSubtitle = isIntelligenceImpact
+                    ? matchup
+                    : isMarketImpact && marketEvent
+                      ? `${marketEvent.market} • ${matchup}`
+                      : teamEvent
+                        ? `${primaryTeam} • ${feedItem.sport}`
+                        : matchup;
+                  const whyFullText = isIntelligenceImpact
+                    ? joinImpactDetailLines([
+                        (item as AtlasIntelligenceEvent).summary,
+                        `Team event: ${(item as AtlasIntelligenceEvent).details.teamEventType}`,
+                        `Team event time: ${formatTeamImpactTimestamp((item as AtlasIntelligenceEvent).details.teamEventTime)}`,
+                        `Market: ${(item as AtlasIntelligenceEvent).details.market}`,
+                        `Market movement: ${(item as AtlasIntelligenceEvent).details.marketMovementType.replaceAll("_", " ")}`,
+                        `Market time: ${formatTeamImpactTimestamp((item as AtlasIntelligenceEvent).details.marketTime)}`,
+                        `Minutes between events: ${(item as AtlasIntelligenceEvent).details.minutesBetween}`,
+                      ])
+                    : isMarketImpact && marketEvent
+                      ? joinImpactDetailLines([
+                          marketEvent.why,
+                          `Market: ${marketEvent.market}`,
+                          `Selection: ${marketEvent.selection}`,
+                          `Movement: ${marketEvent.movementType.replaceAll("_", " ")}`,
+                          `Direction: ${marketEvent.direction}`,
+                          `Sportsbooks moved: ${marketEvent.booksMoved} of ${marketEvent.booksObserved}`,
+                          marketEvent.firstBookToMove ? `First book to move: ${marketEvent.firstBookToMove}` : null,
+                          marketEvent.firstMoveAt ? `First move: ${formatTeamImpactTimestamp(marketEvent.firstMoveAt)}` : null,
+                          marketEvent.sportsbookNamesMoved.length > 0 ? `Books: ${marketEvent.sportsbookNamesMoved.join(", ")}` : null,
+                        ])
+                      : teamEvent
+                        ? joinImpactDetailLines([
+                            teamEvent.why,
+                            `Event: ${teamEvent.eventType}`,
+                            teamEvent.playerName ? `Player: ${teamEvent.playerName}` : null,
+                            `Team: ${primaryTeam}`,
+                            matchup ? `Game context: ${matchup}` : null,
+                            `Status: ${teamEvent.status}`,
+                            `Source: ${teamEvent.source}`,
+                            teamEvent.sourceUrl ? `Source URL: ${teamEvent.sourceUrl}` : null,
+                          ])
+                        : whyText;
+                  const impactFullText = isIntelligenceImpact
+                    ? joinImpactDetailLines([
+                        getAtlasIntelligenceImpact(item as AtlasIntelligenceEvent),
+                        getAtlasIntelligenceTimeline(item as AtlasIntelligenceEvent),
+                        `Market: ${(item as AtlasIntelligenceEvent).details.market}`,
+                        `Movement size: ${(item as AtlasIntelligenceEvent).details.movementSize}`,
+                        `Minutes between team event and market move: ${(item as AtlasIntelligenceEvent).details.minutesBetween}`,
+                      ])
+                    : isMarketImpact && marketEvent
+                      ? joinImpactDetailLines([
+                          marketEvent.impact,
+                          `Market affected: ${marketEvent.market}`,
+                          `Selection affected: ${marketEvent.selection}`,
+                          `Open: ${formatMarketDetailValue(marketEvent.oldLine, marketEvent.oldOdds) || "N/A"}`,
+                          `Now: ${formatMarketDetailValue(marketEvent.newLine, marketEvent.newOdds) || "N/A"}`,
+                          `Consensus: ${marketEvent.consensusPercent.toFixed(0)}% (${marketEvent.consensusLevel})`,
+                          marketEvent.movementWindowMinutes !== null ? `Movement window: ${marketEvent.movementWindowMinutes} minutes` : null,
+                          marketEvent.latestBookToMove ? `Latest book to move: ${marketEvent.latestBookToMove}` : null,
+                        ])
+                      : teamEvent
+                        ? joinImpactDetailLines([
+                            teamEvent.impact,
+                            `Area affected: ${getTeamImpactCompactSummary(teamEvent)}`,
+                            `Team: ${primaryTeam}`,
+                            matchup ? `Game context: ${matchup}` : null,
+                            teamEvent.playerName ? `Player: ${teamEvent.playerName}` : null,
+                            `Confidence: ${teamEvent.confidence}`,
+                            `Published: ${formatTeamImpactTimestamp(teamEvent.publishedAt)}`,
+                          ])
+                        : impactText;
 
                   if (isIntelligenceImpact) {
                     const intelligence = item as AtlasIntelligenceEvent;
@@ -9050,12 +9150,17 @@ const subscriptionPlansBoard = (
                           </p>
                         </div>
 
-                        <ExpandableImpactDetails
+                        <ImpactDetailButtons
                           whyLabel="WHY"
                           whyText={getAtlasIntelligenceWhy(intelligence)}
+                          whyFullText={whyFullText}
                           impactLabel="IMPACT"
                           impactText={getAtlasIntelligenceImpact(intelligence)}
+                          impactFullText={impactFullText}
                           accent={accent}
+                          title={detailTitle}
+                          subtitle={detailSubtitle}
+                          onOpen={setImpactDetailSheet}
                         />
 
                         <div className="mt-1.5 flex items-center justify-between border-t border-white/10 pt-1">
@@ -9136,12 +9241,17 @@ const subscriptionPlansBoard = (
                         </div>
                       ) : null}
 
-                      <ExpandableImpactDetails
+                      <ImpactDetailButtons
                         whyLabel={whyLabel.replace(":", "")}
                         whyText={whyText}
+                        whyFullText={whyFullText}
                         impactLabel={impactLabel.replace(":", "")}
                         impactText={impactText}
+                        impactFullText={impactFullText}
                         accent={accent}
+                        title={detailTitle}
+                        subtitle={detailSubtitle}
+                        onOpen={setImpactDetailSheet}
                       />
 
                       <div className="mt-1.5 flex items-center justify-between gap-3 border-t border-white/10 pt-1">
@@ -10096,6 +10206,61 @@ const subscriptionPlansBoard = (
                 {selectedSignalInsight.riskNote}
               </p>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {impactDetailSheet ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 px-3 backdrop-blur-sm"
+          onClick={() => setImpactDetailSheet(null)}
+        >
+          <div
+            className={`max-h-[82vh] w-full max-w-md overflow-hidden rounded-t-[28px] border ${impactDetailSheet.accent.border} bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_34%),#07101f] shadow-[0_-22px_70px_rgba(34,211,238,0.16)]`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="impact-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/18" />
+
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 pb-4 pt-4">
+              <div className="min-w-0">
+                <p className={`text-[11px] font-black uppercase tracking-[0.2em] ${impactDetailSheet.accent.text}`}>
+                  {impactDetailSheet.label}
+                </p>
+                <h2
+                  id="impact-detail-title"
+                  className="mt-2 line-clamp-2 text-[22px] font-black leading-tight tracking-[-0.03em] text-white"
+                >
+                  {impactDetailSheet.title}
+                </h2>
+                <p className="mt-1 line-clamp-1 text-[12px] font-semibold text-white/48">
+                  {impactDetailSheet.subtitle}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setImpactDetailSheet(null)}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-xl font-light text-white/75 transition hover:border-cyan-300/40 hover:text-cyan-200"
+                aria-label="Close impact detail"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="max-h-[calc(82vh-112px)] overflow-y-auto px-5 py-4">
+              <div className={`rounded-[18px] border px-4 py-3 ${impactDetailSheet.accent.panel}`}>
+                <div className="space-y-3">
+                  {impactDetailSheet.text.split(/\n{2,}/).map((paragraph, index) => (
+                    <p key={`${impactDetailSheet.label}-${index}`} className="whitespace-pre-wrap text-[13px] font-semibold leading-5 text-white/74">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}
