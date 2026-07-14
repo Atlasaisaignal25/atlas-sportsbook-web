@@ -6499,6 +6499,11 @@ function getImpactConfidenceBadgeClass(confidence: PulseImpact) {
   return "border-sky-300/40 bg-sky-300/10 text-sky-200";
 }
 
+function getImpactConfidenceLabel(kind: UnifiedImpactFeedItem["kind"], confidence: PulseImpact) {
+  if (kind === "market" && confidence === "HIGH") return "HIGH ACTIVITY";
+  return confidence;
+}
+
 function getImpactAccent(kind: UnifiedImpactFeedItem["kind"]) {
   if (kind === "market") {
     return {
@@ -7047,6 +7052,36 @@ function TerminalTeamMark({ teamName, sport, size = "sm" }: { teamName: string; 
   );
 }
 
+function MarketTeamMark({ teamName, sport }: { teamName: string; sport: SportTab }) {
+  const displayTeamName = getMarketDisplayTeamName(teamName, sport);
+  const logo = getLogo(displayTeamName, sport);
+  const [logoFailed, setLogoFailed] = useState(false);
+  const shouldUseLogo = Boolean(logo) && !logoFailed;
+
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [logo]);
+
+  if (shouldUseLogo && logo) {
+    return (
+      <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full border border-white/15 bg-white/[0.055] p-1 shadow-[inset_0_1px_10px_rgba(255,255,255,0.05)]">
+        <img
+          src={logo}
+          alt={displayTeamName}
+          className="h-full w-full object-contain"
+          onError={() => setLogoFailed(true)}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex min-h-[32px] max-w-[96px] items-center rounded-[10px] border border-white/12 bg-white/[0.055] px-2 text-center text-[9px] font-black uppercase leading-[10px] text-white/74">
+      {displayTeamName}
+    </span>
+  );
+}
+
 function getTeamImpactSportBadge(sport: TeamImpactEvent["sport"]): SportTab {
   return sport;
 }
@@ -7263,19 +7298,15 @@ function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
       lines: ["OPEN", openingState.market, openingState.odds],
     },
     ...event.movementsToday.map((movement) => {
-      const oldLine = formatMarketLineOnly(movement.oldLine);
-      const newLine = formatMarketLineOnly(movement.newLine);
-      const oldOdds = formatAmericanOdds(movement.oldOdds);
-      const newOdds = formatAmericanOdds(movement.newOdds);
+      const state = formatMarketStateLine(movement.selection, movement.newLine, movement.newOdds);
       const bookLines = movement.latestBookToMove ? ["Book", movement.latestBookToMove] : [];
 
       return {
         time: movement.latestMoveAt ?? movement.publishedAt,
         lines: [
           "LINE",
-          `${oldLine} -> ${newLine}`,
-          "Odds",
-          `${oldOdds} -> ${newOdds}`,
+          state.market,
+          state.odds,
           ...bookLines,
         ],
       };
@@ -9427,8 +9458,8 @@ const subscriptionPlansBoard = (
                           `Selection: ${marketCurrentState?.market ?? marketEvent.selection}`,
                           `Direction: ${marketEvent.direction}`,
                           `Consensus: ${marketEvent.booksMoved} of ${marketEvent.booksObserved} (${marketEvent.consensusPercent.toFixed(0)}%)`,
-                          marketEvent.firstBookToMove ? `First book to move: ${marketEvent.firstBookToMove}` : null,
-                          marketEvent.firstMoveAt ? `Movement time: ${formatTeamImpactTimestamp(marketEvent.firstMoveAt)}` : null,
+                          marketEvent.firstBookToMove ? `First Book: ${marketEvent.firstBookToMove}` : null,
+                          marketEvent.firstMoveAt ? `First Move: ${formatTeamImpactTimestamp(marketEvent.firstMoveAt)}` : null,
                           marketEvent.sportsbookNamesMoved.length > 0 ? `Books: ${marketEvent.sportsbookNamesMoved.join(", ")}` : null,
                         ])
                       : teamEvent
@@ -9484,7 +9515,7 @@ const subscriptionPlansBoard = (
                           </div>
                           <div className="flex shrink-0 items-center gap-2.5">
                             <span className={`rounded-full border px-1.5 py-px text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
-                              {feedItem.confidence}
+                              {getImpactConfidenceLabel(feedItem.kind, feedItem.confidence)}
                             </span>
                             <span className="text-[9px] font-black text-white/46">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
                           </div>
@@ -9551,7 +9582,7 @@ const subscriptionPlansBoard = (
                   return (
                     <article
                       key={feedItem.id}
-                        className={`relative overflow-hidden rounded-[18px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-2 pb-1.5 pt-0 ${accent.glow}`}
+                        className={`relative overflow-hidden rounded-[18px] border ${accent.border} bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,rgba(6,16,31,0.94),rgba(3,8,20,0.98))] px-2 pb-1 pt-0 ${accent.glow}`}
                     >
                       <div className={`-mx-2 mb-1 flex items-center justify-between gap-3 border-b px-2 py-0.5 ${accent.banner}`}>
                         <p className={`min-w-0 truncate text-[10px] font-black uppercase tracking-[0.11em] ${accent.text}`}>
@@ -9559,7 +9590,7 @@ const subscriptionPlansBoard = (
                         </p>
                         <div className="flex shrink-0 items-center gap-2.5">
                           <span className={`rounded-full border px-1.5 py-px text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
-                            {feedItem.confidence}
+                            {getImpactConfidenceLabel(feedItem.kind, feedItem.confidence)}
                           </span>
                           <span className="text-[9px] font-black text-white/50">{formatTeamImpactTimestamp(feedItem.publishedAt)}</span>
                         </div>
@@ -9567,58 +9598,61 @@ const subscriptionPlansBoard = (
 
                       {marketEvent ? (
                         <>
-                          <div className="mt-1 grid grid-cols-[1fr_74px] gap-2">
+                          <div className="mt-1 grid grid-cols-[1fr_58px] gap-2">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <TerminalTeamMark teamName={marketEvent.awayTeam} sport={badgeSport} size="lg" />
-                                <span className="text-[20px] font-black text-orange-300/80">›</span>
-                                <TerminalTeamMark teamName={marketEvent.homeTeam} sport={badgeSport} size="lg" />
+                                <MarketTeamMark teamName={marketEvent.awayTeam} sport={badgeSport} />
+                                <span className="text-[18px] font-black text-orange-300/80">›</span>
+                                <MarketTeamMark teamName={marketEvent.homeTeam} sport={badgeSport} />
                               </div>
-                              <h3 className="mt-1 truncate text-[18px] font-black leading-tight text-white">
+                              <h3 className="mt-0.5 text-[17px] font-black leading-tight text-white">
                                 {getMarketMonitorTitle(marketEvent)}
                               </h3>
-                              <p className="mt-0.5 truncate text-[12px] font-black text-orange-200/82">{marketCurrentState?.market ?? getMarketImpactPrimaryTitle(marketEvent, badgeSport)}</p>
-                              <p className="truncate text-[11px] font-bold text-white/58">{matchup}</p>
+                              <p className="mt-0.5 text-[12px] font-black leading-[14px] text-orange-200/82">{marketCurrentState?.market ?? getMarketImpactPrimaryTitle(marketEvent, badgeSport)}</p>
+                              <p className="text-[11px] font-bold leading-[13px] text-white/58">{matchup}</p>
                               <span className="mt-0.5 inline-flex rounded-full border border-orange-300/24 bg-orange-300/10 px-1.5 py-px text-[8px] font-black uppercase tracking-[0.08em] text-orange-200">
                                 {feedItem.sport}
                               </span>
                             </div>
-                            <div className="rounded-[10px] border border-orange-300/18 bg-orange-400/[0.04] px-1.5 py-0.5 text-center shadow-[0_0_12px_rgba(249,115,22,0.08)]">
-                              <p className="text-[13px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[8px] text-white/62"> / </span>{marketEvent.booksObserved}</p>
+                            <div className="self-start rounded-[9px] border border-orange-300/18 bg-orange-400/[0.04] px-1 py-0.5 text-center shadow-[0_0_10px_rgba(249,115,22,0.07)]">
+                              <p className="text-[12px] font-black leading-none text-orange-300">{marketEvent.booksMoved}<span className="text-[7px] text-white/62"> / </span>{marketEvent.booksObserved}</p>
                               <div className="my-px h-px bg-orange-300/12" />
-                              <p className="text-[16px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
-                              <p className="text-[6px] font-black uppercase tracking-[0.08em] text-white/50">Consensus</p>
+                              <p className="text-[14px] font-black leading-none text-orange-300">{marketEvent.consensusPercent.toFixed(0)}%</p>
+                              <p className="text-[5.5px] font-black uppercase tracking-[0.06em] text-white/50">Consensus</p>
                             </div>
                           </div>
 
-                          <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] border border-orange-300/14 bg-orange-400/[0.035] px-2 py-1 text-center shadow-[0_0_14px_rgba(249,115,22,0.08)]">
+                          <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] border border-orange-300/14 bg-orange-400/[0.035] px-2 py-0.5 text-center shadow-[0_0_14px_rgba(249,115,22,0.08)]">
                             <div>
                               <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Open</p>
-                              <p className="mt-0.5 truncate text-[17px] font-black leading-none text-white">{marketOpenState?.market ?? "N/A"}</p>
+                              <p className="mt-px truncate text-[16px] font-black leading-none text-white">{marketOpenState?.market ?? "N/A"}</p>
                               <p className="mt-0.5 text-[10px] font-black leading-none text-white/62">{marketOpenState?.odds ?? "Odds N/A"}</p>
                             </div>
-                            <span className="text-[23px] font-black leading-none text-orange-300">↓</span>
+                            <span className="text-[20px] font-black leading-none text-orange-300">↓</span>
                             <div>
                               <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current</p>
-                              <p className="mt-0.5 truncate text-[17px] font-black leading-none text-orange-300">{marketCurrentState?.market ?? "N/A"}</p>
+                              <p className="mt-px truncate text-[16px] font-black leading-none text-orange-300">{marketCurrentState?.market ?? "N/A"}</p>
                               <p className="mt-0.5 text-[10px] font-black leading-none text-orange-200/78">{marketCurrentState?.odds ?? "Odds N/A"}</p>
                             </div>
                           </div>
 
-                          <div className="mt-1 grid grid-cols-[1fr_74px] gap-2">
-                            <div className={`rounded-[11px] border px-2 py-1 ${marketLineStatus?.badge ?? "border-orange-300/12 bg-black/16"}`}>
-                              <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/42">Market Status</p>
-                              <p className={`mt-0.5 truncate text-[11px] font-black uppercase tracking-[0.06em] ${marketLineStatus?.tone ?? "text-white/78"}`}>
+                          <div className="mt-1 grid grid-cols-[1fr_68px] gap-2">
+                            <div className={`rounded-[10px] border px-2 py-0.5 ${marketLineStatus?.badge ?? "border-orange-300/12 bg-black/16"}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Last Change</p>
+                                <p className="text-[8px] font-black text-orange-200/68">{formatTeamImpactTimestamp(marketEvent.latestMoveAt ?? marketEvent.publishedAt)}</p>
+                              </div>
+                              <p className="mt-px text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Status</p>
+                              <p className={`truncate text-[10px] font-black uppercase tracking-[0.06em] ${marketLineStatus?.tone ?? "text-white/78"}`}>
                                 <span className="mr-1">{marketLineStatus?.arrow ?? "•"}</span>{marketLineStatus?.label ?? "LINE STATUS"}
                               </p>
-                              <p className="mt-px text-[9px] font-bold text-orange-200/70">{formatTeamImpactTimestamp(marketEvent.latestMoveAt ?? marketEvent.publishedAt)}</p>
                             </div>
-                            <div className="rounded-[11px] border border-white/10 bg-black/16 px-1.5 py-1 text-center">
+                            <div className="rounded-[10px] border border-white/10 bg-black/16 px-1 py-0.5 text-center">
                               <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Trend</p>
-                              <p className={`mt-0.5 truncate text-[10px] font-black leading-none ${marketTrend?.tone ?? "text-yellow-300"}`}>
+                              <p className={`mt-px truncate text-[9px] font-black leading-none ${marketTrend?.tone ?? "text-yellow-300"}`}>
                                 <span className="mr-0.5">{marketTrend?.arrow ?? "→"}</span>{marketTrend?.label ?? "Stable"}
                               </p>
-                              <p className="mt-0.5 truncate text-[8px] font-black text-white/50">{marketTrend?.detail ?? "Open"}</p>
+                              <p className="mt-px truncate text-[8px] font-black text-white/50">{marketTrend?.detail ?? "Open"}</p>
                             </div>
                           </div>
                         </>
