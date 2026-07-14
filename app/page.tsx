@@ -7366,7 +7366,6 @@ const atlasBankrollMock = {
     unit: "$10",
     sport: "MLB",
   },
-  packageActive: ["FREE", "EXCLUSIVE", "PREMIUM", "UNLIMITED"],
   weekly: {
     wins: "4",
     losses: "2",
@@ -7509,6 +7508,9 @@ function BankrollHeader() {
             ATLAS <span className="text-emerald-300">BANKROLL</span>
           </h2>
           <p className="mt-0.5 text-[12px] font-bold text-white/56">Financial Discipline Center</p>
+          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.14em] text-white/32">
+            Cycle Progress <span className="ml-1 text-emerald-300/70">{atlasBankrollMock.cycle.day}</span>
+          </p>
         </div>
         <div className="text-right">
           <span className="inline-flex rounded-full border border-emerald-300/40 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-300">
@@ -7546,20 +7548,9 @@ function BankrollSummaryCard() {
       </div>
       <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2">
         <p className="shrink-0 text-[8px] font-black uppercase tracking-[0.11em] text-white/34">Package Active</p>
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1">
-          {atlasBankrollMock.packageActive.map((pack) => (
-            <span
-              key={pack}
-              className={`rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.05em] ${
-                pack === atlasBankrollMock.plan.package.toUpperCase()
-                  ? "border-emerald-300/35 bg-emerald-300/12 text-emerald-200"
-                  : "border-white/10 bg-white/[0.035] text-white/36"
-              }`}
-            >
-              {pack}
-            </span>
-          ))}
-        </div>
+        <span className="rounded-full border border-emerald-300/35 bg-emerald-300/12 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200 shadow-[0_0_10px_rgba(52,211,153,0.10)]">
+          {atlasBankrollMock.plan.package}
+        </span>
       </div>
     </BankrollShell>
   );
@@ -7581,20 +7572,20 @@ function BankrollPlanCard() {
           <BankrollUiIcon name="target" className="h-8 w-8 text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.36)]" />
           <p className="text-[14px] font-black uppercase tracking-[0.12em] text-emerald-300">Today&apos;s Atlas Plan</p>
         </div>
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-[14px] border border-cyan-300/35 bg-cyan-300/[0.08] px-3.5 py-2.5 text-[10px] font-black uppercase tracking-[0.11em] text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.08)]">
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-[13px] border border-cyan-300/35 bg-cyan-300/[0.08] px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.11em] text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.08)]">
           View Today&apos;s Plan
           <BankrollUiIcon name="arrow" className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
+      <div className="mt-3 grid grid-cols-[1.55fr_1fr] gap-2">
         {rows.map(([label, value]) => (
           <div
             key={label}
             className={`rounded-[14px] border border-white/10 bg-black/20 px-3 py-2.5 ${label === "Today's Pick" ? "row-span-2 flex flex-col justify-center border-emerald-300/18 bg-emerald-300/[0.055]" : ""}`}
           >
             <p className="text-[10px] font-black uppercase tracking-[0.13em] text-white/42">{label}</p>
-            <p className={`mt-1 font-black ${label === "Today's Pick" ? "text-[25px] leading-tight text-white" : value === "Pending" ? "text-[17px] text-amber-200" : "text-[17px] text-white"}`}>{value}</p>
+            <p className={`mt-1 font-black ${label === "Today's Pick" ? "text-[27px] leading-tight tracking-tight text-white" : value === "Pending" ? "text-[17px] text-amber-200" : "text-[17px] text-white"}`}>{value}</p>
           </div>
         ))}
       </div>
@@ -7618,7 +7609,7 @@ function BankrollWeeklyCard() {
           <p className="text-[13px] font-black uppercase tracking-[0.12em] text-emerald-300">Weekly Progress</p>
         </div>
         <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/52">
-          Current Cycle · {atlasBankrollMock.weekly.cycle}
+          Cycle Progress · {atlasBankrollMock.weekly.cycle}
         </span>
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2 text-center">
@@ -7629,7 +7620,7 @@ function BankrollWeeklyCard() {
           </div>
         ))}
       </div>
-      <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/10">
+      <div className="mt-3 h-0.5 overflow-hidden rounded-full bg-white/10">
         <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-300 to-cyan-300 shadow-[0_0_14px_rgba(52,211,153,0.35)]" style={{ width: `${atlasBankrollMock.weekly.progress}%` }} />
       </div>
     </BankrollShell>
@@ -7658,7 +7649,7 @@ function BankrollPerformanceCard() {
 
 function BankrollInsightCard() {
   return (
-    <BankrollShell className="overflow-hidden p-3">
+    <BankrollShell className="overflow-hidden p-2.5">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_70%,rgba(59,130,246,0.16),transparent_34%),radial-gradient(circle_at_90%_80%,rgba(14,165,233,0.12),transparent_32%)]" />
       <div className="relative flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -7670,13 +7661,13 @@ function BankrollInsightCard() {
           <BankrollUiIcon name="arrow" className="h-3.5 w-3.5" />
         </button>
       </div>
-      <div className="relative mt-3 grid grid-cols-[50px_1fr] items-center gap-3">
-        <div className="grid h-[50px] w-[50px] place-items-center rounded-full border border-sky-300/25 bg-sky-300/10 text-sky-300 shadow-[0_0_18px_rgba(14,165,233,0.10)]">
-          <BankrollUiIcon name="education" className="h-7 w-7" />
+      <div className="relative mt-2 grid grid-cols-[44px_1fr] items-center gap-2.5">
+        <div className="grid h-11 w-11 place-items-center rounded-full border border-sky-300/25 bg-sky-300/10 text-sky-300 shadow-[0_0_18px_rgba(14,165,233,0.10)]">
+          <BankrollUiIcon name="education" className="h-6 w-6" />
         </div>
         <div>
           <h3 className="text-[15px] font-black text-white">{atlasBankrollMock.insight.title}</h3>
-          <p className="mt-1 text-[12px] leading-5 text-white/58">{atlasBankrollMock.insight.body}</p>
+          <p className="mt-0.5 text-[12px] leading-5 text-white/58">{atlasBankrollMock.insight.body}</p>
         </div>
       </div>
     </BankrollShell>
@@ -7694,8 +7685,8 @@ function BankrollPlanTrackingTabs() {
           My Tracking
         </button>
       </div>
-      <div className="mt-2 grid grid-cols-[34px_1fr] items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2.5">
-        <div className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+      <div className="mt-2 grid grid-cols-[30px_1fr] items-center gap-2.5 rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2">
+        <div className="grid h-7 w-7 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
           <BankrollUiIcon name="wallet" className="h-4 w-4" />
         </div>
         <div>
