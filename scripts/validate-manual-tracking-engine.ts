@@ -36,6 +36,8 @@ const activePick: ManualTrackedPick = {
   eventId: null,
   homeTeam: "Dodgers",
   awayTeam: "Padres",
+  eventDate: "2026-07-14",
+  eventTime: "7:10 PM",
   market: "Moneyline",
   selection: "Dodgers ML",
   odds: -120,

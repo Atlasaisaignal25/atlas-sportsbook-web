@@ -1,4 +1,11 @@
-import type { BankrollConfig, ManualTrackedPick, ManualTrackingCollection } from "./types";
+import { calculateExposure, roundCurrency } from "./engine";
+import type {
+  BankrollConfig,
+  ManualPickInput,
+  ManualPickValidationResult,
+  ManualTrackedPick,
+  ManualTrackingCollection,
+} from "./types";
 
 const COMPLETED_MANUAL_STATUSES = new Set(["won", "lost", "push", "cancelled"]);
 
@@ -55,6 +62,120 @@ export function saveManualTracking(config: BankrollConfig, manualTracking: Manua
   };
 }
 
+export function createManualPick(
+  collection: ManualTrackingCollection,
+  input: ManualPickInput,
+  currentBankroll: number,
+  now = new Date().toISOString(),
+): ManualTrackingCollection {
+  const validation = validateManualPick(input, currentBankroll);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  const value = validation.value;
+  const pick: ManualTrackedPick = {
+    id: `manual-pick-${now.replace(/\D/g, "")}`,
+    origin: "manual",
+    sport: value.sport,
+    league: value.league.trim(),
+    eventId: value.eventId ?? null,
+    homeTeam: value.homeTeam.trim(),
+    awayTeam: value.awayTeam.trim(),
+    eventDate: value.eventDate,
+    eventTime: value.eventTime,
+    market: value.market.trim(),
+    selection: value.selection.trim(),
+    odds: value.odds,
+    riskAmount: value.riskAmount,
+    riskPercentage: calculateRiskPercentage(value.riskAmount, currentBankroll),
+    status: "pending",
+    result: null,
+    profit: 0,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+    notes: value.notes.trim(),
+    source: "manual",
+    timeline: [
+      {
+        id: `manual-pick-created-${now.replace(/\D/g, "")}`,
+        type: "created",
+        message: "Manual Pick Created",
+        createdAt: now,
+      },
+    ],
+  };
+
+  return normalizeManualTracking({
+    ...collection,
+    updatedAt: now,
+    picks: [...collection.picks, pick],
+  }, now);
+}
+
+export function updateManualPick(
+  collection: ManualTrackingCollection,
+  pickId: string,
+  updates: Partial<ManualTrackedPick>,
+  now = new Date().toISOString(),
+) {
+  return normalizeManualTracking({
+    ...collection,
+    updatedAt: now,
+    picks: collection.picks.map((pick) =>
+      pick.id === pickId
+        ? normalizeManualPick({ ...pick, ...updates, id: pick.id, origin: "manual", source: "manual", updatedAt: now })
+        : pick,
+    ),
+  }, now);
+}
+
+export function deleteManualPick(collection: ManualTrackingCollection, pickId: string, now = new Date().toISOString()) {
+  return normalizeManualTracking({
+    ...collection,
+    updatedAt: now,
+    picks: collection.picks.filter((pick) => pick.id !== pickId),
+  }, now);
+}
+
+export function validateManualPick(input: ManualPickInput, currentBankroll: number): ManualPickValidationResult {
+  if (!input.sport) return { valid: false, error: "Select a sport." };
+  if (!input.market.trim()) return { valid: false, error: "Enter a market." };
+  if (!input.selection.trim()) return { valid: false, error: "Enter a selection." };
+  if (input.notes.length > 500) return { valid: false, error: "Notes must be 500 characters or fewer." };
+
+  const odds = parseOdds(input.odds);
+  if (odds === null) return { valid: false, error: "Enter valid odds." };
+
+  const riskAmount = parseCurrencyInput(input.riskAmount);
+  if (riskAmount === null || riskAmount <= 0) return { valid: false, error: "Enter a valid risk amount." };
+  if (currentBankroll < 0) return { valid: false, error: "Current bankroll is invalid." };
+  if (riskAmount > currentBankroll) return { valid: false, error: "Risk amount cannot exceed current bankroll." };
+
+  return {
+    valid: true,
+    value: {
+      sport: input.sport,
+      league: input.league,
+      eventId: input.eventId ?? null,
+      homeTeam: input.homeTeam,
+      awayTeam: input.awayTeam,
+      eventDate: input.eventDate,
+      eventTime: input.eventTime,
+      market: input.market,
+      selection: input.selection,
+      odds,
+      riskAmount,
+      notes: input.notes,
+    },
+  };
+}
+
+export function calculateRiskPercentage(riskAmount: number, currentBankroll: number) {
+  return calculateExposure(riskAmount, currentBankroll, "atlas_recommended").value;
+}
+
 export function getActiveManualPicks(picks: ManualTrackedPick[]) {
   return picks.filter((pick) => !COMPLETED_MANUAL_STATUSES.has(pick.status));
 }
@@ -81,6 +202,27 @@ function normalizeManualPick(pick: ManualTrackedPick): ManualTrackedPick {
     ...pick,
     origin: "manual",
     source: "manual",
+    eventDate: pick.eventDate ?? "",
+    eventTime: pick.eventTime ?? "",
     timeline: Array.isArray(pick.timeline) ? pick.timeline : [],
   };
+}
+
+function parseCurrencyInput(input: string) {
+  const normalized = input.trim().replace(/^\$/, "").replaceAll(",", "");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  const value = Number(normalized);
+  if (!Number.isFinite(value)) return null;
+  return roundCurrency(value);
+}
+
+function parseOdds(input: string) {
+  const normalized = input.trim();
+  if (!normalized) return null;
+  if (/^[+-]?\d+(\.\d+)?$/.test(normalized)) {
+    const value = Number(normalized);
+    if (!Number.isFinite(value) || value === 0) return null;
+    return value;
+  }
+  return null;
 }

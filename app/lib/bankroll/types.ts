@@ -193,6 +193,8 @@ export type ManualTrackedPick = {
   eventId: string | null;
   homeTeam: string;
   awayTeam: string;
+  eventDate: string;
+  eventTime: string;
   market: string;
   selection: string;
   odds: number | null;
@@ -208,6 +210,25 @@ export type ManualTrackedPick = {
   source: "manual";
   timeline: ManualPickTimelineEvent[];
 };
+
+export type ManualPickInput = {
+  sport: AtlasPlanSport | null;
+  league: string;
+  eventId?: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  eventDate: string;
+  eventTime: string;
+  market: string;
+  selection: string;
+  odds: string;
+  riskAmount: string;
+  notes: string;
+};
+
+export type ManualPickValidationResult =
+  | { valid: true; value: Omit<ManualPickInput, "odds" | "riskAmount"> & { odds: number; riskAmount: number } }
+  | { valid: false; error: string };
 
 export type ManualTrackingStats = {
   totalPicks: number;

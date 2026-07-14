@@ -32,6 +32,7 @@
     "validate:weekly-summary-engine": "npx --yes tsx scripts/validate-weekly-summary-engine.ts",
     "validate:monthly-summary-engine": "npx --yes tsx scripts/validate-monthly-summary-engine.ts",
     "validate:manual-tracking-engine": "npx --yes tsx scripts/validate-manual-tracking-engine.ts",
+    "validate:manual-pick-engine": "npx --yes tsx scripts/validate-manual-pick-engine.ts",
     "validate:mlb-projection-research": "npx --yes tsx scripts/validate-mlb-projection-research.ts",
     "validate:mlb-decision-research": "npx --yes tsx scripts/validate-mlb-decision-research.ts"
   },
