@@ -2,11 +2,40 @@ export type BankrollProfile = "atlas_recommended" | "higher_exposure";
 
 export type BankrollPlanStatus = "active" | "not_configured";
 
+export type AtlasPlanStatus = "pending" | "confirmed" | "started" | "won" | "lost" | "push" | "cancelled";
+
+export type AtlasPlanSource = "signals" | "top3" | "top5" | "topsignal" | "manual";
+
+export type AtlasPlanPackage = "free" | "exclusive" | "premium" | "unlimited";
+
+export type AtlasPlanResult = "won" | "lost" | "push" | "cancelled" | null;
+
+export type AtlasPlan = {
+  id: string;
+  sport: string;
+  league: string;
+  selection: string;
+  market: string;
+  odds: number;
+  status: AtlasPlanStatus;
+  package: AtlasPlanPackage;
+  recommendedUnit: number;
+  riskAmount: number;
+  createdAt: string;
+  updatedAt: string;
+  source: AtlasPlanSource;
+  rank: number;
+  locked: boolean;
+  started: boolean;
+  result: AtlasPlanResult;
+};
+
 export type BankrollConfig = {
   initialBankroll: number;
   currentBankroll: number;
   recommendedUnit: number;
   profile: BankrollProfile;
+  atlasPlan?: AtlasPlan;
   createdAt: string;
   updatedAt: string;
 };

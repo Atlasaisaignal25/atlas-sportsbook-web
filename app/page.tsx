@@ -39,11 +39,16 @@ import {
   createBankrollConfig,
   formatPercentage,
   formatCurrency,
+  formatPlanPackage,
+  formatPlanStatus,
+  getPlanStatusTone,
   loadBankrollConfig,
+  normalizeBankrollConfig,
   saveBankrollConfig,
   updateBankrollConfig,
   validateBankroll,
   type BankrollConfig,
+  type AtlasPlan,
   type FinancialMetrics,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
@@ -7728,12 +7733,13 @@ function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | nul
   );
 }
 
-function BankrollPlanCard({ config, metrics }: { config: BankrollConfig | null; metrics: FinancialMetrics | null }) {
+function BankrollPlanCard({ metrics, atlasPlan }: { metrics: FinancialMetrics | null; atlasPlan: AtlasPlan | null }) {
+  const statusTone = atlasPlan ? getPlanStatusTone(atlasPlan.status) : "pending";
   const rows = [
-    ["Package", atlasBankrollMock.plan.package],
-    ["Status", atlasBankrollMock.plan.status],
-    ["Sport", atlasBankrollMock.plan.sport],
-    ["Unit", metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
+    ["Package", atlasPlan ? formatPlanPackage(atlasPlan.package) : atlasBankrollMock.plan.package],
+    ["Status", atlasPlan ? formatPlanStatus(atlasPlan.status) : atlasBankrollMock.plan.status],
+    ["Sport", atlasPlan?.sport ?? atlasBankrollMock.plan.sport],
+    ["Risk", atlasPlan ? formatCurrency(atlasPlan.riskAmount) : metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
   ];
 
   return (
@@ -7752,13 +7758,29 @@ function BankrollPlanCard({ config, metrics }: { config: BankrollConfig | null; 
       <div className="mt-2 grid grid-cols-[1.2fr_1fr] items-end gap-2.5">
         <div className="min-w-0">
           <p className="text-[8.5px] font-black uppercase tracking-[0.11em] text-white/42">Today&apos;s Pick</p>
-          <p className="mt-0.5 text-[30px] font-black leading-none tracking-tight text-white">{atlasBankrollMock.plan.pick}</p>
+          <p className="mt-0.5 text-[30px] font-black leading-none tracking-tight text-white">{atlasPlan?.selection ?? atlasBankrollMock.plan.pick}</p>
         </div>
         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
           {rows.map(([label, value]) => (
             <div key={label} className="min-w-0">
               <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-white/38">{label}</p>
-              <p className={`truncate text-[14px] font-black ${value === "Pending" ? "text-amber-200" : "text-white"}`}>{value}</p>
+              <p
+                className={`truncate text-[14px] font-black ${
+                  label === "Status"
+                    ? statusTone === "pending"
+                      ? "text-amber-200"
+                      : statusTone === "positive"
+                        ? "text-emerald-300"
+                        : statusTone === "active"
+                          ? "text-sky-300"
+                          : statusTone === "negative"
+                            ? "text-red-300"
+                            : "text-white/60"
+                    : "text-white"
+                }`}
+              >
+                {value}
+              </p>
             </div>
           ))}
         </div>
@@ -8086,6 +8108,7 @@ function AtlasBankrollScreen() {
   const [resetOpen, setResetOpen] = useState(false);
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
+  const atlasPlan = config?.atlasPlan ?? null;
 
   useEffect(() => {
     const storedConfig = loadBankrollConfig();
@@ -8095,8 +8118,9 @@ function AtlasBankrollScreen() {
   }, []);
 
   function handleSaveConfig(nextConfig: BankrollConfig) {
-    saveBankrollConfig(nextConfig);
-    setConfig(nextConfig);
+    const normalizedConfig = normalizeBankrollConfig(nextConfig);
+    saveBankrollConfig(normalizedConfig);
+    setConfig(normalizedConfig);
     setSetupOpen(false);
   }
 
@@ -8110,7 +8134,7 @@ function AtlasBankrollScreen() {
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
-      <BankrollPlanCard config={config} metrics={metrics} />
+      <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} />
       <BankrollSummaryCard config={config} metrics={metrics} />
       <BankrollWeeklyCard />
       <BankrollPerformanceCard metrics={metrics} />
