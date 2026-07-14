@@ -1,16 +1,5 @@
-import {
-  ATLAS_RECOMMENDED_PERCENTAGE,
-  HIGHER_EXPOSURE_PERCENTAGE,
-} from "./constants";
+import { calculateRecommendedUnit, getBankrollProfilePercentage, roundCurrency } from "./engine";
 import type { BankrollConfig, BankrollProfile, BankrollValidationResult } from "./types";
-
-export function getBankrollProfilePercentage(profile: BankrollProfile) {
-  return profile === "higher_exposure" ? HIGHER_EXPOSURE_PERCENTAGE : ATLAS_RECOMMENDED_PERCENTAGE;
-}
-
-export function calculateRecommendedUnit(currentBankroll: number, profile: BankrollProfile) {
-  return roundCurrency(currentBankroll * getBankrollProfilePercentage(profile));
-}
 
 export function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -49,8 +38,8 @@ export function isValidStoredConfig(value: unknown): value is BankrollConfig {
   return (
     profileValid &&
     isPositiveCurrency(config.initialBankroll) &&
-    isPositiveCurrency(config.currentBankroll) &&
-    isPositiveCurrency(config.recommendedUnit) &&
+    isNonNegativeCurrency(config.currentBankroll) &&
+    isNonNegativeCurrency(config.recommendedUnit) &&
     typeof config.createdAt === "string" &&
     typeof config.updatedAt === "string"
   );
@@ -84,6 +73,8 @@ function isPositiveCurrency(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-function roundCurrency(value: number) {
-  return Math.round(value * 100) / 100;
+function isNonNegativeCurrency(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
+
+export { calculateRecommendedUnit, getBankrollProfilePercentage, roundCurrency };

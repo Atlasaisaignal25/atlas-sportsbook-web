@@ -34,14 +34,17 @@ import {
   ATLAS_RECOMMENDED_PERCENTAGE,
   HIGHER_EXPOSURE_PERCENTAGE,
   calculateRecommendedUnit,
+  buildFinancialPlan,
   clearBankrollConfig,
   createBankrollConfig,
+  formatPercentage,
   formatCurrency,
   loadBankrollConfig,
   saveBankrollConfig,
   updateBankrollConfig,
   validateBankroll,
   type BankrollConfig,
+  type FinancialMetrics,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
 import {
@@ -7444,16 +7447,16 @@ type BankrollSummaryItem = {
   tone: keyof typeof bankrollToneClasses;
 };
 
-function getBankrollSummary(config: BankrollConfig | null): BankrollSummaryItem[] {
-  if (!config) return atlasBankrollMock.summary;
+function getBankrollSummary(config: BankrollConfig | null, metrics: FinancialMetrics | null): BankrollSummaryItem[] {
+  if (!config || !metrics) return atlasBankrollMock.summary;
 
   return [
     {
       label: "Current Bankroll",
-      value: formatCurrency(config.currentBankroll),
-      detail: "$0",
+      value: formatCurrency(metrics.currentBankroll),
+      detail: formatCurrency(metrics.profit),
       icon: "wallet",
-      tone: "green",
+      tone: metrics.profit < 0 ? "red" : "green",
     },
     {
       label: "Initial Bankroll",
@@ -7464,7 +7467,7 @@ function getBankrollSummary(config: BankrollConfig | null): BankrollSummaryItem[
     },
     {
       label: "Recommended Unit",
-      value: formatCurrency(config.recommendedUnit),
+      value: formatCurrency(metrics.recommendedUnit),
       detail: "Plan unit",
       icon: "coins",
       tone: "violet",
@@ -7479,19 +7482,38 @@ function getBankrollSummary(config: BankrollConfig | null): BankrollSummaryItem[
   ];
 }
 
-function getBankrollPerformance(config: BankrollConfig | null) {
-  if (!config) return atlasBankrollMock.performance;
+function getBankrollPerformance(metrics: FinancialMetrics | null) {
+  if (!metrics) return atlasBankrollMock.performance.map((metric) => ({ ...metric, tone: "green" as const }));
 
   return atlasBankrollMock.performance.map((metric) => {
     if (metric.label === "Current ROI") {
-      return { ...metric, value: "0.00%", detail: "Starting" };
+      return {
+        ...metric,
+        value: formatPercentage(metrics.roi.value),
+        detail: metrics.roi.status === "zero" ? "Starting" : "Current",
+        tone: metrics.roi.status === "positive" ? "green" as const : metrics.roi.status === "negative" ? "red" as const : "neutral" as const,
+      };
     }
 
     if (metric.label === "Profit / Loss") {
-      return { ...metric, value: "$0", detail: "Net" };
+      return {
+        ...metric,
+        value: formatCurrency(metrics.profit),
+        detail: "Net",
+        tone: metrics.profit > 0 ? "green" as const : metrics.profit < 0 ? "red" as const : "neutral" as const,
+      };
     }
 
-    return metric;
+    if (metric.label === "Today's Exposure") {
+      return {
+        ...metric,
+        value: formatPercentage(metrics.exposure.value).replace("+", ""),
+        detail: metrics.exposure.status === "aligned" ? "Within plan" : "Review plan",
+        tone: metrics.exposure.status === "aligned" ? "green" as const : "neutral" as const,
+      };
+    }
+
+    return { ...metric, tone: "green" as const };
   });
 }
 
@@ -7601,6 +7623,7 @@ const bankrollToneClasses = {
   green: "text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.35)]",
   cyan: "text-sky-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.32)]",
   violet: "text-violet-300 drop-shadow-[0_0_12px_rgba(196,181,253,0.30)]",
+  red: "text-red-300 drop-shadow-[0_0_12px_rgba(252,165,165,0.30)]",
 };
 
 function BankrollShell({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -7655,8 +7678,8 @@ function BankrollHeader({
   );
 }
 
-function BankrollSummaryCard({ config }: { config: BankrollConfig | null }) {
-  const summary = getBankrollSummary(config);
+function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | null; metrics: FinancialMetrics | null }) {
+  const summary = getBankrollSummary(config, metrics);
 
   return (
     <BankrollShell className="overflow-hidden px-2.5 py-2">
@@ -7705,12 +7728,12 @@ function BankrollSummaryCard({ config }: { config: BankrollConfig | null }) {
   );
 }
 
-function BankrollPlanCard({ config }: { config: BankrollConfig | null }) {
+function BankrollPlanCard({ config, metrics }: { config: BankrollConfig | null; metrics: FinancialMetrics | null }) {
   const rows = [
     ["Package", atlasBankrollMock.plan.package],
     ["Status", atlasBankrollMock.plan.status],
     ["Sport", atlasBankrollMock.plan.sport],
-    ["Unit", config ? formatCurrency(config.recommendedUnit) : atlasBankrollMock.plan.unit],
+    ["Unit", metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
   ];
 
   return (
@@ -7778,8 +7801,8 @@ function BankrollWeeklyCard() {
   );
 }
 
-function BankrollPerformanceCard({ config }: { config: BankrollConfig | null }) {
-  const performance = getBankrollPerformance(config);
+function BankrollPerformanceCard({ metrics }: { metrics: FinancialMetrics | null }) {
+  const performance = getBankrollPerformance(metrics);
 
   return (
     <BankrollShell className="px-2.5 py-2">
@@ -7791,7 +7814,17 @@ function BankrollPerformanceCard({ config }: { config: BankrollConfig | null }) 
         {performance.map((metric) => (
           <div key={metric.label} className="min-w-0 px-1.5 first:pl-0 last:pr-0">
             <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-white/45">{metric.label.replace("Current ", "").replace("Today's ", "")}</p>
-            <p className="mt-1 text-[20px] font-black leading-tight text-emerald-300">{metric.value}</p>
+            <p
+              className={`mt-1 text-[20px] font-black leading-tight ${
+                metric.tone === "red"
+                  ? "text-red-300"
+                  : metric.tone === "neutral"
+                    ? "text-white/70"
+                    : "text-emerald-300"
+              }`}
+            >
+              {metric.value}
+            </p>
           </div>
         ))}
       </div>
@@ -8051,6 +8084,8 @@ function AtlasBankrollScreen() {
   const [hydrated, setHydrated] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
+  const metrics = financialPlan?.metrics ?? null;
 
   useEffect(() => {
     const storedConfig = loadBankrollConfig();
@@ -8075,10 +8110,10 @@ function AtlasBankrollScreen() {
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
-      <BankrollPlanCard config={config} />
-      <BankrollSummaryCard config={config} />
+      <BankrollPlanCard config={config} metrics={metrics} />
+      <BankrollSummaryCard config={config} metrics={metrics} />
       <BankrollWeeklyCard />
-      <BankrollPerformanceCard config={config} />
+      <BankrollPerformanceCard metrics={metrics} />
       <BankrollInsightCard />
       <BankrollPlanTrackingTabs />
       {hydrated ? (
