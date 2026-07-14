@@ -47,6 +47,7 @@ import {
   getReplacementSummary,
   getPlanStatusTone,
   buildManualAnalytics,
+  buildComparison,
   loadBankrollConfig,
   loadAvailableAtlasPicks,
   loadTrackingHistory,
@@ -65,6 +66,9 @@ import {
   type TrackingRange,
   type ManualPerformanceGroup,
   type ManualTrackingAnalytics,
+  type TrackingComparison,
+  type ComparisonGroup,
+  type ComparisonLeader,
   type ManualTrackingCollection,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
@@ -8003,9 +8007,11 @@ function BankrollInsightCard() {
 }
 
 function BankrollPlanTrackingTabs({
+  config,
   manualTracking,
   onCreateManualPick,
 }: {
+  config: BankrollConfig | null;
   manualTracking: ManualTrackingCollection | null;
   onCreateManualPick: () => void;
 }) {
@@ -8016,6 +8022,7 @@ function BankrollPlanTrackingTabs({
   const hasManualPicks = Boolean(manualTracking && manualTracking.picks.length > 0);
   const trackingHistory = useMemo(() => loadTrackingHistory(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
   const trackingAnalytics = useMemo(() => buildManualAnalytics(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
+  const trackingComparison = useMemo(() => (config ? buildComparison(config, trackingAnalytics, trackingRange, calendarDate) : null), [calendarDate, config, trackingAnalytics, trackingRange]);
   const selectedTrackingPick = trackingHistory.picks.find((item) => item.pick.id === selectedTrackingPickId) ?? null;
 
   useEffect(() => {
@@ -8063,6 +8070,7 @@ function BankrollPlanTrackingTabs({
               </div>
               <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={setTrackingRange} onCalendarDateChange={setCalendarDate} />
               {!selectedTrackingPick ? <ManualAnalyticsPanel analytics={trackingAnalytics} /> : null}
+              {!selectedTrackingPick && trackingComparison ? <TrackingComparisonPanel comparison={trackingComparison} /> : null}
               {selectedTrackingPick ? (
                 <TrackingPickTimelineView item={selectedTrackingPick} onBack={() => setSelectedTrackingPickId(null)} />
               ) : (
@@ -8266,6 +8274,94 @@ function AnalyticsGroupList({ title, groups, market = false }: { title: string; 
   );
 }
 
+function TrackingComparisonPanel({ comparison }: { comparison: TrackingComparison }) {
+  if (!comparison.hasComparisonData) {
+    return (
+      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
+        <p className="text-[11px] font-black text-white/65">Comparison will become available after both Atlas Plan and My Tracking have completed picks.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 grid gap-2">
+      <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Atlas vs My Tracking</p>
+          <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">{formatComparisonLeader(comparison.betterROI)}</p>
+        </div>
+        <div className="grid gap-1.5">
+          <ComparisonMetricRow label="Current ROI" atlasValue={formatSignedPercent(comparison.atlasROI)} manualValue={formatSignedPercent(comparison.manualROI)} leader={comparison.betterROI} />
+          <ComparisonMetricRow label="Win Rate" atlasValue={`${formatCompactNumber(comparison.atlasWinRate)}%`} manualValue={`${formatCompactNumber(comparison.manualWinRate)}%`} leader={comparison.betterWinRate} />
+          <ComparisonMetricRow label="Profit" atlasValue={formatTrackingProfit(comparison.atlasProfit)} manualValue={formatTrackingProfit(comparison.manualProfit)} leader={comparison.profitComparison.leader} />
+          <ComparisonMetricRow label="Discipline" atlasValue={formatDisciplineComparison(comparison.atlasDiscipline)} manualValue={formatDisciplineComparison(comparison.manualDiscipline)} leader={comparison.betterDiscipline} />
+        </div>
+      </div>
+
+      <ComparisonGroupList title="Comparison by Sport" groups={comparison.sports} />
+      <ComparisonGroupList title="Comparison by Market" groups={comparison.markets} market />
+
+      <div className="rounded-[13px] border border-cyan-300/15 bg-cyan-300/[0.045] p-2.5">
+        <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Insight</p>
+        <p className="mt-1 text-[10px] font-semibold leading-4 text-white/62">{comparison.insights[0]}</p>
+      </div>
+    </div>
+  );
+}
+
+function ComparisonMetricRow({
+  label,
+  atlasValue,
+  manualValue,
+  leader,
+}: {
+  label: string;
+  atlasValue: string;
+  manualValue: string;
+  leader: ComparisonLeader;
+}) {
+  return (
+    <div className="grid grid-cols-[0.9fr_0.75fr_0.85fr_0.46fr] items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
+      <p className="text-[9px] font-black uppercase tracking-[0.08em] text-white/40">{label}</p>
+      <div>
+        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">Atlas</p>
+        <p className="text-[10px] font-black text-white/72">{atlasValue}</p>
+      </div>
+      <div>
+        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">My Tracking</p>
+        <p className="text-[10px] font-black text-white/72">{manualValue}</p>
+      </div>
+      <p className="text-right text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300">{formatComparisonLeader(leader)}</p>
+    </div>
+  );
+}
+
+function ComparisonGroupList({ title, groups, market = false }: { title: string; groups: ComparisonGroup[]; market?: boolean }) {
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
+      <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{title}</p>
+      <div className="grid gap-1.5">
+        {groups.slice(0, 4).map((group) => (
+          <div key={group.key} className="grid grid-cols-[0.9fr_0.62fr_0.62fr_0.46fr] items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
+            <p className="truncate text-[10px] font-black text-white/72">{group.label}</p>
+            <div>
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">Atlas</p>
+              <p className="text-[9px] font-black text-white/65">{formatSignedPercent(group.atlasROI)}</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">{market ? "Tracking" : "Manual"}</p>
+              <p className="text-[9px] font-black text-white/65">{formatSignedPercent(group.manualROI)}</p>
+            </div>
+            <p className="text-right text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300">{formatComparisonLeader(group.leader)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen: () => void }) {
   const pick = item.pick;
   const tone = getTrackingStatusTone(pick.status);
@@ -8416,6 +8512,19 @@ function getDisciplineTextClass(score: number) {
   if (score >= 75) return "text-cyan-300";
   if (score >= 60) return "text-amber-200";
   return "text-red-300";
+}
+
+function formatComparisonLeader(leader: ComparisonLeader) {
+  if (leader === "atlas") return "Atlas +";
+  if (leader === "manual") return "You +";
+  if (leader === "even") return "Even";
+  return "";
+}
+
+function formatDisciplineComparison(score: number) {
+  if (score >= 90) return "Excellent";
+  if (score >= 75) return "Good";
+  return "Needs Improvement";
 }
 
 function ManualPickCreatorSheet({
@@ -8911,7 +9020,7 @@ function AtlasBankrollScreen() {
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
-      <BankrollPlanTrackingTabs manualTracking={manualTracking} onCreateManualPick={() => setManualPickOpen(true)} />
+      <BankrollPlanTrackingTabs config={config} manualTracking={manualTracking} onCreateManualPick={() => setManualPickOpen(true)} />
       <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
       <BankrollSummaryCard config={config} metrics={metrics} />
       <BankrollWeeklyCard />

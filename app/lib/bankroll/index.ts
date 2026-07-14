@@ -1,4 +1,5 @@
 export * from "./atlas-plan";
+export * from "./comparison-engine";
 export * from "./constants";
 export * from "./engine";
 export * from "./manual-analytics-engine";
