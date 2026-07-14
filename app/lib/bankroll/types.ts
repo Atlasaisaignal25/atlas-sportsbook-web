@@ -185,6 +185,7 @@ export type ManualPickTimelineEvent = {
   createdAt: string;
   status?: AtlasPlanStatus;
   description?: string;
+  metadata?: Record<string, string | number | boolean | null>;
 };
 
 export type ManualTrackedPick = {
@@ -201,11 +202,16 @@ export type ManualTrackedPick = {
   market: string;
   selection: string;
   odds: number | null;
+  trackedOdds: number | null;
   riskAmount: number;
   riskPercentage: number;
   status: AtlasPlanStatus;
   result: AtlasPlanResult;
   profit: number;
+  startTime: string;
+  locked: boolean;
+  trackingState: "active" | "legacy_unlinked" | "linked_pick_invalid";
+  resultSyncKey: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
@@ -225,12 +231,14 @@ export type AtlasTrackingPickOption = {
   awayTeam: string;
   eventDate: string;
   eventTime: string;
+  startTime: string;
   market: string;
   selection: string;
   odds: number;
   status: AtlasPlanStatus;
   source: AtlasPlanSource;
   rank: number;
+  completedAt?: string | null;
 };
 
 export type AtlasTrackedPickInput = {
