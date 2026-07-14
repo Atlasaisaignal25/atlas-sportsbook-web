@@ -12,7 +12,12 @@ export function loadBankrollConfig(): BankrollConfig | null {
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as unknown;
-    return isValidStoredConfig(parsed) ? normalizeBankrollConfig(parsed) : null;
+    if (!isValidStoredConfig(parsed)) return null;
+
+    const normalizedConfig = normalizeBankrollConfig(parsed);
+    window.localStorage.setItem(BANKROLL_CONFIG_STORAGE_KEY, JSON.stringify(normalizedConfig));
+
+    return normalizedConfig;
   } catch {
     return null;
   }

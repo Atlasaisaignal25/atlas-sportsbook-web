@@ -41,6 +41,7 @@ import {
   formatCurrency,
   formatPlanPackage,
   formatPlanStatus,
+  getReplacementSummary,
   getPlanStatusTone,
   loadBankrollConfig,
   normalizeBankrollConfig,
@@ -7847,20 +7848,39 @@ function BankrollPlanCollectionSheet({
                     Rank {plan.rank}
                   </span>
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                <div className="mt-2 grid grid-cols-4 gap-2 text-center">
                   <div>
                     <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Status</p>
                     <p className="mt-0.5 text-[12px] font-black text-amber-200">{formatPlanStatus(plan.status)}</p>
                   </div>
                   <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Current Rank</p>
+                    <p className="mt-0.5 text-[12px] font-black text-white">#{plan.rank}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Original Rank</p>
+                    <p className="mt-0.5 text-[12px] font-black text-white/70">#{plan.originalRank}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Replacements</p>
+                    <p className="mt-0.5 text-[12px] font-black text-violet-200">{plan.replacementHistory.length}</p>
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-center">
+                  <div className="rounded-[12px] border border-white/10 bg-black/18 px-2 py-1.5">
                     <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Unit</p>
                     <p className="mt-0.5 text-[12px] font-black text-violet-200">{formatCurrency(plan.recommendedUnit)}</p>
                   </div>
-                  <div>
+                  <div className="rounded-[12px] border border-white/10 bg-black/18 px-2 py-1.5">
                     <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Risk</p>
                     <p className="mt-0.5 text-[12px] font-black text-white">{formatCurrency(plan.riskAmount)}</p>
                   </div>
                 </div>
+                {getReplacementSummary(plan) ? (
+                  <p className="mt-2 rounded-[12px] border border-amber-300/15 bg-amber-300/[0.055] px-2.5 py-1.5 text-[10px] font-semibold leading-4 text-amber-100/80">
+                    {getReplacementSummary(plan)}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>

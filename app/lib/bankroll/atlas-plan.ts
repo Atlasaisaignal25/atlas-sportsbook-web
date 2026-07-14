@@ -6,6 +6,7 @@ const ATLAS_PLAN_MOCK_ID = "atlas-plan-mock-top5-v1";
 export function createAtlasPlan(metrics: FinancialMetrics, now = new Date().toISOString()): AtlasPlan {
   return {
     id: ATLAS_PLAN_MOCK_ID,
+    candidateId: ATLAS_PLAN_MOCK_ID,
     sport: "MLB",
     league: "MLB",
     selection: "Dodgers ML",
@@ -23,6 +24,9 @@ export function createAtlasPlan(metrics: FinancialMetrics, now = new Date().toIS
     locked: false,
     started: false,
     result: null,
+    originalRank: 1,
+    plannedExposure: metrics.exposure.value,
+    replacementHistory: [],
   };
 }
 
@@ -51,6 +55,7 @@ export function syncPlanWithFinancialEngine(plan: AtlasPlan | null | undefined, 
     {
       recommendedUnit: metrics.recommendedUnit,
       riskAmount: calculateRiskAmount(metrics),
+      plannedExposure: metrics.exposure.value,
       started,
       locked: started,
     },
@@ -69,6 +74,7 @@ export function isValidAtlasPlan(value: unknown): value is AtlasPlan {
 
   return (
     typeof plan.id === "string" &&
+    typeof plan.candidateId === "string" &&
     typeof plan.sport === "string" &&
     typeof plan.league === "string" &&
     typeof plan.selection === "string" &&
@@ -85,7 +91,10 @@ export function isValidAtlasPlan(value: unknown): value is AtlasPlan {
     typeof plan.rank === "number" &&
     typeof plan.locked === "boolean" &&
     typeof plan.started === "boolean" &&
-    (plan.result === null || plan.result === "won" || plan.result === "lost" || plan.result === "push" || plan.result === "cancelled")
+    (plan.result === null || plan.result === "won" || plan.result === "lost" || plan.result === "push" || plan.result === "cancelled") &&
+    typeof plan.originalRank === "number" &&
+    typeof plan.plannedExposure === "number" &&
+    Array.isArray(plan.replacementHistory)
   );
 }
 
@@ -93,12 +102,15 @@ export function getPlanStatusTone(status: AtlasPlanStatus) {
   if (status === "pending") return "pending";
   if (status === "confirmed" || status === "won") return "positive";
   if (status === "started") return "active";
-  if (status === "lost") return "negative";
+  if (status === "lost" || status === "removed" || status === "downgraded" || status === "no_eligible_replacement") return "negative";
   return "neutral";
 }
 
 export function formatPlanStatus(status: AtlasPlanStatus) {
-  return status.charAt(0).toUpperCase() + status.slice(1);
+  return status
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export function formatPlanPackage(planPackage: AtlasPlan["package"]) {
@@ -110,5 +122,16 @@ export function normalizeAtlasPlanFromConfig(config: BankrollConfig, metrics: Fi
 }
 
 function isAtlasPlanStatus(status: unknown): status is AtlasPlanStatus {
-  return status === "pending" || status === "confirmed" || status === "started" || status === "won" || status === "lost" || status === "push" || status === "cancelled";
+  return (
+    status === "pending" ||
+    status === "confirmed" ||
+    status === "started" ||
+    status === "won" ||
+    status === "lost" ||
+    status === "push" ||
+    status === "cancelled" ||
+    status === "downgraded" ||
+    status === "removed" ||
+    status === "no_eligible_replacement"
+  );
 }

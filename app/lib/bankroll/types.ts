@@ -2,7 +2,17 @@ export type BankrollProfile = "atlas_recommended" | "higher_exposure";
 
 export type BankrollPlanStatus = "active" | "not_configured";
 
-export type AtlasPlanStatus = "pending" | "confirmed" | "started" | "won" | "lost" | "push" | "cancelled";
+export type AtlasPlanStatus =
+  | "pending"
+  | "confirmed"
+  | "started"
+  | "won"
+  | "lost"
+  | "push"
+  | "cancelled"
+  | "downgraded"
+  | "removed"
+  | "no_eligible_replacement";
 
 export type AtlasPlanSource = "signals" | "top3" | "top5" | "topsignal" | "manual";
 
@@ -18,8 +28,37 @@ export type MembershipContext = {
   availableSports: AtlasPlanSport[];
 };
 
+export type ReplacementReason = "removed" | "downgraded" | "started_unavailable" | "candidate_invalid";
+
+export type ReplacementRecord = {
+  originalPickId: string;
+  replacementPickId: string;
+  originalRank: number;
+  replacementRank: number;
+  reason: ReplacementReason;
+  replacedAt: string;
+  sport: string;
+  source: AtlasPlanSource;
+  package: AtlasPlanPackage;
+};
+
+export type AtlasPlanCandidate = {
+  candidateId: string;
+  sport: AtlasPlanSport;
+  league: string;
+  selection: string;
+  market: string;
+  odds: number;
+  status: AtlasPlanStatus;
+  package: AtlasPlanPackage;
+  startTime: string;
+  source: AtlasPlanSource;
+  rank: number;
+};
+
 export type AtlasPlan = {
   id: string;
+  candidateId: string;
   sport: string;
   league: string;
   selection: string;
@@ -37,6 +76,9 @@ export type AtlasPlan = {
   locked: boolean;
   started: boolean;
   result: AtlasPlanResult;
+  originalRank: number;
+  plannedExposure: number;
+  replacementHistory: ReplacementRecord[];
 };
 
 export type AtlasPlanCollection = {
