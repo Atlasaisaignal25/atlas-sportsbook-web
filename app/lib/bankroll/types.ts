@@ -2,6 +2,8 @@ export type BankrollProfile = "atlas_recommended" | "higher_exposure";
 
 export type BankrollPlanStatus = "active" | "not_configured";
 
+export type BankrollCycleStatus = "open" | "closed";
+
 export type AtlasPlanStatus =
   | "pending"
   | "confirmed"
@@ -93,6 +95,54 @@ export type AtlasPlanCollection = {
   updatedAt: string;
 };
 
+export type BankrollCycle = {
+  id: string;
+  cycleNumber: number;
+  startDate: string;
+  endDate: string;
+  status: BankrollCycleStatus;
+  initialBankroll: number;
+  createdAt: string;
+  closedAt: string | null;
+};
+
+export type WeeklyStreaks = {
+  longestWinningStreak: number;
+  longestLosingStreak: number;
+  currentEndingStreak: number;
+  currentEndingType: "won" | "lost" | null;
+};
+
+export type WeeklySummary = {
+  id: string;
+  cycleNumber: number;
+  startDate: string;
+  endDate: string;
+  status: "closed";
+  initialBankroll: number;
+  finalBankroll: number;
+  profit: number;
+  roi: number;
+  recommendedUnitFinal: number;
+  profile: BankrollProfile;
+  package: AtlasPlanPackage;
+  currentExposure: number;
+  wins: number;
+  losses: number;
+  pushes: number;
+  cancelled: number;
+  completedPlans: number;
+  pendingPlans: number;
+  winRate: number;
+  planScore: number;
+  replacementCount: number;
+  averageUnit: number;
+  totalRisk: number;
+  totalProfit: number;
+  streaks: WeeklyStreaks;
+  createdAt: string;
+};
+
 export type BankrollConfig = {
   initialBankroll: number;
   currentBankroll: number;
@@ -101,6 +151,9 @@ export type BankrollConfig = {
   membership?: MembershipContext;
   atlasPlan?: AtlasPlan;
   atlasPlanCollection?: AtlasPlanCollection;
+  activeCycle?: BankrollCycle;
+  cycleHistory?: BankrollCycle[];
+  weeklySummaries?: WeeklySummary[];
   createdAt: string;
   updatedAt: string;
 };
