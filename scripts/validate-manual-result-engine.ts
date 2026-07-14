@@ -10,6 +10,7 @@ import {
   type BankrollConfig,
   type ManualPickInput,
 } from "../app/lib/bankroll";
+import { validationAtlasSources } from "./bankroll-validation-sources";
 
 const now = "2026-07-14T00:00:00.000Z";
 const settledAt = "2026-07-14T03:00:00.000Z";
@@ -29,7 +30,7 @@ const baseConfig: BankrollConfig = {
   updatedAt: now,
 };
 
-const atlasPicks = filterPicksByMembership(baseMembership, now);
+const atlasPicks = filterPicksByMembership(baseMembership, now, validationAtlasSources);
 const atlasPick = atlasPicks[0];
 
 function withStatus(pick: AtlasTrackingPickOption, status: AtlasTrackingPickOption["status"], completedAt: string | null = null): AtlasTrackingPickOption {

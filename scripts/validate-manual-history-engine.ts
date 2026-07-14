@@ -6,6 +6,7 @@ import {
   getTrackingDay,
   loadTrackingHistory,
 } from "../app/lib/bankroll";
+import { validationAtlasSources } from "./bankroll-validation-sources";
 
 const now = new Date("2026-07-14T12:00:00.000Z");
 const membership = {
@@ -13,7 +14,7 @@ const membership = {
   selectedSport: "MLB" as const,
   availableSports: ["MLB" as const],
 };
-const picks = filterPicksByMembership(membership, now.toISOString());
+const picks = filterPicksByMembership(membership, now.toISOString(), validationAtlasSources);
 
 const todayTracking = createTrackedPick(
   createManualTracking(now.toISOString(), 500),

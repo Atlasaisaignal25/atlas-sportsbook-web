@@ -280,7 +280,7 @@ function validateAndSyncLinkedPick(
           trackingState: "linked_pick_invalid",
           updatedAt: syncedAt,
         },
-        createManualTimelineEvent("linked_pick_invalid", pick.status, "Linked Atlas Pick Invalid", syncedAt, { linkedAtlasPickId: pick.linkedAtlasPickId }),
+        createManualTimelineEvent("linked_pick_invalid", pick.status, "Archived Atlas Pick", syncedAt, { linkedAtlasPickId: pick.linkedAtlasPickId }),
       ),
     };
   }

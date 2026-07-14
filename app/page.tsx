@@ -56,10 +56,17 @@ import {
   normalizeBankrollConfig,
   saveBankrollConfig,
   saveManualTracking,
+  syncPlans,
+  syncManualTrackingWithAtlas,
   updateBankrollConfig,
   validateBankroll,
   type AtlasTrackedPickInput,
+  type AtlasPackageSourcePick,
+  type AtlasPackageSources,
   type AtlasTrackingPickOption,
+  type AtlasPlanPackage,
+  type AtlasPlanSport,
+  type AtlasPlanStatus,
   type BankrollConfig,
   type AtlasPlan,
   type AtlasPlanCollection,
@@ -134,10 +141,14 @@ type SignalGame = {
 };
 
 type Top5Entry = {
+  gameId?: string | number | null;
   rank?: number;
   awayTeam?: string;
   homeTeam?: string;
   pick: string;
+  market?: string | null;
+  line?: number | string | null;
+  odds?: number | null;
   startTime?: string | null;
   status?: string;
   isTopSignal?: boolean;
@@ -420,6 +431,133 @@ function topSignalProductForSport(sport: CheckoutSport): CheckoutProduct {
 
 function hasAllSportsAccessPlan(plan: UserPlan) {
   return plan === "elite" || plan === "unlimited" || plan === "admin";
+}
+
+function buildBankrollAtlasSources(params: {
+  mlbSignals: SignalGame[];
+  nbaSignals: SignalGame[];
+  nhlSignals: SignalGame[];
+  soccerSignals: SignalGame[];
+  mlbTop5: Top5Entry[];
+  nbaTop5: Top5Entry[];
+  nhlTop5: Top5Entry[];
+  soccerTop5: Top5Entry[];
+}): AtlasPackageSources {
+  const signalSources = [
+    ...params.mlbSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "MLB", index)),
+    ...params.nbaSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "NBA", index)),
+    ...params.nhlSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "NHL", index)),
+    ...params.soccerSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "SOCCER", index)),
+  ].filter((pick): pick is AtlasPackageSourcePick => Boolean(pick));
+  const topFiveSources = [
+    ...params.mlbTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "MLB", index)),
+    ...params.nbaTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "NBA", index)),
+    ...params.nhlTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "NHL", index)),
+    ...params.soccerTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "SOCCER", index)),
+  ].filter((pick): pick is AtlasPackageSourcePick => Boolean(pick));
+
+  return {
+    signals: signalSources,
+    top3: topFiveSources.filter((pick) => (pick.rank ?? 999) <= 3),
+    top5: topFiveSources,
+  };
+}
+
+function getBankrollMembershipFromAccess(userAccess: UserAccess, selectedPackSport: CheckoutSport, sources: AtlasPackageSources): {
+  package: AtlasPlanPackage;
+  selectedSport: AtlasPlanSport | null;
+  availableSports: AtlasPlanSport[];
+} {
+  const planPackage = userAccess.plan === "exclusive" || userAccess.plan === "premium" ? userAccess.plan : userAccess.plan === "free" ? "free" : "unlimited";
+  const sourceSports = getAtlasSourceSports(planPackage === "free" ? sources.signals : planPackage === "exclusive" ? sources.top3 : sources.top5);
+  const userSports = userAccess.sports
+    .map((sport) => sportToAtlasPlanSport(sport))
+    .filter((sport): sport is AtlasPlanSport => Boolean(sport));
+  const selectedSport = planPackage === "premium"
+    ? userSports[0] ?? sportToAtlasPlanSport(selectedPackSport) ?? sourceSports[0] ?? "MLB"
+    : null;
+  const availableSports = planPackage === "premium"
+    ? selectedSport ? [selectedSport] : []
+    : sourceSports;
+
+  return {
+    package: planPackage,
+    selectedSport,
+    availableSports,
+  };
+}
+
+function signalGameToAtlasSourcePick(pick: SignalGame, sport: AtlasPlanSport, index: number): AtlasPackageSourcePick | null {
+  const odds = Number(pick.odds);
+  const market = String(pick.market ?? "").trim();
+  const startTime = normalizeAtlasSourceStartTime(pick.startTime);
+  if (!pick.pick || !market || !Number.isFinite(odds) || !startTime) return null;
+
+  return {
+    id: `signals-${sport.toLowerCase()}-${String(pick.gameId ?? index)}`,
+    sport,
+    league: sport,
+    eventId: pick.gameId ? String(pick.gameId) : null,
+    homeTeam: pick.homeTeam ?? "",
+    awayTeam: pick.awayTeam ?? "",
+    selection: pick.pick,
+    market,
+    odds,
+    status: normalizeAtlasSourceStatus(pick.status),
+    rank: index + 1,
+    startTime,
+  };
+}
+
+function topFiveEntryToAtlasSourcePick(pick: Top5Entry, sport: AtlasPlanSport, index: number): AtlasPackageSourcePick | null {
+  const odds = Number(pick.odds);
+  const market = String(pick.market ?? "").trim();
+  const startTime = normalizeAtlasSourceStartTime(pick.startTime);
+  if (!pick.pick || !market || !Number.isFinite(odds) || !startTime) return null;
+
+  return {
+    id: `top5-${sport.toLowerCase()}-${String(pick.gameId ?? pick.rank ?? index)}`,
+    sport,
+    league: sport,
+    eventId: pick.gameId ? String(pick.gameId) : null,
+    homeTeam: pick.homeTeam ?? "",
+    awayTeam: pick.awayTeam ?? "",
+    selection: pick.pick,
+    market,
+    odds,
+    status: normalizeAtlasSourceStatus(pick.status),
+    rank: pick.rank ?? index + 1,
+    startTime,
+  };
+}
+
+function normalizeAtlasSourceStatus(status: unknown): AtlasPlanStatus {
+  const normalized = String(status ?? "pending").toLowerCase().replace(/\s+/g, "_");
+  if (normalized === "confirmed" || normalized === "validated") return "confirmed";
+  if (normalized === "started" || normalized === "live" || normalized === "in_progress") return "started";
+  if (normalized === "won" || normalized === "win") return "won";
+  if (normalized === "lost" || normalized === "loss") return "lost";
+  if (normalized === "push") return "push";
+  if (normalized === "cancelled" || normalized === "canceled") return "cancelled";
+  if (normalized === "removed") return "removed";
+  if (normalized === "downgraded") return "downgraded";
+  if (normalized === "no_eligible_replacement") return "no_eligible_replacement";
+  return "pending";
+}
+
+function normalizeAtlasSourceStartTime(value: unknown) {
+  if (!value) return null;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function getAtlasSourceSports(picks: AtlasPackageSourcePick[]) {
+  return Array.from(new Set(picks.map((pick) => pick.sport))).sort((a, b) => a.localeCompare(b));
+}
+
+function sportToAtlasPlanSport(sport: string): AtlasPlanSport | null {
+  if (sport === "MLB" || sport === "NBA" || sport === "NFL" || sport === "NHL" || sport === "SOCCER") return sport;
+  return null;
 }
 
 function getTeamLogoKey(value: string) {
@@ -4298,6 +4436,24 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
 }>({
   top5: [],
 });
+const bankrollAtlasSources = useMemo(
+  () =>
+    buildBankrollAtlasSources({
+      mlbSignals: mlbSignalsData.games,
+      nbaSignals: nbaSignalsData.games,
+      nhlSignals: nhlSignalsData.games,
+      soccerSignals: soccerSignalsLiveData.games,
+      mlbTop5: mlbTop5Data.top5,
+      nbaTop5: nbaTop5Data.top5,
+      nhlTop5: nhlTop5Data.top5,
+      soccerTop5: soccerTop5LiveData.top5,
+    }),
+  [mlbSignalsData, mlbTop5Data, nbaSignalsData, nbaTop5Data, nhlSignalsData, nhlTop5Data, soccerSignalsLiveData, soccerTop5LiveData],
+);
+const bankrollMembership = useMemo(
+  () => getBankrollMembershipFromAccess(userAccess, selectedPackSport, bankrollAtlasSources),
+  [bankrollAtlasSources, selectedPackSport, userAccess],
+);
 
 function navigateAppState(
   updates: Partial<{
@@ -9223,7 +9379,17 @@ function BankrollResetSheet({
   );
 }
 
-function AtlasBankrollScreen() {
+function AtlasBankrollScreen({
+  atlasSources,
+  membership,
+}: {
+  atlasSources: AtlasPackageSources;
+  membership: {
+    package: AtlasPlanPackage;
+    selectedSport: AtlasPlanSport | null;
+    availableSports: AtlasPlanSport[];
+  };
+}) {
   const [config, setConfig] = useState<BankrollConfig | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
@@ -9232,10 +9398,13 @@ function AtlasBankrollScreen() {
   const [manualPickOpen, setManualPickOpen] = useState(false);
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
-  const planCollection = config?.atlasPlanCollection ?? null;
+  const planCollection = useMemo(
+    () => (config && metrics ? syncPlans(config.atlasPlanCollection, membership, metrics, new Date().toISOString(), atlasSources) : config?.atlasPlanCollection ?? null),
+    [atlasSources, config, membership, metrics],
+  );
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
   const manualTracking = config?.manualTracking ?? null;
-  const availableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks(config) : []), [config]);
+  const availableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks({ ...config, membership }, new Date().toISOString(), atlasSources) : []), [atlasSources, config, membership]);
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
 
   useEffect(() => {
@@ -9245,8 +9414,33 @@ function AtlasBankrollScreen() {
     setSetupOpen(!storedConfig);
   }, []);
 
+  useEffect(() => {
+    if (!config) return;
+    if (
+      config.membership?.package === membership.package &&
+      config.membership?.selectedSport === membership.selectedSport &&
+      JSON.stringify(config.membership?.availableSports ?? []) === JSON.stringify(membership.availableSports)
+    ) {
+      return;
+    }
+
+    const nextConfig = normalizeBankrollConfig({ ...config, membership });
+    saveBankrollConfig(nextConfig);
+    setConfig(nextConfig);
+  }, [config, membership]);
+
+  useEffect(() => {
+    if (!config || availableAtlasPicks.length === 0 || !config.manualTracking?.picks.length) return;
+
+    const nextConfig = syncManualTrackingWithAtlas(config, availableAtlasPicks, new Date().toISOString());
+    if (JSON.stringify(nextConfig.manualTracking) === JSON.stringify(config.manualTracking)) return;
+
+    saveBankrollConfig(nextConfig);
+    setConfig(nextConfig);
+  }, [availableAtlasPicks, config]);
+
   function handleSaveConfig(nextConfig: BankrollConfig) {
-    const normalizedConfig = normalizeBankrollConfig(nextConfig);
+    const normalizedConfig = normalizeBankrollConfig({ ...nextConfig, membership });
     saveBankrollConfig(normalizedConfig);
     setConfig(normalizedConfig);
     setSetupOpen(false);
@@ -9265,7 +9459,7 @@ function AtlasBankrollScreen() {
 
     const baseManualTracking = manualTracking ?? createManualTracking(new Date().toISOString(), manualCurrentBankroll);
     const nextManualTracking = createTrackedPick(baseManualTracking, atlasPick, input, manualCurrentBankroll);
-    const nextConfig = normalizeBankrollConfig(saveManualTracking(config, nextManualTracking));
+    const nextConfig = normalizeBankrollConfig(saveManualTracking({ ...config, membership }, nextManualTracking));
     saveBankrollConfig(nextConfig);
     setConfig(nextConfig);
     setManualPickOpen(false);
@@ -11678,7 +11872,7 @@ const subscriptionPlansBoard = (
             )}
           </div>
         ) : appSection === "bankroll" ? (
-          <AtlasBankrollScreen />
+          <AtlasBankrollScreen atlasSources={bankrollAtlasSources} membership={bankrollMembership} />
         ) : false ? (
           <div className="space-y-3">
             <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-5">

@@ -16,13 +16,37 @@ type PackagePlanCandidate = {
   id: string;
   sport: AtlasPlanSport;
   league: string;
+  eventId: string | null;
+  homeTeam: string;
+  awayTeam: string;
   selection: string;
   market: string;
   odds: number;
   status: AtlasPlanStatus;
   rank: number;
   source: AtlasPlanSource;
-  startsInMinutes: number;
+  startTime: string;
+};
+
+export type AtlasPackageSourcePick = {
+  id: string;
+  sport: AtlasPlanSport;
+  league?: string;
+  eventId?: string | null;
+  homeTeam?: string;
+  awayTeam?: string;
+  selection: string;
+  market: string;
+  odds: number;
+  status: AtlasPlanStatus;
+  rank?: number;
+  startTime: string;
+};
+
+export type AtlasPackageSources = {
+  signals: AtlasPackageSourcePick[];
+  top3: AtlasPackageSourcePick[];
+  top5: AtlasPackageSourcePick[];
 };
 
 export const DEFAULT_MEMBERSHIP_CONTEXT: MembershipContext = {
@@ -30,47 +54,6 @@ export const DEFAULT_MEMBERSHIP_CONTEXT: MembershipContext = {
   selectedSport: "MLB",
   availableSports: ["MLB"],
 };
-
-const ALL_SIGNAL_SPORTS: AtlasPlanSport[] = ["MLB", "NBA", "NFL", "NHL"];
-const ALL_PREMIUM_SPORTS: AtlasPlanSport[] = ["MLB", "NBA", "NFL", "NHL"];
-
-const signalsDetectedMock: PackagePlanCandidate[] = [
-  createCandidate("signals-mlb-1", "MLB", "Dodgers ML", "Moneyline", -135, "signals", 190),
-  createCandidate("signals-mlb-2", "MLB", "Yankees ML", "Moneyline", -120, "signals", 260, 2),
-  createCandidate("signals-mlb-3", "MLB", "Mets ML", "Moneyline", -112, "signals", 310, 3),
-  createCandidate("signals-nba-1", "NBA", "Celtics ML", "Moneyline", -130, "signals", 220),
-  createCandidate("signals-nba-2", "NBA", "Knicks ML", "Moneyline", -118, "signals", 260, 2),
-  createCandidate("signals-nba-3", "NBA", "Lakers ML", "Moneyline", -110, "signals", 320, 3),
-  createCandidate("signals-nfl-1", "NFL", "Chiefs ML", "Moneyline", -125, "signals", 310),
-  createCandidate("signals-nfl-2", "NFL", "Eagles ML", "Moneyline", -115, "signals", 360, 2),
-  createCandidate("signals-nfl-3", "NFL", "Bills ML", "Moneyline", -105, "signals", 410, 3),
-  createCandidate("signals-nhl-1", "NHL", "Rangers ML", "Moneyline", -118, "signals", 280),
-  createCandidate("signals-nhl-2", "NHL", "Bruins ML", "Moneyline", -112, "signals", 340, 2),
-  createCandidate("signals-nhl-3", "NHL", "Stars ML", "Moneyline", -108, "signals", 390, 3),
-];
-
-const premiumTopFiveMock: PackagePlanCandidate[] = [
-  createCandidate("premium-mlb-1", "MLB", "Dodgers ML", "Moneyline", -135, "top5", 180),
-  createCandidate("premium-mlb-2", "MLB", "Braves ML", "Moneyline", -122, "top5", 240, 2),
-  createCandidate("premium-mlb-3", "MLB", "Phillies ML", "Moneyline", -118, "top5", 300, 3),
-  createCandidate("premium-mlb-4", "MLB", "Padres ML", "Moneyline", -108, "top5", 360, 4),
-  createCandidate("premium-mlb-5", "MLB", "Orioles ML", "Moneyline", 102, "top5", 420, 5),
-  createCandidate("premium-nba-1", "NBA", "Celtics ML", "Moneyline", -140, "top5", 210),
-  createCandidate("premium-nba-2", "NBA", "Nuggets ML", "Moneyline", -130, "top5", 270, 2),
-  createCandidate("premium-nba-3", "NBA", "Knicks ML", "Moneyline", -120, "top5", 330, 3),
-  createCandidate("premium-nba-4", "NBA", "Lakers ML", "Moneyline", -112, "top5", 390, 4),
-  createCandidate("premium-nba-5", "NBA", "Suns ML", "Moneyline", 105, "top5", 450, 5),
-  createCandidate("premium-nfl-1", "NFL", "Chiefs ML", "Moneyline", -135, "top5", 300),
-  createCandidate("premium-nfl-2", "NFL", "Eagles ML", "Moneyline", -128, "top5", 360, 2),
-  createCandidate("premium-nfl-3", "NFL", "Bills ML", "Moneyline", -116, "top5", 420, 3),
-  createCandidate("premium-nfl-4", "NFL", "Ravens ML", "Moneyline", -110, "top5", 480, 4),
-  createCandidate("premium-nfl-5", "NFL", "Lions ML", "Moneyline", 100, "top5", 540, 5),
-  createCandidate("premium-nhl-1", "NHL", "Rangers ML", "Moneyline", -125, "top5", 270),
-  createCandidate("premium-nhl-2", "NHL", "Bruins ML", "Moneyline", -120, "top5", 330, 2),
-  createCandidate("premium-nhl-3", "NHL", "Stars ML", "Moneyline", -112, "top5", 390, 3),
-  createCandidate("premium-nhl-4", "NHL", "Avalanche ML", "Moneyline", -106, "top5", 450, 4),
-  createCandidate("premium-nhl-5", "NHL", "Panthers ML", "Moneyline", 104, "top5", 510, 5),
-];
 
 export function getDefaultMembershipContext(): MembershipContext {
   return { ...DEFAULT_MEMBERSHIP_CONTEXT, availableSports: [...DEFAULT_MEMBERSHIP_CONTEXT.availableSports] };
@@ -86,9 +69,14 @@ export function normalizeMembershipContext(value: unknown): MembershipContext {
   };
 }
 
-export function buildPlans(membership: MembershipContext, metrics: FinancialMetrics, now = new Date().toISOString()): AtlasPlanCollection {
+export function buildPlans(
+  membership: MembershipContext,
+  metrics: FinancialMetrics,
+  now = new Date().toISOString(),
+  sources?: AtlasPackageSources,
+): AtlasPlanCollection {
   const normalizedMembership = normalizeMembershipContext(membership);
-  const candidates = getTopCandidatesForMembership(normalizedMembership);
+  const candidates = getTopCandidatesForMembership(normalizedMembership, sources);
   const plans = candidates.map((candidate) => createPlanFromCandidate(candidate, normalizedMembership.package, metrics, now));
 
   return {
@@ -105,12 +93,13 @@ export function syncPlans(
   membership: MembershipContext,
   metrics: FinancialMetrics,
   now = new Date().toISOString(),
+  sources?: AtlasPackageSources,
 ): AtlasPlanCollection {
   const normalizedMembership = normalizeMembershipContext(membership);
-  const candidates = getPlanCandidatesForMembership(normalizedMembership, now);
+  const candidates = getPlanCandidatesForMembership(normalizedMembership, now, sources);
   const baseCollection = isValidAtlasPlanCollection(collection)
     ? collection
-    : buildPlans(normalizedMembership, metrics, now);
+    : buildPlans(normalizedMembership, metrics, now, sources);
 
   if (normalizedMembership.package === "free") {
     return {
@@ -122,7 +111,7 @@ export function syncPlans(
     };
   }
 
-  const expectedPlans = buildPlans(normalizedMembership, metrics, baseCollection.createdAt);
+  const expectedPlans = buildPlans(normalizedMembership, metrics, baseCollection.createdAt, sources);
   const existingById = new Map(baseCollection.plans.map((plan) => [plan.id, plan]));
   const plans = expectedPlans.plans.map((expectedPlan) => {
     const existingPlan = existingById.get(expectedPlan.id);
@@ -182,44 +171,32 @@ export function calculatePackageExposure(metrics: FinancialMetrics) {
   return metrics.exposure.value;
 }
 
-export function getPlanCandidatesForMembership(membership: MembershipContext, now = new Date().toISOString()): AtlasPlanCandidate[] {
+export function getPlanCandidatesForMembership(
+  membership: MembershipContext,
+  now = new Date().toISOString(),
+  sources?: AtlasPackageSources,
+): AtlasPlanCandidate[] {
   const normalizedMembership = normalizeMembershipContext(membership);
 
-  return getCandidatesForMembership(normalizedMembership).map((candidate) => ({
-    candidateId: candidate.id,
-    sport: candidate.sport,
-    league: candidate.league,
-    selection: candidate.selection,
-    market: candidate.market,
-    odds: candidate.odds,
-    status: candidate.status,
-    package: normalizedMembership.package,
-    startTime: new Date(new Date(now).getTime() + candidate.startsInMinutes * 60 * 1000).toISOString(),
-    source: candidate.source,
-    rank: candidate.rank,
-  }));
+  return getCandidatesForMembership(normalizedMembership, sources).map((candidate) => toAtlasPlanCandidate(candidate, normalizedMembership.package, now));
 }
 
-export function getTrackingCandidatesForMembership(membership: MembershipContext, now = new Date().toISOString()): AtlasPlanCandidate[] {
+export function getTrackingCandidatesForMembership(
+  membership: MembershipContext,
+  now = new Date().toISOString(),
+  sources?: AtlasPackageSources,
+): AtlasPlanCandidate[] {
   const normalizedMembership = normalizeMembershipContext(membership);
-  const candidates =
-    normalizedMembership.package === "free"
-      ? pickCandidatesBySports(signalsDetectedMock, normalizedMembership.availableSports.length > 0 ? normalizedMembership.availableSports : ALL_SIGNAL_SPORTS, 3)
-      : getCandidatesForMembership(normalizedMembership);
 
-  return candidates.map((candidate) => ({
-    candidateId: candidate.id,
-    sport: candidate.sport,
-    league: candidate.league,
-    selection: candidate.selection,
-    market: candidate.market,
-    odds: candidate.odds,
-    status: candidate.status,
-    package: normalizedMembership.package,
-    startTime: new Date(new Date(now).getTime() + candidate.startsInMinutes * 60 * 1000).toISOString(),
-    source: candidate.source,
-    rank: candidate.rank,
-  }));
+  return getCandidatesForMembership(normalizedMembership, sources, true).map((candidate) => toAtlasPlanCandidate(candidate, normalizedMembership.package, now));
+}
+
+export function normalizeAtlasPackageSources(sources?: AtlasPackageSources): { signals: PackagePlanCandidate[]; top3: PackagePlanCandidate[]; top5: PackagePlanCandidate[] } {
+  return {
+    signals: (sources?.signals ?? []).map((pick) => toCandidate(pick, "signals")).filter((candidate): candidate is PackagePlanCandidate => Boolean(candidate)),
+    top3: (sources?.top3 ?? []).map((pick) => toCandidate(pick, "top3")).filter((candidate): candidate is PackagePlanCandidate => Boolean(candidate)),
+    top5: (sources?.top5 ?? []).map((pick) => toCandidate(pick, "top5")).filter((candidate): candidate is PackagePlanCandidate => Boolean(candidate)),
+  };
 }
 
 export function isValidAtlasPlanCollection(value: unknown): value is AtlasPlanCollection {
@@ -237,22 +214,27 @@ export function isValidAtlasPlanCollection(value: unknown): value is AtlasPlanCo
   );
 }
 
-function getCandidatesForMembership(membership: MembershipContext) {
-  if (membership.package === "free") return [];
+function getCandidatesForMembership(membership: MembershipContext, sources?: AtlasPackageSources, includeFreeSignals = false) {
+  const liveSources = normalizeAtlasPackageSources(sources);
+
+  if (membership.package === "free") {
+    return includeFreeSignals ? pickCandidatesBySports(liveSources.signals, resolveSports(membership, liveSources.signals), Number.POSITIVE_INFINITY) : [];
+  }
 
   if (membership.package === "exclusive") {
-    return pickCandidatesBySports(signalsDetectedMock, membership.availableSports.length > 0 ? membership.availableSports : ALL_SIGNAL_SPORTS, 3);
+    return pickCandidatesBySports(liveSources.top3, resolveSports(membership, liveSources.top3), 3);
   }
 
   if (membership.package === "unlimited") {
-    return pickCandidatesBySports(premiumTopFiveMock, membership.availableSports.length > 0 ? membership.availableSports : ALL_PREMIUM_SPORTS, 5);
+    return pickCandidatesBySports(liveSources.top5, resolveSports(membership, liveSources.top5), 5);
   }
 
-  return pickCandidatesBySports(premiumTopFiveMock, membership.selectedSport ? [membership.selectedSport] : ["MLB"], 5);
+  return pickCandidatesBySports(liveSources.top5, membership.selectedSport ? [membership.selectedSport] : resolveSports(membership, liveSources.top5).slice(0, 1), 5);
 }
 
-function getTopCandidatesForMembership(membership: MembershipContext) {
-  return pickTopOnePerSport(getCandidatesForMembership(membership), membership.availableSports.length > 0 ? membership.availableSports : ALL_PREMIUM_SPORTS);
+function getTopCandidatesForMembership(membership: MembershipContext, sources?: AtlasPackageSources) {
+  const candidates = getCandidatesForMembership(membership, sources);
+  return pickTopOnePerSport(candidates, resolveSports(membership, candidates));
 }
 
 function pickCandidatesBySports(candidates: PackagePlanCandidate[], sports: AtlasPlanSport[], maxRank: number) {
@@ -267,6 +249,47 @@ function pickTopOnePerSport(candidates: PackagePlanCandidate[], sports: AtlasPla
       .filter((candidate) => candidate.sport === sport)
       .sort((a, b) => a.rank - b.rank)[0])
     .filter((candidate): candidate is PackagePlanCandidate => Boolean(candidate));
+}
+
+function resolveSports(membership: MembershipContext, candidates: PackagePlanCandidate[]) {
+  if (membership.availableSports.length > 0) return membership.availableSports;
+  return Array.from(new Set(candidates.map((candidate) => candidate.sport))).sort((a, b) => a.localeCompare(b));
+}
+
+function toCandidate(pick: AtlasPackageSourcePick, source: AtlasPlanSource): PackagePlanCandidate | null {
+  if (!pick.id || !pick.selection || !pick.market || !Number.isFinite(pick.odds)) return null;
+
+  return {
+    id: pick.id,
+    sport: pick.sport,
+    league: pick.league ?? pick.sport,
+    eventId: pick.eventId ?? pick.id,
+    homeTeam: pick.homeTeam ?? "",
+    awayTeam: pick.awayTeam ?? "",
+    selection: pick.selection,
+    market: pick.market,
+    odds: pick.odds,
+    status: pick.status,
+    rank: pick.rank ?? 1,
+    source,
+    startTime: pick.startTime,
+  };
+}
+
+function toAtlasPlanCandidate(candidate: PackagePlanCandidate, planPackage: AtlasPlanPackage, now: string): AtlasPlanCandidate {
+  return {
+    candidateId: candidate.id,
+    sport: candidate.sport,
+    league: candidate.league,
+    selection: candidate.selection,
+    market: candidate.market,
+    odds: candidate.odds,
+    status: candidate.status,
+    package: planPackage,
+    startTime: candidate.startTime || now,
+    source: candidate.source,
+    rank: candidate.rank,
+  };
 }
 
 function createPlanFromCandidate(
@@ -287,7 +310,7 @@ function createPlanFromCandidate(
     package: planPackage,
     recommendedUnit: metrics.recommendedUnit,
     riskAmount: calculateRiskAmount(metrics),
-    startTime: new Date(new Date(now).getTime() + candidate.startsInMinutes * 60 * 1000).toISOString(),
+    startTime: candidate.startTime || now,
     createdAt: now,
     updatedAt: now,
     source: candidate.source,
@@ -300,31 +323,6 @@ function createPlanFromCandidate(
     originalRank: candidate.rank,
     plannedExposure: metrics.exposure.value,
     replacementHistory: [],
-  };
-}
-
-function createCandidate(
-  id: string,
-  sport: AtlasPlanSport,
-  selection: string,
-  market: string,
-  odds: number,
-  source: AtlasPlanSource,
-  startsInMinutes: number,
-  rank = 1,
-  status: AtlasPlanStatus = "pending",
-): PackagePlanCandidate {
-  return {
-    id,
-    sport,
-    league: sport,
-    selection,
-    market,
-    odds,
-    status,
-    rank,
-    source,
-    startsInMinutes,
   };
 }
 

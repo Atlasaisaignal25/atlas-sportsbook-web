@@ -1,6 +1,7 @@
 import { BANKROLL_CONFIG_STORAGE_KEY } from "./constants";
 import { isValidStoredConfig } from "./utils";
 import type { BankrollConfig } from "./types";
+import { syncPlanWithFinancialEngine } from "./atlas-plan";
 import { calculateFinancialMetrics, calculateRecommendedUnit, calculateCurrentBankroll, roundCurrency } from "./engine";
 import { syncManualSummaries } from "./manual-summary-engine";
 import { normalizeManualTracking } from "./manual-tracking-engine";
@@ -59,10 +60,12 @@ export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig 
 
   const atlasPlanCollection = syncPlans(normalizedBase.atlasPlanCollection, membership, metrics);
 
+  const syncedLegacyPlan = normalizedBase.atlasPlan ? syncPlanWithFinancialEngine(normalizedBase.atlasPlan, metrics, normalizedBase.updatedAt) : undefined;
+
   return syncManualSummaries(normalizeMonthlyState(normalizeWeeklyState({
     ...normalizedBase,
     atlasPlanCollection,
-    atlasPlan: atlasPlanCollection.primaryPlan ?? undefined,
+    atlasPlan: atlasPlanCollection.primaryPlan ?? syncedLegacyPlan,
     manualTracking: normalizeManualTracking(normalizedBase.manualTracking, normalizedBase.updatedAt, currentBankroll),
   })));
 }

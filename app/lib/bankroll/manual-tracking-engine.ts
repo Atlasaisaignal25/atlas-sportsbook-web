@@ -1,5 +1,6 @@
 import { buildFinancialPlan, calculateExposure, calculateRecommendedUnit, roundCurrency } from "./engine";
 import { getTrackingCandidatesForMembership, normalizeMembershipContext } from "./package-engine";
+import type { AtlasPackageSources } from "./package-engine";
 import type {
   AtlasTrackedPickInput,
   AtlasTrackingPickOption,
@@ -80,12 +81,12 @@ export function saveManualTracking(config: BankrollConfig, manualTracking: Manua
   };
 }
 
-export function loadAvailableAtlasPicks(config: BankrollConfig, now = new Date().toISOString()): AtlasTrackingPickOption[] {
-  return filterPicksByMembership(normalizeMembershipContext(config.membership), now);
+export function loadAvailableAtlasPicks(config: BankrollConfig, now = new Date().toISOString(), sources?: AtlasPackageSources): AtlasTrackingPickOption[] {
+  return filterPicksByMembership(normalizeMembershipContext(config.membership), now, sources);
 }
 
-export function filterPicksByMembership(membership: MembershipContext, now = new Date().toISOString()): AtlasTrackingPickOption[] {
-  return getTrackingCandidatesForMembership(membership, now).map((candidate) => ({
+export function filterPicksByMembership(membership: MembershipContext, now = new Date().toISOString(), sources?: AtlasPackageSources): AtlasTrackingPickOption[] {
+  return getTrackingCandidatesForMembership(membership, now, sources).map((candidate) => ({
     id: candidate.candidateId,
     sport: candidate.sport,
     league: candidate.league,

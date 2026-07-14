@@ -13,13 +13,14 @@ import {
   type BankrollConfig,
   type ManualTrackingCollection,
 } from "../app/lib/bankroll";
+import { validationAtlasSources } from "./bankroll-validation-sources";
 
 const membership = {
   package: "unlimited" as const,
   selectedSport: null,
   availableSports: ["MLB" as const, "NBA" as const],
 };
-const picks = filterPicksByMembership(membership, "2026-07-01T12:00:00.000Z");
+const picks = filterPicksByMembership(membership, "2026-07-01T12:00:00.000Z", validationAtlasSources);
 const baseConfig: BankrollConfig = {
   initialBankroll: 500,
   currentBankroll: 500,

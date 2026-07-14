@@ -6,11 +6,13 @@ import {
   evaluatePlanReplacement,
   lockStartedPlans,
   normalizeBankrollConfig,
+  syncPlans,
   type AtlasPlan,
   type AtlasPlanCandidate,
   type BankrollConfig,
   type MembershipContext,
 } from "../app/lib/bankroll";
+import { validationAtlasSources } from "./bankroll-validation-sources";
 
 const now = "2026-07-14T12:00:00.000Z";
 const future = "2026-07-14T18:00:00.000Z";
@@ -211,7 +213,10 @@ const migrated = normalizeBankrollConfig({
     updatedAt: now,
   },
 });
-assert.equal(migrated.atlasPlanCollection?.plans[0].replacementHistory.length, 0);
-assert.equal(migrated.atlasPlanCollection?.plans[0].candidateId, "premium-mlb-1");
+assert.equal(migrated.atlasPlanCollection?.plans.length, 0);
+
+const liveMigrated = syncPlans(migrated.atlasPlanCollection, premiumMembership, metrics, now, validationAtlasSources);
+assert.equal(liveMigrated.plans[0].replacementHistory.length, 0);
+assert.equal(liveMigrated.plans[0].candidateId, "top5-mlb-1");
 
 console.log("Replacement engine validation OK");
