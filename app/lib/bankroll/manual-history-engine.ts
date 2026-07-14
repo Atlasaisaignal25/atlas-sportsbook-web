@@ -1,6 +1,6 @@
 import type { ManualPickTimelineEvent, ManualTrackedPick, ManualTrackingCollection } from "./types";
 
-export type TrackingRange = "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "calendar";
+export type TrackingRange = "today" | "yesterday" | "this_week" | "last_week" | "this_month" | "all_time" | "calendar";
 
 export type TrackingHistoryEvent = {
   id: string;
@@ -119,6 +119,10 @@ function filterPicksByRange(picks: TrackingHistoryPick[], range: TrackingRange, 
 
   if (range === "this_month") {
     return groupByMonth(picks, now);
+  }
+
+  if (range === "all_time") {
+    return picks;
   }
 
   return picks.filter((item) => getPickDateKey(item.pick) === selectedDate);

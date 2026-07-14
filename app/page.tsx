@@ -46,6 +46,7 @@ import {
   formatPlanStatus,
   getReplacementSummary,
   getPlanStatusTone,
+  buildManualAnalytics,
   loadBankrollConfig,
   loadAvailableAtlasPicks,
   loadTrackingHistory,
@@ -62,6 +63,8 @@ import {
   type FinancialMetrics,
   type TrackingHistoryPick,
   type TrackingRange,
+  type ManualPerformanceGroup,
+  type ManualTrackingAnalytics,
   type ManualTrackingCollection,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
@@ -8012,6 +8015,7 @@ function BankrollPlanTrackingTabs({
   const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(null);
   const hasManualPicks = Boolean(manualTracking && manualTracking.picks.length > 0);
   const trackingHistory = useMemo(() => loadTrackingHistory(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
+  const trackingAnalytics = useMemo(() => buildManualAnalytics(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
   const selectedTrackingPick = trackingHistory.picks.find((item) => item.pick.id === selectedTrackingPickId) ?? null;
 
   useEffect(() => {
@@ -8058,6 +8062,7 @@ function BankrollPlanTrackingTabs({
                 </button>
               </div>
               <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={setTrackingRange} onCalendarDateChange={setCalendarDate} />
+              {!selectedTrackingPick ? <ManualAnalyticsPanel analytics={trackingAnalytics} /> : null}
               {selectedTrackingPick ? (
                 <TrackingPickTimelineView item={selectedTrackingPick} onBack={() => setSelectedTrackingPickId(null)} />
               ) : (
@@ -8087,6 +8092,7 @@ const trackingRangeOptions: Array<{ label: string; value: TrackingRange }> = [
   { label: "This Week", value: "this_week" },
   { label: "Last Week", value: "last_week" },
   { label: "This Month", value: "this_month" },
+  { label: "All Time", value: "all_time" },
   { label: "Calendar", value: "calendar" },
 ];
 
@@ -8157,6 +8163,105 @@ function TrackingHistoryList({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ManualAnalyticsPanel({ analytics }: { analytics: ManualTrackingAnalytics }) {
+  if (!analytics.hasPicks) {
+    return (
+      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
+        <p className="text-[11px] font-black text-white/65">No tracking data yet.</p>
+        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">Track Atlas picks to begin building your personal performance history.</p>
+      </div>
+    );
+  }
+
+  if (!analytics.hasCompletedResults) {
+    return (
+      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
+        <p className="text-[11px] font-black text-white/65">Your analytics will appear after tracked picks receive results.</p>
+        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">Active tracked picks remain visible in History.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 grid gap-2">
+      <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
+        <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">My Tracking Performance</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          <AnalyticsMetric label="Current Bankroll" value={formatCurrency(analytics.currentBankroll)} />
+          <AnalyticsMetric label="Profit / Loss" value={formatTrackingProfit(analytics.profit)} valueClass={analytics.profit >= 0 ? "text-emerald-300" : "text-red-300"} />
+          <AnalyticsMetric label="ROI" value={formatSignedPercent(analytics.roi)} valueClass={analytics.roi >= 0 ? "text-emerald-300" : "text-red-300"} />
+          <AnalyticsMetric label="Win Rate" value={`${formatCompactNumber(analytics.winRate)}%`} />
+        </div>
+      </div>
+
+      <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
+        <div className="grid grid-cols-4 gap-1.5">
+          <AnalyticsMetric label="Current Streak" value={formatManualStreak(analytics.currentStreak, analytics.currentStreakType)} />
+          <AnalyticsMetric label="Completed Picks" value={String(analytics.completedPicks)} />
+          <AnalyticsMetric label="Avg Exposure" value={`${formatCompactNumber(analytics.averageRiskPercentage)}%`} />
+          <AnalyticsMetric label="Discipline" value={String(analytics.disciplineScore)} valueClass={getDisciplineTextClass(analytics.disciplineScore)} />
+        </div>
+        <p className="mt-1.5 text-[10px] font-black text-white/58">{analytics.disciplineLabel}</p>
+        <p className="mt-0.5 text-[9px] font-semibold text-white/35">
+          Within plan {analytics.withinPlanCount} · Above plan {analytics.abovePlanCount} · Highest exposure {formatCompactNumber(analytics.highestRiskPercentage)}%
+        </p>
+      </div>
+
+      <AnalyticsGroupList title="By Sport" groups={analytics.performanceBySport} />
+      <AnalyticsGroupList title="By Market" groups={analytics.performanceByMarket} market />
+    </div>
+  );
+}
+
+function AnalyticsMetric({
+  label,
+  value,
+  valueClass = "text-white",
+}: {
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="min-w-0 border-r border-white/10 pr-1 last:border-r-0">
+      <p className="min-h-[18px] text-[7px] font-black uppercase leading-[9px] tracking-[0.08em] text-white/35">{label}</p>
+      <p className={`mt-0.5 truncate text-[11px] font-black ${valueClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function AnalyticsGroupList({ title, groups, market = false }: { title: string; groups: ManualPerformanceGroup[]; market?: boolean }) {
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
+      <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{title}</p>
+      <div className="grid gap-1.5">
+        {groups.slice(0, 4).map((group) => (
+          <div key={group.key} className="grid grid-cols-[0.9fr_0.58fr_0.58fr_0.64fr] items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-black text-white/72">{group.label}</p>
+              <p className="text-[8px] font-bold text-white/35">{group.picks} picks</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">{market ? "W / L" : "Win Rate"}</p>
+              <p className="text-[9px] font-black text-white/65">{market ? `${group.wins}/${group.losses}` : `${formatCompactNumber(group.winRate)}%`}</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">{market ? "Win Rate" : "ROI"}</p>
+              <p className="text-[9px] font-black text-white/65">{market ? `${formatCompactNumber(group.winRate)}%` : formatSignedPercent(group.roi)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">P/L</p>
+              <p className={group.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300"}>{formatTrackingProfit(group.profit)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -8290,6 +8395,27 @@ function formatTrackingTime(value: string) {
 function formatTrackingProfit(value: number) {
   if (value === 0) return "$0";
   return `${value > 0 ? "+" : "-"}${formatCurrency(Math.abs(value))}`;
+}
+
+function formatSignedPercent(value: number) {
+  if (value === 0) return "0%";
+  return `${value > 0 ? "+" : ""}${formatCompactNumber(value)}%`;
+}
+
+function formatCompactNumber(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function formatManualStreak(value: number, type: "won" | "lost" | null) {
+  if (!type || value <= 0) return "0";
+  return `${value}${type === "won" ? "W" : "L"}`;
+}
+
+function getDisciplineTextClass(score: number) {
+  if (score >= 90) return "text-emerald-300";
+  if (score >= 75) return "text-cyan-300";
+  if (score >= 60) return "text-amber-200";
+  return "text-red-300";
 }
 
 function ManualPickCreatorSheet({
