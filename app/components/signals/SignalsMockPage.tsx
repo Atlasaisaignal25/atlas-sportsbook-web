@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 
-type MockNavSection = "challenges" | "scores" | "signals" | "alerts" | "more";
+type MockNavSection = "bankroll" | "scores" | "signals" | "alerts" | "more";
 
 function MockBottomNavIcon({ section }: { section: MockNavSection }) {
-  if (section === "challenges") {
+  if (section === "bankroll") {
     return (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path d="M8 5h8v4c0 4-1.8 7-4 7S8 13 8 9V5Z" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M8 7H5c0 3 1.3 5.1 4 5.8M16 7h3c0 3-1.3 5.1-4 5.8M10 20h4M12 16v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M4.5 8.5h15v9h-15z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M7 8.5V6.8c0-.9.7-1.6 1.6-1.6h6.8c.9 0 1.6.7 1.6 1.6v1.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8 12.2h5.2M8 15h3.4M17 13.6h.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
@@ -46,7 +47,7 @@ function MockBottomNavIcon({ section }: { section: MockNavSection }) {
 
 function MockBottomNav() {
   const items: Array<{ section: MockNavSection; label: string }> = [
-    { section: "challenges", label: "Challenges" },
+    { section: "bankroll", label: "Bankroll" },
     { section: "scores", label: "Scores" },
     { section: "signals", label: "Signals" },
     { section: "alerts", label: "Alerts" },

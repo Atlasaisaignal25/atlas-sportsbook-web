@@ -281,7 +281,7 @@ type PrecisionPublicResponse = {
   };
   pick: PrecisionPickPreview | null;
 };
-type AppSection = "signals" | "scores" | "challenges" | "news" | "alerts" | "more";
+type AppSection = "signals" | "scores" | "bankroll" | "news" | "alerts" | "more";
 type AtlasAlert = {
   id: string;
   tone: "cyan" | "yellow" | "green" | "red" | "white";
@@ -301,45 +301,6 @@ type SignalInsight = {
   edgeLabel?: string | null;
   riskNote?: string | null;
   modelFactors: string[];
-};
-
-type ChallengePick = {
-  signalId: string;
-  sport: SportTab;
-  gameId?: string | null;
-  awayTeam: string;
-  homeTeam: string;
-  pickLabel: string;
-  market?: string | null;
-  odds?: number | null;
-  startTime?: string | null;
-};
-
-type ChallengeRun = {
-  id: string;
-  challenge_type: "daily_streak" | "triple_play" | "mega_5";
-  status: string;
-  started_at: string;
-  ends_at: string;
-  reward_granted?: boolean;
-};
-
-type ChallengeAttempt = {
-  id: string;
-  run_id: string;
-  challenge_type: "daily_streak" | "triple_play" | "mega_5";
-  attempt_date: string;
-  status: string;
-  challenge_attempt_picks?: Array<{ pick_label: string; sport: SportTab }>;
-};
-
-type ChallengeSnapshot = {
-  authenticated: boolean;
-  guest?: boolean;
-  runs: ChallengeRun[];
-  attempts: ChallengeAttempt[];
-  rewards: any[];
-  availablePicks: ChallengePick[];
 };
 
 const emptyRecordStats = (): RecordStats => ({
@@ -832,6 +793,31 @@ function getMarket(game: OddsGame, marketKey: string) {
 function formatAmericanOdds(value?: number | null) {
   if (value === null || value === undefined) return "N/A";
   return value > 0 ? `+${value}` : `${value}`;
+}
+
+function parseBankrollAmount(value: string) {
+  const amount = Number(value.replace(/[^0-9.]/g, ""));
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function formatBankrollCurrency(value: number | null) {
+  if (value === null) return "--";
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: value >= 100 ? 0 : 2,
+  }).format(value);
+}
+
+function getRecommendedBankrollUnit(bankroll: number | null) {
+  if (bankroll === null) return null;
+  return Math.max(1, bankroll * 0.03);
+}
+
+function getHigherExposureBankrollUnit(bankroll: number | null) {
+  if (bankroll === null) return null;
+  return Math.max(1, bankroll * 0.06);
 }
 
 function getMoneyline(game: OddsGame, teamName: string) {
@@ -2408,55 +2394,6 @@ const subscriptionPackPlans: PackPlan[] = [
     cta: "Choose Unlimited",
   },
 ];
-
-const challengeCards = [
-  {
-    type: "daily_streak" as const,
-    name: "Daily Streak",
-    difficulty: "Starter",
-    requiredPicks: 1,
-    targetWins: 7,
-    prize: "Premium Pack 30 days for 1 sport",
-    description: "Select 1 Signal Detected pick daily and hit 7 straight days.",
-  },
-  {
-    type: "triple_play" as const,
-    name: "Triple Play",
-    difficulty: "Advanced",
-    requiredPicks: 3,
-    targetWins: 3,
-    prize: "Premium Pack 30 days for 1 sport",
-    description: "Build a 3-pick parlay from Signal Detected and win 3 attempts.",
-  },
-  {
-    type: "mega_5" as const,
-    name: "Mega 5",
-    difficulty: "Elite",
-    requiredPicks: 5,
-    targetWins: 2,
-    prize: "Premium Pack 30 days for 1 sport",
-    description: "Build a 5-pick parlay from Signal Detected and win 2 attempts.",
-  },
-];
-
-function getChallengeProgress(
-  challengeType: ChallengeRun["challenge_type"],
-  attempts: ChallengeAttempt[]
-) {
-  const rows = attempts
-    .filter((attempt) => attempt.challenge_type === challengeType)
-    .sort((a, b) => a.attempt_date.localeCompare(b.attempt_date))
-    .slice(0, 7);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const attempt = rows[index];
-    if (!attempt) return "-";
-    if (attempt.status === "won") return "✓";
-    if (attempt.status === "lost") return "×";
-    if (attempt.status === "push" || attempt.status === "void") return "•";
-    return "…";
-  });
-}
 
 const packToneStyles = {
   bronze: {
@@ -4289,20 +4226,7 @@ const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
 } | null>(null);
 const [followedSports, setFollowedSports] = useState<SportTab[]>([]);
 const [followedTeams, setFollowedTeams] = useState<string[]>([]);
-const [challengeSnapshot, setChallengeSnapshot] = useState<ChallengeSnapshot>({
-  authenticated: false,
-  guest: false,
-  runs: [],
-  attempts: [],
-  rewards: [],
-  availablePicks: [],
-});
-const [challengeLoading, setChallengeLoading] = useState(false);
-const [challengeError, setChallengeError] = useState<string | null>(null);
-const [selectedChallengePicks, setSelectedChallengePicks] = useState<
-  Record<string, string[]>
->({});
-const [challengeBusy, setChallengeBusy] = useState<string | null>(null);
+const [bankrollInput, setBankrollInput] = useState("");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
 const [liveLoading, setLiveLoading] = useState(false);
 const [subsScoreGames, setSubsScoreGames] = useState<LiveScore[]>([]);
@@ -4343,6 +4267,10 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
   top5: [],
 });
 
+const bankrollAmount = parseBankrollAmount(bankrollInput);
+const recommendedBankrollUnit = getRecommendedBankrollUnit(bankrollAmount);
+const higherExposureBankrollUnit = getHigherExposureBankrollUnit(bankrollAmount);
+
 function navigateAppState(
   updates: Partial<{
     section: AppSection;
@@ -4372,140 +4300,6 @@ function navigateAppState(
   if (updates.day) setActiveDay(updates.day);
 
   router.push(`/?${params.toString()}`, { scroll: false });
-}
-
-async function loadChallenges() {
-  setChallengeLoading(true);
-  setChallengeError(null);
-
-  try {
-    const res = await fetch("/api/challenges", {
-      cache: "no-store",
-      headers: getChallengeHeaders(),
-    });
-    const data = await res.json();
-
-    if (!res.ok || data.success === false) {
-      throw new Error(data.error ?? "Unable to load challenges.");
-    }
-
-    setChallengeSnapshot({
-      authenticated: Boolean(data.authenticated),
-      guest: Boolean(data.guest),
-      runs: Array.isArray(data.runs) ? data.runs : [],
-      attempts: Array.isArray(data.attempts) ? data.attempts : [],
-      rewards: Array.isArray(data.rewards) ? data.rewards : [],
-      availablePicks: Array.isArray(data.availablePicks) ? data.availablePicks : [],
-    });
-  } catch (error) {
-    setChallengeError(error instanceof Error ? error.message : "Unable to load challenges.");
-  } finally {
-    setChallengeLoading(false);
-  }
-}
-
-useEffect(() => {
-  if (appSection === "challenges") {
-    loadChallenges();
-  }
-}, [appSection, authSession.authenticated]);
-
-function getChallengeGuestId() {
-  if (typeof window === "undefined") return null;
-
-  const storageKey = "atlas_challenge_guest_id";
-  const existing = window.localStorage.getItem(storageKey);
-  if (existing) return existing;
-
-  const randomId =
-    typeof window.crypto?.randomUUID === "function"
-      ? window.crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const guestId = `guest_${randomId}`;
-  window.localStorage.setItem(storageKey, guestId);
-  return guestId;
-}
-
-function getChallengeHeaders(extra?: HeadersInit) {
-  const headers = new Headers(extra);
-  const guestId = getChallengeGuestId();
-  if (guestId) headers.set("x-atlas-guest-id", guestId);
-  return headers;
-}
-
-function toggleChallengePick(challengeType: ChallengeRun["challenge_type"], signalId: string) {
-  const config = challengeCards.find((challenge) => challenge.type === challengeType);
-  const maxPicks = config?.requiredPicks ?? 1;
-
-  setSelectedChallengePicks((current) => {
-    const selected = current[challengeType] ?? [];
-
-    if (selected.includes(signalId)) {
-      return {
-        ...current,
-        [challengeType]: selected.filter((item) => item !== signalId),
-      };
-    }
-
-    if (selected.length >= maxPicks) return current;
-
-    return {
-      ...current,
-      [challengeType]: [...selected, signalId],
-    };
-  });
-}
-
-async function handleStartChallenge(challengeType: ChallengeRun["challenge_type"]) {
-  setChallengeBusy(challengeType);
-  setChallengeError(null);
-
-  try {
-    const res = await fetch("/api/challenges/start", {
-      method: "POST",
-      headers: getChallengeHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ challengeType }),
-    });
-    const data = await res.json();
-
-    if (!res.ok || data.success === false) {
-      throw new Error(data.error ?? "Unable to start challenge.");
-    }
-
-    await loadChallenges();
-  } catch (error) {
-    setChallengeError(error instanceof Error ? error.message : "Unable to start challenge.");
-  } finally {
-    setChallengeBusy(null);
-  }
-}
-
-async function handleSubmitChallengeAttempt(challengeType: ChallengeRun["challenge_type"]) {
-  const signalIds = selectedChallengePicks[challengeType] ?? [];
-  setChallengeBusy(challengeType);
-  setChallengeError(null);
-
-  try {
-    const res = await fetch("/api/challenges/attempt", {
-      method: "POST",
-      headers: getChallengeHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ challengeType, signalIds }),
-    });
-    const data = await res.json();
-
-    if (!res.ok || data.success === false) {
-      throw new Error(data.error ?? "Unable to submit challenge attempt.");
-    }
-
-    setSelectedChallengePicks((current) => ({ ...current, [challengeType]: [] }));
-    await loadChallenges();
-  } catch (error) {
-    setChallengeError(
-      error instanceof Error ? error.message : "Unable to submit challenge attempt."
-    );
-  } finally {
-    setChallengeBusy(null);
-  }
 }
 
 useEffect(() => {
@@ -5167,7 +4961,7 @@ useEffect(() => {
   if (
     sectionFromUrl === "signals" ||
     sectionFromUrl === "scores" ||
-    sectionFromUrl === "challenges" ||
+    sectionFromUrl === "bankroll" ||
     sectionFromUrl === "news" ||
     sectionFromUrl === "alerts" ||
     sectionFromUrl === "more"
@@ -6255,17 +6049,6 @@ const atlasAlerts = useMemo<AtlasAlert[]>(() => {
     });
   }
 
-  if (followedGames.length > 0) {
-    alerts.push({
-      id: `${selectedSport}-followed-games`,
-      tone: "white",
-      label: "Challenges",
-      title: "Challenge board has active games",
-      body: `${followedGames.length} games match your followed sports or teams.`,
-      action: () => setAppSection("challenges"),
-    });
-  }
-
   return alerts.slice(0, 12);
 }, [
   selectedSport,
@@ -6325,8 +6108,8 @@ const sectionTitle =
     ? "Signals"
     : appSection === "scores"
     ? "Scores"
-    : appSection === "challenges"
-    ? "Challenges"
+    : appSection === "bankroll"
+    ? "Atlas Bankroll"
     : appSection === "news"
     ? "Market Impact"
     : appSection === "alerts"
@@ -6338,8 +6121,8 @@ const sectionEyebrow =
     ? "Atlas Signals"
     : appSection === "scores"
     ? "Live Center"
-    : appSection === "challenges"
-    ? "Weekly Board"
+    : appSection === "bankroll"
+    ? "Bankroll"
     : appSection === "news"
     ? ""
     : appSection === "alerts"
@@ -9950,212 +9733,132 @@ const subscriptionPlansBoard = (
               </section>
             )}
           </div>
-        ) : appSection === "challenges" ? (
+        ) : appSection === "bankroll" ? (
           <div className="space-y-3">
-            <section className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-5">
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                Weekly Challenge Board
+            <section className="rounded-[24px] border border-emerald-300/20 bg-emerald-300/[0.07] p-5">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">
+                Atlas Bankroll
               </p>
               <h2 className="mt-2 text-[24px] font-black tracking-tight text-white">
-                Win rewards with Signal Detected picks
+                Manage the plan before the plays
               </h2>
               <p className="mt-2 text-[13px] leading-5 text-white/62">
-                Complete 7-day challenges using only public Signal Detected picks.
-                Top Signal and Top Play stay locked as premium daily products.
+                Atlas Bankroll turns one starting number into a simple discipline
+                framework. It is built for planning, consistency, and financial
+                awareness.
               </p>
 
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {["7 days", "No Top 5", "Rewards"].map((item) => (
+              <div className="mt-4 rounded-[18px] border border-white/10 bg-black/25 p-3">
+                <label
+                  htmlFor="atlas-bankroll-input"
+                  className="text-[10px] font-black uppercase tracking-[0.16em] text-white/45"
+                >
+                  Initial Bankroll
+                </label>
+                <div className="mt-2 flex items-center gap-2 rounded-[16px] border border-white/10 bg-white/[0.05] px-3 py-3">
+                  <span className="text-[18px] font-black text-emerald-300">$</span>
+                  <input
+                    id="atlas-bankroll-input"
+                    inputMode="decimal"
+                    value={bankrollInput}
+                    onChange={(event) => setBankrollInput(event.target.value)}
+                    placeholder="200"
+                    className="min-w-0 flex-1 bg-transparent text-[22px] font-black text-white outline-none placeholder:text-white/25"
+                    aria-label="Initial bankroll"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-white/[0.045] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                    Recommended Unit
+                  </p>
+                  <h3 className="mt-2 text-[30px] font-black tracking-tight text-white">
+                    {formatBankrollCurrency(recommendedBankrollUnit)}
+                  </h3>
+                </div>
+                <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200">
+                  Recommended
+                </span>
+              </div>
+              <p className="mt-3 text-[12px] leading-5 text-white/55">
+                The unit is generated automatically from the bankroll entered
+                above. Keep it steady to protect discipline from emotion.
+              </p>
+            </section>
+
+            <section className="grid grid-cols-1 gap-3">
+              <article className="rounded-[22px] border border-emerald-300/25 bg-emerald-300/[0.08] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                      Atlas Recommended
+                    </p>
+                    <h3 className="mt-1 text-[19px] font-black text-white">
+                      Default profile
+                    </h3>
+                  </div>
+                  <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-black">
+                    Selected
+                  </span>
+                </div>
+                <p className="mt-3 text-[12px] leading-5 text-white/58">
+                  Designed for a measured plan that favors patience, repeatable
+                  decisions, and bankroll protection.
+                </p>
+              </article>
+
+              <article className="rounded-[22px] border border-amber-300/20 bg-amber-300/[0.07] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">
+                      Higher Exposure
+                    </p>
+                    <h3 className="mt-1 text-[19px] font-black text-white">
+                      Informational profile
+                    </h3>
+                  </div>
+                  <span className="rounded-full border border-amber-200/25 bg-amber-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-amber-100">
+                    Higher Risk
+                  </span>
+                </div>
+                <p className="mt-3 text-[12px] leading-5 text-white/58">
+                  This profile increases exposure and is not the recommended
+                  path for discipline-first bankroll management.
+                </p>
+                <div className="mt-3 rounded-[16px] border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/42">
+                    Estimated Unit
+                  </p>
+                  <p className="mt-1 text-[18px] font-black text-amber-100">
+                    {formatBankrollCurrency(higherExposureBankrollUnit)}
+                  </p>
+                </div>
+              </article>
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/45">
+                Discipline Rules
+              </p>
+              <div className="mt-3 space-y-2">
+                {[
+                  "Set the bankroll before evaluating any board.",
+                  "Use one consistent unit until the plan is reviewed.",
+                  "Track decisions without chasing previous outcomes.",
+                ].map((item) => (
                   <div
                     key={item}
-                    className="rounded-[16px] border border-white/10 bg-black/20 px-2 py-2 text-center"
+                    className="flex items-start gap-2 rounded-[16px] border border-white/10 bg-black/20 px-3 py-2"
                   >
-                    <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/70">
-                      {item}
-                    </p>
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" />
+                    <p className="text-[12px] leading-5 text-white/60">{item}</p>
                   </div>
                 ))}
               </div>
-
-              {!authSession.authenticated ? (
-                <div className="mt-4 rounded-[16px] border border-cyan-400/20 bg-cyan-400/[0.08] px-4 py-3 text-center text-[12px] font-bold text-cyan-100/80">
-                  Playing as Guest. Your challenge progress stays on this device.
-                </div>
-              ) : null}
-            </section>
-
-            {challengeError ? (
-              <div className="rounded-[18px] border border-yellow-400/20 bg-yellow-500/10 p-4 text-[12px] leading-5 text-yellow-100/80">
-                {challengeError}
-              </div>
-            ) : null}
-
-            {challengeLoading ? (
-              <div className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4 text-sm text-white/55">
-                Loading challenges...
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 gap-3">
-              {challengeCards.map((challenge) => {
-                const run = challengeSnapshot.runs.find(
-                  (item) =>
-                    item.challenge_type === challenge.type && item.status === "active"
-                );
-                const selected = selectedChallengePicks[challenge.type] ?? [];
-                const progress = getChallengeProgress(
-                  challenge.type,
-                  challengeSnapshot.attempts
-                );
-                const wins = challengeSnapshot.attempts.filter(
-                  (attempt) =>
-                    attempt.challenge_type === challenge.type && attempt.status === "won"
-                ).length;
-                const canSubmit = selected.length === challenge.requiredPicks;
-
-                return (
-                  <article
-                    key={challenge.type}
-                    className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
-                          {challenge.difficulty}
-                        </p>
-                        <h3 className="mt-1 text-[20px] font-black text-white">
-                          {challenge.name}
-                        </h3>
-                        <p className="mt-1 text-[12px] leading-5 text-white/55">
-                          {challenge.description}
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-cyan-400/10 px-2.5 py-1 text-[10px] font-black text-cyan-300">
-                        {wins}/{challenge.targetWins}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-7 gap-1.5">
-                      {progress.map((item, index) => (
-                        <div
-                          key={`${challenge.type}-${index}`}
-                          className={`grid h-9 place-items-center rounded-[12px] border text-[13px] font-black ${
-                            item === "✓"
-                              ? "border-green-400/30 bg-green-500/15 text-green-300"
-                              : item === "×"
-                              ? "border-red-400/30 bg-red-500/15 text-red-300"
-                              : item === "…"
-                              ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"
-                              : "border-white/10 bg-black/20 text-white/35"
-                          }`}
-                        >
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 rounded-[18px] border border-white/10 bg-black/20 p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">
-                          Select from Signal Detected
-                        </p>
-                        <span className="text-[10px] font-bold text-cyan-300">
-                          {selected.length}/{challenge.requiredPicks}
-                        </span>
-                      </div>
-
-                      <div className="mt-3 max-h-[190px] space-y-2 overflow-y-auto pr-1">
-                        {challengeSnapshot.availablePicks.length === 0 ? (
-                          <p className="rounded-2xl bg-white/[0.04] px-3 py-3 text-[12px] leading-5 text-white/45">
-                            No Signal Detected picks are available for challenges right now.
-                          </p>
-                        ) : (
-                          challengeSnapshot.availablePicks.map((pick) => {
-                            const isSelected = selected.includes(pick.signalId);
-                            const disabled =
-                              !isSelected && selected.length >= challenge.requiredPicks;
-
-                            return (
-                              <button
-                                key={`${challenge.type}-${pick.signalId}`}
-                                type="button"
-                                disabled={disabled}
-                                onClick={() =>
-                                  toggleChallengePick(challenge.type, pick.signalId)
-                                }
-                                className={`block w-full rounded-[16px] border px-3 py-2 text-left transition-all disabled:cursor-not-allowed disabled:opacity-45 ${
-                                  isSelected
-                                    ? "border-cyan-300/45 bg-cyan-400/10"
-                                    : "border-white/10 bg-white/[0.035]"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="rounded-full bg-white/10 px-2 py-1 text-[9px] font-black text-white/55">
-                                    {pick.sport}
-                                  </span>
-                                  <span className="text-[10px] text-white/40">
-                                    {pick.startTime ? formatTime(pick.startTime) : "Time TBD"}
-                                  </span>
-                                </div>
-                                <p className="mt-2 truncate text-[13px] font-black text-white">
-                                  {pick.awayTeam} vs {pick.homeTeam}
-                                </p>
-                                <p className="mt-1 truncate text-[12px] font-semibold text-cyan-300">
-                                  {pick.pickLabel}
-                                </p>
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-[16px] border border-yellow-400/15 bg-yellow-500/[0.08] px-3 py-2">
-                      <p className="text-[11px] font-bold text-yellow-100/85">
-                        Prize: {challenge.prize}
-                      </p>
-                      <p className="mt-1 text-[10px] leading-4 text-white/45">
-                        Rewards never include Top Signal or Top Play.
-                      </p>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleStartChallenge(challenge.type)}
-                        disabled={challengeBusy === challenge.type}
-                        className="rounded-[15px] border border-cyan-400/25 bg-cyan-400/[0.08] px-3 py-3 text-[12px] font-black text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {run ? "Continue" : "Start Challenge"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSubmitChallengeAttempt(challenge.type)}
-                        disabled={
-                          challengeBusy === challenge.type ||
-                          !canSubmit
-                        }
-                        className="rounded-[15px] bg-cyan-400 px-3 py-3 text-[12px] font-black text-black disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Submit Picks
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
-            <section className="rounded-[24px] border border-purple-300/20 bg-purple-500/[0.06] p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-purple-200">
-                Atlas Champion
-              </p>
-              <h3 className="mt-2 text-[19px] font-black text-white">
-                Complete all 3 challenges in the same 7-day window
-              </h3>
-              <p className="mt-2 text-[12px] leading-5 text-white/58">
-                Reward: Elite Pack free for 30 days across MLB, NBA, NHL, SOCCER
-                and NFL. Top Signal and Top Play remain separate.
-              </p>
             </section>
           </div>
         ) : false ? (

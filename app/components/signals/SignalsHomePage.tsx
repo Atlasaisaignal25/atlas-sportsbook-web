@@ -58,7 +58,7 @@ export type SignalsHomePrecisionResponse = {
   } | null;
 };
 
-export type SignalsHomeNavSection = "challenges" | "news" | "signals" | "alerts" | "more";
+export type SignalsHomeNavSection = "bankroll" | "news" | "signals" | "alerts" | "more";
 export type SelectedSport = "all" | "baseball" | "basketball" | "football" | "ice_hockey" | "soccer";
 export type SignalsContentMode = "signals" | "live";
 

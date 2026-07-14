@@ -1,19 +1,15 @@
 "use client";
 
-export type AtlasBottomNavSection = "challenges" | "news" | "signals" | "alerts" | "more";
+export type AtlasBottomNavSection = "bankroll" | "news" | "signals" | "alerts" | "more";
 export type AtlasBottomNavActiveSection = AtlasBottomNavSection | "scores";
 
 function AtlasBottomNavIcon({ section }: { section: AtlasBottomNavSection }) {
-  if (section === "challenges") {
+  if (section === "bankroll") {
     return (
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-        <path
-          d="m6.5 12.2 3.2 3.2 7.8-8.1"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M4.5 8.5h15v9h-15z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M7 8.5V6.8c0-.9.7-1.6 1.6-1.6h6.8c.9 0 1.6.7 1.6 1.6v1.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8 12.2h5.2M8 15h3.4M17 13.6h.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
       </svg>
     );
   }
@@ -65,7 +61,7 @@ export function AtlasBottomNavigation({
   zIndexClass?: string;
 }) {
   const items: Array<{ section: AtlasBottomNavSection; label: string }> = [
-    { section: "challenges", label: "Challenges" },
+    { section: "bankroll", label: "Bankroll" },
     { section: "news", label: "Impact" },
     { section: "signals", label: "Home" },
     { section: "alerts", label: "My Atlas" },
