@@ -190,6 +190,7 @@ export type ManualPickTimelineEvent = {
 export type ManualTrackedPick = {
   id: string;
   origin: "manual";
+  linkedAtlasPickId: string | null;
   sport: AtlasPlanSport | null;
   league: string;
   eventId: string | null;
@@ -210,7 +211,32 @@ export type ManualTrackedPick = {
   completedAt: string | null;
   notes: string;
   source: "manual";
+  atlasSource?: AtlasPlanSource;
+  rank?: number;
   timeline: ManualPickTimelineEvent[];
+};
+
+export type AtlasTrackingPickOption = {
+  id: string;
+  sport: AtlasPlanSport;
+  league: string;
+  eventId: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  eventDate: string;
+  eventTime: string;
+  market: string;
+  selection: string;
+  odds: number;
+  status: AtlasPlanStatus;
+  source: AtlasPlanSource;
+  rank: number;
+};
+
+export type AtlasTrackedPickInput = {
+  atlasPickId: string;
+  riskAmount: string;
+  notes: string;
 };
 
 export type ManualPickInput = {

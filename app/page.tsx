@@ -36,9 +36,9 @@ import {
   calculateRecommendedUnit,
   buildFinancialPlan,
   clearBankrollConfig,
-  createManualPick,
   createBankrollConfig,
   createManualTracking,
+  createTrackedPick,
   calculateRiskPercentage,
   formatPercentage,
   formatCurrency,
@@ -47,17 +47,18 @@ import {
   getReplacementSummary,
   getPlanStatusTone,
   loadBankrollConfig,
+  loadAvailableAtlasPicks,
   normalizeBankrollConfig,
   saveBankrollConfig,
   saveManualTracking,
   updateBankrollConfig,
   validateBankroll,
-  validateManualPick,
+  type AtlasTrackedPickInput,
+  type AtlasTrackingPickOption,
   type BankrollConfig,
   type AtlasPlan,
   type AtlasPlanCollection,
   type FinancialMetrics,
-  type ManualPickInput,
   type ManualTrackingCollection,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
@@ -8037,13 +8038,11 @@ function BankrollPlanTrackingTabs({
             <div>
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[12px] font-black text-white/72">{manualTracking?.stats.activeCount ?? 0} active manual picks.</p>
-                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">
-                    Manual Bankroll {formatCurrency(manualTracking?.manualStats.currentBankroll ?? 0)} · ROI {formatPercentage(manualTracking?.manualStats.roi ?? 0)} · Profit {formatCurrency(manualTracking?.manualStats.profit ?? 0)}
-                  </p>
+                  <p className="text-[12px] font-black text-white/72">{manualTracking?.stats.activeCount ?? 0} active tracked picks.</p>
+                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">Atlas-generated picks tracked independently.</p>
                 </div>
                 <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/25 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200">
-                  Add Manual Pick
+                  Add Pick
                 </button>
               </div>
               <div className="mt-2 grid gap-1.5">
@@ -8068,11 +8067,11 @@ function BankrollPlanTrackingTabs({
           ) : (
             <div className="grid grid-cols-[1fr_auto] items-center gap-2">
               <div className="min-w-0">
-                <p className="text-[12px] font-black text-white/72">No manual picks yet.</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-white/45">Start tracking your own selections independently from Atlas Plans.</p>
+                <p className="text-[12px] font-black text-white/72">No tracked picks yet.</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-white/45">Track Atlas-generated picks independently from Atlas Plan.</p>
               </div>
               <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/25 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200">
-                Create First Pick
+                Add Pick
               </button>
             </div>
           )}
@@ -8082,72 +8081,76 @@ function BankrollPlanTrackingTabs({
   );
 }
 
-const manualPickSportOptions: Array<{ label: string; value: ManualPickInput["sport"] }> = [
-  { label: "MLB", value: "MLB" },
-  { label: "NBA", value: "NBA" },
-  { label: "NFL", value: "NFL" },
-  { label: "NHL", value: "NHL" },
-  { label: "Soccer", value: "SOCCER" },
-];
-
-const emptyManualPickInput: ManualPickInput = {
-  sport: null,
-  league: "",
-  eventId: null,
-  homeTeam: "",
-  awayTeam: "",
-  eventDate: "",
-  eventTime: "",
-  market: "",
-  selection: "",
-  odds: "",
-  riskAmount: "",
-  notes: "",
-};
-
 function ManualPickCreatorSheet({
   open,
   currentBankroll,
+  availablePicks,
   onClose,
   onSave,
 }: {
   open: boolean;
   currentBankroll: number;
+  availablePicks: AtlasTrackingPickOption[];
   onClose: () => void;
-  onSave: (input: ManualPickInput) => void;
+  onSave: (atlasPick: AtlasTrackingPickOption, input: AtlasTrackedPickInput) => void;
 }) {
   const [step, setStep] = useState(1);
-  const [input, setInput] = useState<ManualPickInput>(emptyManualPickInput);
+  const [selectedSport, setSelectedSport] = useState<AtlasTrackingPickOption["sport"] | null>(null);
+  const [selectedPickId, setSelectedPickId] = useState<string | null>(null);
+  const [riskAmount, setRiskAmount] = useState("");
+  const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const riskAmountValue = Number(input.riskAmount.trim().replace(/^\$/, "").replaceAll(",", ""));
+  const sports = Array.from(new Set(availablePicks.map((pick) => pick.sport)));
+  const sportPicks = selectedSport ? availablePicks.filter((pick) => pick.sport === selectedSport) : [];
+  const selectedPick = availablePicks.find((pick) => pick.id === selectedPickId) ?? null;
+  const riskAmountValue = Number(riskAmount.trim().replace(/^\$/, "").replaceAll(",", ""));
   const riskPercentage = Number.isFinite(riskAmountValue) ? calculateRiskPercentage(riskAmountValue, currentBankroll) : 0;
-  const validation = validateManualPick(input, currentBankroll);
 
   useEffect(() => {
     if (!open) return;
     setStep(1);
-    setInput(emptyManualPickInput);
+    setSelectedSport(null);
+    setSelectedPickId(null);
+    setRiskAmount("");
+    setNotes("");
     setError(null);
   }, [open]);
 
-  function updateInput(updates: Partial<ManualPickInput>) {
-    setInput((current) => ({ ...current, ...updates }));
-    setError(null);
-  }
-
   function handleNext() {
+    if (step === 1 && !selectedSport) {
+      setError("Select a sport.");
+      return;
+    }
+    if (step === 2 && !selectedPickId) {
+      setError("Select an Atlas pick.");
+      return;
+    }
+    if (step === 3) {
+      if (!riskAmountValue || riskAmountValue <= 0) {
+        setError("Enter a valid plan unit.");
+        return;
+      }
+      if (riskAmountValue > currentBankroll) {
+        setError("Plan unit cannot exceed manual bankroll.");
+        return;
+      }
+    }
+
     setError(null);
-    setStep((current) => Math.min(6, current + 1));
+    setStep((current) => Math.min(5, current + 1));
   }
 
   function handleSave() {
-    const result = validateManualPick(input, currentBankroll);
-    if (!result.valid) {
-      setError(result.error);
+    if (!selectedPick) {
+      setError("Select an Atlas pick.");
       return;
     }
 
-    onSave(input);
+    try {
+      onSave(selectedPick, { atlasPickId: selectedPick.id, riskAmount, notes });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to track pick.");
+    }
   }
 
   if (!open) return null;
@@ -8161,8 +8164,8 @@ function ManualPickCreatorSheet({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-300/80">My Tracking</p>
-                <h3 className="mt-1 text-[22px] font-black tracking-tight text-white">Create Manual Pick</h3>
-                <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">Track your own selections independently.</p>
+                <h3 className="mt-1 text-[22px] font-black tracking-tight text-white">Track Atlas Pick</h3>
+                <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">Choose an Atlas-generated pick to follow.</p>
               </div>
               <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white/55">
                 Cancel
@@ -8172,74 +8175,66 @@ function ManualPickCreatorSheet({
             <div className="mt-3 min-h-[360px]">
               {step === 1 ? (
                 <div className="space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/48">Sport</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/48">Available Sports</p>
                   <div className="grid grid-cols-3 gap-2">
-                    {manualPickSportOptions.map((sport) => (
+                    {sports.map((sport) => (
                       <button
-                        key={sport.label}
+                        key={sport}
                         type="button"
-                        onClick={() => updateInput({ sport: sport.value })}
+                        onClick={() => {
+                          setSelectedSport(sport);
+                          setSelectedPickId(null);
+                          setError(null);
+                        }}
                         className={`rounded-[14px] border px-3 py-3 text-[11px] font-black uppercase tracking-[0.1em] ${
-                          input.sport === sport.value ? "border-emerald-300/55 bg-emerald-300/[0.12] text-emerald-200" : "border-white/10 bg-white/[0.035] text-white/55"
+                          selectedSport === sport ? "border-emerald-300/55 bg-emerald-300/[0.12] text-emerald-200" : "border-white/10 bg-white/[0.035] text-white/55"
                         }`}
                       >
-                        {sport.label}
+                        {sport === "SOCCER" ? "Soccer" : sport}
                       </button>
                     ))}
                   </div>
+                  {sports.length === 0 ? <p className="text-[11px] font-semibold text-white/45">No Atlas picks available for your package yet.</p> : null}
                 </div>
               ) : null}
 
               {step === 2 ? (
-                <div className="grid gap-2">
-                  {[
-                    ["League", "league", "MLB"],
-                    ["Home Team", "homeTeam", "Dodgers"],
-                    ["Away Team", "awayTeam", "Padres"],
-                    ["Event Date", "eventDate", "2026-07-14"],
-                    ["Event Time", "eventTime", "7:10 PM"],
-                  ].map(([label, key, placeholder]) => (
-                    <label key={key} className="block">
-                      <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/42">{label}</span>
-                      <input
-                        value={String(input[key as keyof ManualPickInput] ?? "")}
-                        onChange={(event) => updateInput({ [key]: event.target.value } as Partial<ManualPickInput>)}
-                        placeholder={placeholder}
-                        className="mt-1 h-9 w-full rounded-[13px] border border-white/10 bg-black/26 px-3 text-[13px] font-bold text-white outline-none focus:border-emerald-300/45"
-                      />
-                    </label>
+                <div className="grid max-h-[310px] gap-2 overflow-y-auto pr-1">
+                  {sportPicks.map((pick) => (
+                    <button
+                      key={pick.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPickId(pick.id);
+                        setError(null);
+                      }}
+                      className={`rounded-[15px] border p-3 text-left ${selectedPickId === pick.id ? "border-emerald-300/55 bg-emerald-300/[0.10]" : "border-white/10 bg-white/[0.035]"}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px] font-black text-white">{pick.selection}</p>
+                          <p className="mt-1 text-[10px] font-bold text-white/45">{pick.market} · {pick.odds}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase tracking-[0.1em] text-emerald-300">{pick.source}</p>
+                          <p className="mt-1 text-[9px] font-bold text-white/42">{formatPlanStatus(pick.status)}</p>
+                        </div>
+                      </div>
+                    </button>
                   ))}
                 </div>
               ) : null}
 
               {step === 3 ? (
-                <div className="grid gap-3">
-                  {[
-                    ["Market", "market", "Moneyline"],
-                    ["Selection", "selection", "Dodgers ML"],
-                    ["Odds", "odds", "-120 or 1.83"],
-                  ].map(([label, key, placeholder]) => (
-                    <label key={key} className="block">
-                      <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/42">{label}</span>
-                      <input
-                        value={String(input[key as keyof ManualPickInput] ?? "")}
-                        onChange={(event) => updateInput({ [key]: event.target.value } as Partial<ManualPickInput>)}
-                        placeholder={placeholder}
-                        inputMode={key === "odds" ? "decimal" : "text"}
-                        className="mt-1 h-10 w-full rounded-[13px] border border-white/10 bg-black/26 px-3 text-[14px] font-bold text-white outline-none focus:border-emerald-300/45"
-                      />
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-
-              {step === 4 ? (
                 <div className="space-y-3">
                   <label className="block">
                     <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/42">Plan Unit</span>
                     <input
-                      value={input.riskAmount}
-                      onChange={(event) => updateInput({ riskAmount: event.target.value })}
+                      value={riskAmount}
+                      onChange={(event) => {
+                        setRiskAmount(event.target.value);
+                        setError(null);
+                      }}
                       placeholder="$25"
                       inputMode="decimal"
                       className="mt-1 h-12 w-full rounded-[15px] border border-white/10 bg-black/26 px-3 text-[22px] font-black text-white outline-none focus:border-emerald-300/45"
@@ -8248,31 +8243,32 @@ function ManualPickCreatorSheet({
                   <div className="rounded-[16px] border border-white/10 bg-black/20 p-3">
                     <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/38">Calculated Percentage</p>
                     <p className="mt-1 text-[22px] font-black text-emerald-300">{formatPercentage(riskPercentage).replace("+", "")}</p>
-                    <p className="mt-1 text-[11px] font-semibold text-white/45">Based on current bankroll: {formatCurrency(currentBankroll)}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-white/45">Based on manual bankroll: {formatCurrency(currentBankroll)}</p>
                   </div>
                 </div>
               ) : null}
 
-              {step === 5 ? (
+              {step === 4 ? (
                 <label className="block">
                   <span className="text-[9px] font-black uppercase tracking-[0.14em] text-white/42">Notes</span>
                   <textarea
-                    value={input.notes}
-                    onChange={(event) => updateInput({ notes: event.target.value.slice(0, 500) })}
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value.slice(0, 500))}
                     placeholder="Optional notes"
                     className="mt-1 h-[170px] w-full resize-none rounded-[15px] border border-white/10 bg-black/26 p-3 text-[13px] font-semibold leading-5 text-white outline-none focus:border-emerald-300/45"
                   />
-                  <p className="mt-1 text-right text-[9px] font-bold text-white/35">{input.notes.length}/500</p>
+                  <p className="mt-1 text-right text-[9px] font-bold text-white/35">{notes.length}/500</p>
                 </label>
               ) : null}
 
-              {step === 6 ? (
+              {step === 5 && selectedPick ? (
                 <div className="space-y-2 rounded-[18px] border border-white/10 bg-black/22 p-3">
                   {[
-                    ["Sport", input.sport ?? "Select"],
-                    ["Selection", input.selection || "-"],
-                    ["Odds", input.odds || "-"],
-                    ["Plan Unit", input.riskAmount ? formatCurrency(Number(input.riskAmount.replace(/^\$/, ""))) : "$0"],
+                    ["Sport", selectedPick.sport],
+                    ["Selection", selectedPick.selection],
+                    ["Market", selectedPick.market],
+                    ["Odds", String(selectedPick.odds)],
+                    ["Plan Unit", riskAmount ? formatCurrency(Number(riskAmount.replace(/^\$/, ""))) : "$0"],
                     ["Plan Percentage", formatPercentage(riskPercentage).replace("+", "")],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between gap-3 border-b border-white/10 pb-1.5 last:border-b-0">
@@ -8280,19 +8276,17 @@ function ManualPickCreatorSheet({
                       <p className="text-right text-[13px] font-black text-white">{value}</p>
                     </div>
                   ))}
-                  {error ? <p className="text-[11px] font-black text-red-300">{error}</p> : null}
-                  {!validation.valid ? <p className="text-[10px] font-semibold text-amber-200/80">{validation.error}</p> : null}
                 </div>
               ) : null}
             </div>
 
-            {error && step !== 6 ? <p className="mb-2 text-[11px] font-black text-red-300">{error}</p> : null}
+            {error ? <p className="mb-2 text-[11px] font-black text-red-300">{error}</p> : null}
             <div className="grid grid-cols-[0.45fr_1fr] gap-2">
               <button type="button" onClick={step === 1 ? onClose : () => setStep((current) => Math.max(1, current - 1))} className="h-11 rounded-[14px] border border-white/10 bg-white/[0.04] text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
                 {step === 1 ? "Cancel" : "Back"}
               </button>
-              <button type="button" onClick={step === 6 ? handleSave : handleNext} className="h-11 rounded-[14px] bg-emerald-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
-                {step === 6 ? "Save Pick" : "Continue"}
+              <button type="button" onClick={step === 5 ? handleSave : handleNext} className="h-11 rounded-[14px] bg-emerald-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
+                {step === 5 ? "Track Pick" : "Continue"}
               </button>
             </div>
           </div>
@@ -8537,6 +8531,8 @@ function AtlasBankrollScreen() {
   const planCollection = config?.atlasPlanCollection ?? null;
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
   const manualTracking = config?.manualTracking ?? null;
+  const availableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks(config) : []), [config]);
+  const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
 
   useEffect(() => {
     const storedConfig = loadBankrollConfig();
@@ -8560,10 +8556,11 @@ function AtlasBankrollScreen() {
     setSetupOpen(true);
   }
 
-  function handleSaveManualPick(input: ManualPickInput) {
+  function handleSaveManualPick(atlasPick: AtlasTrackingPickOption, input: AtlasTrackedPickInput) {
     if (!config) return;
 
-    const nextManualTracking = createManualPick(manualTracking ?? createManualTracking(), input, metrics?.currentBankroll ?? config.currentBankroll);
+    const baseManualTracking = manualTracking ?? createManualTracking(new Date().toISOString(), manualCurrentBankroll);
+    const nextManualTracking = createTrackedPick(baseManualTracking, atlasPick, input, manualCurrentBankroll);
     const nextConfig = normalizeBankrollConfig(saveManualTracking(config, nextManualTracking));
     saveBankrollConfig(nextConfig);
     setConfig(nextConfig);
@@ -8584,7 +8581,13 @@ function AtlasBankrollScreen() {
       <BankrollPerformanceCard metrics={metrics} />
       <BankrollInsightCard />
       <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
-      <ManualPickCreatorSheet open={manualPickOpen} currentBankroll={metrics?.currentBankroll ?? config?.currentBankroll ?? 0} onClose={() => setManualPickOpen(false)} onSave={handleSaveManualPick} />
+      <ManualPickCreatorSheet
+        open={manualPickOpen}
+        currentBankroll={manualCurrentBankroll}
+        availablePicks={availableAtlasPicks}
+        onClose={() => setManualPickOpen(false)}
+        onSave={handleSaveManualPick}
+      />
       <BankrollPlanCollectionSheet open={plansOpen} collection={planCollection} onClose={() => setPlansOpen(false)} />
       <BankrollResetSheet open={resetOpen} onCancel={() => setResetOpen(false)} onConfirm={handleResetConfig} />
     </div>

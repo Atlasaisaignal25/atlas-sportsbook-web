@@ -200,6 +200,28 @@ export function getPlanCandidatesForMembership(membership: MembershipContext, no
   }));
 }
 
+export function getTrackingCandidatesForMembership(membership: MembershipContext, now = new Date().toISOString()): AtlasPlanCandidate[] {
+  const normalizedMembership = normalizeMembershipContext(membership);
+  const candidates =
+    normalizedMembership.package === "free"
+      ? pickCandidatesBySports(signalsDetectedMock, normalizedMembership.availableSports.length > 0 ? normalizedMembership.availableSports : ALL_SIGNAL_SPORTS, 3)
+      : getCandidatesForMembership(normalizedMembership);
+
+  return candidates.map((candidate) => ({
+    candidateId: candidate.id,
+    sport: candidate.sport,
+    league: candidate.league,
+    selection: candidate.selection,
+    market: candidate.market,
+    odds: candidate.odds,
+    status: candidate.status,
+    package: normalizedMembership.package,
+    startTime: new Date(new Date(now).getTime() + candidate.startsInMinutes * 60 * 1000).toISOString(),
+    source: candidate.source,
+    rank: candidate.rank,
+  }));
+}
+
 export function isValidAtlasPlanCollection(value: unknown): value is AtlasPlanCollection {
   if (!value || typeof value !== "object") return false;
 

@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import {
+  createTrackedPick,
   createManualTracking,
+  filterPicksByMembership,
   getActiveManualPicks,
   getCompletedManualPicks,
+  loadAvailableAtlasPicks,
   normalizeBankrollConfig,
   normalizeManualTracking,
   saveManualTracking,
   type BankrollConfig,
+  type MembershipContext,
   type ManualTrackedPick,
 } from "../app/lib/bankroll";
 
@@ -31,6 +35,7 @@ assert.equal(emptyTracking.stats.totalPicks, 0);
 const activePick: ManualTrackedPick = {
   id: "manual-pick-1",
   origin: "manual",
+  linkedAtlasPickId: "premium-mlb-1",
   sport: "MLB",
   league: "MLB",
   eventId: null,
@@ -89,5 +94,69 @@ const savedConfig = saveManualTracking(normalizedConfig, normalizedTracking);
 assert.equal(savedConfig.manualTracking?.stats.totalPicks, 2);
 assert.equal(savedConfig.atlasPlanCollection?.plans.length, normalizedConfig.atlasPlanCollection?.plans.length);
 assert.equal(savedConfig.currentBankroll, normalizedConfig.currentBankroll);
+
+const freeMembership: MembershipContext = {
+  package: "free",
+  selectedSport: null,
+  availableSports: ["MLB", "NBA", "NFL", "NHL"],
+};
+const freePicks = filterPicksByMembership(freeMembership, now);
+assert.equal(freePicks.length, 12);
+assert.equal(freePicks.every((pick) => pick.source === "signals"), true);
+
+const exclusiveMembership: MembershipContext = {
+  package: "exclusive",
+  selectedSport: null,
+  availableSports: ["MLB", "NBA", "NFL", "NHL"],
+};
+const exclusivePicks = filterPicksByMembership(exclusiveMembership, now);
+assert.equal(exclusivePicks.length, 12);
+assert.equal(exclusivePicks.every((pick) => pick.source === "signals" && pick.rank <= 3), true);
+
+const premiumMembership: MembershipContext = {
+  package: "premium",
+  selectedSport: "MLB",
+  availableSports: ["MLB"],
+};
+const premiumPicks = filterPicksByMembership(premiumMembership, now);
+assert.equal(premiumPicks.length, 5);
+assert.equal(premiumPicks.every((pick) => pick.source === "top5" && pick.sport === "MLB"), true);
+
+const unlimitedMembership: MembershipContext = {
+  package: "unlimited",
+  selectedSport: null,
+  availableSports: ["MLB", "NBA", "NFL", "NHL"],
+};
+const unlimitedPicks = filterPicksByMembership(unlimitedMembership, now);
+assert.equal(unlimitedPicks.length, 20);
+assert.equal(unlimitedPicks.every((pick) => pick.source === "top5" && pick.rank <= 5), true);
+
+const configWithMembership = normalizeBankrollConfig({
+  ...baseConfig,
+  membership: premiumMembership,
+});
+const availableAtlasPicks = loadAvailableAtlasPicks(configWithMembership, now);
+assert.equal(availableAtlasPicks.length, 5);
+
+const trackedCollection = createTrackedPick(
+  createManualTracking(now, 500),
+  availableAtlasPicks[0],
+  { atlasPickId: availableAtlasPicks[0].id, riskAmount: "$25", notes: "Atlas tracking note." },
+  500,
+  now,
+);
+assert.equal(trackedCollection.picks.length, 1);
+assert.equal(trackedCollection.activePicks.length, 1);
+assert.equal(trackedCollection.picks[0].linkedAtlasPickId, availableAtlasPicks[0].id);
+assert.equal(trackedCollection.picks[0].selection, availableAtlasPicks[0].selection);
+assert.equal(trackedCollection.picks[0].market, availableAtlasPicks[0].market);
+assert.equal(trackedCollection.picks[0].odds, availableAtlasPicks[0].odds);
+assert.equal(trackedCollection.picks[0].riskAmount, 25);
+assert.equal(trackedCollection.picks[0].riskPercentage, 5);
+assert.equal(trackedCollection.picks[0].timeline.map((event) => event.message).join(" → "), "Manual Pick Created → Tracking Started");
+
+const persistedTrackedConfig = normalizeBankrollConfig(saveManualTracking(configWithMembership, trackedCollection));
+assert.equal(persistedTrackedConfig.manualTracking?.picks[0].linkedAtlasPickId, availableAtlasPicks[0].id);
+assert.equal(persistedTrackedConfig.manualTracking?.activePicks.length, 1);
 
 console.log("Manual Tracking engine validation OK");

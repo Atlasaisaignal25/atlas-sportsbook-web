@@ -1,6 +1,10 @@
 import { buildFinancialPlan, calculateExposure, calculateRecommendedUnit, roundCurrency } from "./engine";
+import { getTrackingCandidatesForMembership, normalizeMembershipContext } from "./package-engine";
 import type {
+  AtlasTrackedPickInput,
+  AtlasTrackingPickOption,
   BankrollConfig,
+  MembershipContext,
   ManualFinancialState,
   ManualPickInput,
   ManualPickValidationResult,
@@ -68,6 +72,84 @@ export function saveManualTracking(config: BankrollConfig, manualTracking: Manua
   };
 }
 
+export function loadAvailableAtlasPicks(config: BankrollConfig, now = new Date().toISOString()): AtlasTrackingPickOption[] {
+  return filterPicksByMembership(normalizeMembershipContext(config.membership), now);
+}
+
+export function filterPicksByMembership(membership: MembershipContext, now = new Date().toISOString()): AtlasTrackingPickOption[] {
+  return getTrackingCandidatesForMembership(membership, now).map((candidate) => ({
+    id: candidate.candidateId,
+    sport: candidate.sport,
+    league: candidate.league,
+    eventId: candidate.candidateId,
+    homeTeam: "",
+    awayTeam: "",
+    eventDate: candidate.startTime.slice(0, 10),
+    eventTime: new Date(candidate.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    market: candidate.market,
+    selection: candidate.selection,
+    odds: candidate.odds,
+    status: candidate.status,
+    source: candidate.source,
+    rank: candidate.rank,
+  }));
+}
+
+export function linkAtlasPick(atlasPick: AtlasTrackingPickOption, input: AtlasTrackedPickInput, manualBankroll: number, now = new Date().toISOString()): ManualTrackedPick {
+  const riskAmount = parseCurrencyInput(input.riskAmount);
+  if (riskAmount === null || riskAmount <= 0) throw new Error("Enter a valid risk amount.");
+  if (riskAmount > manualBankroll) throw new Error("Plan unit cannot exceed manual bankroll.");
+
+  return {
+    id: `manual-pick-${now.replace(/\D/g, "")}`,
+    origin: "manual",
+    linkedAtlasPickId: atlasPick.id,
+    sport: atlasPick.sport,
+    league: atlasPick.league,
+    eventId: atlasPick.eventId,
+    homeTeam: atlasPick.homeTeam,
+    awayTeam: atlasPick.awayTeam,
+    eventDate: atlasPick.eventDate,
+    eventTime: atlasPick.eventTime,
+    market: atlasPick.market,
+    selection: atlasPick.selection,
+    odds: atlasPick.odds,
+    riskAmount,
+    riskPercentage: calculateRiskPercentage(riskAmount, manualBankroll),
+    status: atlasPick.status,
+    result: null,
+    profit: 0,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+    notes: input.notes.trim(),
+    source: "manual",
+    atlasSource: atlasPick.source,
+    rank: atlasPick.rank,
+    timeline: [
+      createManualTrackingEvent("manual_pick_created", "Manual Pick Created", now, atlasPick.status),
+      createManualTrackingEvent("tracking_started", "Tracking Started", now, atlasPick.status),
+    ],
+  };
+}
+
+export function createTrackedPick(
+  collection: ManualTrackingCollection,
+  atlasPick: AtlasTrackingPickOption,
+  input: AtlasTrackedPickInput,
+  manualBankroll: number,
+  now = new Date().toISOString(),
+): ManualTrackingCollection {
+  if (input.notes.length > 500) throw new Error("Notes must be 500 characters or fewer.");
+  const pick = linkAtlasPick(atlasPick, input, manualBankroll, now);
+
+  return normalizeManualTracking({
+    ...collection,
+    updatedAt: now,
+    picks: [...collection.picks, pick],
+  }, now, collection.manualFinancialState.currentBankroll || manualBankroll);
+}
+
 export function createManualPick(
   collection: ManualTrackingCollection,
   input: ManualPickInput,
@@ -83,6 +165,7 @@ export function createManualPick(
   const pick: ManualTrackedPick = {
     id: `manual-pick-${now.replace(/\D/g, "")}`,
     origin: "manual",
+    linkedAtlasPickId: null,
     sport: value.sport,
     league: value.league.trim(),
     eventId: value.eventId ?? null,
@@ -292,10 +375,22 @@ function normalizeManualPick(pick: ManualTrackedPick): ManualTrackedPick {
   return {
     ...pick,
     origin: "manual",
+    linkedAtlasPickId: pick.linkedAtlasPickId ?? null,
     source: "manual",
     eventDate: pick.eventDate ?? "",
     eventTime: pick.eventTime ?? "",
     timeline: Array.isArray(pick.timeline) ? pick.timeline : [],
+  };
+}
+
+function createManualTrackingEvent(type: string, message: string, createdAt: string, status?: ManualTrackedPick["status"]) {
+  return {
+    id: `${type}-${createdAt.replace(/\D/g, "")}`,
+    type,
+    message,
+    description: message,
+    status,
+    createdAt,
   };
 }
 
