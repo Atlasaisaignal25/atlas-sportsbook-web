@@ -10,6 +10,14 @@ export type AtlasPlanPackage = "free" | "exclusive" | "premium" | "unlimited";
 
 export type AtlasPlanResult = "won" | "lost" | "push" | "cancelled" | null;
 
+export type AtlasPlanSport = "MLB" | "NBA" | "NFL" | "NHL" | "SOCCER";
+
+export type MembershipContext = {
+  package: AtlasPlanPackage;
+  selectedSport: AtlasPlanSport | null;
+  availableSports: AtlasPlanSport[];
+};
+
 export type AtlasPlan = {
   id: string;
   sport: string;
@@ -21,6 +29,7 @@ export type AtlasPlan = {
   package: AtlasPlanPackage;
   recommendedUnit: number;
   riskAmount: number;
+  startTime: string;
   createdAt: string;
   updatedAt: string;
   source: AtlasPlanSource;
@@ -30,12 +39,22 @@ export type AtlasPlan = {
   result: AtlasPlanResult;
 };
 
+export type AtlasPlanCollection = {
+  plans: AtlasPlan[];
+  primaryPlan: AtlasPlan | null;
+  manualSelectionRequired: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type BankrollConfig = {
   initialBankroll: number;
   currentBankroll: number;
   recommendedUnit: number;
   profile: BankrollProfile;
+  membership?: MembershipContext;
   atlasPlan?: AtlasPlan;
+  atlasPlanCollection?: AtlasPlanCollection;
   createdAt: string;
   updatedAt: string;
 };

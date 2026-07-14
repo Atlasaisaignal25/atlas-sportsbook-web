@@ -33,6 +33,7 @@ assert.equal(atlasPlan.package, "premium");
 assert.equal(atlasPlan.status, "pending");
 assert.equal(atlasPlan.source, "top5");
 assert.equal(atlasPlan.rank, 1);
+assert.equal(atlasPlan.startTime, "2026-07-14T03:00:00.000Z");
 assert.equal(atlasPlan.recommendedUnit, 10);
 assert.equal(atlasPlan.riskAmount, 10);
 assert.equal(atlasPlan.locked, false);

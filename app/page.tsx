@@ -49,6 +49,7 @@ import {
   validateBankroll,
   type BankrollConfig,
   type AtlasPlan,
+  type AtlasPlanCollection,
   type FinancialMetrics,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
@@ -7685,6 +7686,7 @@ function BankrollHeader({
 
 function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | null; metrics: FinancialMetrics | null }) {
   const summary = getBankrollSummary(config, metrics);
+  const activePackage = config?.membership ? formatPlanPackage(config.membership.package) : atlasBankrollMock.plan.package;
 
   return (
     <BankrollShell className="overflow-hidden px-2.5 py-2">
@@ -7726,20 +7728,32 @@ function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | nul
       <div className="mt-1.5 flex items-center gap-2 border-t border-white/10 pt-1.5">
         <p className="shrink-0 text-[8px] font-black uppercase tracking-[0.11em] text-white/34">Package Active</p>
         <span className="rounded-full border border-emerald-300/35 bg-emerald-300/12 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200 shadow-[0_0_10px_rgba(52,211,153,0.10)]">
-          {atlasBankrollMock.plan.package}
+          {activePackage}
         </span>
       </div>
     </BankrollShell>
   );
 }
 
-function BankrollPlanCard({ metrics, atlasPlan }: { metrics: FinancialMetrics | null; atlasPlan: AtlasPlan | null }) {
+function BankrollPlanCard({
+  metrics,
+  atlasPlan,
+  planCollection,
+  onViewPlans,
+}: {
+  metrics: FinancialMetrics | null;
+  atlasPlan: AtlasPlan | null;
+  planCollection: AtlasPlanCollection | null;
+  onViewPlans: () => void;
+}) {
   const statusTone = atlasPlan ? getPlanStatusTone(atlasPlan.status) : "pending";
+  const manualSelectionRequired = Boolean(planCollection?.manualSelectionRequired);
+  const activePackage = atlasPlan ? formatPlanPackage(atlasPlan.package) : planCollection?.manualSelectionRequired ? "Free" : atlasBankrollMock.plan.package;
   const rows = [
-    ["Package", atlasPlan ? formatPlanPackage(atlasPlan.package) : atlasBankrollMock.plan.package],
-    ["Status", atlasPlan ? formatPlanStatus(atlasPlan.status) : atlasBankrollMock.plan.status],
+    ["Package", activePackage],
+    ["Status", atlasPlan ? formatPlanStatus(atlasPlan.status) : manualSelectionRequired ? "Manual Required" : atlasBankrollMock.plan.status],
     ["Sport", atlasPlan?.sport ?? atlasBankrollMock.plan.sport],
-    ["Risk", atlasPlan ? formatCurrency(atlasPlan.riskAmount) : metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
+    ["Risk", atlasPlan ? formatCurrency(atlasPlan.riskAmount) : manualSelectionRequired ? "$0" : metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
   ];
 
   return (
@@ -7749,7 +7763,7 @@ function BankrollPlanCard({ metrics, atlasPlan }: { metrics: FinancialMetrics | 
           <BankrollUiIcon name="target" className="h-6 w-6 text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.36)]" />
           <p className="text-[13px] font-black uppercase tracking-[0.12em] text-emerald-300">Today&apos;s Atlas Plan</p>
         </div>
-        <button type="button" className="inline-flex items-center gap-1 rounded-[11px] border border-cyan-300/30 bg-cyan-300/[0.07] px-2.5 py-1 text-[8.5px] font-black uppercase tracking-[0.09em] text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.07)]">
+        <button type="button" onClick={onViewPlans} className="inline-flex items-center gap-1 rounded-[11px] border border-cyan-300/30 bg-cyan-300/[0.07] px-2.5 py-1 text-[8.5px] font-black uppercase tracking-[0.09em] text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.07)]">
           View Today&apos;s Plan
           <BankrollUiIcon name="arrow" className="h-3 w-3" />
         </button>
@@ -7758,7 +7772,7 @@ function BankrollPlanCard({ metrics, atlasPlan }: { metrics: FinancialMetrics | 
       <div className="mt-2 grid grid-cols-[1.2fr_1fr] items-end gap-2.5">
         <div className="min-w-0">
           <p className="text-[8.5px] font-black uppercase tracking-[0.11em] text-white/42">Today&apos;s Pick</p>
-          <p className="mt-0.5 text-[30px] font-black leading-none tracking-tight text-white">{atlasPlan?.selection ?? atlasBankrollMock.plan.pick}</p>
+          <p className="mt-0.5 text-[30px] font-black leading-none tracking-tight text-white">{atlasPlan?.selection ?? (manualSelectionRequired ? "Manual Selection Required" : atlasBankrollMock.plan.pick)}</p>
         </div>
         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
           {rows.map(([label, value]) => (
@@ -7786,6 +7800,73 @@ function BankrollPlanCard({ metrics, atlasPlan }: { metrics: FinancialMetrics | 
         </div>
       </div>
     </BankrollShell>
+  );
+}
+
+function BankrollPlanCollectionSheet({
+  open,
+  collection,
+  onClose,
+}: {
+  open: boolean;
+  collection: AtlasPlanCollection | null;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  const plans = collection?.plans ?? [];
+
+  return (
+    <div className="fixed inset-0 z-[72] flex items-end justify-center bg-black/72 px-3 pb-[92px] backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-[26px] border border-cyan-300/20 bg-[#06101d] p-4 shadow-[0_-18px_70px_rgba(34,211,238,0.14)]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-200/80">Atlas Plan</p>
+            <h3 className="mt-1 text-[22px] font-black text-white">Today&apos;s Plan</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white/55">
+            Close
+          </button>
+        </div>
+
+        {collection?.manualSelectionRequired ? (
+          <div className="mt-4 rounded-[18px] border border-amber-300/20 bg-amber-300/[0.06] p-3">
+            <p className="text-[13px] font-black text-amber-100">Manual Selection Required</p>
+            <p className="mt-1 text-[11px] font-semibold leading-4 text-white/50">Free access uses Signals Detected. Manual selection will be added in a future phase.</p>
+          </div>
+        ) : (
+          <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+            {plans.map((plan) => (
+              <div key={plan.id} className="rounded-[18px] border border-white/10 bg-white/[0.035] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300">{plan.sport}</p>
+                    <p className="mt-1 truncate text-[15px] font-black text-white">{plan.selection}</p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-black/24 px-2 py-1 text-[9px] font-black uppercase tracking-[0.09em] text-white/60">
+                    Rank {plan.rank}
+                  </span>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Status</p>
+                    <p className="mt-0.5 text-[12px] font-black text-amber-200">{formatPlanStatus(plan.status)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Unit</p>
+                    <p className="mt-0.5 text-[12px] font-black text-violet-200">{formatCurrency(plan.recommendedUnit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Risk</p>
+                    <p className="mt-0.5 text-[12px] font-black text-white">{formatCurrency(plan.riskAmount)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -8133,9 +8214,11 @@ function AtlasBankrollScreen() {
   const [hydrated, setHydrated] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
-  const atlasPlan = config?.atlasPlan ?? null;
+  const planCollection = config?.atlasPlanCollection ?? null;
+  const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
 
   useEffect(() => {
     const storedConfig = loadBankrollConfig();
@@ -8155,6 +8238,7 @@ function AtlasBankrollScreen() {
     clearBankrollConfig();
     setConfig(null);
     setResetOpen(false);
+    setPlansOpen(false);
     setSetupOpen(true);
   }
 
@@ -8165,13 +8249,14 @@ function AtlasBankrollScreen() {
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
-      <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} />
+      <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
       <BankrollSummaryCard config={config} metrics={metrics} />
       <BankrollWeeklyCard />
       <BankrollPerformanceCard metrics={metrics} />
       <BankrollInsightCard />
       <BankrollPlanTrackingTabs />
       <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
+      <BankrollPlanCollectionSheet open={plansOpen} collection={planCollection} onClose={() => setPlansOpen(false)} />
       <BankrollResetSheet open={resetOpen} onCancel={() => setResetOpen(false)} onConfirm={handleResetConfig} />
     </div>
   );

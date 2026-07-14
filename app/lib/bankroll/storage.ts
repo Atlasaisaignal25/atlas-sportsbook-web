@@ -2,7 +2,7 @@ import { BANKROLL_CONFIG_STORAGE_KEY } from "./constants";
 import { isValidStoredConfig } from "./utils";
 import type { BankrollConfig } from "./types";
 import { calculateFinancialMetrics, calculateRecommendedUnit, calculateCurrentBankroll, roundCurrency } from "./engine";
-import { normalizeAtlasPlanFromConfig } from "./atlas-plan";
+import { normalizeMembershipContext, syncPlans } from "./package-engine";
 
 export function loadBankrollConfig(): BankrollConfig | null {
   if (typeof window === "undefined") return null;
@@ -30,8 +30,10 @@ export function saveBankrollConfig(config: BankrollConfig) {
 
 export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig {
   const currentBankroll = calculateCurrentBankroll(config.currentBankroll);
+  const membership = normalizeMembershipContext(config.membership);
   const normalizedBase = {
     ...config,
+    membership,
     initialBankroll: roundCurrency(Math.max(0, config.initialBankroll)),
     currentBankroll,
     recommendedUnit: calculateRecommendedUnit(currentBankroll, config.profile),
@@ -46,9 +48,12 @@ export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig 
     updatedAt: normalizedBase.updatedAt,
   });
 
+  const atlasPlanCollection = syncPlans(normalizedBase.atlasPlanCollection, membership, metrics);
+
   return {
     ...normalizedBase,
-    atlasPlan: normalizeAtlasPlanFromConfig(normalizedBase, metrics),
+    atlasPlanCollection,
+    atlasPlan: atlasPlanCollection.primaryPlan ?? undefined,
   };
 }
 

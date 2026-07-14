@@ -15,6 +15,7 @@ export function createAtlasPlan(metrics: FinancialMetrics, now = new Date().toIS
     package: "premium",
     recommendedUnit: metrics.recommendedUnit,
     riskAmount: calculateRiskAmount(metrics),
+    startTime: new Date(new Date(now).getTime() + 180 * 60 * 1000).toISOString(),
     createdAt: now,
     updatedAt: now,
     source: "top5",
@@ -77,6 +78,7 @@ export function isValidAtlasPlan(value: unknown): value is AtlasPlan {
     (plan.package === "free" || plan.package === "exclusive" || plan.package === "premium" || plan.package === "unlimited") &&
     typeof plan.recommendedUnit === "number" &&
     typeof plan.riskAmount === "number" &&
+    typeof plan.startTime === "string" &&
     typeof plan.createdAt === "string" &&
     typeof plan.updatedAt === "string" &&
     (plan.source === "signals" || plan.source === "top3" || plan.source === "top5" || plan.source === "topsignal" || plan.source === "manual") &&
