@@ -76,6 +76,8 @@ export function syncManualTrackingWithAtlas(
   availableAtlasPicks = loadAvailableAtlasPicks(config),
   syncedAt = new Date().toISOString(),
 ): BankrollConfig {
+  if (availableAtlasPicks.length === 0) return config;
+
   const manualTracking = normalizeManualTracking(config.manualTracking, config.updatedAt, config.currentBankroll);
 
   return manualTracking.picks.reduce((currentConfig, pick) => {
@@ -308,7 +310,10 @@ function syncImmutableAtlasFields(pick: ManualTrackedPick, atlasPick: AtlasTrack
     rank: atlasPick.rank,
   };
   const needsResync = Object.entries(atlasFields).some(([key, value]) => pick[key as keyof ManualTrackedPick] !== value);
-  const nextStatus = atlasPick.status === "started" && !isManualPickFinal(pick) ? "started" : pick.status;
+  const nextStatus =
+    !isManualPickFinal(pick) && !isFinalManualStatus(atlasPick.status)
+      ? atlasPick.status
+      : pick.status;
   const nextPick: ManualTrackedPick = {
     ...pick,
     ...atlasFields,

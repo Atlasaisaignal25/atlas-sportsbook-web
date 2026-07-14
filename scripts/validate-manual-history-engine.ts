@@ -69,4 +69,18 @@ assert.equal(timeline[0].description, "Manual Pick Created");
 assert.equal(timeline[1].description, "Tracking Started");
 assert.equal(timeline.every((event) => event.time.length > 0), true);
 
+const corruptDateHistory = loadTrackingHistory({
+  ...lastWeekTracking,
+  picks: [
+    {
+      ...lastWeekTracking.picks[0],
+      createdAt: "not-a-date",
+      updatedAt: "also-bad",
+      eventDate: "",
+    },
+  ],
+}, "all_time", "2026-07-14", now);
+assert.equal(corruptDateHistory.picks.length, 1);
+assert.equal(corruptDateHistory.groups[0].key, "1970-01-01");
+
 console.log("Manual History engine validation OK");

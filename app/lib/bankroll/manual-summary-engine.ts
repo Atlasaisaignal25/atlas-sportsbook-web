@@ -217,14 +217,24 @@ export function syncManualSummaries(config: BankrollConfig, now = new Date().toI
 
 export function normalizeManualSummaryState(manualTracking: ManualTrackingCollection, now = new Date().toISOString()): ManualTrackingCollection {
   const normalizedTracking = normalizeManualTracking(manualTracking, now, manualTracking.manualFinancialState.currentBankroll);
-  const manualActiveCycle = normalizedTracking.manualActiveCycle ?? getOrCreateManualCycle(normalizedTracking, now);
+  const manualWeeklySummaries = dedupeById(normalizedTracking.manualWeeklySummaries).filter(isValidManualWeeklySummary);
+  const manualMonthlySummaries = dedupeById(normalizedTracking.manualMonthlySummaries).filter(isValidManualMonthlySummary);
+  const manualCycleHistory = dedupeById(
+    normalizedTracking.manualCycleHistory
+      .map((cycle) => normalizeManualCycle(cycle, normalizedTracking.createdAt))
+      .filter((cycle): cycle is ManualCycle => Boolean(cycle)),
+  );
+  const baseTracking = {
+    ...normalizedTracking,
+    manualCycleHistory,
+    manualWeeklySummaries,
+    manualMonthlySummaries,
+  };
+  const manualActiveCycle = normalizeManualCycle(baseTracking.manualActiveCycle, normalizedTracking.createdAt) ?? getOrCreateManualCycle(baseTracking, now);
 
   return {
-    ...normalizedTracking,
+    ...baseTracking,
     manualActiveCycle,
-    manualCycleHistory: Array.isArray(normalizedTracking.manualCycleHistory) ? normalizedTracking.manualCycleHistory : [],
-    manualWeeklySummaries: Array.isArray(normalizedTracking.manualWeeklySummaries) ? normalizedTracking.manualWeeklySummaries : [],
-    manualMonthlySummaries: Array.isArray(normalizedTracking.manualMonthlySummaries) ? normalizedTracking.manualMonthlySummaries : [],
   };
 }
 
@@ -240,7 +250,7 @@ function getOrCreateManualCycle(manualTracking: ManualTrackingCollection, now = 
 }
 
 function createManualCycle(cycleNumber: number, startDate: string, initialBankroll: number): ManualCycle {
-  const start = new Date(startDate);
+  const start = safeDate(startDate);
   const end = new Date(start.getTime() + WEEK_MS - 1);
 
   return {
@@ -256,7 +266,7 @@ function createManualCycle(cycleNumber: number, startDate: string, initialBankro
 }
 
 function getNextCycleStart(endDate: string) {
-  return new Date(new Date(endDate).getTime() + 1).toISOString();
+  return new Date(safeDate(endDate).getTime() + 1).toISOString();
 }
 
 function getPicksInRange(picks: ManualTrackedPick[], startDate: string, endDate: string) {
@@ -267,6 +277,46 @@ function getPicksInRange(picks: ManualTrackedPick[], startDate: string, endDate:
     const activityDate = new Date(pick.completedAt ?? pick.updatedAt ?? pick.createdAt).getTime();
     return activityDate >= start && activityDate <= end;
   });
+}
+
+function normalizeManualCycle(cycle: ManualCycle | null | undefined, fallbackDate: string): ManualCycle | null {
+  if (!cycle || typeof cycle !== "object") return null;
+  const cycleNumber = Number(cycle.cycleNumber);
+  const startDate = safeDate(cycle.startDate || fallbackDate).toISOString();
+  const endDate = safeDate(cycle.endDate || new Date(safeDate(startDate).getTime() + WEEK_MS - 1).toISOString()).toISOString();
+
+  return {
+    id: typeof cycle.id === "string" && cycle.id ? cycle.id : `manual-cycle-${Number.isFinite(cycleNumber) && cycleNumber > 0 ? cycleNumber : 1}`,
+    cycleNumber: Number.isFinite(cycleNumber) && cycleNumber > 0 ? cycleNumber : 1,
+    startDate,
+    endDate,
+    status: cycle.status === "closed" ? "closed" : "open",
+    initialBankroll: Number.isFinite(Number(cycle.initialBankroll)) ? roundSummary(Number(cycle.initialBankroll)) : 0,
+    createdAt: safeDate(cycle.createdAt || startDate).toISOString(),
+    closedAt: cycle.closedAt ? safeDate(cycle.closedAt).toISOString() : null,
+  };
+}
+
+function isValidManualWeeklySummary(summary: ManualWeeklySummary) {
+  return Boolean(summary?.id && Number.isFinite(summary.cycleNumber) && summary.startDate && summary.endDate);
+}
+
+function isValidManualMonthlySummary(summary: ManualMonthlySummary) {
+  return Boolean(summary?.id && Number.isFinite(summary.month) && Number.isFinite(summary.year) && summary.startDate && summary.endDate);
+}
+
+function dedupeById<T extends { id: string }>(items: T[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function safeDate(value: unknown) {
+  const date = new Date(String(value ?? ""));
+  return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
 function groupWeeklySummariesByMonth(weeklySummaries: ManualWeeklySummary[]) {

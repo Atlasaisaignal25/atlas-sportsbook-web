@@ -137,7 +137,7 @@ function getPickTimestamp(pick: ManualTrackedPick) {
 }
 
 function getPickDate(pick: ManualTrackedPick) {
-  return new Date(pick.createdAt || pick.eventDate || pick.updatedAt);
+  return safeDate(pick.createdAt || pick.eventDate || pick.updatedAt);
 }
 
 function getPickDateKey(pick: ManualTrackedPick) {
@@ -145,7 +145,12 @@ function getPickDateKey(pick: ManualTrackedPick) {
 }
 
 function toDateKey(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return safeDate(date).toISOString().slice(0, 10);
+}
+
+function safeDate(value: unknown) {
+  const date = value instanceof Date ? value : new Date(String(value ?? ""));
+  return Number.isNaN(date.getTime()) ? new Date(0) : date;
 }
 
 function startOfWeek(date: Date) {

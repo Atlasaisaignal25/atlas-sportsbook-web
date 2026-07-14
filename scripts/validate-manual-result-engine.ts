@@ -4,6 +4,7 @@ import {
   createManualTracking,
   createTrackedPick,
   filterPicksByMembership,
+  normalizeManualTracking,
   processManualResult,
   syncManualTrackingWithAtlas,
   type AtlasTrackingPickOption,
@@ -60,6 +61,14 @@ assert.equal(startedConfig.manualTracking?.picks[0].status, "started");
 assert.equal(startedConfig.manualTracking?.picks[0].locked, true);
 assert.equal(startedConfig.manualTracking?.manualFinancialState.currentBankroll, 500);
 assert.equal(startedConfig.manualTracking?.picks[0].timeline.some((event) => event.message === "Event Started"), true);
+
+const confirmedConfig = syncManualTrackingWithAtlas(configWithTrackedPick(), [withStatus(atlasPick, "confirmed")], settledAt);
+assert.equal(confirmedConfig.manualTracking?.picks[0].status, "confirmed");
+assert.equal(confirmedConfig.manualTracking?.manualFinancialState.currentBankroll, 500);
+
+const noSourcesSync = syncManualTrackingWithAtlas(configWithTrackedPick(), [], settledAt);
+assert.equal(noSourcesSync.manualTracking?.picks[0].trackingState, "active");
+assert.equal(noSourcesSync.manualTracking?.picks[0].timeline.some((event) => event.message === "Archived Atlas Pick"), false);
 
 const wonConfig = syncManualTrackingWithAtlas(configWithTrackedPick(), [withStatus(atlasPick, "won", settledAt)], settledAt);
 assert.equal(wonConfig.currentBankroll, 500);
@@ -155,5 +164,25 @@ assert.equal(syncedLegacy.manualTracking?.picks[0].linkedAtlasPickId, null);
 assert.equal(syncedLegacy.manualTracking?.picks[0].trackingState, "legacy_unlinked");
 assert.equal(syncedLegacy.manualTracking?.picks[0].result, null);
 assert.equal(syncedLegacy.manualTracking?.manualFinancialState.currentBankroll, 500);
+
+const corrupted = normalizeManualTracking({
+  ...createManualTracking(now, 500),
+  picks: [
+    {
+      ...configWithTrackedPick().manualTracking!.picks[0],
+      id: "duplicate",
+      status: "bad" as never,
+      createdAt: "bad-date",
+      timeline: [{ id: "", type: "", message: "", createdAt: "bad-date" }],
+    },
+    {
+      ...configWithTrackedPick().manualTracking!.picks[0],
+      id: "duplicate",
+    },
+  ],
+});
+assert.equal(corrupted.picks.length, 1);
+assert.equal(corrupted.picks[0].status, "pending");
+assert.equal(Number.isNaN(new Date(corrupted.picks[0].createdAt).getTime()), false);
 
 console.log("Manual Result engine validation OK");

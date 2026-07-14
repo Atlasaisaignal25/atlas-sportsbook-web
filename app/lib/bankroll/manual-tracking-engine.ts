@@ -45,7 +45,7 @@ export function normalizeManualTracking(
 ): ManualTrackingCollection {
   if (!isValidManualTrackingCollection(collection)) return createManualTracking(now, atlasBankroll);
 
-  const picks = collection.picks.map(normalizeManualPick);
+  const picks = dedupeManualPicks(collection.picks.map((pick, index) => normalizeManualPick(pick, now, index)));
   const activePicks = getActiveManualPicks(picks);
   const completedPicks = getCompletedManualPicks(picks);
   const manualFinancialState = normalizeManualFinancialState(collection.manualFinancialState, atlasBankroll, collection.createdAt, now);
@@ -391,21 +391,114 @@ export function isValidManualTrackingCollection(value: unknown): value is Manual
   );
 }
 
-function normalizeManualPick(pick: ManualTrackedPick): ManualTrackedPick {
+function normalizeManualPick(pick: ManualTrackedPick, now = new Date().toISOString(), index = 0): ManualTrackedPick {
+  const status = normalizeManualStatus(pick.status);
+  const result = normalizeManualResult(pick.result);
+  const createdAt = safeIsoDate(pick.createdAt, now);
+  const updatedAt = safeIsoDate(pick.updatedAt, createdAt);
+  const completedAt = pick.completedAt ? safeIsoDate(pick.completedAt, updatedAt) : null;
+  const riskAmount = safeNumber(pick.riskAmount);
+  const riskPercentage = safeNumber(pick.riskPercentage);
+  const profit = safeNumber(pick.profit);
+
   return {
     ...pick,
+    id: typeof pick.id === "string" && pick.id.trim() ? pick.id : `manual-pick-legacy-${createdAt.replace(/\D/g, "")}-${index}`,
     origin: "manual",
     linkedAtlasPickId: pick.linkedAtlasPickId ?? null,
     source: "manual",
+    odds: typeof pick.odds === "number" && Number.isFinite(pick.odds) ? pick.odds : null,
     trackedOdds: pick.trackedOdds ?? pick.odds ?? null,
     startTime: pick.startTime ?? "",
-    locked: Boolean(pick.locked || pick.status === "started" || pick.result),
+    riskAmount,
+    riskPercentage,
+    status,
+    result,
+    profit,
+    locked: Boolean(pick.locked || status === "started" || result),
     trackingState: pick.linkedAtlasPickId ? pick.trackingState ?? "active" : "legacy_unlinked",
     resultSyncKey: pick.resultSyncKey ?? null,
     eventDate: pick.eventDate ?? "",
     eventTime: pick.eventTime ?? "",
-    timeline: Array.isArray(pick.timeline) ? pick.timeline : [],
+    createdAt,
+    updatedAt,
+    completedAt,
+    notes: typeof pick.notes === "string" ? pick.notes.slice(0, 500) : "",
+    timeline: normalizeManualTimeline(pick.timeline, createdAt),
   };
+}
+
+function dedupeManualPicks(picks: ManualTrackedPick[]) {
+  const seen = new Set<string>();
+  return picks.filter((pick) => {
+    if (seen.has(pick.id)) return false;
+    seen.add(pick.id);
+    return true;
+  });
+}
+
+function normalizeManualTimeline(timeline: ManualTrackedPick["timeline"], fallbackDate: string) {
+  if (!Array.isArray(timeline)) return [];
+
+  const seen = new Set<string>();
+  return timeline
+    .filter((event) => event && typeof event === "object")
+    .map((event, index) => {
+      const createdAt = safeIsoDate(event.createdAt, fallbackDate);
+      const type = typeof event.type === "string" && event.type.trim() ? event.type : "tracking_event";
+      const id = typeof event.id === "string" && event.id.trim() ? event.id : `${type}-${createdAt.replace(/\D/g, "")}-${index}`;
+
+      return {
+        ...event,
+        id,
+        type,
+        message: typeof event.message === "string" && event.message.trim() ? event.message : "Tracking Event",
+        description: typeof event.description === "string" ? event.description : event.message,
+        createdAt,
+        status: event.status ? normalizeManualStatus(event.status) : undefined,
+      };
+    })
+    .filter((event) => {
+      if (seen.has(event.id)) return false;
+      seen.add(event.id);
+      return true;
+    });
+}
+
+function normalizeManualStatus(status: unknown): ManualTrackedPick["status"] {
+  if (
+    status === "pending" ||
+    status === "confirmed" ||
+    status === "started" ||
+    status === "won" ||
+    status === "lost" ||
+    status === "push" ||
+    status === "cancelled" ||
+    status === "downgraded" ||
+    status === "removed" ||
+    status === "no_eligible_replacement"
+  ) {
+    return status;
+  }
+
+  return "pending";
+}
+
+function normalizeManualResult(result: unknown): ManualTrackedPick["result"] {
+  if (result === "won" || result === "lost" || result === "push" || result === "cancelled") return result;
+  return null;
+}
+
+function safeIsoDate(value: unknown, fallback: string) {
+  const date = new Date(typeof value === "string" && value ? value : fallback);
+  if (!Number.isNaN(date.getTime())) return date.toISOString();
+  const fallbackDate = new Date(fallback);
+  return Number.isNaN(fallbackDate.getTime()) ? new Date().toISOString() : fallbackDate.toISOString();
+}
+
+function safeNumber(value: unknown) {
+  const numberValue = Number(value ?? 0);
+  return Number.isFinite(numberValue) ? numberValue : 0;
 }
 
 function createManualTrackingEvent(type: string, message: string, createdAt: string, status?: ManualTrackedPick["status"]) {
