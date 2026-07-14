@@ -3604,6 +3604,17 @@ const [top5RecordStats, setTop5RecordStats] = useState<RecordStats>(emptyRecordS
   const router = useRouter();
   const searchParams = useSearchParams();
   const guestBoardMode = searchParams.get("board") === "1";
+  const initialSectionParam = searchParams.get("section");
+  const initialAppSection: AppSection =
+    initialSectionParam === "signals" ||
+    initialSectionParam === "scores" ||
+    initialSectionParam === "bankroll" ||
+    initialSectionParam === "news" ||
+    initialSectionParam === "alerts" ||
+    initialSectionParam === "more"
+      ? initialSectionParam
+      : "signals";
+  const useBankrollSplashOverlay = initialAppSection === "bankroll";
 
   const [selectedSport, setSelectedSport] = useState<SportTab>("TOP");
   const [games, setGames] = useState<OddsGame[]>([]);
@@ -4207,7 +4218,7 @@ async function handleLogout() {
 }
 
 const [viewMode, setViewMode] = useState<"odds" | "live">("live");
-const [appSection, setAppSection] = useState<AppSection>("signals");
+const [appSection, setAppSection] = useState<AppSection>(() => initialAppSection);
 const [pulseSportFilter, setPulseSportFilter] = useState<"ALL" | PulseSport>("ALL");
 const [pulseImpactFilter, setPulseImpactFilter] = useState<ImpactFeedFilter>("TEAM");
 const [pulseMlbItems, setPulseMlbItems] = useState<AtlasEvent[]>(() =>
@@ -8008,7 +8019,7 @@ function BankrollPlanTrackingTabs() {
 
 function BankrollHydrationPlaceholder() {
   return (
-    <div className="min-h-[760px] space-y-2.5" aria-hidden="true">
+    <div className="min-h-[862px] space-y-2.5" aria-hidden="true">
       <BankrollShell className="h-[102px] overflow-hidden px-4 py-3.5">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.06),transparent_40%)]" />
         <div className="relative h-full animate-pulse rounded-[18px] bg-white/[0.025]" />
@@ -8477,7 +8488,7 @@ const subscriptionPlansBoard = (
   </section>
 );
 
-  if (showSplash) {
+  if (showSplash && !useBankrollSplashOverlay) {
     return (
       <main className="min-h-screen bg-[#050816] text-white">
         <AtlasSplashScreen entered={splashEntered} />
@@ -8485,7 +8496,7 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if (!authLoaded) {
+  if (!authLoaded && !(showSplash && useBankrollSplashOverlay)) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#050816] px-6 text-center text-white">
         <div>
@@ -8502,7 +8513,7 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if (!authSession.authenticated && !guestBoardMode) {
+  if (!authSession.authenticated && !guestBoardMode && !(showSplash && useBankrollSplashOverlay)) {
     return (
       <AtlasAccessGate
         onFree={() => router.push("/login?intent=free#create-account")}
@@ -11516,6 +11527,17 @@ const subscriptionPlansBoard = (
               })}
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {useBankrollSplashOverlay && appSection === "bankroll" ? (
+        <div
+          className={`fixed inset-0 z-[90] transition-opacity duration-500 ease-out ${
+            showSplash ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          aria-hidden="true"
+        >
+          <AtlasSplashScreen entered={splashEntered} />
         </div>
       ) : null}
 
