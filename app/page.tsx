@@ -7428,7 +7428,7 @@ const bankrollProfileLabels: Record<BankrollProfile, string> = {
 
 const bankrollProfileDetails: Record<BankrollProfile, string> = {
   atlas_recommended: "Recommended",
-  higher_exposure: "Higher Risk",
+  higher_exposure: "Higher Exposure",
 };
 
 const bankrollProfileOptions: Array<{
@@ -7450,10 +7450,10 @@ const bankrollProfileOptions: Array<{
   {
     profile: "higher_exposure",
     title: "Higher Exposure",
-    badge: "Higher Risk",
+    badge: "Higher Exposure",
     percentage: `${Math.round(HIGHER_EXPOSURE_PERCENTAGE * 100)}%`,
     exposure: "Higher Exposure",
-    description: "This profile increases risk exposure.",
+    description: "This profile increases plan exposure.",
   },
 ];
 
@@ -7760,7 +7760,7 @@ function BankrollPlanCard({
     ["Package", activePackage],
     ["Status", atlasPlan ? formatPlanStatus(atlasPlan.status) : manualSelectionRequired ? "Manual Required" : atlasBankrollMock.plan.status],
     ["Sport", atlasPlan?.sport ?? atlasBankrollMock.plan.sport],
-    ["Risk", atlasPlan ? formatCurrency(atlasPlan.riskAmount) : manualSelectionRequired ? "$0" : metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
+    ["Plan Unit", atlasPlan ? formatCurrency(atlasPlan.riskAmount) : manualSelectionRequired ? "$0" : metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
   ];
 
   return (
@@ -7778,7 +7778,7 @@ function BankrollPlanCard({
 
       <div className="mt-2 grid grid-cols-[1.2fr_1fr] items-end gap-2.5">
         <div className="min-w-0">
-          <p className="text-[8.5px] font-black uppercase tracking-[0.11em] text-white/42">Today&apos;s Pick</p>
+          <p className="text-[8.5px] font-black uppercase tracking-[0.11em] text-white/42">Today&apos;s Signal</p>
           <p className="mt-0.5 text-[30px] font-black leading-none tracking-tight text-white">{atlasPlan?.selection ?? (manualSelectionRequired ? "Manual Selection Required" : atlasBankrollMock.plan.pick)}</p>
         </div>
         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
@@ -7878,7 +7878,7 @@ function BankrollPlanCollectionSheet({
                     <p className="mt-0.5 text-[12px] font-black text-violet-200">{formatCurrency(plan.recommendedUnit)}</p>
                   </div>
                   <div className="rounded-[12px] border border-white/10 bg-black/18 px-2 py-1.5">
-                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Risk</p>
+                    <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/34">Plan Unit</p>
                     <p className="mt-0.5 text-[12px] font-black text-white">{formatCurrency(plan.riskAmount)}</p>
                   </div>
                 </div>
