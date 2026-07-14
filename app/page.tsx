@@ -7699,6 +7699,13 @@ function BankrollHeader({
 function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | null; metrics: FinancialMetrics | null }) {
   const summary = getBankrollSummary(config, metrics);
   const activePackage = config?.membership ? formatPlanPackage(config.membership.package) : atlasBankrollMock.plan.package;
+  const formatSummaryLabel = (label: string) => {
+    if (label === "Current Bankroll") return <>Current<br />Bankroll</>;
+    if (label === "Initial Bankroll") return <>Initial<br />Bankroll</>;
+    if (label === "Recommended Unit") return <>Recommended<br />Unit</>;
+    if (label === "Current Profile") return <>Current<br />Profile</>;
+    return label;
+  };
 
   return (
     <BankrollShell className="overflow-hidden px-2.5 py-2">
@@ -7711,21 +7718,9 @@ function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | nul
           <div className="flex items-start gap-1">
             <BankrollUiIcon name={item.icon} className={`h-4 w-4 shrink-0 ${bankrollToneClasses[item.tone]}`} />
             <p
-              className={`min-h-7 font-black uppercase leading-[13px] text-white/50 ${
-                item.label === "Recommended Unit"
-                  ? "max-w-[48px] text-[5.8px] tracking-normal"
-                  : "text-[7.5px] tracking-[0.08em]"
-              }`}
+              className="min-h-7 max-w-[54px] text-[7.2px] font-black uppercase leading-[11px] tracking-[0.045em] text-white/50"
             >
-              {item.label === "Recommended Unit" ? (
-                <>
-                  Recommended
-                  <br />
-                  Unit
-                </>
-              ) : (
-                item.label
-              )}
+              {formatSummaryLabel(item.label)}
             </p>
           </div>
           <p className={`mt-1.5 font-black leading-tight tracking-tight ${item.tone === "cyan" ? "text-sky-300" : item.tone === "violet" ? "text-violet-300" : "text-emerald-300"} ${item.label === "Current Profile" ? "text-[9px]" : "text-[19px]"}`}>
