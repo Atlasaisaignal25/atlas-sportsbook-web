@@ -6380,12 +6380,14 @@ type ConsolidatedMarketImpactEvent = MarketImpactEvent & {
 };
 
 function getMarketImpactGroupKey(item: MarketImpactEvent) {
+  const selectionKey = item.market === "Totals" ? "market-total" : item.selection.trim().toLowerCase();
+
   return [
     item.sport,
     item.awayTeam.trim().toLowerCase(),
     item.homeTeam.trim().toLowerCase(),
     item.market,
-    item.selection.trim().toLowerCase(),
+    selectionKey,
   ].join("|");
 }
 
@@ -7043,6 +7045,11 @@ function getMarketImpactPrimaryTitle(event: MarketImpactEvent, sport: SportTab) 
   return selection;
 }
 
+function getMarketMonitorTitle(event: MarketImpactEvent, sport: SportTab) {
+  if (event.market === "Totals") return "Totals Market";
+  return getMarketImpactPrimaryTitle(event, sport);
+}
+
 function formatTeamImpactMarketLine(value: number | null) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "";
   if (value > 0) return `+${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}`;
@@ -7067,24 +7074,106 @@ function formatMarketLineOnly(line: number | null) {
   return line === null ? "N/A" : formatTeamImpactMarketLine(line);
 }
 
-function getMarketLatestMovementLabel(event: MarketImpactEvent) {
-  const oldValue = formatMarketDetailValue(event.oldLine, event.oldOdds) || "N/A";
-  const newValue = formatMarketDetailValue(event.newLine, event.newOdds) || "N/A";
-  return `${oldValue} -> ${newValue}`;
+function formatMarketStateLine(selection: string, line: number | null, odds: number | null) {
+  const selectionText = selection.trim();
+  const lineText = formatMarketLineOnly(line);
+  const oddsText = formatAmericanOdds(odds);
+  return {
+    market: [selectionText, lineText === "N/A" ? null : lineText].filter(Boolean).join(" "),
+    odds: oddsText === "N/A" ? "Odds N/A" : `(${oddsText})`,
+  };
+}
+
+function getMarketOpeningMovement(event: ConsolidatedMarketImpactEvent) {
+  return event.movementsToday[0] ?? event;
+}
+
+function getMarketOpeningLine(event: ConsolidatedMarketImpactEvent) {
+  const opening = getMarketOpeningMovement(event);
+  return opening.oldLine ?? opening.newLine;
+}
+
+function getMarketOpeningOdds(event: ConsolidatedMarketImpactEvent) {
+  const opening = getMarketOpeningMovement(event);
+  return opening.oldOdds ?? opening.newOdds;
+}
+
+function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
+  const openLine = getMarketOpeningLine(event);
+  const currentLine = event.newLine;
+
+  if (openLine === null || currentLine === null) {
+    return {
+      label: "LINE STATUS",
+      arrow: "•",
+      tone: "text-white/62",
+      badge: "border-white/12 bg-white/[0.04]",
+    };
+  }
+
+  if (currentLine > openLine) {
+    return {
+      label: "LINE MOVED UP",
+      arrow: "↑",
+      tone: "text-emerald-300",
+      badge: "border-emerald-300/24 bg-emerald-300/[0.08]",
+    };
+  }
+
+  if (currentLine < openLine) {
+    return {
+      label: "LINE MOVED DOWN",
+      arrow: "↓",
+      tone: "text-red-300",
+      badge: "border-red-300/24 bg-red-300/[0.08]",
+    };
+  }
+
+  return {
+    label: "LINE UNCHANGED",
+    arrow: "→",
+    tone: "text-orange-200",
+    badge: "border-orange-300/18 bg-orange-300/[0.06]",
+  };
 }
 
 function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
-  return event.movementsToday
-    .map((movement, index) => {
-      const label = index === 0 ? "Opening Line" : getMarketImpactSelectionLabel(movement);
-      const current = formatMarketDetailValue(movement.newLine, movement.newOdds) || "N/A";
+  const opening = getMarketOpeningMovement(event);
+  const openingState = formatMarketStateLine(
+    opening.selection,
+    getMarketOpeningLine(event),
+    getMarketOpeningOdds(event),
+  );
+  const entries = [
+    {
+      time: opening.firstMoveAt ?? opening.latestMoveAt ?? opening.publishedAt,
+      label: "Open",
+      market: openingState.market,
+      odds: openingState.odds,
+      book: null,
+    },
+    ...event.movementsToday.map((movement) => {
+      const state = formatMarketStateLine(movement.selection, movement.newLine, movement.newOdds);
       const book = movement.latestBookToMove ? `Book: ${movement.latestBookToMove}` : null;
 
-      return [
-        formatTeamImpactTimestamp(movement.latestMoveAt ?? movement.publishedAt),
-        label,
-        current,
+      return {
+        time: movement.latestMoveAt ?? movement.publishedAt,
+        label: getMarketImpactSelectionLabel(movement),
+        market: state.market,
+        odds: state.odds,
         book,
+      };
+    }),
+  ];
+
+  return entries
+    .map((entry) => {
+      return [
+        formatTeamImpactTimestamp(entry.time),
+        entry.label,
+        entry.market,
+        entry.odds,
+        entry.book,
       ]
         .filter(Boolean)
         .join("\n");
@@ -9187,7 +9276,7 @@ const subscriptionPlansBoard = (
                   const detailTitle = isIntelligenceImpact
                     ? getAtlasIntelligenceImpact(item as AtlasIntelligenceEvent)
                     : isMarketImpact && marketEvent
-                      ? getMarketImpactPrimaryTitle(marketEvent, badgeSport)
+                      ? getMarketMonitorTitle(marketEvent, badgeSport)
                       : teamEvent
                         ? teamEvent.eventType
                         : accent.label;
@@ -9257,6 +9346,14 @@ const subscriptionPlansBoard = (
                             `Published: ${formatTeamImpactTimestamp(teamEvent.publishedAt)}`,
                           ])
                         : impactText;
+                  const marketOpeningMovement = marketEvent ? getMarketOpeningMovement(marketEvent) : null;
+                  const marketOpenState = marketEvent && marketOpeningMovement
+                    ? formatMarketStateLine(marketOpeningMovement.selection, getMarketOpeningLine(marketEvent), getMarketOpeningOdds(marketEvent))
+                    : null;
+                  const marketCurrentState = marketEvent
+                    ? formatMarketStateLine(marketEvent.selection, marketEvent.newLine, marketEvent.newOdds)
+                    : null;
+                  const marketLineStatus = marketEvent ? getMarketLineMoveStatus(marketEvent) : null;
 
                   if (isIntelligenceImpact) {
                     const intelligence = item as AtlasIntelligenceEvent;
@@ -9365,7 +9462,7 @@ const subscriptionPlansBoard = (
                                 <TerminalTeamMark teamName={marketEvent.homeTeam} sport={badgeSport} size="lg" />
                               </div>
                               <h3 className="mt-1 truncate text-[18px] font-black leading-tight text-white">
-                                {getMarketImpactPrimaryTitle(marketEvent, badgeSport)}
+                                {getMarketMonitorTitle(marketEvent, badgeSport)}
                               </h3>
                               <p className="mt-0.5 truncate text-[12px] font-bold text-white/58">{matchup}</p>
                               <span className="mt-0.5 inline-flex rounded-full border border-orange-300/24 bg-orange-300/10 px-1.5 py-px text-[8px] font-black uppercase tracking-[0.08em] text-orange-200">
@@ -9382,20 +9479,24 @@ const subscriptionPlansBoard = (
 
                           <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] border border-orange-300/14 bg-orange-400/[0.035] px-2 py-1 text-center shadow-[0_0_14px_rgba(249,115,22,0.08)]">
                             <div>
-                              <p className="truncate text-[22px] font-black leading-none text-white">{formatMarketLineOnly(marketEvent.newLine)}</p>
-                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current Line</p>
+                              <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Open</p>
+                              <p className="mt-0.5 truncate text-[17px] font-black leading-none text-white">{marketOpenState?.market ?? "N/A"}</p>
+                              <p className="mt-0.5 text-[10px] font-black leading-none text-white/62">{marketOpenState?.odds ?? "Odds N/A"}</p>
                             </div>
-                            <span className="text-[23px] font-black leading-none text-orange-300">•</span>
+                            <span className="text-[23px] font-black leading-none text-orange-300">↓</span>
                             <div>
-                              <p className="truncate text-[22px] font-black leading-none text-orange-300">{formatAmericanOdds(marketEvent.newOdds)}</p>
-                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current Odds</p>
+                              <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current</p>
+                              <p className="mt-0.5 truncate text-[17px] font-black leading-none text-orange-300">{marketCurrentState?.market ?? "N/A"}</p>
+                              <p className="mt-0.5 text-[10px] font-black leading-none text-orange-200/78">{marketCurrentState?.odds ?? "Odds N/A"}</p>
                             </div>
                           </div>
 
                           <div className="mt-1 grid grid-cols-[1fr_74px] gap-2">
-                            <div className="rounded-[11px] border border-orange-300/12 bg-black/16 px-2 py-1">
-                              <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/42">Latest Movement</p>
-                              <p className="mt-0.5 truncate text-[11px] font-black text-white/78">{getMarketLatestMovementLabel(marketEvent)}</p>
+                            <div className={`rounded-[11px] border px-2 py-1 ${marketLineStatus?.badge ?? "border-orange-300/12 bg-black/16"}`}>
+                              <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/42">Market Status</p>
+                              <p className={`mt-0.5 truncate text-[11px] font-black uppercase tracking-[0.06em] ${marketLineStatus?.tone ?? "text-white/78"}`}>
+                                <span className="mr-1">{marketLineStatus?.arrow ?? "•"}</span>{marketLineStatus?.label ?? "LINE STATUS"}
+                              </p>
                               <p className="mt-px text-[9px] font-bold text-orange-200/70">{formatTeamImpactTimestamp(marketEvent.latestMoveAt ?? marketEvent.publishedAt)}</p>
                             </div>
                             <div className="rounded-[11px] border border-orange-300/18 bg-orange-300/[0.06] px-1.5 py-1 text-center">
