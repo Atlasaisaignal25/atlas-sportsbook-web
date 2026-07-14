@@ -3,6 +3,7 @@ export * from "./constants";
 export * from "./engine";
 export * from "./package-engine";
 export * from "./replacement-engine";
+export * from "./result-engine";
 export * from "./storage";
 export * from "./types";
 export * from "./utils";

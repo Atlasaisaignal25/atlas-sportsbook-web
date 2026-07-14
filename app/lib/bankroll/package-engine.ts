@@ -143,6 +143,8 @@ export function syncPlans(
           started: existingPlan.started,
           locked: existingPlan.locked,
           result: existingPlan.result,
+          completedAt: existingPlan.completedAt ?? null,
+          profit: existingPlan.profit ?? 0,
         }
       : expectedPlan;
 
@@ -172,7 +174,7 @@ export function selectPrimaryPlan(plans: AtlasPlan[], now = new Date().toISOStri
   const nowTime = new Date(now).getTime();
 
   return [...plans]
-    .filter((plan) => !plan.started && plan.status !== "started" && new Date(plan.startTime).getTime() > nowTime)
+    .filter((plan) => !plan.started && (plan.status === "pending" || plan.status === "confirmed") && new Date(plan.startTime).getTime() > nowTime)
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null;
 }
 
@@ -271,6 +273,8 @@ function createPlanFromCandidate(
     locked: false,
     started: false,
     result: null,
+    completedAt: null,
+    profit: 0,
     originalRank: candidate.rank,
     plannedExposure: metrics.exposure.value,
     replacementHistory: [],

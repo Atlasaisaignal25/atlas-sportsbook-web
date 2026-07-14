@@ -24,6 +24,8 @@ export function createAtlasPlan(metrics: FinancialMetrics, now = new Date().toIS
     locked: false,
     started: false,
     result: null,
+    completedAt: null,
+    profit: 0,
     originalRank: 1,
     plannedExposure: metrics.exposure.value,
     replacementHistory: [],
@@ -38,6 +40,8 @@ export function updateAtlasPlan(plan: AtlasPlan, updates: Partial<AtlasPlan>, no
     ...updates,
     locked: started ? true : updates.locked ?? plan.locked,
     started,
+    completedAt: updates.completedAt ?? plan.completedAt ?? null,
+    profit: updates.profit ?? plan.profit ?? 0,
     updatedAt: now,
   };
 }
@@ -92,6 +96,8 @@ export function isValidAtlasPlan(value: unknown): value is AtlasPlan {
     typeof plan.locked === "boolean" &&
     typeof plan.started === "boolean" &&
     (plan.result === null || plan.result === "won" || plan.result === "lost" || plan.result === "push" || plan.result === "cancelled") &&
+    (plan.completedAt === null || typeof plan.completedAt === "string" || typeof plan.completedAt === "undefined") &&
+    (typeof plan.profit === "number" || typeof plan.profit === "undefined") &&
     typeof plan.originalRank === "number" &&
     typeof plan.plannedExposure === "number" &&
     Array.isArray(plan.replacementHistory)

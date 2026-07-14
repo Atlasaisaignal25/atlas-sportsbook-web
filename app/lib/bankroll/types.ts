@@ -20,6 +20,8 @@ export type AtlasPlanPackage = "free" | "exclusive" | "premium" | "unlimited";
 
 export type AtlasPlanResult = "won" | "lost" | "push" | "cancelled" | null;
 
+export type AtlasPlanFinalResult = Exclude<AtlasPlanResult, null>;
+
 export type AtlasPlanSport = "MLB" | "NBA" | "NFL" | "NHL" | "SOCCER";
 
 export type MembershipContext = {
@@ -76,6 +78,8 @@ export type AtlasPlan = {
   locked: boolean;
   started: boolean;
   result: AtlasPlanResult;
+  completedAt: string | null;
+  profit: number;
   originalRank: number;
   plannedExposure: number;
   replacementHistory: ReplacementRecord[];
