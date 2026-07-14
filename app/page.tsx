@@ -7364,14 +7364,16 @@ const atlasBankrollMock = {
     pick: "Dodgers ML",
     status: "Pending",
     unit: "$10",
+    sport: "MLB",
   },
+  packageActive: ["FREE", "EXCLUSIVE", "PREMIUM", "UNLIMITED"],
   weekly: {
     wins: "4",
     losses: "2",
     roi: "+7%",
     planScore: "95",
     progress: 68,
-    cycle: "Day 4 of 7",
+    cycle: "Day 4 / 7",
   },
   performance: [
     { label: "Current ROI", value: "+7.00%", detail: "Good" },
@@ -7499,21 +7501,21 @@ function BankrollShell({ children, className = "" }: { children: ReactNode; clas
 
 function BankrollHeader() {
   return (
-    <BankrollShell className="overflow-hidden p-5">
+    <BankrollShell className="overflow-hidden px-4 py-3.5">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.08),transparent_40%)]" />
       <div className="relative flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-[27px] font-black uppercase tracking-[0.08em] text-white">
+          <h2 className="text-[23px] font-black uppercase tracking-[0.08em] text-white">
             ATLAS <span className="text-emerald-300">BANKROLL</span>
           </h2>
-          <p className="mt-1 text-[13px] font-bold text-white/56">Financial Discipline Center</p>
+          <p className="mt-0.5 text-[12px] font-bold text-white/56">Financial Discipline Center</p>
         </div>
         <div className="text-right">
-          <span className="inline-flex rounded-full border border-emerald-300/40 bg-emerald-300/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">
+          <span className="inline-flex rounded-full border border-emerald-300/40 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-300">
             Active
           </span>
-          <p className="mt-2 text-[11px] font-black uppercase tracking-[0.13em] text-white/48">{atlasBankrollMock.cycle.week}</p>
-          <p className="text-[11px] font-bold text-white/62">{atlasBankrollMock.cycle.day}</p>
+          <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.13em] text-white/48">{atlasBankrollMock.cycle.week}</p>
+          <p className="text-[10px] font-bold text-white/62">{atlasBankrollMock.cycle.day}</p>
         </div>
       </div>
     </BankrollShell>
@@ -7522,54 +7524,77 @@ function BankrollHeader() {
 
 function BankrollSummaryCard() {
   return (
-    <BankrollShell className="grid grid-cols-2 overflow-hidden sm:grid-cols-4">
-      {atlasBankrollMock.summary.map((item, index) => (
+    <BankrollShell className="overflow-hidden p-3">
+      <div className="grid grid-cols-4 divide-x divide-white/10">
+      {atlasBankrollMock.summary.map((item) => (
         <div
           key={item.label}
-          className={`min-w-0 p-4 ${index % 2 === 0 ? "border-r border-white/10" : ""} ${index < 2 ? "border-b border-white/10 sm:border-b-0" : ""} ${index > 0 ? "sm:border-l sm:border-white/10" : ""}`}
+          className="min-w-0 px-2 first:pl-0 last:pr-0"
         >
-          <div className="flex items-start gap-2">
-            <BankrollUiIcon name={item.icon} className={`h-6 w-6 shrink-0 ${bankrollToneClasses[item.tone]}`} />
-            <p className="min-h-10 text-[10px] font-black uppercase leading-5 tracking-[0.12em] text-white/52">{item.label}</p>
+          <div className="flex items-start gap-1.5">
+            <BankrollUiIcon name={item.icon} className={`h-5 w-5 shrink-0 ${bankrollToneClasses[item.tone]}`} />
+            <p className="min-h-8 text-[8.5px] font-black uppercase leading-4 tracking-[0.1em] text-white/50">{item.label}</p>
           </div>
-          <p className={`mt-3 text-[24px] font-black tracking-tight ${item.tone === "cyan" ? "text-sky-300" : item.tone === "violet" ? "text-violet-300" : "text-emerald-300"}`}>
+          <p className={`mt-2 font-black leading-tight tracking-tight ${item.tone === "cyan" ? "text-sky-300" : item.tone === "violet" ? "text-violet-300" : "text-emerald-300"} ${item.label === "Current Profile" ? "text-[10px]" : "text-[19px]"}`}>
             {item.value}
           </p>
-          <p className={`mt-1 text-[11px] font-bold ${item.detail === "Recommended" ? "text-emerald-300" : "text-white/46"}`}>
+          <p className={`mt-0.5 text-[9.5px] font-bold ${item.detail === "Recommended" ? "text-emerald-300" : "text-white/46"}`}>
             {item.detail}
           </p>
         </div>
       ))}
+      </div>
+      <div className="mt-2 flex items-center gap-2 border-t border-white/10 pt-2">
+        <p className="shrink-0 text-[8px] font-black uppercase tracking-[0.11em] text-white/34">Package Active</p>
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1">
+          {atlasBankrollMock.packageActive.map((pack) => (
+            <span
+              key={pack}
+              className={`rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.05em] ${
+                pack === atlasBankrollMock.plan.package.toUpperCase()
+                  ? "border-emerald-300/35 bg-emerald-300/12 text-emerald-200"
+                  : "border-white/10 bg-white/[0.035] text-white/36"
+              }`}
+            >
+              {pack}
+            </span>
+          ))}
+        </div>
+      </div>
     </BankrollShell>
   );
 }
 
 function BankrollPlanCard() {
   const rows = [
-    ["Package", atlasBankrollMock.plan.package],
     ["Today's Pick", atlasBankrollMock.plan.pick],
+    ["Package", atlasBankrollMock.plan.package],
     ["Status", atlasBankrollMock.plan.status],
     ["Recommended Unit", atlasBankrollMock.plan.unit],
+    ["Sport", atlasBankrollMock.plan.sport],
   ];
 
   return (
-    <BankrollShell className="p-4">
+    <BankrollShell className="overflow-hidden border-emerald-300/24 bg-[radial-gradient(circle_at_18%_15%,rgba(16,185,129,0.16),transparent_38%),linear-gradient(180deg,rgba(6,16,31,0.92),rgba(3,8,20,0.98))] p-3.5 shadow-[0_0_28px_rgba(16,185,129,0.10)]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <BankrollUiIcon name="target" className="h-7 w-7 text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.36)]" />
+          <BankrollUiIcon name="target" className="h-8 w-8 text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.36)]" />
           <p className="text-[14px] font-black uppercase tracking-[0.12em] text-emerald-300">Today&apos;s Atlas Plan</p>
         </div>
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-[14px] border border-cyan-300/25 bg-cyan-300/[0.06] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-[14px] border border-cyan-300/35 bg-cyan-300/[0.08] px-3.5 py-2.5 text-[10px] font-black uppercase tracking-[0.11em] text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.08)]">
           View Today&apos;s Plan
           <BankrollUiIcon name="arrow" className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-[1.4fr_1fr] gap-2">
         {rows.map(([label, value]) => (
-          <div key={label} className="rounded-[16px] border border-white/10 bg-black/20 px-3 py-3">
+          <div
+            key={label}
+            className={`rounded-[14px] border border-white/10 bg-black/20 px-3 py-2.5 ${label === "Today's Pick" ? "row-span-2 flex flex-col justify-center border-emerald-300/18 bg-emerald-300/[0.055]" : ""}`}
+          >
             <p className="text-[10px] font-black uppercase tracking-[0.13em] text-white/42">{label}</p>
-            <p className={`mt-1 text-[16px] font-black ${value === "Pending" ? "text-amber-200" : "text-white"}`}>{value}</p>
+            <p className={`mt-1 font-black ${label === "Today's Pick" ? "text-[25px] leading-tight text-white" : value === "Pending" ? "text-[17px] text-amber-200" : "text-[17px] text-white"}`}>{value}</p>
           </div>
         ))}
       </div>
@@ -7586,45 +7611,44 @@ function BankrollWeeklyCard() {
   ];
 
   return (
-    <BankrollShell className="p-4">
+    <BankrollShell className="p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <BankrollUiIcon name="bars" className="h-7 w-7 text-emerald-300" />
-          <p className="text-[14px] font-black uppercase tracking-[0.12em] text-emerald-300">Weekly Progress</p>
+          <BankrollUiIcon name="bars" className="h-6 w-6 text-emerald-300" />
+          <p className="text-[13px] font-black uppercase tracking-[0.12em] text-emerald-300">Weekly Progress</p>
         </div>
-        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/52">
-          Current Cycle
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white/52">
+          Current Cycle · {atlasBankrollMock.weekly.cycle}
         </span>
       </div>
-      <div className="mt-5 grid grid-cols-4 gap-2 text-center">
+      <div className="mt-3 grid grid-cols-4 gap-2 text-center">
         {metrics.map(([label, value, tone]) => (
           <div key={label} className="min-w-0 border-r border-white/10 last:border-r-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/45">{label}</p>
-            <p className={`mt-1 text-[23px] font-black ${tone}`}>{value}</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.1em] text-white/45">{label}</p>
+            <p className={`mt-0.5 text-[20px] font-black ${tone}`}>{value}</p>
           </div>
         ))}
       </div>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/10">
         <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-300 to-cyan-300 shadow-[0_0_14px_rgba(52,211,153,0.35)]" style={{ width: `${atlasBankrollMock.weekly.progress}%` }} />
       </div>
-      <p className="mt-4 text-center text-[12px] font-bold text-emerald-300">{atlasBankrollMock.weekly.cycle}</p>
     </BankrollShell>
   );
 }
 
 function BankrollPerformanceCard() {
   return (
-    <BankrollShell className="p-4">
+    <BankrollShell className="p-3">
       <div className="flex items-center gap-2">
-        <BankrollUiIcon name="trend" className="h-7 w-7 text-emerald-300" />
-        <p className="text-[14px] font-black uppercase tracking-[0.12em] text-emerald-300">Performance</p>
+        <BankrollUiIcon name="trend" className="h-6 w-6 text-emerald-300" />
+        <p className="text-[13px] font-black uppercase tracking-[0.12em] text-emerald-300">Performance</p>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {atlasBankrollMock.performance.map((metric) => (
-          <div key={metric.label} className="rounded-[16px] border border-white/10 bg-black/20 px-3 py-3 text-center">
-            <p className="text-[10px] font-black uppercase leading-4 tracking-[0.12em] text-white/45">{metric.label}</p>
-            <p className="mt-3 text-[24px] font-black text-emerald-300">{metric.value}</p>
-            <p className="mt-1 text-[11px] font-semibold text-white/48">{metric.detail}</p>
+          <div key={metric.label} className="rounded-[14px] border border-white/10 bg-black/20 px-2.5 py-2.5 text-center">
+            <p className="text-[9px] font-black uppercase leading-4 tracking-[0.1em] text-white/45">{metric.label}</p>
+            <p className="mt-1.5 text-[21px] font-black text-emerald-300">{metric.value}</p>
+            <p className="mt-0.5 text-[10px] font-semibold text-white/48">{metric.detail}</p>
           </div>
         ))}
       </div>
@@ -7634,25 +7658,25 @@ function BankrollPerformanceCard() {
 
 function BankrollInsightCard() {
   return (
-    <BankrollShell className="overflow-hidden p-4">
+    <BankrollShell className="overflow-hidden p-3">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_70%,rgba(59,130,246,0.16),transparent_34%),radial-gradient(circle_at_90%_80%,rgba(14,165,233,0.12),transparent_32%)]" />
       <div className="relative flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <BankrollUiIcon name="bulb" className="h-7 w-7 text-sky-300" />
-          <p className="text-[14px] font-black uppercase tracking-[0.12em] text-sky-300">Educational Insight</p>
+          <BankrollUiIcon name="bulb" className="h-6 w-6 text-sky-300" />
+          <p className="text-[13px] font-black uppercase tracking-[0.12em] text-sky-300">Educational Insight</p>
         </div>
-        <button type="button" className="inline-flex items-center gap-1.5 rounded-[14px] border border-cyan-300/25 bg-cyan-300/[0.06] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">
+        <button type="button" className="inline-flex items-center gap-1 rounded-[12px] border border-cyan-300/25 bg-cyan-300/[0.06] px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.1em] text-cyan-300">
           Learn More
-          <BankrollUiIcon name="arrow" className="h-4 w-4" />
+          <BankrollUiIcon name="arrow" className="h-3.5 w-3.5" />
         </button>
       </div>
-      <div className="relative mt-5 grid grid-cols-[76px_1fr] items-center gap-4">
-        <div className="grid h-[76px] w-[76px] place-items-center rounded-full border border-sky-300/25 bg-sky-300/10 text-sky-300 shadow-[0_0_22px_rgba(14,165,233,0.12)]">
-          <BankrollUiIcon name="education" className="h-10 w-10" />
+      <div className="relative mt-3 grid grid-cols-[50px_1fr] items-center gap-3">
+        <div className="grid h-[50px] w-[50px] place-items-center rounded-full border border-sky-300/25 bg-sky-300/10 text-sky-300 shadow-[0_0_18px_rgba(14,165,233,0.10)]">
+          <BankrollUiIcon name="education" className="h-7 w-7" />
         </div>
         <div>
-          <h3 className="text-[18px] font-black text-white">{atlasBankrollMock.insight.title}</h3>
-          <p className="mt-2 text-[13px] leading-6 text-white/58">{atlasBankrollMock.insight.body}</p>
+          <h3 className="text-[15px] font-black text-white">{atlasBankrollMock.insight.title}</h3>
+          <p className="mt-1 text-[12px] leading-5 text-white/58">{atlasBankrollMock.insight.body}</p>
         </div>
       </div>
     </BankrollShell>
@@ -7661,18 +7685,23 @@ function BankrollInsightCard() {
 
 function BankrollPlanTrackingTabs() {
   return (
-    <BankrollShell className="p-4">
-      <div className="grid grid-cols-2 rounded-[16px] border border-white/10 bg-black/20 p-1">
-        <button type="button" className="rounded-[12px] bg-emerald-300 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-black">
+    <BankrollShell className="p-3">
+      <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
+        <button type="button" className="rounded-[10px] bg-emerald-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-black">
           Atlas Plan
         </button>
-        <button type="button" className="rounded-[12px] px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white/45">
+        <button type="button" className="rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/45">
           My Tracking
         </button>
       </div>
-      <div className="mt-3 rounded-[18px] border border-white/10 bg-white/[0.035] px-4 py-4">
-        <p className="text-[13px] font-bold text-white/72">Track your own selections independently from the Atlas Plan.</p>
-        <p className="mt-1 text-[12px] text-white/45">Coming in the next phase.</p>
+      <div className="mt-2 grid grid-cols-[34px_1fr] items-center gap-3 rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2.5">
+        <div className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+          <BankrollUiIcon name="wallet" className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-[12px] font-black text-white/72">Track your own selections.</p>
+          <p className="mt-0.5 text-[10px] leading-4 text-white/45">Independent from the Atlas Plan. Coming next phase.</p>
+        </div>
       </div>
     </BankrollShell>
   );
@@ -7680,10 +7709,10 @@ function BankrollPlanTrackingTabs() {
 
 function AtlasBankrollScreen() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <BankrollHeader />
-      <BankrollSummaryCard />
       <BankrollPlanCard />
+      <BankrollSummaryCard />
       <BankrollWeeklyCard />
       <BankrollPerformanceCard />
       <BankrollInsightCard />
@@ -8618,8 +8647,8 @@ const subscriptionPlansBoard = (
   <main className="min-h-screen bg-[#050816] text-white">
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col">
       <header className={`sticky top-0 z-20 border-b border-white/5 bg-[#050816]/95 px-4 backdrop-blur ${
-        appSection === "signals" ? "pb-2 pt-4" : appSection === "news" ? "pb-2 pt-4" : "pb-3 pt-5"
-      } ${appSection === "news" ? "hidden" : ""}`}>
+        appSection === "signals" ? "pb-2 pt-4" : appSection === "news" ? "pb-2 pt-4" : appSection === "bankroll" ? "pb-2 pt-3" : "pb-3 pt-5"
+      } ${appSection === "news" || appSection === "bankroll" ? "hidden" : ""}`}>
         <div className="flex items-start justify-between gap-3">
           <div>
             {appSection === "news" ? null : (
@@ -8628,17 +8657,17 @@ const subscriptionPlansBoard = (
                   <img
                     src="/icon.png"
                     alt="Atlas Signals"
-                    className="h-8 w-8 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                    className={`${appSection === "bankroll" ? "h-6 w-6" : "h-8 w-8"} object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]`}
                   />
 
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400/90">
+                  <p className={`${appSection === "bankroll" ? "text-[9px]" : "text-[11px]"} uppercase tracking-[0.26em] text-cyan-400/90`}>
                     {sectionEyebrow}
                   </p>
                 </div>
               </div>
             )}
             <h1 className={`${appSection === "news" ? "mt-0" : "mt-1"} font-bold leading-none tracking-tight ${
-              appSection === "signals" ? "text-[36px]" : appSection === "news" ? "text-[30px]" : "text-[40px]"
+              appSection === "signals" ? "text-[36px]" : appSection === "news" ? "text-[30px]" : appSection === "bankroll" ? "text-[28px]" : "text-[40px]"
             }`}>
               {sectionTitle}
             </h1>
@@ -8660,7 +8689,7 @@ const subscriptionPlansBoard = (
             />
           ) : (
             <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">
-              {appSection === "news" ? "Impact" : selectedSport}
+              {appSection === "news" ? "Impact" : appSection === "bankroll" ? "Active" : selectedSport}
             </div>
           )}
         </div>
@@ -8691,7 +8720,7 @@ const subscriptionPlansBoard = (
           </div>
         ) : null}
 
-        {appSection !== "signals" && appSection !== "news" ? (
+        {appSection !== "signals" && appSection !== "news" && appSection !== "bankroll" ? (
         <div className="mt-3 grid grid-cols-6 gap-1">
           {sportsTabs.map((sport) => (
             <button
@@ -8711,7 +8740,7 @@ const subscriptionPlansBoard = (
 
       </header>
 
-      <section className={`flex-1 space-y-3 px-4 ${appSection === "signals" ? "py-2" : "py-3"}`}>
+      <section className={`flex-1 px-4 ${appSection === "signals" || appSection === "bankroll" ? "space-y-2.5 py-2" : "space-y-3 py-3"}`}>
         {appSection === "signals" ? (
           <>
         {shouldShowSubscriptionPlans ? (
