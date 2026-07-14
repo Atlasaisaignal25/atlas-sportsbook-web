@@ -4,6 +4,8 @@ export type BankrollPlanStatus = "active" | "not_configured";
 
 export type BankrollCycleStatus = "open" | "closed";
 
+export type TrackingOrigin = "atlas" | "manual";
+
 export type AtlasPlanStatus =
   | "pending"
   | "confirmed"
@@ -176,6 +178,53 @@ export type MonthlySummary = {
   createdAt: string;
 };
 
+export type ManualPickTimelineEvent = {
+  id: string;
+  type: string;
+  message: string;
+  createdAt: string;
+};
+
+export type ManualTrackedPick = {
+  id: string;
+  origin: "manual";
+  sport: AtlasPlanSport | null;
+  league: string;
+  eventId: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  market: string;
+  selection: string;
+  odds: number | null;
+  riskAmount: number;
+  riskPercentage: number;
+  status: AtlasPlanStatus;
+  result: AtlasPlanResult;
+  profit: number;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  notes: string;
+  source: "manual";
+  timeline: ManualPickTimelineEvent[];
+};
+
+export type ManualTrackingStats = {
+  totalPicks: number;
+  activeCount: number;
+  completedCount: number;
+};
+
+export type ManualTrackingCollection = {
+  trackingId: string;
+  createdAt: string;
+  updatedAt: string;
+  picks: ManualTrackedPick[];
+  activePicks: ManualTrackedPick[];
+  completedPicks: ManualTrackedPick[];
+  stats: ManualTrackingStats;
+};
+
 export type BankrollConfig = {
   initialBankroll: number;
   currentBankroll: number;
@@ -188,6 +237,7 @@ export type BankrollConfig = {
   cycleHistory?: BankrollCycle[];
   weeklySummaries?: WeeklySummary[];
   monthlySummaries?: MonthlySummary[];
+  manualTracking?: ManualTrackingCollection;
   createdAt: string;
   updatedAt: string;
 };

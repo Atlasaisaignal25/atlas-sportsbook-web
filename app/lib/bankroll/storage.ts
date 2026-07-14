@@ -2,6 +2,7 @@ import { BANKROLL_CONFIG_STORAGE_KEY } from "./constants";
 import { isValidStoredConfig } from "./utils";
 import type { BankrollConfig } from "./types";
 import { calculateFinancialMetrics, calculateRecommendedUnit, calculateCurrentBankroll, roundCurrency } from "./engine";
+import { normalizeManualTracking } from "./manual-tracking-engine";
 import { normalizeMonthlyState } from "./monthly-summary-engine";
 import { normalizeMembershipContext, syncPlans } from "./package-engine";
 import { normalizeWeeklyState } from "./weekly-summary-engine";
@@ -61,6 +62,7 @@ export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig 
     ...normalizedBase,
     atlasPlanCollection,
     atlasPlan: atlasPlanCollection.primaryPlan ?? undefined,
+    manualTracking: normalizeManualTracking(normalizedBase.manualTracking, normalizedBase.updatedAt),
   }));
 }
 

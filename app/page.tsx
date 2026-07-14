@@ -52,6 +52,7 @@ import {
   type AtlasPlan,
   type AtlasPlanCollection,
   type FinancialMetrics,
+  type ManualTrackingCollection,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
 import {
@@ -7988,14 +7989,25 @@ function BankrollInsightCard() {
   );
 }
 
-function BankrollPlanTrackingTabs() {
+function BankrollPlanTrackingTabs({ manualTracking }: { manualTracking: ManualTrackingCollection | null }) {
+  const [activeTab, setActiveTab] = useState<"atlas" | "manual">("atlas");
+  const hasManualPicks = Boolean(manualTracking && manualTracking.picks.length > 0);
+
   return (
     <BankrollShell className="px-2.5 py-2">
       <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
-        <button type="button" className="rounded-[10px] bg-emerald-300 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-black">
+        <button
+          type="button"
+          onClick={() => setActiveTab("atlas")}
+          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "atlas" ? "bg-emerald-300 text-black" : "text-white/45"}`}
+        >
           Atlas Plan
         </button>
-        <button type="button" className="rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-white/45">
+        <button
+          type="button"
+          onClick={() => setActiveTab("manual")}
+          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "manual" ? "bg-emerald-300 text-black" : "text-white/45"}`}
+        >
           My Tracking
         </button>
       </div>
@@ -8003,9 +8015,28 @@ function BankrollPlanTrackingTabs() {
         <div className="grid h-7 w-7 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
           <BankrollUiIcon name="wallet" className="h-4 w-4" />
         </div>
-        <div>
-          <p className="text-[12px] font-black text-white/72">Track your own selections.</p>
-          <p className="mt-0.5 text-[10px] leading-4 text-white/45">Independent from the Atlas Plan. Coming next phase.</p>
+        <div className="min-w-0">
+          {activeTab === "atlas" ? (
+            <>
+              <p className="text-[12px] font-black text-white/72">Atlas Plan tracking.</p>
+              <p className="mt-0.5 text-[10px] leading-4 text-white/45">Automatic Atlas signals remain separate from manual tracking.</p>
+            </>
+          ) : hasManualPicks ? (
+            <>
+              <p className="text-[12px] font-black text-white/72">{manualTracking?.stats.activeCount ?? 0} active manual picks.</p>
+              <p className="mt-0.5 text-[10px] leading-4 text-white/45">Manual selections are tracked independently from Atlas Plans.</p>
+            </>
+          ) : (
+            <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+              <div className="min-w-0">
+                <p className="text-[12px] font-black text-white/72">No manual picks yet.</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-white/45">Start tracking your own selections independently from Atlas Plans.</p>
+              </div>
+              <button type="button" className="rounded-[10px] border border-emerald-300/25 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200">
+                Create First Pick
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </BankrollShell>
@@ -8245,6 +8276,7 @@ function AtlasBankrollScreen() {
   const metrics = financialPlan?.metrics ?? null;
   const planCollection = config?.atlasPlanCollection ?? null;
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
+  const manualTracking = config?.manualTracking ?? null;
 
   useEffect(() => {
     const storedConfig = loadBankrollConfig();
@@ -8275,7 +8307,7 @@ function AtlasBankrollScreen() {
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
-      <BankrollPlanTrackingTabs />
+      <BankrollPlanTrackingTabs manualTracking={manualTracking} />
       <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
       <BankrollSummaryCard config={config} metrics={metrics} />
       <BankrollWeeklyCard />
