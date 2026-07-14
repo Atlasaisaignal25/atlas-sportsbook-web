@@ -5,6 +5,7 @@ export * from "./engine";
 export * from "./manual-analytics-engine";
 export * from "./manual-result-engine";
 export * from "./manual-history-engine";
+export * from "./manual-summary-engine";
 export * from "./manual-tracking-engine";
 export * from "./monthly-summary-engine";
 export * from "./package-engine";

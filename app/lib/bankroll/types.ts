@@ -297,6 +297,92 @@ export type ManualFinancialState = {
   updatedAt: string;
 };
 
+export type ManualSummaryBreakdown = {
+  key: string;
+  label: string;
+  picks: number;
+  wins: number;
+  losses: number;
+  pushes: number;
+  cancelled: number;
+  winRate: number;
+  profit: number;
+  roi: number;
+};
+
+export type ManualCycle = {
+  id: string;
+  cycleNumber: number;
+  startDate: string;
+  endDate: string;
+  status: BankrollCycleStatus;
+  initialBankroll: number;
+  createdAt: string;
+  closedAt: string | null;
+};
+
+export type ManualWeeklySummary = {
+  id: string;
+  cycleNumber: number;
+  startDate: string;
+  endDate: string;
+  initialBankroll: number;
+  finalBankroll: number;
+  profit: number;
+  roi: number;
+  wins: number;
+  losses: number;
+  pushes: number;
+  cancelled: number;
+  completedPicks: number;
+  activePicks: number;
+  winRate: number;
+  disciplineScore: number;
+  averageRiskAmount: number;
+  averageRiskPercentage: number;
+  replacementCount: number;
+  longestWinningStreak: number;
+  longestLosingStreak: number;
+  sportsBreakdown: ManualSummaryBreakdown[];
+  marketsBreakdown: ManualSummaryBreakdown[];
+  createdAt: string;
+};
+
+export type ManualMonthlySummary = {
+  id: string;
+  month: number;
+  year: number;
+  startDate: string;
+  endDate: string;
+  weeklySummaryIds: string[];
+  initialBankroll: number;
+  finalBankroll: number;
+  profit: number;
+  roi: number;
+  wins: number;
+  losses: number;
+  pushes: number;
+  cancelled: number;
+  completedPicks: number;
+  winRate: number;
+  disciplineScore: number;
+  averageRiskAmount: number;
+  averageRiskPercentage: number;
+  bestWeek: {
+    id: string | null;
+    roi: number;
+  };
+  worstWeek: {
+    id: string | null;
+    roi: number;
+  };
+  longestWinningStreak: number;
+  longestLosingStreak: number;
+  sportsBreakdown: ManualSummaryBreakdown[];
+  marketsBreakdown: ManualSummaryBreakdown[];
+  createdAt: string;
+};
+
 export type ManualTrackingCollection = {
   trackingId: string;
   createdAt: string;
@@ -308,6 +394,10 @@ export type ManualTrackingCollection = {
   manualFinancialState: ManualFinancialState;
   manualStats: ManualTrackingStats;
   manualTimeline: ManualPickTimelineEvent[];
+  manualActiveCycle: ManualCycle | null;
+  manualCycleHistory: ManualCycle[];
+  manualWeeklySummaries: ManualWeeklySummary[];
+  manualMonthlySummaries: ManualMonthlySummary[];
 };
 
 export type BankrollConfig = {

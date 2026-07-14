@@ -30,6 +30,10 @@ export function createManualTracking(now = new Date().toISOString(), initialBank
     manualFinancialState,
     manualStats: stats,
     manualTimeline: [],
+    manualActiveCycle: null,
+    manualCycleHistory: [],
+    manualWeeklySummaries: [],
+    manualMonthlySummaries: [],
   };
 }
 
@@ -57,6 +61,10 @@ export function normalizeManualTracking(
     manualFinancialState,
     manualStats: stats,
     manualTimeline: Array.isArray(collection.manualTimeline) ? collection.manualTimeline : [],
+    manualActiveCycle: collection.manualActiveCycle ?? null,
+    manualCycleHistory: Array.isArray(collection.manualCycleHistory) ? collection.manualCycleHistory : [],
+    manualWeeklySummaries: Array.isArray(collection.manualWeeklySummaries) ? collection.manualWeeklySummaries : [],
+    manualMonthlySummaries: Array.isArray(collection.manualMonthlySummaries) ? collection.manualMonthlySummaries : [],
   };
 }
 

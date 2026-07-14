@@ -47,9 +47,11 @@ import {
   getReplacementSummary,
   getPlanStatusTone,
   buildManualAnalytics,
+  buildManualWeeklySummary,
   buildComparison,
   loadBankrollConfig,
   loadAvailableAtlasPicks,
+  loadManualSummaryHistory,
   loadTrackingHistory,
   normalizeBankrollConfig,
   saveBankrollConfig,
@@ -65,6 +67,9 @@ import {
   type TrackingHistoryPick,
   type TrackingRange,
   type ManualPerformanceGroup,
+  type ManualMonthlySummary,
+  type ManualSummaryBreakdown,
+  type ManualWeeklySummary,
   type ManualTrackingAnalytics,
   type TrackingComparison,
   type ComparisonGroup,
@@ -8017,10 +8022,13 @@ function BankrollPlanTrackingTabs({
 }) {
   const [activeTab, setActiveTab] = useState<"atlas" | "manual">("atlas");
   const [trackingRange, setTrackingRange] = useState<TrackingRange>("today");
+  const [summaryRange, setSummaryRange] = useState<ManualSummaryRange>("this_week");
   const [calendarDate, setCalendarDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(null);
+  const [selectedSummaryId, setSelectedSummaryId] = useState<string | null>(null);
   const hasManualPicks = Boolean(manualTracking && manualTracking.picks.length > 0);
   const trackingHistory = useMemo(() => loadTrackingHistory(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
+  const manualSummaryHistory = useMemo(() => loadManualSummaryHistory(manualTracking), [manualTracking]);
   const trackingAnalytics = useMemo(() => buildManualAnalytics(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
   const trackingComparison = useMemo(() => (config ? buildComparison(config, trackingAnalytics, trackingRange, calendarDate) : null), [calendarDate, config, trackingAnalytics, trackingRange]);
   const selectedTrackingPick = trackingHistory.picks.find((item) => item.pick.id === selectedTrackingPickId) ?? null;
@@ -8028,6 +8036,10 @@ function BankrollPlanTrackingTabs({
   useEffect(() => {
     setSelectedTrackingPickId(null);
   }, [trackingRange, calendarDate]);
+
+  useEffect(() => {
+    setSelectedSummaryId(null);
+  }, [summaryRange]);
 
   return (
     <BankrollShell className="px-2.5 py-2">
@@ -8071,6 +8083,16 @@ function BankrollPlanTrackingTabs({
               <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={setTrackingRange} onCalendarDateChange={setCalendarDate} />
               {!selectedTrackingPick ? <ManualAnalyticsPanel analytics={trackingAnalytics} /> : null}
               {!selectedTrackingPick && trackingComparison ? <TrackingComparisonPanel comparison={trackingComparison} /> : null}
+              {!selectedTrackingPick ? (
+                <ManualPerformanceHistoryPanel
+                  manualTracking={manualTracking}
+                  history={manualSummaryHistory}
+                  range={summaryRange}
+                  selectedSummaryId={selectedSummaryId}
+                  onRangeChange={setSummaryRange}
+                  onSelectSummary={setSelectedSummaryId}
+                />
+              ) : null}
               {selectedTrackingPick ? (
                 <TrackingPickTimelineView item={selectedTrackingPick} onBack={() => setSelectedTrackingPickId(null)} />
               ) : (
@@ -8102,6 +8124,22 @@ const trackingRangeOptions: Array<{ label: string; value: TrackingRange }> = [
   { label: "This Month", value: "this_month" },
   { label: "All Time", value: "all_time" },
   { label: "Calendar", value: "calendar" },
+];
+
+type ManualSummaryRange = "this_week" | "last_week" | "this_month" | "previous_months";
+
+type ManualSummaryItem = {
+  kind: "weekly" | "monthly";
+  label: string;
+  detail: string;
+  summary: ManualWeeklySummary | ManualMonthlySummary;
+};
+
+const manualSummaryRangeOptions: Array<{ label: string; value: ManualSummaryRange }> = [
+  { label: "This Week", value: "this_week" },
+  { label: "Last Week", value: "last_week" },
+  { label: "This Month", value: "this_month" },
+  { label: "Previous Months", value: "previous_months" },
 ];
 
 function TrackingRangeSelector({
@@ -8141,6 +8179,226 @@ function TrackingRangeSelector({
       ) : null}
     </div>
   );
+}
+
+function ManualPerformanceHistoryPanel({
+  manualTracking,
+  history,
+  range,
+  selectedSummaryId,
+  onRangeChange,
+  onSelectSummary,
+}: {
+  manualTracking: ManualTrackingCollection | null;
+  history: ReturnType<typeof loadManualSummaryHistory>;
+  range: ManualSummaryRange;
+  selectedSummaryId: string | null;
+  onRangeChange: (range: ManualSummaryRange) => void;
+  onSelectSummary: (summaryId: string | null) => void;
+}) {
+  const items = useMemo(() => getManualSummaryItems(manualTracking, history, range), [history, manualTracking, range]);
+  const selectedItem = items.find((item) => item.summary.id === selectedSummaryId) ?? null;
+
+  return (
+    <div className="mt-2 rounded-[13px] border border-white/10 bg-black/18 p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Performance History</p>
+          <p className="mt-0.5 text-[9px] font-semibold text-white/38">Manual summaries stay independent from Atlas Plan.</p>
+        </div>
+        {selectedItem ? (
+          <button type="button" onClick={() => onSelectSummary(null)} className="rounded-[9px] border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/55">
+            Back
+          </button>
+        ) : null}
+      </div>
+
+      {!selectedItem ? (
+        <>
+          <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+            {manualSummaryRangeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => onRangeChange(option.value)}
+                className={`shrink-0 rounded-[10px] border px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] ${
+                  range === option.value ? "border-cyan-300/45 bg-cyan-300/[0.12] text-cyan-200" : "border-white/10 bg-black/18 text-white/42"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {items.length > 0 ? (
+            <div className="mt-1 grid gap-1.5">
+              {items.map((item) => (
+                <ManualSummaryCard key={`${item.kind}-${item.summary.id}`} item={item} onOpen={() => onSelectSummary(item.summary.id)} />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-2 rounded-[12px] border border-white/10 bg-white/[0.025] px-3 py-2.5">
+              <p className="text-[11px] font-black text-white/65">Performance history will appear after weekly or monthly summaries are generated.</p>
+              <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">My Tracking summaries use only manually tracked Atlas picks.</p>
+            </div>
+          )}
+        </>
+      ) : (
+        <ManualSummaryDetail item={selectedItem} timeline={history.timeline} />
+      )}
+    </div>
+  );
+}
+
+function ManualSummaryCard({ item, onOpen }: { item: ManualSummaryItem; onOpen: () => void }) {
+  const summary = item.summary;
+
+  return (
+    <button type="button" onClick={onOpen} className="grid grid-cols-[1fr_0.55fr_0.55fr_0.55fr] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.025] px-2 py-1.5 text-left">
+      <div className="min-w-0">
+        <p className="truncate text-[10px] font-black text-white/72">{item.label}</p>
+        <p className="mt-0.5 truncate text-[8px] font-bold text-white/35">{item.detail}</p>
+      </div>
+      <div>
+        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">ROI</p>
+        <p className={summary.roi >= 0 ? "text-[10px] font-black text-emerald-300" : "text-[10px] font-black text-red-300"}>{formatSignedPercent(summary.roi)}</p>
+      </div>
+      <div>
+        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">P/L</p>
+        <p className={summary.profit >= 0 ? "text-[10px] font-black text-emerald-300" : "text-[10px] font-black text-red-300"}>{formatTrackingProfit(summary.profit)}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Score</p>
+        <p className={`text-[10px] font-black ${getDisciplineTextClass(summary.disciplineScore)}`}>{summary.disciplineScore}</p>
+      </div>
+    </button>
+  );
+}
+
+function ManualSummaryDetail({ item, timeline }: { item: ManualSummaryItem; timeline: ReturnType<typeof loadManualSummaryHistory>["timeline"] }) {
+  const summary = item.summary;
+  const eventLabel = item.kind === "weekly" ? "Weekly Summary Generated" : "Monthly Summary Generated";
+  const summaryTimeline = timeline.filter((event) => event.message === eventLabel);
+
+  return (
+    <div className="mt-2 grid gap-2">
+      <div className="flex items-start justify-between gap-2 rounded-[11px] border border-cyan-300/15 bg-cyan-300/[0.045] px-2 py-1.5">
+        <div className="min-w-0">
+          <p className="truncate text-[12px] font-black text-white">{item.label}</p>
+          <p className="mt-0.5 text-[9px] font-semibold text-white/42">{item.detail}</p>
+        </div>
+        <p className="shrink-0 text-[8px] font-black uppercase tracking-[0.1em] text-cyan-300">{item.kind === "weekly" ? "Weekly" : "Monthly"}</p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
+        <AnalyticsMetric label="Initial" value={formatCurrency(summary.initialBankroll)} />
+        <AnalyticsMetric label="Final" value={formatCurrency(summary.finalBankroll)} />
+        <AnalyticsMetric label="Profit" value={formatTrackingProfit(summary.profit)} valueClass={summary.profit >= 0 ? "text-emerald-300" : "text-red-300"} />
+        <AnalyticsMetric label="ROI" value={formatSignedPercent(summary.roi)} valueClass={summary.roi >= 0 ? "text-emerald-300" : "text-red-300"} />
+      </div>
+
+      <div className="grid grid-cols-4 gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
+        <AnalyticsMetric label="Wins" value={String(summary.wins)} />
+        <AnalyticsMetric label="Losses" value={String(summary.losses)} valueClass={summary.losses > 0 ? "text-red-300" : "text-white"} />
+        <AnalyticsMetric label="Win Rate" value={`${formatCompactNumber(summary.winRate)}%`} />
+        <AnalyticsMetric label="Completed" value={String(summary.completedPicks)} />
+      </div>
+
+      <div className="grid grid-cols-4 gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
+        <AnalyticsMetric label="Avg Unit" value={formatCurrency(summary.averageRiskAmount)} />
+        <AnalyticsMetric label="Avg Plan %" value={`${formatCompactNumber(summary.averageRiskPercentage)}%`} />
+        <AnalyticsMetric label="Discipline" value={String(summary.disciplineScore)} valueClass={getDisciplineTextClass(summary.disciplineScore)} />
+        <AnalyticsMetric label="Streaks" value={`${summary.longestWinningStreak}W / ${summary.longestLosingStreak}L`} />
+      </div>
+
+      <ManualSummaryBreakdownList title="Sports Breakdown" groups={summary.sportsBreakdown} />
+      <ManualSummaryBreakdownList title="Markets Breakdown" groups={summary.marketsBreakdown} />
+
+      {summaryTimeline.length > 0 ? (
+        <div className="rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
+          <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">Timeline</p>
+          <div className="grid gap-1.5">
+            {summaryTimeline.slice(-3).map((event) => (
+              <div key={event.id} className="grid grid-cols-[44px_1fr] items-center gap-2 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
+                <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/35">{formatTrackingTime(event.createdAt)}</p>
+                <p className="truncate text-[10px] font-bold text-white/68">{event.description ?? event.message}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ManualSummaryBreakdownList({ title, groups }: { title: string; groups: ManualSummaryBreakdown[] }) {
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
+      <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{title}</p>
+      <div className="grid gap-1.5">
+        {groups.slice(0, 3).map((group) => (
+          <div key={group.key} className="grid grid-cols-[1fr_0.5fr_0.5fr_0.56fr] items-center gap-2 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-black text-white/72">{group.label}</p>
+              <p className="text-[8px] font-bold text-white/35">{group.picks} picks</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">W/L</p>
+              <p className="text-[9px] font-black text-white/65">{group.wins}/{group.losses}</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">ROI</p>
+              <p className="text-[9px] font-black text-white/65">{formatSignedPercent(group.roi)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">P/L</p>
+              <p className={group.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300"}>{formatTrackingProfit(group.profit)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getManualSummaryItems(
+  manualTracking: ManualTrackingCollection | null,
+  history: ReturnType<typeof loadManualSummaryHistory>,
+  range: ManualSummaryRange,
+): ManualSummaryItem[] {
+  const now = new Date();
+  const currentMonth = now.getUTCMonth() + 1;
+  const currentYear = now.getUTCFullYear();
+  const latestWeekly = history.weeklySummaries[0] ?? null;
+
+  if (range === "this_week") {
+    if (!manualTracking || !history.activeCycle) return [];
+    const summary = buildManualWeeklySummary(manualTracking, history.activeCycle, now.toISOString());
+    return [{ kind: "weekly", label: "This Week", detail: formatSummaryDateRange(summary.startDate, summary.endDate), summary }];
+  }
+
+  if (range === "last_week") {
+    return latestWeekly ? [{ kind: "weekly", label: `Cycle ${latestWeekly.cycleNumber}`, detail: formatSummaryDateRange(latestWeekly.startDate, latestWeekly.endDate), summary: latestWeekly }] : [];
+  }
+
+  if (range === "this_month") {
+    return history.monthlySummaries
+      .filter((summary) => summary.month === currentMonth && summary.year === currentYear)
+      .map((summary) => ({ kind: "monthly", label: formatSummaryMonth(summary), detail: formatSummaryDateRange(summary.startDate, summary.endDate), summary }));
+  }
+
+  return history.monthlySummaries
+    .filter((summary) => summary.month !== currentMonth || summary.year !== currentYear)
+    .map((summary) => ({ kind: "monthly", label: formatSummaryMonth(summary), detail: formatSummaryDateRange(summary.startDate, summary.endDate), summary }));
+}
+
+function formatSummaryMonth(summary: ManualMonthlySummary) {
+  return new Date(Date.UTC(summary.year, summary.month - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function formatSummaryDateRange(startDate: string, endDate: string) {
+  return `${formatTrackingDate(startDate)} - ${formatTrackingDate(endDate)}`;
 }
 
 function TrackingHistoryList({
