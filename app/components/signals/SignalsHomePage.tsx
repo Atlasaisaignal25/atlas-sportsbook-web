@@ -2713,10 +2713,12 @@ function MyAtlasScreen({
   return (
     <main className="min-h-screen bg-[#020814] text-white">
       <div className="mx-auto min-h-screen w-full max-w-md overflow-x-hidden bg-[radial-gradient(circle_at_50%_-10%,rgba(34,211,238,0.14),transparent_34%),#020814] px-3.5 pb-[88px] pt-3">
-        <header className="mb-2.5">
-          <div className="flex items-start justify-between gap-3">
+        <header className="relative mb-2.5 overflow-hidden rounded-[22px] border border-cyan-300/20 bg-[#06101d]/78 px-4 py-3.5 shadow-[0_0_24px_rgba(34,211,238,0.07)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.13),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_40%)]" />
+          <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-[28px] font-black uppercase leading-none tracking-[-0.035em]">My Atlas</h1>
+              <p className="text-[9px] font-black uppercase tracking-[0.24em] text-cyan-300/80">Atlas Account</p>
+              <h1 className="mt-1 text-[28px] font-black uppercase leading-none tracking-[-0.035em]">My Atlas</h1>
               <p className="mt-1 max-w-[320px] text-[11px] font-medium leading-snug text-white/58">Atlas Operational Overview</p>
             </div>
             <button

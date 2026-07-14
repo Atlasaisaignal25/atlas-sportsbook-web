@@ -7405,9 +7405,10 @@ function BankrollUiIcon({
   if (name === "wallet") {
     return (
       <svg {...common}>
-        <path d="M4.5 8.3h14.2a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2V7.1c0-1 .7-1.8 1.7-2l10.5-1.8c1.1-.2 2.1.6 2.1 1.7v3.3" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
-        <path d="M16.8 13.8h3.9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-        <path d="M7 12h5.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        <path d="M4.3 8.4h15.4a1.8 1.8 0 0 1 1.8 1.8v6.7a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2V7.6c0-1 .7-1.8 1.7-2l10.3-1.7c1-.2 1.9.6 1.9 1.6v2.9" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M15.8 13.6h5.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M7 11.7h4.9M7 15h3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M18.2 13.6h.1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
       </svg>
     );
   }
@@ -7433,9 +7434,11 @@ function BankrollUiIcon({
   if (name === "target") {
     return (
       <svg {...common}>
-        <path d="M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17Z" stroke="currentColor" strokeWidth="1.9" />
-        <path d="M12 16.2a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Z" stroke="currentColor" strokeWidth="1.9" />
-        <path d="M12 12h7.8M17.1 6.9l2.7-2.7M17.1 6.9h3.1v3.1" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M11.6 20.2a8.2 8.2 0 1 0-7.8-7.8" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" />
+        <path d="M11.8 16a4.2 4.2 0 1 0-3.9-3.9" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" />
+        <path d="M11.9 12.1 20.5 3.5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        <path d="M17.4 3.5h3.1v3.1M20.5 3.5l-4.2 4.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M10.4 13.6 12 12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
       </svg>
     );
   }
@@ -7477,9 +7480,10 @@ function BankrollUiIcon({
 
   return (
     <svg {...common}>
-      <path d="M4 18.5h16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-      <path d="m5.3 14.2 4-4 3 2.8 6.4-7.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M18.7 5.8v5h-5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 18.8h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="m5.2 14.4 4.1-4.2 3.2 2.8 6.3-7.3" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M18.8 5.7v4.8h-4.8" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.2 18.8v-2.2M9.3 18.8v-4.9M13.4 18.8v-3.3M17.5 18.8v-7.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" opacity=".7" />
     </svg>
   );
 }
@@ -7535,7 +7539,23 @@ function BankrollSummaryCard() {
         >
           <div className="flex items-start gap-1">
             <BankrollUiIcon name={item.icon} className={`h-4 w-4 shrink-0 ${bankrollToneClasses[item.tone]}`} />
-            <p className="min-h-7 text-[7.5px] font-black uppercase leading-[14px] tracking-[0.08em] text-white/50">{item.label}</p>
+            <p
+              className={`min-h-7 font-black uppercase leading-[13px] text-white/50 ${
+                item.label === "Recommended Unit"
+                  ? "max-w-[48px] text-[5.8px] tracking-normal"
+                  : "text-[7.5px] tracking-[0.08em]"
+              }`}
+            >
+              {item.label === "Recommended Unit" ? (
+                <>
+                  Recommended
+                  <br />
+                  Unit
+                </>
+              ) : (
+                item.label
+              )}
+            </p>
           </div>
           <p className={`mt-1.5 font-black leading-tight tracking-tight ${item.tone === "cyan" ? "text-sky-300" : item.tone === "violet" ? "text-violet-300" : "text-emerald-300"} ${item.label === "Current Profile" ? "text-[9px]" : "text-[19px]"}`}>
             {item.value}
