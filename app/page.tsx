@@ -47,7 +47,6 @@ import {
   getReplacementSummary,
   getPlanStatusTone,
   buildManualAnalytics,
-  buildManualWeeklySummary,
   buildComparison,
   loadBankrollConfig,
   loadAvailableAtlasPicks,
@@ -73,13 +72,8 @@ import {
   type FinancialMetrics,
   type TrackingHistoryPick,
   type TrackingRange,
-  type ManualPerformanceGroup,
-  type ManualMonthlySummary,
-  type ManualSummaryBreakdown,
-  type ManualWeeklySummary,
   type ManualTrackingAnalytics,
   type TrackingComparison,
-  type ComparisonGroup,
   type ComparisonLeader,
   type ManualTrackingCollection,
   type BankrollProfile,
@@ -8178,24 +8172,20 @@ function BankrollPlanTrackingTabs({
 }) {
   const [activeTab, setActiveTab] = useState<"atlas" | "manual">("atlas");
   const [trackingRange, setTrackingRange] = useState<TrackingRange>("today");
-  const [summaryRange, setSummaryRange] = useState<ManualSummaryRange>("this_week");
   const [calendarDate, setCalendarDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(null);
-  const [selectedSummaryId, setSelectedSummaryId] = useState<string | null>(null);
-  const hasManualPicks = Boolean(manualTracking && manualTracking.picks.length > 0);
-  const trackingHistory = useMemo(() => loadTrackingHistory(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
-  const manualSummaryHistory = useMemo(() => loadManualSummaryHistory(manualTracking), [manualTracking]);
-  const trackingAnalytics = useMemo(() => buildManualAnalytics(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
+  const displayManualTracking = useMemo(() => manualTracking ?? createManualTracking(new Date().toISOString(), config?.currentBankroll ?? 0), [config?.currentBankroll, manualTracking]);
+  const trackingHistory = useMemo(() => loadTrackingHistory(displayManualTracking, trackingRange, calendarDate), [calendarDate, displayManualTracking, trackingRange]);
+  const manualSummaryHistory = useMemo(() => loadManualSummaryHistory(displayManualTracking), [displayManualTracking]);
+  const trackingAnalytics = useMemo(() => buildManualAnalytics(displayManualTracking, trackingRange, calendarDate), [calendarDate, displayManualTracking, trackingRange]);
+  const overallTrackingAnalytics = useMemo(() => buildManualAnalytics(displayManualTracking, "all_time", calendarDate), [calendarDate, displayManualTracking]);
   const trackingComparison = useMemo(() => (config ? buildComparison(config, trackingAnalytics, trackingRange, calendarDate) : null), [calendarDate, config, trackingAnalytics, trackingRange]);
+  const overallTrackingComparison = useMemo(() => (config ? buildComparison(config, overallTrackingAnalytics, "all_time", calendarDate) : null), [calendarDate, config, overallTrackingAnalytics]);
   const selectedTrackingPick = trackingHistory.picks.find((item) => item.pick.id === selectedTrackingPickId) ?? null;
 
   useEffect(() => {
     setSelectedTrackingPickId(null);
   }, [trackingRange, calendarDate]);
-
-  useEffect(() => {
-    setSelectedSummaryId(null);
-  }, [summaryRange]);
 
   return (
     <BankrollShell className="px-2.5 py-2">
@@ -8225,51 +8215,238 @@ function BankrollPlanTrackingTabs({
               <p className="text-[12px] font-black text-white/72">Atlas Plan tracking.</p>
               <p className="mt-0.5 text-[10px] leading-4 text-white/45">Automatic Atlas signals remain separate from manual tracking.</p>
             </>
-          ) : hasManualPicks ? (
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-[12px] font-black text-white/72">{manualTracking?.picks.length ?? 0} tracked picks.</p>
-                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">Atlas-generated decisions organized by date.</p>
-                </div>
-                <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/25 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200">
-                  Add Pick
-                </button>
-              </div>
-              <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={setTrackingRange} onCalendarDateChange={setCalendarDate} />
-              {!selectedTrackingPick ? <ManualAnalyticsPanel analytics={trackingAnalytics} /> : null}
-              {!selectedTrackingPick && trackingComparison ? <TrackingComparisonPanel comparison={trackingComparison} /> : null}
-              {!selectedTrackingPick ? (
-                <ManualPerformanceHistoryPanel
-                  manualTracking={manualTracking}
-                  history={manualSummaryHistory}
-                  range={summaryRange}
-                  selectedSummaryId={selectedSummaryId}
-                  onRangeChange={setSummaryRange}
-                  onSelectSummary={setSelectedSummaryId}
-                />
-              ) : null}
-              {selectedTrackingPick ? (
-                <TrackingPickTimelineView item={selectedTrackingPick} onBack={() => setSelectedTrackingPickId(null)} />
-              ) : (
-                <TrackingHistoryList history={trackingHistory} onOpenPick={(pickId) => setSelectedTrackingPickId(pickId)} />
-              )}
-            </div>
           ) : (
-            <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-              <div className="min-w-0">
-                <p className="text-[12px] font-black text-white/72">No tracked picks yet.</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-white/45">Track Atlas-generated picks independently from Atlas Plan.</p>
-              </div>
-              <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/25 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200">
-                Add Pick
-              </button>
-            </div>
+            <MyTrackingDashboard
+              manualTracking={displayManualTracking}
+              analytics={overallTrackingAnalytics}
+              periodAnalytics={trackingAnalytics}
+              comparison={overallTrackingComparison ?? trackingComparison}
+              history={trackingHistory}
+              selectedTrackingPick={selectedTrackingPick}
+              currentCycle={manualSummaryHistory.activeCycle?.cycleNumber ?? 1}
+              trackingRange={trackingRange}
+              calendarDate={calendarDate}
+              onRangeChange={setTrackingRange}
+              onCalendarDateChange={setCalendarDate}
+              onCreateManualPick={onCreateManualPick}
+              onOpenPick={(pickId) => setSelectedTrackingPickId(pickId)}
+              onBackFromTimeline={() => setSelectedTrackingPickId(null)}
+            />
           )}
         </div>
       </div>
     </BankrollShell>
   );
+}
+
+function MyTrackingDashboard({
+  manualTracking,
+  analytics,
+  periodAnalytics,
+  comparison,
+  history,
+  selectedTrackingPick,
+  currentCycle,
+  trackingRange,
+  calendarDate,
+  onRangeChange,
+  onCalendarDateChange,
+  onCreateManualPick,
+  onOpenPick,
+  onBackFromTimeline,
+}: {
+  manualTracking: ManualTrackingCollection;
+  analytics: ManualTrackingAnalytics;
+  periodAnalytics: ManualTrackingAnalytics;
+  comparison: TrackingComparison | null;
+  history: ReturnType<typeof loadTrackingHistory>;
+  selectedTrackingPick: TrackingHistoryPick | null;
+  currentCycle: number;
+  trackingRange: TrackingRange;
+  calendarDate: string;
+  onRangeChange: (range: TrackingRange) => void;
+  onCalendarDateChange: (date: string) => void;
+  onCreateManualPick: () => void;
+  onOpenPick: (pickId: string) => void;
+  onBackFromTimeline: () => void;
+}) {
+  const activePicks = manualTracking.activePicks.length > 0 ? manualTracking.activePicks : manualTracking.picks.filter((pick) => !isFinalTrackingStatus(pick.status));
+  const cycleDay = Math.min(7, Math.max(1, new Date().getDay() || 7));
+
+  return (
+    <div className="grid gap-2">
+      <div className="rounded-[15px] border border-emerald-300/15 bg-emerald-300/[0.035] px-3 py-2 shadow-[0_0_24px_rgba(16,185,129,0.08)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[17px] font-black uppercase tracking-[0.1em] text-white">My Tracking</p>
+            <p className="mt-0.5 text-[11px] font-bold text-white/50">Track Your Personal Decisions</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-300/[0.10] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300">Active</span>
+            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-white/34">Current Cycle</p>
+            <p className="text-[10px] font-black text-white/68">Week {currentCycle}</p>
+            <p className="text-[9px] font-bold text-white/42">Day {cycleDay} / 7</p>
+          </div>
+        </div>
+      </div>
+
+      <MyTrackingMetricCard
+        title="Manual Performance"
+        tone="emerald"
+        metrics={[
+          { label: "Manual Bankroll", value: formatCurrency(analytics.currentBankroll), valueClass: "text-emerald-300" },
+          { label: "Profit / Loss", value: formatTrackingProfit(analytics.profit), valueClass: analytics.profit >= 0 ? "text-emerald-300" : "text-red-300" },
+          { label: "ROI", value: formatSignedPercent(analytics.roi), valueClass: analytics.roi >= 0 ? "text-emerald-300" : "text-red-300" },
+          { label: "Win Rate", value: `${formatCompactNumber(analytics.winRate)}%`, valueClass: "text-white" },
+        ]}
+      />
+
+      <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <BankrollUiIcon name="target" className="h-4 w-4 text-emerald-300" />
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Active Picks</p>
+          </div>
+          <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/30 bg-emerald-300/[0.10] px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
+            + Add Pick
+          </button>
+        </div>
+        {activePicks.length > 0 ? (
+          <div className="mt-2 grid gap-1.5">
+            <div className="grid grid-cols-[0.45fr_1fr_0.42fr_0.44fr_0.58fr] gap-1.5 px-2 text-[7px] font-black uppercase tracking-[0.08em] text-white/28">
+              <span>Sport</span>
+              <span>Selection</span>
+              <span className="text-right">Odds</span>
+              <span className="text-right">Risk</span>
+              <span className="text-right">Status</span>
+            </div>
+            {activePicks.slice(0, 5).map((pick) => (
+              <ActiveTrackingPickRow key={pick.id} pick={pick} onOpen={() => onOpenPick(pick.id)} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-2 rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-2">
+            <p className="text-[11px] font-black text-white/68">No active picks.</p>
+            <p className="mt-0.5 text-[10px] font-semibold text-white/40">Track an Atlas pick when you are ready to follow it.</p>
+          </div>
+        )}
+      </div>
+
+      <MyTrackingMetricCard
+        title="Performance"
+        tone="cyan"
+        metrics={[
+          { label: "Current Streak", value: formatManualStreak(analytics.currentStreak, analytics.currentStreakType) },
+          { label: "Completed", value: String(analytics.completedPicks) },
+          { label: "Avg Exposure", value: `${formatCompactNumber(analytics.averageRiskPercentage)}%` },
+          { label: "Discipline", value: String(analytics.disciplineScore), valueClass: getDisciplineTextClass(analytics.disciplineScore) },
+        ]}
+      />
+
+      {comparison ? <TrackingComparisonCompact comparison={comparison} /> : null}
+
+      <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Performance History</p>
+            <p className="mt-0.5 text-[9px] font-semibold text-white/38">Decisions organized by date.</p>
+          </div>
+          <p className="text-[9px] font-black uppercase tracking-[0.1em] text-white/35">{periodAnalytics.totalPicks} Picks</p>
+        </div>
+        {!selectedTrackingPick ? (
+          <>
+            <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={onRangeChange} onCalendarDateChange={onCalendarDateChange} />
+            <TrackingHistoryList history={history} onOpenPick={onOpenPick} />
+          </>
+        ) : (
+          <TrackingPickTimelineView item={selectedTrackingPick} onBack={onBackFromTimeline} />
+        )}
+      </div>
+
+      <MyTrackingInsightCard analytics={analytics} comparison={comparison} />
+    </div>
+  );
+}
+
+function MyTrackingMetricCard({
+  title,
+  metrics,
+  tone,
+}: {
+  title: string;
+  metrics: Array<{ label: string; value: string; valueClass?: string }>;
+  tone: "emerald" | "cyan";
+}) {
+  const titleClass = tone === "emerald" ? "text-emerald-300" : "text-cyan-300";
+
+  return (
+    <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
+      <p className={`mb-1.5 text-[9px] font-black uppercase tracking-[0.16em] ${titleClass}`}>{title}</p>
+      <div className="grid grid-cols-4 divide-x divide-white/10 text-center">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="min-w-0 px-1 first:pl-0 last:pr-0">
+            <p className="min-h-[18px] text-[7px] font-black uppercase leading-[9px] tracking-[0.07em] text-white/35">{metric.label}</p>
+            <p className={`mt-0.5 truncate text-[13px] font-black leading-tight ${metric.valueClass ?? "text-white"}`}>{metric.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActiveTrackingPickRow({ pick, onOpen }: { pick: ManualTrackingCollection["picks"][number]; onOpen: () => void }) {
+  const tone = getTrackingStatusTone(pick.status);
+
+  return (
+    <button type="button" onClick={onOpen} className="grid grid-cols-[0.45fr_1fr_0.42fr_0.44fr_0.58fr] items-center gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] px-2 py-1.5 text-left">
+      <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
+      <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
+      <p className="text-right text-[10px] font-black text-white/55">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
+      <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
+      <p className={`truncate text-right text-[8px] font-black uppercase tracking-[0.08em] ${tone.textClass}`}>{formatPlanStatus(pick.status)}</p>
+    </button>
+  );
+}
+
+function TrackingComparisonCompact({ comparison }: { comparison: TrackingComparison }) {
+  return (
+    <div className="rounded-[14px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Atlas vs My Tracking</p>
+        <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">{comparison.hasComparisonData ? "Aligned View" : "Awaiting Results"}</p>
+      </div>
+      <div className="grid gap-1.5">
+        <ComparisonMetricRow label="ROI" atlasValue={formatSignedPercent(comparison.atlasROI)} manualValue={formatSignedPercent(comparison.manualROI)} leader={comparison.betterROI} />
+        <ComparisonMetricRow label="Win Rate" atlasValue={`${formatCompactNumber(comparison.atlasWinRate)}%`} manualValue={`${formatCompactNumber(comparison.manualWinRate)}%`} leader={comparison.betterWinRate} />
+        <ComparisonMetricRow label="Discipline" atlasValue={String(comparison.atlasDiscipline)} manualValue={String(comparison.manualDiscipline)} leader={comparison.betterDiscipline} />
+      </div>
+    </div>
+  );
+}
+
+function MyTrackingInsightCard({ analytics, comparison }: { analytics: ManualTrackingAnalytics; comparison: TrackingComparison | null }) {
+  const insight = comparison?.insights[0] ?? (analytics.disciplineScore >= 85 ? "Your discipline has remained consistent this week." : "Keep each tracked decision aligned with your plan.");
+
+  return (
+    <div className="rounded-[14px] border border-sky-300/15 bg-sky-300/[0.035] px-3 py-2.5">
+      <div className="grid grid-cols-[28px_1fr_auto] items-center gap-2">
+        <div className="grid h-7 w-7 place-items-center rounded-full border border-sky-300/25 bg-sky-300/10 text-sky-300">
+          <BankrollUiIcon name="bulb" className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-300">Insight</p>
+          <p className="mt-0.5 text-[11px] font-semibold leading-4 text-white/64">{insight}</p>
+        </div>
+        <button type="button" className="rounded-[10px] border border-sky-300/20 bg-sky-300/[0.06] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-sky-200">
+          View More
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function isFinalTrackingStatus(status: ManualTrackingCollection["picks"][number]["status"]) {
+  return status === "won" || status === "lost" || status === "push" || status === "cancelled";
 }
 
 const trackingRangeOptions: Array<{ label: string; value: TrackingRange }> = [
@@ -8278,24 +8455,7 @@ const trackingRangeOptions: Array<{ label: string; value: TrackingRange }> = [
   { label: "This Week", value: "this_week" },
   { label: "Last Week", value: "last_week" },
   { label: "This Month", value: "this_month" },
-  { label: "All Time", value: "all_time" },
   { label: "Calendar", value: "calendar" },
-];
-
-type ManualSummaryRange = "this_week" | "last_week" | "this_month" | "previous_months";
-
-type ManualSummaryItem = {
-  kind: "weekly" | "monthly";
-  label: string;
-  detail: string;
-  summary: ManualWeeklySummary | ManualMonthlySummary;
-};
-
-const manualSummaryRangeOptions: Array<{ label: string; value: ManualSummaryRange }> = [
-  { label: "This Week", value: "this_week" },
-  { label: "Last Week", value: "last_week" },
-  { label: "This Month", value: "this_month" },
-  { label: "Previous Months", value: "previous_months" },
 ];
 
 function TrackingRangeSelector({
@@ -8337,226 +8497,6 @@ function TrackingRangeSelector({
   );
 }
 
-function ManualPerformanceHistoryPanel({
-  manualTracking,
-  history,
-  range,
-  selectedSummaryId,
-  onRangeChange,
-  onSelectSummary,
-}: {
-  manualTracking: ManualTrackingCollection | null;
-  history: ReturnType<typeof loadManualSummaryHistory>;
-  range: ManualSummaryRange;
-  selectedSummaryId: string | null;
-  onRangeChange: (range: ManualSummaryRange) => void;
-  onSelectSummary: (summaryId: string | null) => void;
-}) {
-  const items = useMemo(() => getManualSummaryItems(manualTracking, history, range), [history, manualTracking, range]);
-  const selectedItem = items.find((item) => item.summary.id === selectedSummaryId) ?? null;
-
-  return (
-    <div className="mt-2 rounded-[13px] border border-white/10 bg-black/18 p-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Performance History</p>
-          <p className="mt-0.5 text-[9px] font-semibold text-white/38">Manual summaries stay independent from Atlas Plan.</p>
-        </div>
-        {selectedItem ? (
-          <button type="button" onClick={() => onSelectSummary(null)} className="rounded-[9px] border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/55">
-            Back
-          </button>
-        ) : null}
-      </div>
-
-      {!selectedItem ? (
-        <>
-          <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
-            {manualSummaryRangeOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onRangeChange(option.value)}
-                className={`shrink-0 rounded-[10px] border px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] ${
-                  range === option.value ? "border-cyan-300/45 bg-cyan-300/[0.12] text-cyan-200" : "border-white/10 bg-black/18 text-white/42"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          {items.length > 0 ? (
-            <div className="mt-1 grid gap-1.5">
-              {items.map((item) => (
-                <ManualSummaryCard key={`${item.kind}-${item.summary.id}`} item={item} onOpen={() => onSelectSummary(item.summary.id)} />
-              ))}
-            </div>
-          ) : (
-            <div className="mt-2 rounded-[12px] border border-white/10 bg-white/[0.025] px-3 py-2.5">
-              <p className="text-[11px] font-black text-white/65">Performance history will appear after weekly or monthly summaries are generated.</p>
-              <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">My Tracking summaries use only manually tracked Atlas picks.</p>
-            </div>
-          )}
-        </>
-      ) : (
-        <ManualSummaryDetail item={selectedItem} timeline={history.timeline} />
-      )}
-    </div>
-  );
-}
-
-function ManualSummaryCard({ item, onOpen }: { item: ManualSummaryItem; onOpen: () => void }) {
-  const summary = item.summary;
-
-  return (
-    <button type="button" onClick={onOpen} className="grid grid-cols-[1fr_0.55fr_0.55fr_0.55fr] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.025] px-2 py-1.5 text-left">
-      <div className="min-w-0">
-        <p className="truncate text-[10px] font-black text-white/72">{item.label}</p>
-        <p className="mt-0.5 truncate text-[8px] font-bold text-white/35">{item.detail}</p>
-      </div>
-      <div>
-        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">ROI</p>
-        <p className={summary.roi >= 0 ? "text-[10px] font-black text-emerald-300" : "text-[10px] font-black text-red-300"}>{formatSignedPercent(summary.roi)}</p>
-      </div>
-      <div>
-        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">P/L</p>
-        <p className={summary.profit >= 0 ? "text-[10px] font-black text-emerald-300" : "text-[10px] font-black text-red-300"}>{formatTrackingProfit(summary.profit)}</p>
-      </div>
-      <div className="text-right">
-        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Score</p>
-        <p className={`text-[10px] font-black ${getDisciplineTextClass(summary.disciplineScore)}`}>{summary.disciplineScore}</p>
-      </div>
-    </button>
-  );
-}
-
-function ManualSummaryDetail({ item, timeline }: { item: ManualSummaryItem; timeline: ReturnType<typeof loadManualSummaryHistory>["timeline"] }) {
-  const summary = item.summary;
-  const eventLabel = item.kind === "weekly" ? "Weekly Summary Generated" : "Monthly Summary Generated";
-  const summaryTimeline = timeline.filter((event) => event.message === eventLabel);
-
-  return (
-    <div className="mt-2 grid gap-2">
-      <div className="flex items-start justify-between gap-2 rounded-[11px] border border-cyan-300/15 bg-cyan-300/[0.045] px-2 py-1.5">
-        <div className="min-w-0">
-          <p className="truncate text-[12px] font-black text-white">{item.label}</p>
-          <p className="mt-0.5 text-[9px] font-semibold text-white/42">{item.detail}</p>
-        </div>
-        <p className="shrink-0 text-[8px] font-black uppercase tracking-[0.1em] text-cyan-300">{item.kind === "weekly" ? "Weekly" : "Monthly"}</p>
-      </div>
-
-      <div className="grid grid-cols-4 gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
-        <AnalyticsMetric label="Initial" value={formatCurrency(summary.initialBankroll)} />
-        <AnalyticsMetric label="Final" value={formatCurrency(summary.finalBankroll)} />
-        <AnalyticsMetric label="Profit" value={formatTrackingProfit(summary.profit)} valueClass={summary.profit >= 0 ? "text-emerald-300" : "text-red-300"} />
-        <AnalyticsMetric label="ROI" value={formatSignedPercent(summary.roi)} valueClass={summary.roi >= 0 ? "text-emerald-300" : "text-red-300"} />
-      </div>
-
-      <div className="grid grid-cols-4 gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
-        <AnalyticsMetric label="Wins" value={String(summary.wins)} />
-        <AnalyticsMetric label="Losses" value={String(summary.losses)} valueClass={summary.losses > 0 ? "text-red-300" : "text-white"} />
-        <AnalyticsMetric label="Win Rate" value={`${formatCompactNumber(summary.winRate)}%`} />
-        <AnalyticsMetric label="Completed" value={String(summary.completedPicks)} />
-      </div>
-
-      <div className="grid grid-cols-4 gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
-        <AnalyticsMetric label="Avg Unit" value={formatCurrency(summary.averageRiskAmount)} />
-        <AnalyticsMetric label="Avg Plan %" value={`${formatCompactNumber(summary.averageRiskPercentage)}%`} />
-        <AnalyticsMetric label="Discipline" value={String(summary.disciplineScore)} valueClass={getDisciplineTextClass(summary.disciplineScore)} />
-        <AnalyticsMetric label="Streaks" value={`${summary.longestWinningStreak}W / ${summary.longestLosingStreak}L`} />
-      </div>
-
-      <ManualSummaryBreakdownList title="Sports Breakdown" groups={summary.sportsBreakdown} />
-      <ManualSummaryBreakdownList title="Markets Breakdown" groups={summary.marketsBreakdown} />
-
-      {summaryTimeline.length > 0 ? (
-        <div className="rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
-          <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">Timeline</p>
-          <div className="grid gap-1.5">
-            {summaryTimeline.slice(-3).map((event) => (
-              <div key={event.id} className="grid grid-cols-[44px_1fr] items-center gap-2 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
-                <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/35">{formatTrackingTime(event.createdAt)}</p>
-                <p className="truncate text-[10px] font-bold text-white/68">{event.description ?? event.message}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function ManualSummaryBreakdownList({ title, groups }: { title: string; groups: ManualSummaryBreakdown[] }) {
-  if (groups.length === 0) return null;
-
-  return (
-    <div className="rounded-[11px] border border-white/10 bg-white/[0.025] p-2">
-      <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{title}</p>
-      <div className="grid gap-1.5">
-        {groups.slice(0, 3).map((group) => (
-          <div key={group.key} className="grid grid-cols-[1fr_0.5fr_0.5fr_0.56fr] items-center gap-2 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
-            <div className="min-w-0">
-              <p className="truncate text-[10px] font-black text-white/72">{group.label}</p>
-              <p className="text-[8px] font-bold text-white/35">{group.picks} picks</p>
-            </div>
-            <div>
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">W/L</p>
-              <p className="text-[9px] font-black text-white/65">{group.wins}/{group.losses}</p>
-            </div>
-            <div>
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">ROI</p>
-              <p className="text-[9px] font-black text-white/65">{formatSignedPercent(group.roi)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">P/L</p>
-              <p className={group.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300"}>{formatTrackingProfit(group.profit)}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function getManualSummaryItems(
-  manualTracking: ManualTrackingCollection | null,
-  history: ReturnType<typeof loadManualSummaryHistory>,
-  range: ManualSummaryRange,
-): ManualSummaryItem[] {
-  const now = new Date();
-  const currentMonth = now.getUTCMonth() + 1;
-  const currentYear = now.getUTCFullYear();
-  const latestWeekly = history.weeklySummaries[0] ?? null;
-
-  if (range === "this_week") {
-    if (!manualTracking || !history.activeCycle) return [];
-    const summary = buildManualWeeklySummary(manualTracking, history.activeCycle, now.toISOString());
-    return [{ kind: "weekly", label: "This Week", detail: formatSummaryDateRange(summary.startDate, summary.endDate), summary }];
-  }
-
-  if (range === "last_week") {
-    return latestWeekly ? [{ kind: "weekly", label: `Cycle ${latestWeekly.cycleNumber}`, detail: formatSummaryDateRange(latestWeekly.startDate, latestWeekly.endDate), summary: latestWeekly }] : [];
-  }
-
-  if (range === "this_month") {
-    return history.monthlySummaries
-      .filter((summary) => summary.month === currentMonth && summary.year === currentYear)
-      .map((summary) => ({ kind: "monthly", label: formatSummaryMonth(summary), detail: formatSummaryDateRange(summary.startDate, summary.endDate), summary }));
-  }
-
-  return history.monthlySummaries
-    .filter((summary) => summary.month !== currentMonth || summary.year !== currentYear)
-    .map((summary) => ({ kind: "monthly", label: formatSummaryMonth(summary), detail: formatSummaryDateRange(summary.startDate, summary.endDate), summary }));
-}
-
-function formatSummaryMonth(summary: ManualMonthlySummary) {
-  return new Date(Date.UTC(summary.year, summary.month - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-}
-
-function formatSummaryDateRange(startDate: string, endDate: string) {
-  return `${formatTrackingDate(startDate)} - ${formatTrackingDate(endDate)}`;
-}
-
 function TrackingHistoryList({
   history,
   onOpenPick,
@@ -8589,140 +8529,6 @@ function TrackingHistoryList({
   );
 }
 
-function ManualAnalyticsPanel({ analytics }: { analytics: ManualTrackingAnalytics }) {
-  if (!analytics.hasPicks) {
-    return (
-      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
-        <p className="text-[11px] font-black text-white/65">No tracking data yet.</p>
-        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">Track Atlas picks to begin building your personal performance history.</p>
-      </div>
-    );
-  }
-
-  if (!analytics.hasCompletedResults) {
-    return (
-      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
-        <p className="text-[11px] font-black text-white/65">Your analytics will appear after tracked picks receive results.</p>
-        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">Active tracked picks remain visible in History.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-2 grid gap-2">
-      <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
-        <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">My Tracking Performance</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          <AnalyticsMetric label="Current Bankroll" value={formatCurrency(analytics.currentBankroll)} />
-          <AnalyticsMetric label="Profit / Loss" value={formatTrackingProfit(analytics.profit)} valueClass={analytics.profit >= 0 ? "text-emerald-300" : "text-red-300"} />
-          <AnalyticsMetric label="ROI" value={formatSignedPercent(analytics.roi)} valueClass={analytics.roi >= 0 ? "text-emerald-300" : "text-red-300"} />
-          <AnalyticsMetric label="Win Rate" value={`${formatCompactNumber(analytics.winRate)}%`} />
-        </div>
-      </div>
-
-      <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
-        <div className="grid grid-cols-4 gap-1.5">
-          <AnalyticsMetric label="Current Streak" value={formatManualStreak(analytics.currentStreak, analytics.currentStreakType)} />
-          <AnalyticsMetric label="Completed Picks" value={String(analytics.completedPicks)} />
-          <AnalyticsMetric label="Avg Exposure" value={`${formatCompactNumber(analytics.averageRiskPercentage)}%`} />
-          <AnalyticsMetric label="Discipline" value={String(analytics.disciplineScore)} valueClass={getDisciplineTextClass(analytics.disciplineScore)} />
-        </div>
-        <p className="mt-1.5 text-[10px] font-black text-white/58">{analytics.disciplineLabel}</p>
-        <p className="mt-0.5 text-[9px] font-semibold text-white/35">
-          Within plan {analytics.withinPlanCount} · Above plan {analytics.abovePlanCount} · Highest exposure {formatCompactNumber(analytics.highestRiskPercentage)}%
-        </p>
-      </div>
-
-      <AnalyticsGroupList title="By Sport" groups={analytics.performanceBySport} />
-      <AnalyticsGroupList title="By Market" groups={analytics.performanceByMarket} market />
-    </div>
-  );
-}
-
-function AnalyticsMetric({
-  label,
-  value,
-  valueClass = "text-white",
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
-  return (
-    <div className="min-w-0 border-r border-white/10 pr-1 last:border-r-0">
-      <p className="min-h-[18px] text-[7px] font-black uppercase leading-[9px] tracking-[0.08em] text-white/35">{label}</p>
-      <p className={`mt-0.5 truncate text-[11px] font-black ${valueClass}`}>{value}</p>
-    </div>
-  );
-}
-
-function AnalyticsGroupList({ title, groups, market = false }: { title: string; groups: ManualPerformanceGroup[]; market?: boolean }) {
-  if (groups.length === 0) return null;
-
-  return (
-    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
-      <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{title}</p>
-      <div className="grid gap-1.5">
-        {groups.slice(0, 4).map((group) => (
-          <div key={group.key} className="grid grid-cols-[0.9fr_0.58fr_0.58fr_0.64fr] items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
-            <div className="min-w-0">
-              <p className="truncate text-[10px] font-black text-white/72">{group.label}</p>
-              <p className="text-[8px] font-bold text-white/35">{group.picks} picks</p>
-            </div>
-            <div>
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">{market ? "W / L" : "Win Rate"}</p>
-              <p className="text-[9px] font-black text-white/65">{market ? `${group.wins}/${group.losses}` : `${formatCompactNumber(group.winRate)}%`}</p>
-            </div>
-            <div>
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">{market ? "Win Rate" : "ROI"}</p>
-              <p className="text-[9px] font-black text-white/65">{market ? `${formatCompactNumber(group.winRate)}%` : formatSignedPercent(group.roi)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">P/L</p>
-              <p className={group.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300"}>{formatTrackingProfit(group.profit)}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TrackingComparisonPanel({ comparison }: { comparison: TrackingComparison }) {
-  if (!comparison.hasComparisonData) {
-    return (
-      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
-        <p className="text-[11px] font-black text-white/65">Comparison will become available after both Atlas Plan and My Tracking have completed picks.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-2 grid gap-2">
-      <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Atlas vs My Tracking</p>
-          <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">{formatComparisonLeader(comparison.betterROI)}</p>
-        </div>
-        <div className="grid gap-1.5">
-          <ComparisonMetricRow label="Current ROI" atlasValue={formatSignedPercent(comparison.atlasROI)} manualValue={formatSignedPercent(comparison.manualROI)} leader={comparison.betterROI} />
-          <ComparisonMetricRow label="Win Rate" atlasValue={`${formatCompactNumber(comparison.atlasWinRate)}%`} manualValue={`${formatCompactNumber(comparison.manualWinRate)}%`} leader={comparison.betterWinRate} />
-          <ComparisonMetricRow label="Profit" atlasValue={formatTrackingProfit(comparison.atlasProfit)} manualValue={formatTrackingProfit(comparison.manualProfit)} leader={comparison.profitComparison.leader} />
-          <ComparisonMetricRow label="Discipline" atlasValue={formatDisciplineComparison(comparison.atlasDiscipline)} manualValue={formatDisciplineComparison(comparison.manualDiscipline)} leader={comparison.betterDiscipline} />
-        </div>
-      </div>
-
-      <ComparisonGroupList title="Comparison by Sport" groups={comparison.sports} />
-      <ComparisonGroupList title="Comparison by Market" groups={comparison.markets} market />
-
-      <div className="rounded-[13px] border border-cyan-300/15 bg-cyan-300/[0.045] p-2.5">
-        <p className="text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Insight</p>
-        <p className="mt-1 text-[10px] font-semibold leading-4 text-white/62">{comparison.insights[0]}</p>
-      </div>
-    </div>
-  );
-}
-
 function ComparisonMetricRow({
   label,
   atlasValue,
@@ -8746,32 +8552,6 @@ function ComparisonMetricRow({
         <p className="text-[10px] font-black text-white/72">{manualValue}</p>
       </div>
       <p className="text-right text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300">{formatComparisonLeader(leader)}</p>
-    </div>
-  );
-}
-
-function ComparisonGroupList({ title, groups, market = false }: { title: string; groups: ComparisonGroup[]; market?: boolean }) {
-  if (groups.length === 0) return null;
-
-  return (
-    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2.5">
-      <p className="mb-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{title}</p>
-      <div className="grid gap-1.5">
-        {groups.slice(0, 4).map((group) => (
-          <div key={group.key} className="grid grid-cols-[0.9fr_0.62fr_0.62fr_0.46fr] items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
-            <p className="truncate text-[10px] font-black text-white/72">{group.label}</p>
-            <div>
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">Atlas</p>
-              <p className="text-[9px] font-black text-white/65">{formatSignedPercent(group.atlasROI)}</p>
-            </div>
-            <div>
-              <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">{market ? "Tracking" : "Manual"}</p>
-              <p className="text-[9px] font-black text-white/65">{formatSignedPercent(group.manualROI)}</p>
-            </div>
-            <p className="text-right text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300">{formatComparisonLeader(group.leader)}</p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -8933,12 +8713,6 @@ function formatComparisonLeader(leader: ComparisonLeader) {
   if (leader === "manual") return "You +";
   if (leader === "even") return "Even";
   return "";
-}
-
-function formatDisciplineComparison(score: number) {
-  if (score >= 90) return "Excellent";
-  if (score >= 75) return "Good";
-  return "Needs Improvement";
 }
 
 function ManualPickCreatorSheet({
