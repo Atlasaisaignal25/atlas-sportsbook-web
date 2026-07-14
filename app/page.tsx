@@ -8274,21 +8274,8 @@ function MyTrackingDashboard({
   const cycleDay = Math.min(7, Math.max(1, new Date().getDay() || 7));
 
   return (
-    <div className="grid gap-2">
-      <div className="rounded-[15px] border border-emerald-300/15 bg-emerald-300/[0.035] px-3 py-2 shadow-[0_0_24px_rgba(16,185,129,0.08)]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[17px] font-black uppercase tracking-[0.1em] text-white">My Tracking</p>
-            <p className="mt-0.5 text-[11px] font-bold text-white/50">Track Your Personal Decisions</p>
-          </div>
-          <div className="shrink-0 text-right">
-            <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-300/[0.10] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300">Active</span>
-            <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-white/34">Current Cycle</p>
-            <p className="text-[10px] font-black text-white/68">Week {currentCycle}</p>
-            <p className="text-[9px] font-bold text-white/42">Day {cycleDay} / 7</p>
-          </div>
-        </div>
-      </div>
+    <div className="grid gap-2 pb-3">
+      <MyTrackingHeader currentCycle={currentCycle} cycleDay={cycleDay} />
 
       <MyTrackingMetricCard
         title="Manual Performance"
@@ -8301,36 +8288,7 @@ function MyTrackingDashboard({
         ]}
       />
 
-      <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <BankrollUiIcon name="target" className="h-4 w-4 text-emerald-300" />
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Active Picks</p>
-          </div>
-          <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/30 bg-emerald-300/[0.10] px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
-            + Add Pick
-          </button>
-        </div>
-        {activePicks.length > 0 ? (
-          <div className="mt-2 grid gap-1.5">
-            <div className="grid grid-cols-[0.45fr_1fr_0.42fr_0.44fr_0.58fr] gap-1.5 px-2 text-[7px] font-black uppercase tracking-[0.08em] text-white/28">
-              <span>Sport</span>
-              <span>Selection</span>
-              <span className="text-right">Odds</span>
-              <span className="text-right">Risk</span>
-              <span className="text-right">Status</span>
-            </div>
-            {activePicks.slice(0, 5).map((pick) => (
-              <ActiveTrackingPickRow key={pick.id} pick={pick} onOpen={() => onOpenPick(pick.id)} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-2 rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-2">
-            <p className="text-[11px] font-black text-white/68">No active picks.</p>
-            <p className="mt-0.5 text-[10px] font-semibold text-white/40">Track an Atlas pick when you are ready to follow it.</p>
-          </div>
-        )}
-      </div>
+      <ActivePicksList activePicks={activePicks} onCreateManualPick={onCreateManualPick} onOpenPick={onOpenPick} />
 
       <MyTrackingMetricCard
         title="Performance"
@@ -8345,25 +8303,38 @@ function MyTrackingDashboard({
 
       {comparison ? <TrackingComparisonCompact comparison={comparison} /> : null}
 
-      <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Performance History</p>
-            <p className="mt-0.5 text-[9px] font-semibold text-white/38">Decisions organized by date.</p>
-          </div>
-          <p className="text-[9px] font-black uppercase tracking-[0.1em] text-white/35">{periodAnalytics.totalPicks} Picks</p>
-        </div>
-        {!selectedTrackingPick ? (
-          <>
-            <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={onRangeChange} onCalendarDateChange={onCalendarDateChange} />
-            <TrackingHistoryList history={history} onOpenPick={onOpenPick} />
-          </>
-        ) : (
-          <TrackingPickTimelineView item={selectedTrackingPick} onBack={onBackFromTimeline} />
-        )}
-      </div>
+      <TrackingHistoryCard
+        history={history}
+        totalPicks={periodAnalytics.totalPicks}
+        trackingRange={trackingRange}
+        calendarDate={calendarDate}
+        onRangeChange={onRangeChange}
+        onCalendarDateChange={onCalendarDateChange}
+        onOpenPick={onOpenPick}
+      />
 
       <MyTrackingInsightCard analytics={analytics} comparison={comparison} />
+
+      {selectedTrackingPick ? <PickTimelineSheet item={selectedTrackingPick} onClose={onBackFromTimeline} /> : null}
+    </div>
+  );
+}
+
+function MyTrackingHeader({ currentCycle, cycleDay }: { currentCycle: number; cycleDay: number }) {
+  return (
+    <div className="rounded-[15px] border border-emerald-300/15 bg-emerald-300/[0.035] px-3 py-2 shadow-[0_0_24px_rgba(16,185,129,0.08)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[17px] font-black uppercase tracking-[0.1em] text-white">My Tracking</p>
+          <p className="mt-0.5 text-[11px] font-bold text-white/50">Track Your Personal Decisions</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-300/[0.10] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300">Active</span>
+          <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-white/34">Current Cycle</p>
+          <p className="text-[10px] font-black text-white/68">Week {currentCycle}</p>
+          <p className="text-[9px] font-bold text-white/42">Day {cycleDay} / 7</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -8394,16 +8365,67 @@ function MyTrackingMetricCard({
   );
 }
 
+function ActivePicksList({
+  activePicks,
+  onCreateManualPick,
+  onOpenPick,
+}: {
+  activePicks: ManualTrackingCollection["picks"];
+  onCreateManualPick: () => void;
+  onOpenPick: (pickId: string) => void;
+}) {
+  return (
+    <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BankrollUiIcon name="target" className="h-4 w-4 text-emerald-300" />
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Active Picks</p>
+        </div>
+        <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/30 bg-emerald-300/[0.10] px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
+          + Add Pick
+        </button>
+      </div>
+      {activePicks.length > 0 ? (
+        <div className="mt-2 grid gap-1">
+          <TrackingTableHeader />
+          {activePicks.slice(0, 6).map((pick) => (
+            <ActiveTrackingPickRow key={pick.id} pick={pick} onOpen={() => onOpenPick(pick.id)} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-2 rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-2">
+          <p className="text-[11px] font-black text-white/68">No active picks.</p>
+          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Track an Atlas pick when you are ready to follow it.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrackingTableHeader() {
+  return (
+    <div className="grid grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.62fr_14px] gap-1.5 px-2 text-[7px] font-black uppercase tracking-[0.07em] text-white/28">
+      <span>Sport</span>
+      <span>Selection</span>
+      <span className="text-right">Odds</span>
+      <span className="text-right">Risk</span>
+      <span className="text-right">Status</span>
+      <span />
+    </div>
+  );
+}
+
 function ActiveTrackingPickRow({ pick, onOpen }: { pick: ManualTrackingCollection["picks"][number]; onOpen: () => void }) {
   const tone = getTrackingStatusTone(pick.status);
 
   return (
-    <button type="button" onClick={onOpen} className="grid grid-cols-[0.45fr_1fr_0.42fr_0.44fr_0.58fr] items-center gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] px-2 py-1.5 text-left">
+    <button type="button" onClick={onOpen} className="grid min-h-[48px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.62fr_14px] items-center gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] px-2 py-1.5 text-left">
       <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
       <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
       <p className="text-right text-[10px] font-black text-white/55">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
       <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
-      <p className={`truncate text-right text-[8px] font-black uppercase tracking-[0.08em] ${tone.textClass}`}>{formatPlanStatus(pick.status)}</p>
+      <p className={`truncate text-right text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
+      <BankrollUiIcon name="arrow" className="h-3.5 w-3.5 text-white/35" />
     </button>
   );
 }
@@ -8413,13 +8435,25 @@ function TrackingComparisonCompact({ comparison }: { comparison: TrackingCompari
     <div className="rounded-[14px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2.5">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Atlas vs My Tracking</p>
-        <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">{comparison.hasComparisonData ? "Aligned View" : "Awaiting Results"}</p>
+        <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">Cycle Comparison</p>
       </div>
-      <div className="grid gap-1.5">
+      {comparison.hasComparisonData ? (
+        <div className="grid gap-1">
+          <div className="grid grid-cols-[0.82fr_0.58fr_0.58fr_0.66fr] border-b border-white/10 px-2 pb-1 text-[7px] font-black uppercase tracking-[0.08em] text-white/30">
+            <span>Metric</span>
+            <span className="text-center">Atlas</span>
+            <span className="text-center">You</span>
+            <span className="text-right">Comparison</span>
+          </div>
         <ComparisonMetricRow label="ROI" atlasValue={formatSignedPercent(comparison.atlasROI)} manualValue={formatSignedPercent(comparison.manualROI)} leader={comparison.betterROI} />
         <ComparisonMetricRow label="Win Rate" atlasValue={`${formatCompactNumber(comparison.atlasWinRate)}%`} manualValue={`${formatCompactNumber(comparison.manualWinRate)}%`} leader={comparison.betterWinRate} />
         <ComparisonMetricRow label="Discipline" atlasValue={String(comparison.atlasDiscipline)} manualValue={String(comparison.manualDiscipline)} leader={comparison.betterDiscipline} />
-      </div>
+        </div>
+      ) : (
+        <div className="rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-2">
+          <p className="text-[11px] font-black text-white/65">Comparison will appear after both paths have completed picks.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -8497,6 +8531,43 @@ function TrackingRangeSelector({
   );
 }
 
+function TrackingHistoryCard({
+  history,
+  totalPicks,
+  trackingRange,
+  calendarDate,
+  onRangeChange,
+  onCalendarDateChange,
+  onOpenPick,
+}: {
+  history: ReturnType<typeof loadTrackingHistory>;
+  totalPicks: number;
+  trackingRange: TrackingRange;
+  calendarDate: string;
+  onRangeChange: (range: TrackingRange) => void;
+  onCalendarDateChange: (date: string) => void;
+  onOpenPick: (pickId: string) => void;
+}) {
+  return (
+    <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BankrollUiIcon name="wallet" className="h-4 w-4 text-emerald-300" />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Performance History</p>
+            <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totalPicks} tracked this period</p>
+          </div>
+        </div>
+        <button type="button" onClick={() => onRangeChange("calendar")} className="rounded-[10px] border border-white/10 bg-white/[0.035] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/50">
+          View Calendar
+        </button>
+      </div>
+      <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={onRangeChange} onCalendarDateChange={onCalendarDateChange} />
+      <TrackingHistoryList history={history} onOpenPick={onOpenPick} />
+    </div>
+  );
+}
+
 function TrackingHistoryList({
   history,
   onOpenPick,
@@ -8514,11 +8585,11 @@ function TrackingHistoryList({
   }
 
   return (
-    <div className="mt-2 grid max-h-[315px] gap-2 overflow-y-auto pr-1">
+    <div className="mt-2 grid max-h-[285px] gap-2 overflow-y-auto pr-1">
       {history.groups.map((group) => (
         <div key={group.key}>
           <p className="mb-1 border-b border-white/10 pb-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{group.label}</p>
-          <div className="grid gap-1.5">
+          <div className="grid gap-1">
             {group.picks.map((item) => (
               <TrackingPickCard key={item.pick.id} item={item} onOpen={() => onOpenPick(item.pick.id)} />
             ))}
@@ -8541,16 +8612,10 @@ function ComparisonMetricRow({
   leader: ComparisonLeader;
 }) {
   return (
-    <div className="grid grid-cols-[0.9fr_0.75fr_0.85fr_0.46fr] items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
+    <div className="grid grid-cols-[0.82fr_0.58fr_0.58fr_0.66fr] items-center gap-2 border-b border-white/10 px-2 py-1.5 last:border-b-0">
       <p className="text-[9px] font-black uppercase tracking-[0.08em] text-white/40">{label}</p>
-      <div>
-        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">Atlas</p>
-        <p className="text-[10px] font-black text-white/72">{atlasValue}</p>
-      </div>
-      <div>
-        <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/28">My Tracking</p>
-        <p className="text-[10px] font-black text-white/72">{manualValue}</p>
-      </div>
+      <p className="text-center text-[10px] font-black text-white/72">{atlasValue}</p>
+      <p className="text-center text-[10px] font-black text-emerald-200">{manualValue}</p>
       <p className="text-right text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300">{formatComparisonLeader(leader)}</p>
     </div>
   );
@@ -8561,65 +8626,73 @@ function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen:
   const tone = getTrackingStatusTone(pick.status);
 
   return (
-    <button type="button" onClick={onOpen} className="grid grid-cols-[24px_0.54fr_1fr_0.58fr] items-center gap-2 rounded-[11px] border border-white/10 bg-black/16 px-2 py-1.5 text-left">
-      <div className={`grid h-6 w-6 place-items-center rounded-full border text-[12px] font-black ${tone.iconClass}`}>{getTrackingStatusSymbol(pick.status)}</div>
-      <div className="min-w-0">
-        <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-emerald-300">{pick.sport ?? "Sport"}</p>
-        <p className="truncate text-[9px] font-bold text-white/42">{formatTrackingDate(pick.createdAt)}</p>
-      </div>
+    <button type="button" onClick={onOpen} className="grid min-h-[50px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.6fr_14px] items-center gap-1.5 rounded-[11px] border border-white/10 bg-black/16 px-2 py-1.5 text-left">
+      <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
       <div className="min-w-0">
         <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
-        <p className="truncate text-[9px] font-bold text-white/42">{pick.market} · {pick.trackedOdds ?? pick.odds ?? "-"}</p>
+        <p className="truncate text-[8px] font-bold text-white/38">{formatTrackingDate(pick.createdAt)} · {formatTrackingTime(pick.createdAt)}</p>
       </div>
+      <p className="text-right text-[10px] font-black text-white/55">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
+      <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
       <div className="text-right">
-        <p className="text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
-        <p className={`text-[8px] font-black uppercase tracking-[0.08em] ${tone.textClass}`}>{formatPlanStatus(pick.status)}</p>
-        {pick.result ? <p className={pick.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300"}>{formatTrackingProfit(pick.profit)}</p> : null}
+        <p className={`text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
+        <p className={pick.result ? (pick.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300") : "text-[9px] font-black text-white/30"}>
+          {pick.result ? formatTrackingProfit(pick.profit) : "—"}
+        </p>
       </div>
+      <BankrollUiIcon name="arrow" className="h-3.5 w-3.5 text-white/35" />
     </button>
   );
 }
 
-function TrackingPickTimelineView({ item, onBack }: { item: TrackingHistoryPick; onBack: () => void }) {
+function PickTimelineSheet({ item, onClose }: { item: TrackingHistoryPick; onClose: () => void }) {
   const pick = item.pick;
   const tone = getTrackingStatusTone(pick.status);
 
   return (
-    <div className="mt-2 rounded-[13px] border border-white/10 bg-black/18 p-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[13px] font-black text-white">{pick.selection}</p>
-          <p className="mt-0.5 truncate text-[9px] font-bold text-white/42">{pick.sport} · {pick.market} · {formatTrackingDate(pick.createdAt)}</p>
-        </div>
-        <button type="button" onClick={onBack} className="rounded-[9px] border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/55">
-          Back
-        </button>
-      </div>
-      <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
-        <div>
-          <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/35">Plan Unit</p>
-          <p className="text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
-        </div>
-        <div>
-          <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/35">Status</p>
-          <p className={`text-[10px] font-black ${tone.textClass}`}>{formatPlanStatus(pick.status)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/35">Result</p>
-          <p className={pick.result ? (pick.profit >= 0 ? "text-[10px] font-black text-emerald-300" : "text-[10px] font-black text-red-300") : "text-[10px] font-black text-white/38"}>
-            {pick.result ? formatTrackingProfit(pick.profit) : "Pending"}
-          </p>
-        </div>
-      </div>
-      <div className="mt-2 grid gap-1.5">
-        {item.timeline.map((event) => (
-          <div key={event.id} className="grid grid-cols-[22px_44px_1fr_auto] items-center gap-2 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
-            <div className={`grid h-[22px] w-[22px] place-items-center rounded-full border text-[10px] font-black ${getTimelineEventClass(event.status)}`}>{getTimelineEventSymbol(event.status)}</div>
-            <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/35">{formatTrackingTime(event.time)}</p>
-            <p className="truncate text-[10px] font-bold text-white/70">{event.description}</p>
-            <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/35">{event.status ? formatPlanStatus(event.status) : ""}</p>
+    <div className="fixed inset-0 z-[76] flex items-end justify-center bg-black/70 px-3 pb-[88px] backdrop-blur-sm" role="dialog" aria-modal="true">
+      <button type="button" aria-label="Close pick timeline" onClick={onClose} className="absolute inset-0 cursor-default" />
+      <div className="relative w-full max-w-md overflow-hidden rounded-[24px] border border-white/12 bg-[#07111f] shadow-[0_-18px_70px_rgba(0,229,168,0.14)]">
+        <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-white/28" />
+        <div className="relative p-3">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.13),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.08),transparent_42%)]" />
+          <div className="relative">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/45">Pick Timeline</p>
+                <p className="mt-1 truncate text-[14px] font-black text-white">{pick.selection}</p>
+              </div>
+              <button type="button" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-[18px] leading-none text-white/55">
+                ×
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-[0.46fr_1fr_0.44fr_0.44fr_0.62fr] items-center gap-1.5 rounded-[12px] border border-white/10 bg-white/[0.035] px-2 py-2">
+              <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
+              <p className="truncate text-[10px] font-black text-white/76">{pick.market}</p>
+              <p className="text-right text-[10px] font-black text-white/60">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
+              <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
+              <p className={`truncate text-right text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
+            </div>
+
+            <div className="mt-3 max-h-[410px] overflow-y-auto pr-1">
+              <div className="relative grid gap-2">
+                <div className="absolute bottom-3 left-[9px] top-3 w-px bg-emerald-300/25" />
+                {item.timeline.map((event) => (
+                  <div key={event.id} className="relative grid grid-cols-[20px_48px_1fr] gap-2">
+                    <div className={`relative z-10 mt-0.5 grid h-5 w-5 place-items-center rounded-full border bg-[#07111f] text-[9px] font-black ${getTimelineEventClass(event.status)}`}>
+                      {getTimelineEventSymbol(event.status)}
+                    </div>
+                    <p className="pt-0.5 text-[8px] font-black uppercase tracking-[0.06em] text-white/35">{formatTrackingTime(event.time)}</p>
+                    <div className="min-w-0 pb-1.5">
+                      <p className="truncate text-[11px] font-black text-white/78">{event.description}</p>
+                      <p className="mt-0.5 text-[9px] font-semibold leading-4 text-white/40">{formatTimelineHelper(event.description, event.status)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
     </div>
   );
@@ -8640,7 +8713,21 @@ function getTrackingStatusTone(status: TrackingHistoryPick["pick"]["status"]) {
     };
   }
 
-  if (status === "pending" || status === "confirmed" || status === "started") {
+  if (status === "confirmed") {
+    return {
+      iconClass: "border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-200",
+      textClass: "text-emerald-200",
+    };
+  }
+
+  if (status === "started") {
+    return {
+      iconClass: "border-cyan-300/30 bg-cyan-300/[0.10] text-cyan-300",
+      textClass: "text-cyan-300",
+    };
+  }
+
+  if (status === "pending") {
     return {
       iconClass: "border-amber-300/30 bg-amber-300/[0.12] text-amber-300",
       textClass: "text-amber-200",
@@ -8656,14 +8743,22 @@ function getTrackingStatusTone(status: TrackingHistoryPick["pick"]["status"]) {
 function getTrackingStatusSymbol(status: TrackingHistoryPick["pick"]["status"]) {
   if (status === "won") return "✓";
   if (status === "lost") return "✕";
-  if (status === "pending" || status === "confirmed" || status === "started") return "•";
+  if (status === "confirmed") return "✓";
+  if (status === "pending" || status === "started") return "•";
   return "–";
+}
+
+function getTrackingStatusLabel(status: TrackingHistoryPick["pick"]["status"]) {
+  if (status === "downgraded" || status === "removed" || status === "no_eligible_replacement") return "Archived";
+  return formatPlanStatus(status);
 }
 
 function getTimelineEventClass(status: TrackingHistoryPick["timeline"][number]["status"]) {
   if (status === "won") return "border-emerald-300/30 bg-emerald-300/[0.12] text-emerald-300";
   if (status === "lost") return "border-red-300/30 bg-red-300/[0.12] text-red-300";
-  if (status === "pending" || status === "confirmed" || status === "started") return "border-amber-300/30 bg-amber-300/[0.12] text-amber-300";
+  if (status === "confirmed") return "border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-200";
+  if (status === "started") return "border-cyan-300/30 bg-cyan-300/[0.10] text-cyan-300";
+  if (status === "pending") return "border-amber-300/30 bg-amber-300/[0.12] text-amber-300";
   return "border-white/15 bg-white/[0.05] text-white/45";
 }
 
@@ -8672,6 +8767,17 @@ function getTimelineEventSymbol(status: TrackingHistoryPick["timeline"][number][
   if (status === "lost") return "✕";
   if (status === "pending" || status === "confirmed" || status === "started") return "•";
   return "–";
+}
+
+function formatTimelineHelper(description: string, status: TrackingHistoryPick["timeline"][number]["status"]) {
+  if (description.toLowerCase().includes("created")) return "Pick added to your tracking.";
+  if (description.toLowerCase().includes("tracking")) return "You started following this pick.";
+  if (description.toLowerCase().includes("bankroll")) return "Your manual bankroll was updated.";
+  if (description.toLowerCase().includes("weekly")) return "Included in weekly summary.";
+  if (description.toLowerCase().includes("monthly")) return "Included in monthly summary.";
+  if (status === "won" || status === "lost" || status === "push" || status === "cancelled") return "Result recorded from Atlas.";
+  if (status === "started") return "The event has started.";
+  return "Waiting for the next update.";
 }
 
 function formatTrackingDate(value: string) {
