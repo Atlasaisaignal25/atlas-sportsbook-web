@@ -7334,24 +7334,15 @@ function getMarketOpeningOdds(event: ConsolidatedMarketImpactEvent) {
 
 function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
   const anchor = getMarketAnchorState(event);
-  const openLine = anchor.anchorLine;
+  const openLine = anchor.openingLine;
   const currentLine = anchor.currentLine;
-  const openOdds = anchor.anchorOpeningOdds;
+  const openOdds = anchor.openingOdds;
   const currentOdds = anchor.currentOdds;
-
-  if (anchor.transition && sameMarketLine(anchor.transition.newLine, anchor.currentLine)) {
-    return {
-      label: "LINE MOVED",
-      arrow: "↓",
-      tone: "text-orange-300",
-      badge: "border-orange-300/24 bg-orange-300/[0.08]",
-    };
-  }
 
   if (openLine === null || currentLine === null) {
     return {
       label: "LINE STATUS",
-      arrow: "•",
+      arrow: "●",
       tone: "text-white/62",
       badge: "border-white/12 bg-white/[0.04]",
     };
@@ -7362,7 +7353,7 @@ function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
   if (currentLine > openLine) {
     return {
       label: "LINE MOVED UP",
-      arrow: "↑",
+      arrow: "📈",
       tone: "text-emerald-300",
       badge: "border-emerald-300/24 bg-emerald-300/[0.08]",
     };
@@ -7371,7 +7362,7 @@ function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
   if (currentLine < openLine) {
     return {
       label: "LINE MOVED DOWN",
-      arrow: "↓",
+      arrow: "📉",
       tone: "text-red-300",
       badge: "border-red-300/24 bg-red-300/[0.08]",
     };
@@ -7380,52 +7371,52 @@ function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
   if (oddsChanged) {
     return {
       label: "ODDS MOVED",
-      arrow: "•",
-      tone: "text-yellow-300",
-      badge: "border-yellow-300/24 bg-yellow-300/[0.08]",
+      arrow: "⇄",
+      tone: "text-amber-300",
+      badge: "border-amber-300/24 bg-amber-300/[0.08]",
     };
   }
 
   return {
-    label: "MARKET STABLE",
-    arrow: "→",
-    tone: "text-orange-200",
-    badge: "border-orange-300/18 bg-orange-300/[0.06]",
+    label: "STABLE",
+    arrow: "●",
+    tone: "text-white/58",
+    badge: "border-white/12 bg-white/[0.04]",
   };
 }
 
 function getMarketTrend(event: ConsolidatedMarketImpactEvent) {
   const anchor = getMarketAnchorState(event);
-  const openLine = anchor.anchorLine;
+  const openLine = anchor.openingLine;
   const currentLine = anchor.currentLine;
-  const openOdds = anchor.anchorOpeningOdds;
+  const openOdds = anchor.openingOdds;
   const currentOdds = anchor.currentOdds;
 
   if (openLine !== null && currentLine !== null && currentLine !== openLine) {
     const delta = currentLine - openLine;
     return {
-      label: delta > 0 ? "Upward" : "Downward",
-      detail: `${delta > 0 ? "+" : ""}${Number.isInteger(delta) ? delta.toFixed(0) : delta.toFixed(1)}`,
+      label: delta > 0 ? "Upward Trend" : "Downward Trend",
+      detail: `${delta > 0 ? "+" : ""}${Number.isInteger(delta) ? delta.toFixed(0) : delta.toFixed(1)} pts`,
       tone: delta > 0 ? "text-emerald-300" : "text-red-300",
-      arrow: delta > 0 ? "↑" : "↓",
+      arrow: delta > 0 ? "📈" : "📉",
     };
   }
 
   if (openOdds !== null && currentOdds !== null && currentOdds !== openOdds) {
     const delta = currentOdds - openOdds;
     return {
-      label: "Odds Moved",
-      detail: `${delta > 0 ? "+" : ""}${delta} Odds`,
-      tone: "text-yellow-300",
-      arrow: "•",
+      label: "Odds Movement",
+      detail: `${formatAmericanOdds(openOdds)} → ${formatAmericanOdds(currentOdds)}`,
+      tone: "text-amber-300",
+      arrow: "⇄",
     };
   }
 
   return {
     label: "Stable",
-    detail: "Open Reference",
-    tone: "text-yellow-300",
-    arrow: "→",
+    detail: "No significant movement",
+    tone: "text-white/58",
+    arrow: "●",
   };
 }
 
@@ -7451,10 +7442,11 @@ function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
     if (anchorLine !== null && movement.newLine !== null && !sameMarketLine(movement.newLine, anchorLine)) {
       const oldState = formatMarketStateLine(getMarketVisualSelection(movement), anchorLine, null, event.market);
       const newState = formatMarketStateLine(getMarketVisualSelection(movement), movement.newLine, null, event.market);
+      const movedUp = movement.newLine > anchorLine;
 
       entries.push({
         time: movement.latestMoveAt ?? movement.publishedAt,
-        lines: ["LINE MOVED", oldState.market, "↓", newState.market],
+        lines: [movedUp ? "📈 LINE MOVED UP" : "📉 LINE MOVED DOWN", oldState.market, "→", newState.market],
       });
       anchorLine = movement.newLine;
     }
@@ -7465,7 +7457,7 @@ function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
       entries.push({
         time: movement.latestMoveAt ?? movement.publishedAt,
         lines: [
-          "Odds",
+          "⇄ Odds",
           state.market,
           state.odds,
           ...bookLines,
@@ -7483,6 +7475,29 @@ function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
         .join("\n");
     })
     .join("\n\n----------------\n\n");
+}
+
+function getMarketDirectionWhy(event: ConsolidatedMarketImpactEvent) {
+  const anchor = getMarketAnchorState(event);
+  const openLine = anchor.openingLine;
+  const currentLine = anchor.currentLine;
+  const openOdds = anchor.openingOdds;
+  const currentOdds = anchor.currentOdds;
+  const marketLabel = event.market === "Totals" ? "Opening Total" : `Opening ${event.market}`;
+
+  if (openLine !== null && currentLine !== null && currentLine > openLine) {
+    return `📈 ${marketLabel} increased from ${formatMarketLineOnly(openLine, event.market)} to ${formatMarketLineOnly(currentLine, event.market)}.`;
+  }
+
+  if (openLine !== null && currentLine !== null && currentLine < openLine) {
+    return `📉 ${marketLabel} decreased from ${formatMarketLineOnly(openLine, event.market)} to ${formatMarketLineOnly(currentLine, event.market)}.`;
+  }
+
+  if (openOdds !== null && currentOdds !== null && currentOdds !== openOdds) {
+    return `⇄ The line remained unchanged while sportsbook pricing adjusted from ${formatAmericanOdds(openOdds)} to ${formatAmericanOdds(currentOdds)}.`;
+  }
+
+  return "● The market remains stable against the opening reference.";
 }
 
 function getAtlasIntelligenceMatchupLabel(event: AtlasIntelligenceEvent) {
@@ -9446,18 +9461,13 @@ const subscriptionPlansBoard = (
           <div className="space-y-2.5">
             <section className="rounded-[19px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-1.5 shadow-[0_0_22px_rgba(34,211,238,0.07)]">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-cyan-300/30 bg-[#061426] p-1 shadow-[0_0_18px_rgba(34,211,238,0.20)]">
-                    <img src="/signals-nav-logo.png" alt="Atlas" className="h-full w-full object-cover object-center" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-[22px] font-black uppercase leading-none tracking-tight text-white">
-                      MARKET IMPACT
-                    </h2>
-                    <p className="truncate text-[11px] font-bold text-white/58">
-                      Live Intelligence Center
-                    </p>
-                  </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-[28px] font-black uppercase leading-none tracking-[-0.035em] text-white">
+                    MARKET IMPACT
+                  </h2>
+                  <p className="mt-1 max-w-[320px] truncate text-[11px] font-semibold leading-snug text-white/58">
+                    Live Intelligence Center
+                  </p>
                 </div>
                 <span className="mt-0.5 shrink-0 rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.13em] text-emerald-200">
                   Live
@@ -9615,7 +9625,7 @@ const subscriptionPlansBoard = (
                       ])
                     : isMarketImpact && marketEvent
                       ? joinImpactDetailLines([
-                          `Movement: ${marketAnchorState?.transition ? "Anchor line changed" : "Opening anchor price movement"}`,
+                          `Movement: ${getMarketDirectionWhy(marketEvent)}`,
                           `Market: ${marketEvent.market}`,
                           `Selection: ${marketCurrentState?.market ?? marketEvent.selection}`,
                           marketAnchorState?.currentBook ? `Book: ${marketAnchorState.currentBook}` : null,
@@ -9793,13 +9803,12 @@ const subscriptionPlansBoard = (
                             </div>
                           </div>
 
-                          <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] border border-orange-300/14 bg-orange-400/[0.035] px-2 py-0.5 text-center shadow-[0_0_14px_rgba(249,115,22,0.08)]">
+                          <div className="mt-1 grid grid-cols-2 items-center gap-2 rounded-[12px] border border-orange-300/14 bg-orange-400/[0.035] px-2 py-0.5 text-center shadow-[0_0_14px_rgba(249,115,22,0.08)]">
                             <div>
                               <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Open</p>
                               <p className="mt-px truncate text-[16px] font-black leading-none text-white">{marketOpenState?.market ?? "N/A"}</p>
                               <p className="mt-0.5 text-[10px] font-black leading-none text-white/62">{marketOpenState?.odds ?? "Odds N/A"}</p>
                             </div>
-                            <span className="text-[20px] font-black leading-none text-orange-300">↓</span>
                             <div>
                               <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current</p>
                               <p className="mt-px truncate text-[16px] font-black leading-none text-orange-300">{marketCurrentState?.market ?? "N/A"}</p>
