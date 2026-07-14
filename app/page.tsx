@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 // import mlbSignals from "@/data/mlb-public-signals.json";
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
@@ -793,31 +793,6 @@ function getMarket(game: OddsGame, marketKey: string) {
 function formatAmericanOdds(value?: number | null) {
   if (value === null || value === undefined) return "N/A";
   return value > 0 ? `+${value}` : `${value}`;
-}
-
-function parseBankrollAmount(value: string) {
-  const amount = Number(value.replace(/[^0-9.]/g, ""));
-  return Number.isFinite(amount) && amount > 0 ? amount : null;
-}
-
-function formatBankrollCurrency(value: number | null) {
-  if (value === null) return "--";
-
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: value >= 100 ? 0 : 2,
-  }).format(value);
-}
-
-function getRecommendedBankrollUnit(bankroll: number | null) {
-  if (bankroll === null) return null;
-  return Math.max(1, bankroll * 0.03);
-}
-
-function getHigherExposureBankrollUnit(bankroll: number | null) {
-  if (bankroll === null) return null;
-  return Math.max(1, bankroll * 0.06);
 }
 
 function getMoneyline(game: OddsGame, teamName: string) {
@@ -4226,7 +4201,6 @@ const [pulseSourcesSheet, setPulseSourcesSheet] = useState<{
 } | null>(null);
 const [followedSports, setFollowedSports] = useState<SportTab[]>([]);
 const [followedTeams, setFollowedTeams] = useState<string[]>([]);
-const [bankrollInput, setBankrollInput] = useState("");
 const [liveGames, setLiveGames] = useState<LiveScore[]>([]);
 const [liveLoading, setLiveLoading] = useState(false);
 const [subsScoreGames, setSubsScoreGames] = useState<LiveScore[]>([]);
@@ -4266,10 +4240,6 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
 }>({
   top5: [],
 });
-
-const bankrollAmount = parseBankrollAmount(bankrollInput);
-const recommendedBankrollUnit = getRecommendedBankrollUnit(bankrollAmount);
-const higherExposureBankrollUnit = getHigherExposureBankrollUnit(bankrollAmount);
 
 function navigateAppState(
   updates: Partial<{
@@ -7354,6 +7324,374 @@ function getAtlasIntelligenceImpact(event: AtlasIntelligenceEvent) {
   return `The market reacted after the team update with a ${event.details.marketMovementType.replaceAll("_", " ").toLowerCase()}.`;
 }
 
+const atlasBankrollMock = {
+  cycle: {
+    week: "Week 2",
+    day: "Day 4 / 7",
+  },
+  summary: [
+    {
+      label: "Current Bankroll",
+      value: "$214",
+      detail: "+$14",
+      icon: "wallet" as const,
+      tone: "green" as const,
+    },
+    {
+      label: "Initial Bankroll",
+      value: "$200",
+      detail: "Starting point",
+      icon: "trend" as const,
+      tone: "cyan" as const,
+    },
+    {
+      label: "Recommended Unit",
+      value: "$10",
+      detail: "Plan unit",
+      icon: "coins" as const,
+      tone: "violet" as const,
+    },
+    {
+      label: "Current Profile",
+      value: "Atlas Recommended",
+      detail: "Recommended",
+      icon: "shield" as const,
+      tone: "green" as const,
+    },
+  ],
+  plan: {
+    package: "Premium",
+    pick: "Dodgers ML",
+    status: "Pending",
+    unit: "$10",
+  },
+  weekly: {
+    wins: "4",
+    losses: "2",
+    roi: "+7%",
+    planScore: "95",
+    progress: 68,
+    cycle: "Day 4 of 7",
+  },
+  performance: [
+    { label: "Current ROI", value: "+7.00%", detail: "Good" },
+    { label: "Current Streak", value: "2W", detail: "Building" },
+    { label: "Profit / Loss", value: "+$14", detail: "Net" },
+    { label: "Today's Exposure", value: "3%", detail: "Within plan" },
+  ],
+  insight: {
+    title: "Discipline beats emotion.",
+    body: "Consistency is built by respecting your unit size.",
+  },
+};
+
+type BankrollUiIconName = "wallet" | "coins" | "shield" | "trend" | "target" | "bars" | "bulb" | "education" | "arrow";
+
+function BankrollUiIcon({
+  name,
+  className = "h-5 w-5",
+}: {
+  name: BankrollUiIconName;
+  className?: string;
+}) {
+  const common = {
+    viewBox: "0 0 24 24",
+    className,
+    fill: "none",
+    "aria-hidden": true,
+  };
+
+  if (name === "wallet") {
+    return (
+      <svg {...common}>
+        <path d="M4.5 8.3h14.2a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2V7.1c0-1 .7-1.8 1.7-2l10.5-1.8c1.1-.2 2.1.6 2.1 1.7v3.3" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
+        <path d="M16.8 13.8h3.9" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        <path d="M7 12h5.6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "coins") {
+    return (
+      <svg {...common}>
+        <path d="M12 6.6c3.4 0 6.2-1 6.2-2.3S15.4 2 12 2 5.8 3 5.8 4.3 8.6 6.6 12 6.6Z" stroke="currentColor" strokeWidth="1.9" />
+        <path d="M5.8 4.3v4.1c0 1.3 2.8 2.3 6.2 2.3s6.2-1 6.2-2.3V4.3M5.8 8.4v4.1c0 1.3 2.8 2.3 6.2 2.3s6.2-1 6.2-2.3V8.4M5.8 12.5v4.1c0 1.3 2.8 2.3 6.2 2.3s6.2-1 6.2-2.3v-4.1" stroke="currentColor" strokeWidth="1.9" />
+      </svg>
+    );
+  }
+
+  if (name === "shield") {
+    return (
+      <svg {...common}>
+        <path d="M12 3.2 19 6v5.5c0 4.4-3.1 7.2-7 9.1-3.9-1.9-7-4.7-7-9.1V6l7-2.8Z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
+        <path d="m8.8 12 2.2 2.2 4.4-5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "target") {
+    return (
+      <svg {...common}>
+        <path d="M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17Z" stroke="currentColor" strokeWidth="1.9" />
+        <path d="M12 16.2a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Z" stroke="currentColor" strokeWidth="1.9" />
+        <path d="M12 12h7.8M17.1 6.9l2.7-2.7M17.1 6.9h3.1v3.1" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "bars") {
+    return (
+      <svg {...common}>
+        <path d="M5 19V13M10 19V8M15 19v-5M20 19V5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        <path d="M4 20h17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "bulb") {
+    return (
+      <svg {...common}>
+        <path d="M8.2 14.4a6 6 0 1 1 7.6 0c-.8.6-1.2 1.4-1.2 2.4H9.4c0-1-.4-1.8-1.2-2.4Z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
+        <path d="M9.6 20h4.8M10 17h4M12 2v1.4M4.8 5.1l1 1M19.2 5.1l-1 1M2.8 12h1.4M19.8 12h1.4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "education") {
+    return (
+      <svg {...common}>
+        <path d="M3.5 9.5 12 5l8.5 4.5L12 14 3.5 9.5Z" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" />
+        <path d="M7 11.4v4.2c1.7 1.7 8.3 1.7 10 0v-4.2M20.5 9.5v5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "arrow") {
+    return (
+      <svg {...common}>
+        <path d="m9 5 7 7-7 7" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path d="M4 18.5h16" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path d="m5.3 14.2 4-4 3 2.8 6.4-7.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M18.7 5.8v5h-5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const bankrollToneClasses = {
+  green: "text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.35)]",
+  cyan: "text-sky-300 drop-shadow-[0_0_12px_rgba(56,189,248,0.32)]",
+  violet: "text-violet-300 drop-shadow-[0_0_12px_rgba(196,181,253,0.30)]",
+};
+
+function BankrollShell({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <section className={`relative rounded-[22px] border border-white/10 bg-[#06101d]/78 shadow-[0_0_24px_rgba(16,185,129,0.06)] ${className}`}>
+      {children}
+    </section>
+  );
+}
+
+function BankrollHeader() {
+  return (
+    <BankrollShell className="overflow-hidden p-5">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.08),transparent_40%)]" />
+      <div className="relative flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[27px] font-black uppercase tracking-[0.08em] text-white">
+            ATLAS <span className="text-emerald-300">BANKROLL</span>
+          </h2>
+          <p className="mt-1 text-[13px] font-bold text-white/56">Financial Discipline Center</p>
+        </div>
+        <div className="text-right">
+          <span className="inline-flex rounded-full border border-emerald-300/40 bg-emerald-300/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-300">
+            Active
+          </span>
+          <p className="mt-2 text-[11px] font-black uppercase tracking-[0.13em] text-white/48">{atlasBankrollMock.cycle.week}</p>
+          <p className="text-[11px] font-bold text-white/62">{atlasBankrollMock.cycle.day}</p>
+        </div>
+      </div>
+    </BankrollShell>
+  );
+}
+
+function BankrollSummaryCard() {
+  return (
+    <BankrollShell className="grid grid-cols-2 overflow-hidden sm:grid-cols-4">
+      {atlasBankrollMock.summary.map((item, index) => (
+        <div
+          key={item.label}
+          className={`min-w-0 p-4 ${index % 2 === 0 ? "border-r border-white/10" : ""} ${index < 2 ? "border-b border-white/10 sm:border-b-0" : ""} ${index > 0 ? "sm:border-l sm:border-white/10" : ""}`}
+        >
+          <div className="flex items-start gap-2">
+            <BankrollUiIcon name={item.icon} className={`h-6 w-6 shrink-0 ${bankrollToneClasses[item.tone]}`} />
+            <p className="min-h-10 text-[10px] font-black uppercase leading-5 tracking-[0.12em] text-white/52">{item.label}</p>
+          </div>
+          <p className={`mt-3 text-[24px] font-black tracking-tight ${item.tone === "cyan" ? "text-sky-300" : item.tone === "violet" ? "text-violet-300" : "text-emerald-300"}`}>
+            {item.value}
+          </p>
+          <p className={`mt-1 text-[11px] font-bold ${item.detail === "Recommended" ? "text-emerald-300" : "text-white/46"}`}>
+            {item.detail}
+          </p>
+        </div>
+      ))}
+    </BankrollShell>
+  );
+}
+
+function BankrollPlanCard() {
+  const rows = [
+    ["Package", atlasBankrollMock.plan.package],
+    ["Today's Pick", atlasBankrollMock.plan.pick],
+    ["Status", atlasBankrollMock.plan.status],
+    ["Recommended Unit", atlasBankrollMock.plan.unit],
+  ];
+
+  return (
+    <BankrollShell className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <BankrollUiIcon name="target" className="h-7 w-7 text-emerald-300 drop-shadow-[0_0_12px_rgba(52,211,153,0.36)]" />
+          <p className="text-[14px] font-black uppercase tracking-[0.12em] text-emerald-300">Today&apos;s Atlas Plan</p>
+        </div>
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-[14px] border border-cyan-300/25 bg-cyan-300/[0.06] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">
+          View Today&apos;s Plan
+          <BankrollUiIcon name="arrow" className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded-[16px] border border-white/10 bg-black/20 px-3 py-3">
+            <p className="text-[10px] font-black uppercase tracking-[0.13em] text-white/42">{label}</p>
+            <p className={`mt-1 text-[16px] font-black ${value === "Pending" ? "text-amber-200" : "text-white"}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+    </BankrollShell>
+  );
+}
+
+function BankrollWeeklyCard() {
+  const metrics = [
+    ["Wins", atlasBankrollMock.weekly.wins, "text-emerald-300"],
+    ["Losses", atlasBankrollMock.weekly.losses, "text-red-300"],
+    ["ROI", atlasBankrollMock.weekly.roi, "text-white"],
+    ["Plan Score", atlasBankrollMock.weekly.planScore, "text-cyan-300"],
+  ];
+
+  return (
+    <BankrollShell className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <BankrollUiIcon name="bars" className="h-7 w-7 text-emerald-300" />
+          <p className="text-[14px] font-black uppercase tracking-[0.12em] text-emerald-300">Weekly Progress</p>
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/52">
+          Current Cycle
+        </span>
+      </div>
+      <div className="mt-5 grid grid-cols-4 gap-2 text-center">
+        {metrics.map(([label, value, tone]) => (
+          <div key={label} className="min-w-0 border-r border-white/10 last:border-r-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/45">{label}</p>
+            <p className={`mt-1 text-[23px] font-black ${tone}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-300 to-cyan-300 shadow-[0_0_14px_rgba(52,211,153,0.35)]" style={{ width: `${atlasBankrollMock.weekly.progress}%` }} />
+      </div>
+      <p className="mt-4 text-center text-[12px] font-bold text-emerald-300">{atlasBankrollMock.weekly.cycle}</p>
+    </BankrollShell>
+  );
+}
+
+function BankrollPerformanceCard() {
+  return (
+    <BankrollShell className="p-4">
+      <div className="flex items-center gap-2">
+        <BankrollUiIcon name="trend" className="h-7 w-7 text-emerald-300" />
+        <p className="text-[14px] font-black uppercase tracking-[0.12em] text-emerald-300">Performance</p>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {atlasBankrollMock.performance.map((metric) => (
+          <div key={metric.label} className="rounded-[16px] border border-white/10 bg-black/20 px-3 py-3 text-center">
+            <p className="text-[10px] font-black uppercase leading-4 tracking-[0.12em] text-white/45">{metric.label}</p>
+            <p className="mt-3 text-[24px] font-black text-emerald-300">{metric.value}</p>
+            <p className="mt-1 text-[11px] font-semibold text-white/48">{metric.detail}</p>
+          </div>
+        ))}
+      </div>
+    </BankrollShell>
+  );
+}
+
+function BankrollInsightCard() {
+  return (
+    <BankrollShell className="overflow-hidden p-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_70%,rgba(59,130,246,0.16),transparent_34%),radial-gradient(circle_at_90%_80%,rgba(14,165,233,0.12),transparent_32%)]" />
+      <div className="relative flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <BankrollUiIcon name="bulb" className="h-7 w-7 text-sky-300" />
+          <p className="text-[14px] font-black uppercase tracking-[0.12em] text-sky-300">Educational Insight</p>
+        </div>
+        <button type="button" className="inline-flex items-center gap-1.5 rounded-[14px] border border-cyan-300/25 bg-cyan-300/[0.06] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">
+          Learn More
+          <BankrollUiIcon name="arrow" className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="relative mt-5 grid grid-cols-[76px_1fr] items-center gap-4">
+        <div className="grid h-[76px] w-[76px] place-items-center rounded-full border border-sky-300/25 bg-sky-300/10 text-sky-300 shadow-[0_0_22px_rgba(14,165,233,0.12)]">
+          <BankrollUiIcon name="education" className="h-10 w-10" />
+        </div>
+        <div>
+          <h3 className="text-[18px] font-black text-white">{atlasBankrollMock.insight.title}</h3>
+          <p className="mt-2 text-[13px] leading-6 text-white/58">{atlasBankrollMock.insight.body}</p>
+        </div>
+      </div>
+    </BankrollShell>
+  );
+}
+
+function BankrollPlanTrackingTabs() {
+  return (
+    <BankrollShell className="p-4">
+      <div className="grid grid-cols-2 rounded-[16px] border border-white/10 bg-black/20 p-1">
+        <button type="button" className="rounded-[12px] bg-emerald-300 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-black">
+          Atlas Plan
+        </button>
+        <button type="button" className="rounded-[12px] px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white/45">
+          My Tracking
+        </button>
+      </div>
+      <div className="mt-3 rounded-[18px] border border-white/10 bg-white/[0.035] px-4 py-4">
+        <p className="text-[13px] font-bold text-white/72">Track your own selections independently from the Atlas Plan.</p>
+        <p className="mt-1 text-[12px] text-white/45">Coming in the next phase.</p>
+      </div>
+    </BankrollShell>
+  );
+}
+
+function AtlasBankrollScreen() {
+  return (
+    <div className="space-y-3">
+      <BankrollHeader />
+      <BankrollSummaryCard />
+      <BankrollPlanCard />
+      <BankrollWeeklyCard />
+      <BankrollPerformanceCard />
+      <BankrollInsightCard />
+      <BankrollPlanTrackingTabs />
+    </div>
+  );
+}
+
 const homeMembershipPlans = [
   {
     plan: "exclusive" as const,
@@ -9734,133 +10072,7 @@ const subscriptionPlansBoard = (
             )}
           </div>
         ) : appSection === "bankroll" ? (
-          <div className="space-y-3">
-            <section className="rounded-[24px] border border-emerald-300/20 bg-emerald-300/[0.07] p-5">
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">
-                Atlas Bankroll
-              </p>
-              <h2 className="mt-2 text-[24px] font-black tracking-tight text-white">
-                Manage the plan before the plays
-              </h2>
-              <p className="mt-2 text-[13px] leading-5 text-white/62">
-                Atlas Bankroll turns one starting number into a simple discipline
-                framework. It is built for planning, consistency, and financial
-                awareness.
-              </p>
-
-              <div className="mt-4 rounded-[18px] border border-white/10 bg-black/25 p-3">
-                <label
-                  htmlFor="atlas-bankroll-input"
-                  className="text-[10px] font-black uppercase tracking-[0.16em] text-white/45"
-                >
-                  Initial Bankroll
-                </label>
-                <div className="mt-2 flex items-center gap-2 rounded-[16px] border border-white/10 bg-white/[0.05] px-3 py-3">
-                  <span className="text-[18px] font-black text-emerald-300">$</span>
-                  <input
-                    id="atlas-bankroll-input"
-                    inputMode="decimal"
-                    value={bankrollInput}
-                    onChange={(event) => setBankrollInput(event.target.value)}
-                    placeholder="200"
-                    className="min-w-0 flex-1 bg-transparent text-[22px] font-black text-white outline-none placeholder:text-white/25"
-                    aria-label="Initial bankroll"
-                  />
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[24px] border border-white/10 bg-white/[0.045] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                    Recommended Unit
-                  </p>
-                  <h3 className="mt-2 text-[30px] font-black tracking-tight text-white">
-                    {formatBankrollCurrency(recommendedBankrollUnit)}
-                  </h3>
-                </div>
-                <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200">
-                  Recommended
-                </span>
-              </div>
-              <p className="mt-3 text-[12px] leading-5 text-white/55">
-                The unit is generated automatically from the bankroll entered
-                above. Keep it steady to protect discipline from emotion.
-              </p>
-            </section>
-
-            <section className="grid grid-cols-1 gap-3">
-              <article className="rounded-[22px] border border-emerald-300/25 bg-emerald-300/[0.08] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                      Atlas Recommended
-                    </p>
-                    <h3 className="mt-1 text-[19px] font-black text-white">
-                      Default profile
-                    </h3>
-                  </div>
-                  <span className="rounded-full bg-emerald-300 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-black">
-                    Selected
-                  </span>
-                </div>
-                <p className="mt-3 text-[12px] leading-5 text-white/58">
-                  Designed for a measured plan that favors patience, repeatable
-                  decisions, and bankroll protection.
-                </p>
-              </article>
-
-              <article className="rounded-[22px] border border-amber-300/20 bg-amber-300/[0.07] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">
-                      Higher Exposure
-                    </p>
-                    <h3 className="mt-1 text-[19px] font-black text-white">
-                      Informational profile
-                    </h3>
-                  </div>
-                  <span className="rounded-full border border-amber-200/25 bg-amber-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-amber-100">
-                    Higher Risk
-                  </span>
-                </div>
-                <p className="mt-3 text-[12px] leading-5 text-white/58">
-                  This profile increases exposure and is not the recommended
-                  path for discipline-first bankroll management.
-                </p>
-                <div className="mt-3 rounded-[16px] border border-white/10 bg-black/20 px-3 py-2">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/42">
-                    Estimated Unit
-                  </p>
-                  <p className="mt-1 text-[18px] font-black text-amber-100">
-                    {formatBankrollCurrency(higherExposureBankrollUnit)}
-                  </p>
-                </div>
-              </article>
-            </section>
-
-            <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/45">
-                Discipline Rules
-              </p>
-              <div className="mt-3 space-y-2">
-                {[
-                  "Set the bankroll before evaluating any board.",
-                  "Use one consistent unit until the plan is reviewed.",
-                  "Track decisions without chasing previous outcomes.",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="flex items-start gap-2 rounded-[16px] border border-white/10 bg-black/20 px-3 py-2"
-                  >
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300" />
-                    <p className="text-[12px] leading-5 text-white/60">{item}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
+          <AtlasBankrollScreen />
         ) : false ? (
           <div className="space-y-3">
             <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-5">
