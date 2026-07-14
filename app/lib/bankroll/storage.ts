@@ -62,7 +62,7 @@ export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig 
     ...normalizedBase,
     atlasPlanCollection,
     atlasPlan: atlasPlanCollection.primaryPlan ?? undefined,
-    manualTracking: normalizeManualTracking(normalizedBase.manualTracking, normalizedBase.updatedAt),
+    manualTracking: normalizeManualTracking(normalizedBase.manualTracking, normalizedBase.updatedAt, currentBankroll),
   }));
 }
 

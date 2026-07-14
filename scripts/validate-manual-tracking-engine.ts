@@ -70,7 +70,10 @@ const normalizedTracking = normalizeManualTracking({
   picks: [activePick, completedPick],
   activePicks: [],
   completedPicks: [],
-  stats: { totalPicks: 0, activeCount: 0, completedCount: 0 },
+  stats: emptyTracking.stats,
+  manualFinancialState: emptyTracking.manualFinancialState,
+  manualStats: emptyTracking.manualStats,
+  manualTimeline: [],
 });
 assert.equal(normalizedTracking.stats.totalPicks, 2);
 assert.equal(normalizedTracking.stats.activeCount, 1);

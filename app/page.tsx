@@ -8038,7 +8038,9 @@ function BankrollPlanTrackingTabs({
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-[12px] font-black text-white/72">{manualTracking?.stats.activeCount ?? 0} active manual picks.</p>
-                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">Manual selections are tracked independently from Atlas Plans.</p>
+                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">
+                    Manual Bankroll {formatCurrency(manualTracking?.manualStats.currentBankroll ?? 0)} · ROI {formatPercentage(manualTracking?.manualStats.roi ?? 0)} · Profit {formatCurrency(manualTracking?.manualStats.profit ?? 0)}
+                  </p>
                 </div>
                 <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/25 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200">
                   Add Manual Pick

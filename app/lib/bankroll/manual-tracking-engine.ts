@@ -1,15 +1,20 @@
-import { calculateExposure, roundCurrency } from "./engine";
+import { buildFinancialPlan, calculateExposure, calculateRecommendedUnit, roundCurrency } from "./engine";
 import type {
   BankrollConfig,
+  ManualFinancialState,
   ManualPickInput,
   ManualPickValidationResult,
   ManualTrackedPick,
   ManualTrackingCollection,
+  ManualTrackingStats,
 } from "./types";
 
 const COMPLETED_MANUAL_STATUSES = new Set(["won", "lost", "push", "cancelled"]);
 
-export function createManualTracking(now = new Date().toISOString()): ManualTrackingCollection {
+export function createManualTracking(now = new Date().toISOString(), initialBankroll = 0): ManualTrackingCollection {
+  const manualFinancialState = createManualFinancialState(initialBankroll, now);
+  const stats = calculateManualStats([], manualFinancialState);
+
   return {
     trackingId: "manual-tracking-v1",
     createdAt: now,
@@ -17,23 +22,25 @@ export function createManualTracking(now = new Date().toISOString()): ManualTrac
     picks: [],
     activePicks: [],
     completedPicks: [],
-    stats: {
-      totalPicks: 0,
-      activeCount: 0,
-      completedCount: 0,
-    },
+    stats,
+    manualFinancialState,
+    manualStats: stats,
+    manualTimeline: [],
   };
 }
 
 export function normalizeManualTracking(
   collection: ManualTrackingCollection | null | undefined,
   now = new Date().toISOString(),
+  atlasBankroll = 0,
 ): ManualTrackingCollection {
-  if (!isValidManualTrackingCollection(collection)) return createManualTracking(now);
+  if (!isValidManualTrackingCollection(collection)) return createManualTracking(now, atlasBankroll);
 
   const picks = collection.picks.map(normalizeManualPick);
   const activePicks = getActiveManualPicks(picks);
   const completedPicks = getCompletedManualPicks(picks);
+  const manualFinancialState = normalizeManualFinancialState(collection.manualFinancialState, atlasBankroll, collection.createdAt, now);
+  const stats = calculateManualStats(picks, manualFinancialState);
 
   return {
     trackingId: collection.trackingId,
@@ -42,22 +49,21 @@ export function normalizeManualTracking(
     picks,
     activePicks,
     completedPicks,
-    stats: {
-      totalPicks: picks.length,
-      activeCount: activePicks.length,
-      completedCount: completedPicks.length,
-    },
+    stats,
+    manualFinancialState,
+    manualStats: stats,
+    manualTimeline: Array.isArray(collection.manualTimeline) ? collection.manualTimeline : [],
   };
 }
 
 export function loadManualTracking(config: BankrollConfig) {
-  return normalizeManualTracking(config.manualTracking, config.updatedAt);
+  return normalizeManualTracking(config.manualTracking, config.updatedAt, config.currentBankroll);
 }
 
 export function saveManualTracking(config: BankrollConfig, manualTracking: ManualTrackingCollection): BankrollConfig {
   return {
     ...config,
-    manualTracking: normalizeManualTracking(manualTracking),
+    manualTracking: normalizeManualTracking(manualTracking, new Date().toISOString(), config.currentBankroll),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -107,11 +113,22 @@ export function createManualPick(
     ],
   };
 
+  const manualBankroll = collection.manualFinancialState.currentBankroll > 0 ? collection.manualFinancialState.currentBankroll : currentBankroll;
+
+  const manualFinancialState =
+    collection.picks.length === 0 &&
+    collection.manualFinancialState.initialBankroll === 0 &&
+    collection.manualFinancialState.currentBankroll === 0 &&
+    currentBankroll > 0
+      ? createManualFinancialState(currentBankroll, collection.createdAt)
+      : collection.manualFinancialState;
+
   return normalizeManualTracking({
     ...collection,
     updatedAt: now,
+    manualFinancialState,
     picks: [...collection.picks, pick],
-  }, now);
+  }, now, manualBankroll);
 }
 
 export function updateManualPick(
@@ -128,7 +145,7 @@ export function updateManualPick(
         ? normalizeManualPick({ ...pick, ...updates, id: pick.id, origin: "manual", source: "manual", updatedAt: now })
         : pick,
     ),
-  }, now);
+  }, now, collection.manualFinancialState.currentBankroll);
 }
 
 export function deleteManualPick(collection: ManualTrackingCollection, pickId: string, now = new Date().toISOString()) {
@@ -136,7 +153,7 @@ export function deleteManualPick(collection: ManualTrackingCollection, pickId: s
     ...collection,
     updatedAt: now,
     picks: collection.picks.filter((pick) => pick.id !== pickId),
-  }, now);
+  }, now, collection.manualFinancialState.currentBankroll);
 }
 
 export function validateManualPick(input: ManualPickInput, currentBankroll: number): ManualPickValidationResult {
@@ -176,6 +193,80 @@ export function calculateRiskPercentage(riskAmount: number, currentBankroll: num
   return calculateExposure(riskAmount, currentBankroll, "atlas_recommended").value;
 }
 
+export function createManualFinancialState(initialBankroll: number, now = new Date().toISOString()): ManualFinancialState {
+  const safeBankroll = roundCurrency(Math.max(0, initialBankroll));
+
+  return {
+    initialBankroll: safeBankroll,
+    currentBankroll: safeBankroll,
+    recommendedUnit: calculateRecommendedUnit(safeBankroll, "atlas_recommended"),
+    profit: 0,
+    roi: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function normalizeManualFinancialState(
+  state: ManualFinancialState | undefined,
+  atlasBankroll: number,
+  createdAt: string,
+  now = new Date().toISOString(),
+): ManualFinancialState {
+  if (!state) return createManualFinancialState(atlasBankroll, createdAt || now);
+
+  const financialPlan = buildFinancialPlan({
+    initialBankroll: state.initialBankroll,
+    currentBankroll: state.currentBankroll,
+    recommendedUnit: state.recommendedUnit,
+    profile: "atlas_recommended",
+    createdAt: state.createdAt,
+    updatedAt: state.updatedAt || now,
+  });
+
+  return {
+    initialBankroll: financialPlan.state.initialBankroll,
+    currentBankroll: financialPlan.metrics.currentBankroll,
+    recommendedUnit: financialPlan.metrics.recommendedUnit,
+    profit: financialPlan.metrics.profit,
+    roi: financialPlan.metrics.roi.value,
+    createdAt: state.createdAt,
+    updatedAt: state.updatedAt || now,
+  };
+}
+
+export function calculateManualStats(picks: ManualTrackedPick[], financialState: ManualFinancialState): ManualTrackingStats {
+  const activePicks = getActiveManualPicks(picks);
+  const completedPicks = getCompletedManualPicks(picks);
+  const wins = completedPicks.filter((pick) => pick.result === "won").length;
+  const losses = completedPicks.filter((pick) => pick.result === "lost").length;
+  const pushes = completedPicks.filter((pick) => pick.result === "push").length;
+  const cancelled = completedPicks.filter((pick) => pick.result === "cancelled").length;
+  const streaks = calculateManualStreaks(completedPicks);
+  const graded = wins + losses;
+
+  return {
+    currentBankroll: financialState.currentBankroll,
+    initialBankroll: financialState.initialBankroll,
+    profit: financialState.profit,
+    roi: financialState.roi,
+    winRate: graded > 0 ? Math.round((wins / graded) * 10000) / 100 : 0,
+    wins,
+    losses,
+    pushes,
+    cancelled,
+    currentStreak: streaks.currentStreak,
+    currentStreakType: streaks.currentStreakType,
+    longestWinningStreak: streaks.longestWinningStreak,
+    longestLosingStreak: streaks.longestLosingStreak,
+    completedPicks: completedPicks.length,
+    activePicks: activePicks.length,
+    totalPicks: picks.length,
+    activeCount: activePicks.length,
+    completedCount: completedPicks.length,
+  };
+}
+
 export function getActiveManualPicks(picks: ManualTrackedPick[]) {
   return picks.filter((pick) => !COMPLETED_MANUAL_STATUSES.has(pick.status));
 }
@@ -205,6 +296,38 @@ function normalizeManualPick(pick: ManualTrackedPick): ManualTrackedPick {
     eventDate: pick.eventDate ?? "",
     eventTime: pick.eventTime ?? "",
     timeline: Array.isArray(pick.timeline) ? pick.timeline : [],
+  };
+}
+
+function calculateManualStreaks(picks: ManualTrackedPick[]) {
+  const gradedPicks = [...picks]
+    .filter((pick) => pick.result === "won" || pick.result === "lost")
+    .sort((a, b) => new Date(a.completedAt ?? a.updatedAt).getTime() - new Date(b.completedAt ?? b.updatedAt).getTime());
+  let currentWin = 0;
+  let currentLoss = 0;
+  let longestWinningStreak = 0;
+  let longestLosingStreak = 0;
+
+  for (const pick of gradedPicks) {
+    if (pick.result === "won") {
+      currentWin += 1;
+      currentLoss = 0;
+      longestWinningStreak = Math.max(longestWinningStreak, currentWin);
+    } else {
+      currentLoss += 1;
+      currentWin = 0;
+      longestLosingStreak = Math.max(longestLosingStreak, currentLoss);
+    }
+  }
+
+  const latest = gradedPicks.at(-1);
+  const currentStreakType = latest?.result === "won" || latest?.result === "lost" ? latest.result : null;
+
+  return {
+    currentStreak: currentStreakType === "won" ? currentWin : currentStreakType === "lost" ? currentLoss : 0,
+    currentStreakType,
+    longestWinningStreak,
+    longestLosingStreak,
   };
 }
 

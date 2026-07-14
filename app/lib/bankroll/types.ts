@@ -183,6 +183,8 @@ export type ManualPickTimelineEvent = {
   type: string;
   message: string;
   createdAt: string;
+  status?: AtlasPlanStatus;
+  description?: string;
 };
 
 export type ManualTrackedPick = {
@@ -231,9 +233,34 @@ export type ManualPickValidationResult =
   | { valid: false; error: string };
 
 export type ManualTrackingStats = {
+  currentBankroll: number;
+  initialBankroll: number;
+  profit: number;
+  roi: number;
+  winRate: number;
+  wins: number;
+  losses: number;
+  pushes: number;
+  cancelled: number;
+  currentStreak: number;
+  currentStreakType: "won" | "lost" | null;
+  longestWinningStreak: number;
+  longestLosingStreak: number;
+  completedPicks: number;
+  activePicks: number;
   totalPicks: number;
   activeCount: number;
   completedCount: number;
+};
+
+export type ManualFinancialState = {
+  initialBankroll: number;
+  currentBankroll: number;
+  recommendedUnit: number;
+  profit: number;
+  roi: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ManualTrackingCollection = {
@@ -244,6 +271,9 @@ export type ManualTrackingCollection = {
   activePicks: ManualTrackedPick[];
   completedPicks: ManualTrackedPick[];
   stats: ManualTrackingStats;
+  manualFinancialState: ManualFinancialState;
+  manualStats: ManualTrackingStats;
+  manualTimeline: ManualPickTimelineEvent[];
 };
 
 export type BankrollConfig = {
