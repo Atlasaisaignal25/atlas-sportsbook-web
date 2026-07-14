@@ -34,6 +34,7 @@
     "validate:manual-tracking-engine": "npx --yes tsx scripts/validate-manual-tracking-engine.ts",
     "validate:manual-pick-engine": "npx --yes tsx scripts/validate-manual-pick-engine.ts",
     "validate:manual-result-engine": "npx --yes tsx scripts/validate-manual-result-engine.ts",
+    "validate:manual-history-engine": "npx --yes tsx scripts/validate-manual-history-engine.ts",
     "validate:mlb-projection-research": "npx --yes tsx scripts/validate-mlb-projection-research.ts",
     "validate:mlb-decision-research": "npx --yes tsx scripts/validate-mlb-decision-research.ts"
   },

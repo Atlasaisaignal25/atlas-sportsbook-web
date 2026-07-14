@@ -48,6 +48,7 @@ import {
   getPlanStatusTone,
   loadBankrollConfig,
   loadAvailableAtlasPicks,
+  loadTrackingHistory,
   normalizeBankrollConfig,
   saveBankrollConfig,
   saveManualTracking,
@@ -59,6 +60,8 @@ import {
   type AtlasPlan,
   type AtlasPlanCollection,
   type FinancialMetrics,
+  type TrackingHistoryPick,
+  type TrackingRange,
   type ManualTrackingCollection,
   type BankrollProfile,
 } from "@/app/lib/bankroll";
@@ -8004,7 +8007,16 @@ function BankrollPlanTrackingTabs({
   onCreateManualPick: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<"atlas" | "manual">("atlas");
+  const [trackingRange, setTrackingRange] = useState<TrackingRange>("today");
+  const [calendarDate, setCalendarDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(null);
   const hasManualPicks = Boolean(manualTracking && manualTracking.picks.length > 0);
+  const trackingHistory = useMemo(() => loadTrackingHistory(manualTracking, trackingRange, calendarDate), [calendarDate, manualTracking, trackingRange]);
+  const selectedTrackingPick = trackingHistory.picks.find((item) => item.pick.id === selectedTrackingPickId) ?? null;
+
+  useEffect(() => {
+    setSelectedTrackingPickId(null);
+  }, [trackingRange, calendarDate]);
 
   return (
     <BankrollShell className="px-2.5 py-2">
@@ -8038,31 +8050,19 @@ function BankrollPlanTrackingTabs({
             <div>
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-[12px] font-black text-white/72">{manualTracking?.stats.activeCount ?? 0} active tracked picks.</p>
-                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">Atlas-generated picks tracked independently.</p>
+                  <p className="text-[12px] font-black text-white/72">{manualTracking?.picks.length ?? 0} tracked picks.</p>
+                  <p className="mt-0.5 text-[10px] leading-4 text-white/45">Atlas-generated decisions organized by date.</p>
                 </div>
                 <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/25 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-emerald-200">
                   Add Pick
                 </button>
               </div>
-              <div className="mt-2 grid gap-1.5">
-                {(manualTracking?.activePicks ?? []).map((pick) => (
-                  <div key={pick.id} className="grid grid-cols-[0.55fr_1fr_0.55fr] items-center gap-2 rounded-[10px] border border-white/10 bg-black/16 px-2 py-1.5">
-                    <div className="min-w-0">
-                      <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-emerald-300">{pick.sport ?? "Sport"}</p>
-                      <p className="truncate text-[9px] font-bold text-white/42">{pick.eventDate || "Manual"}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
-                      <p className="truncate text-[9px] font-bold text-white/42">{pick.market} · {pick.odds}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
-                      <p className="text-[8px] font-black uppercase tracking-[0.08em] text-amber-200">{formatPlanStatus(pick.status)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={setTrackingRange} onCalendarDateChange={setCalendarDate} />
+              {selectedTrackingPick ? (
+                <TrackingPickTimelineView item={selectedTrackingPick} onBack={() => setSelectedTrackingPickId(null)} />
+              ) : (
+                <TrackingHistoryList history={trackingHistory} onOpenPick={(pickId) => setSelectedTrackingPickId(pickId)} />
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-[1fr_auto] items-center gap-2">
@@ -8079,6 +8079,217 @@ function BankrollPlanTrackingTabs({
       </div>
     </BankrollShell>
   );
+}
+
+const trackingRangeOptions: Array<{ label: string; value: TrackingRange }> = [
+  { label: "Today", value: "today" },
+  { label: "Yesterday", value: "yesterday" },
+  { label: "This Week", value: "this_week" },
+  { label: "Last Week", value: "last_week" },
+  { label: "This Month", value: "this_month" },
+  { label: "Calendar", value: "calendar" },
+];
+
+function TrackingRangeSelector({
+  range,
+  calendarDate,
+  onRangeChange,
+  onCalendarDateChange,
+}: {
+  range: TrackingRange;
+  calendarDate: string;
+  onRangeChange: (range: TrackingRange) => void;
+  onCalendarDateChange: (date: string) => void;
+}) {
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {trackingRangeOptions.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onRangeChange(option.value)}
+            className={`shrink-0 rounded-[10px] border px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] ${
+              range === option.value ? "border-emerald-300/45 bg-emerald-300/[0.12] text-emerald-200" : "border-white/10 bg-black/18 text-white/42"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {range === "calendar" ? (
+        <input
+          type="date"
+          value={calendarDate}
+          onChange={(event) => onCalendarDateChange(event.target.value)}
+          className="mt-1 h-8 w-full rounded-[11px] border border-white/10 bg-black/24 px-2 text-[11px] font-bold text-white/72 outline-none focus:border-emerald-300/45"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TrackingHistoryList({
+  history,
+  onOpenPick,
+}: {
+  history: ReturnType<typeof loadTrackingHistory>;
+  onOpenPick: (pickId: string) => void;
+}) {
+  if (history.picks.length === 0) {
+    return (
+      <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
+        <p className="text-[11px] font-black text-white/65">No picks for this period.</p>
+        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">Tracked Atlas picks will appear here automatically.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 grid max-h-[315px] gap-2 overflow-y-auto pr-1">
+      {history.groups.map((group) => (
+        <div key={group.key}>
+          <p className="mb-1 border-b border-white/10 pb-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{group.label}</p>
+          <div className="grid gap-1.5">
+            {group.picks.map((item) => (
+              <TrackingPickCard key={item.pick.id} item={item} onOpen={() => onOpenPick(item.pick.id)} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen: () => void }) {
+  const pick = item.pick;
+  const tone = getTrackingStatusTone(pick.status);
+
+  return (
+    <button type="button" onClick={onOpen} className="grid grid-cols-[24px_0.54fr_1fr_0.58fr] items-center gap-2 rounded-[11px] border border-white/10 bg-black/16 px-2 py-1.5 text-left">
+      <div className={`grid h-6 w-6 place-items-center rounded-full border text-[12px] font-black ${tone.iconClass}`}>{getTrackingStatusSymbol(pick.status)}</div>
+      <div className="min-w-0">
+        <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-emerald-300">{pick.sport ?? "Sport"}</p>
+        <p className="truncate text-[9px] font-bold text-white/42">{formatTrackingDate(pick.createdAt)}</p>
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
+        <p className="truncate text-[9px] font-bold text-white/42">{pick.market} · {pick.trackedOdds ?? pick.odds ?? "-"}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
+        <p className={`text-[8px] font-black uppercase tracking-[0.08em] ${tone.textClass}`}>{formatPlanStatus(pick.status)}</p>
+        {pick.result ? <p className={pick.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300"}>{formatTrackingProfit(pick.profit)}</p> : null}
+      </div>
+    </button>
+  );
+}
+
+function TrackingPickTimelineView({ item, onBack }: { item: TrackingHistoryPick; onBack: () => void }) {
+  const pick = item.pick;
+  const tone = getTrackingStatusTone(pick.status);
+
+  return (
+    <div className="mt-2 rounded-[13px] border border-white/10 bg-black/18 p-2.5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[13px] font-black text-white">{pick.selection}</p>
+          <p className="mt-0.5 truncate text-[9px] font-bold text-white/42">{pick.sport} · {pick.market} · {formatTrackingDate(pick.createdAt)}</p>
+        </div>
+        <button type="button" onClick={onBack} className="rounded-[9px] border border-white/10 bg-white/[0.04] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/55">
+          Back
+        </button>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
+        <div>
+          <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/35">Plan Unit</p>
+          <p className="text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
+        </div>
+        <div>
+          <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/35">Status</p>
+          <p className={`text-[10px] font-black ${tone.textClass}`}>{formatPlanStatus(pick.status)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/35">Result</p>
+          <p className={pick.result ? (pick.profit >= 0 ? "text-[10px] font-black text-emerald-300" : "text-[10px] font-black text-red-300") : "text-[10px] font-black text-white/38"}>
+            {pick.result ? formatTrackingProfit(pick.profit) : "Pending"}
+          </p>
+        </div>
+      </div>
+      <div className="mt-2 grid gap-1.5">
+        {item.timeline.map((event) => (
+          <div key={event.id} className="grid grid-cols-[22px_44px_1fr_auto] items-center gap-2 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1.5">
+            <div className={`grid h-[22px] w-[22px] place-items-center rounded-full border text-[10px] font-black ${getTimelineEventClass(event.status)}`}>{getTimelineEventSymbol(event.status)}</div>
+            <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/35">{formatTrackingTime(event.time)}</p>
+            <p className="truncate text-[10px] font-bold text-white/70">{event.description}</p>
+            <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/35">{event.status ? formatPlanStatus(event.status) : ""}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function getTrackingStatusTone(status: TrackingHistoryPick["pick"]["status"]) {
+  if (status === "won") {
+    return {
+      iconClass: "border-emerald-300/30 bg-emerald-300/[0.12] text-emerald-300",
+      textClass: "text-emerald-300",
+    };
+  }
+
+  if (status === "lost") {
+    return {
+      iconClass: "border-red-300/30 bg-red-300/[0.12] text-red-300",
+      textClass: "text-red-300",
+    };
+  }
+
+  if (status === "pending" || status === "confirmed" || status === "started") {
+    return {
+      iconClass: "border-amber-300/30 bg-amber-300/[0.12] text-amber-300",
+      textClass: "text-amber-200",
+    };
+  }
+
+  return {
+    iconClass: "border-white/15 bg-white/[0.05] text-white/45",
+    textClass: "text-white/45",
+  };
+}
+
+function getTrackingStatusSymbol(status: TrackingHistoryPick["pick"]["status"]) {
+  if (status === "won") return "✓";
+  if (status === "lost") return "✕";
+  if (status === "pending" || status === "confirmed" || status === "started") return "•";
+  return "–";
+}
+
+function getTimelineEventClass(status: TrackingHistoryPick["timeline"][number]["status"]) {
+  if (status === "won") return "border-emerald-300/30 bg-emerald-300/[0.12] text-emerald-300";
+  if (status === "lost") return "border-red-300/30 bg-red-300/[0.12] text-red-300";
+  if (status === "pending" || status === "confirmed" || status === "started") return "border-amber-300/30 bg-amber-300/[0.12] text-amber-300";
+  return "border-white/15 bg-white/[0.05] text-white/45";
+}
+
+function getTimelineEventSymbol(status: TrackingHistoryPick["timeline"][number]["status"]) {
+  if (status === "won") return "✓";
+  if (status === "lost") return "✕";
+  if (status === "pending" || status === "confirmed" || status === "started") return "•";
+  return "–";
+}
+
+function formatTrackingDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function formatTrackingTime(value: string) {
+  return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatTrackingProfit(value: number) {
+  if (value === 0) return "$0";
+  return `${value > 0 ? "+" : "-"}${formatCurrency(Math.abs(value))}`;
 }
 
 function ManualPickCreatorSheet({
