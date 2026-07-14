@@ -143,6 +143,39 @@ export type WeeklySummary = {
   createdAt: string;
 };
 
+export type MonthlySummary = {
+  id: string;
+  month: number;
+  year: number;
+  startDate: string;
+  endDate: string;
+  weeklySummaryIds: string[];
+  initialBankroll: number;
+  finalBankroll: number;
+  profit: number;
+  roi: number;
+  profile: BankrollProfile;
+  package: AtlasPlanPackage;
+  wins: number;
+  losses: number;
+  pushes: number;
+  cancelled: number;
+  winRate: number;
+  planScore: number;
+  completedPlans: number;
+  replacementCount: number;
+  averageUnit: number;
+  totalRisk: number;
+  totalProfit: number;
+  bestWeekId: string | null;
+  bestWeekROI: number;
+  worstWeekId: string | null;
+  worstWeekROI: number;
+  longestWinningStreak: number;
+  longestLosingStreak: number;
+  createdAt: string;
+};
+
 export type BankrollConfig = {
   initialBankroll: number;
   currentBankroll: number;
@@ -154,6 +187,7 @@ export type BankrollConfig = {
   activeCycle?: BankrollCycle;
   cycleHistory?: BankrollCycle[];
   weeklySummaries?: WeeklySummary[];
+  monthlySummaries?: MonthlySummary[];
   createdAt: string;
   updatedAt: string;
 };

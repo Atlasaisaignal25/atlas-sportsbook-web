@@ -14,7 +14,7 @@ const WEEKLY_CYCLE_DAYS = 7;
 export function normalizeWeeklyState(config: BankrollConfig, now = new Date().toISOString()): BankrollConfig {
   const activeCycle = isValidOpenCycle(config.activeCycle)
     ? config.activeCycle
-    : createWeeklyCycle(getNextCycleNumber(config), config.createdAt, config.initialBankroll);
+    : createWeeklyCycle(getNextCycleNumber(config), getNextCycleStartDate(config), getNextCycleInitialBankroll(config));
   const hydratedConfig: BankrollConfig = {
     ...config,
     activeCycle,
@@ -223,6 +223,22 @@ function getNextCycleNumber(config: BankrollConfig) {
   const historyNumber = Math.max(0, ...(config.cycleHistory ?? []).map((cycle) => cycle.cycleNumber));
   const summaryNumber = Math.max(0, ...(config.weeklySummaries ?? []).map((summary) => summary.cycleNumber));
   return Math.max(activeCycleNumber, historyNumber, summaryNumber) + 1;
+}
+
+function getNextCycleStartDate(config: BankrollConfig) {
+  const latestSummary = [...(config.weeklySummaries ?? [])].sort(
+    (a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime(),
+  )[0];
+
+  return latestSummary?.endDate ?? config.createdAt;
+}
+
+function getNextCycleInitialBankroll(config: BankrollConfig) {
+  const latestSummary = [...(config.weeklySummaries ?? [])].sort(
+    (a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime(),
+  )[0];
+
+  return latestSummary?.finalBankroll ?? config.initialBankroll;
 }
 
 function isValidOpenCycle(cycle: BankrollConfig["activeCycle"]): cycle is BankrollCycle {

@@ -2,6 +2,7 @@ import { BANKROLL_CONFIG_STORAGE_KEY } from "./constants";
 import { isValidStoredConfig } from "./utils";
 import type { BankrollConfig } from "./types";
 import { calculateFinancialMetrics, calculateRecommendedUnit, calculateCurrentBankroll, roundCurrency } from "./engine";
+import { normalizeMonthlyState } from "./monthly-summary-engine";
 import { normalizeMembershipContext, syncPlans } from "./package-engine";
 import { normalizeWeeklyState } from "./weekly-summary-engine";
 
@@ -56,11 +57,11 @@ export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig 
 
   const atlasPlanCollection = syncPlans(normalizedBase.atlasPlanCollection, membership, metrics);
 
-  return normalizeWeeklyState({
+  return normalizeMonthlyState(normalizeWeeklyState({
     ...normalizedBase,
     atlasPlanCollection,
     atlasPlan: atlasPlanCollection.primaryPlan ?? undefined,
-  });
+  }));
 }
 
 export function clearBankrollConfig() {

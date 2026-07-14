@@ -30,6 +30,7 @@
     "validate:replacement-engine": "npx --yes tsx scripts/validate-replacement-engine.ts",
     "validate:result-engine": "npx --yes tsx scripts/validate-result-engine.ts",
     "validate:weekly-summary-engine": "npx --yes tsx scripts/validate-weekly-summary-engine.ts",
+    "validate:monthly-summary-engine": "npx --yes tsx scripts/validate-monthly-summary-engine.ts",
     "validate:mlb-projection-research": "npx --yes tsx scripts/validate-mlb-projection-research.ts",
     "validate:mlb-decision-research": "npx --yes tsx scripts/validate-mlb-decision-research.ts"
   },
