@@ -7190,6 +7190,122 @@ function getMarketVisualMovement(event: ConsolidatedMarketImpactEvent, position:
   return movements.find((movement) => movement.selection.trim().toLowerCase() === "over") ?? (position === "first" ? event.movementsToday[0] ?? event : event);
 }
 
+function sameMarketLine(a: number | null, b: number | null) {
+  if (a === null || b === null) return a === b;
+  return Math.abs(a - b) < 0.001;
+}
+
+type MarketAnchorState = {
+  openingMovement: MarketImpactEvent;
+  currentMovement: MarketImpactEvent;
+  openingLine: number | null;
+  openingOdds: number | null;
+  currentLine: number | null;
+  currentOdds: number | null;
+  currentBook: string | null;
+  booksOnAnchor: number;
+  anchorLine: number | null;
+  anchorOpeningOdds: number | null;
+  transition: {
+    oldLine: number | null;
+    newLine: number | null;
+    time: string;
+    reason: string;
+  } | null;
+};
+
+function getAggressiveAnchorPrice(input: {
+  movement: MarketImpactEvent;
+  anchorLine: number | null;
+  anchorOdds: number | null;
+}) {
+  const candidates: Array<{ odds: number | null; book: string | null; movedAt: string }> = input.movement.sportsbookDetails
+    .filter((detail) => sameMarketLine(detail.newLine, input.anchorLine))
+    .map((detail) => ({
+      odds: detail.newOdds,
+      book: detail.name,
+      movedAt: detail.movedAt,
+    }))
+    .filter((detail) => detail.odds !== null);
+
+  if (sameMarketLine(input.movement.newLine, input.anchorLine) && input.movement.newOdds !== null) {
+    candidates.push({
+      odds: input.movement.newOdds,
+      book: input.movement.latestBookToMove,
+      movedAt: input.movement.latestMoveAt ?? input.movement.publishedAt,
+    });
+  }
+
+  if (candidates.length === 0) return null;
+  const anchorOdds = input.anchorOdds ?? candidates[0].odds ?? 0;
+
+  return candidates.sort((a, b) => Math.abs((b.odds ?? 0) - anchorOdds) - Math.abs((a.odds ?? 0) - anchorOdds))[0];
+}
+
+function getMarketAnchorState(event: ConsolidatedMarketImpactEvent): MarketAnchorState {
+  const opening = getMarketVisualMovement(event, "first");
+  const chronological = event.movementsToday.length > 0 ? event.movementsToday : [event];
+  let anchorLine = opening.oldLine ?? opening.newLine;
+  let anchorOpeningOdds = opening.oldOdds ?? opening.newOdds;
+  let currentMovement = opening;
+  let currentLine = anchorLine;
+  let currentOdds = anchorOpeningOdds;
+  let currentBook = opening.firstBookToMove ?? opening.latestBookToMove;
+  let booksOnAnchor = 0;
+  let transition: MarketAnchorState["transition"] = null;
+
+  chronological.forEach((movement) => {
+    if (event.market === "Totals" && movement.selection.trim().toLowerCase() !== "over") return;
+
+    const detailsOnAnchor = movement.sportsbookDetails.filter((detail) => sameMarketLine(detail.newLine, anchorLine));
+    const movementStillOnAnchor = sameMarketLine(movement.newLine, anchorLine);
+    const aggressive = getAggressiveAnchorPrice({
+      movement,
+      anchorLine,
+      anchorOdds: anchorOpeningOdds,
+    });
+
+    if (movementStillOnAnchor || detailsOnAnchor.length > 0 || aggressive) {
+      currentMovement = movement;
+      currentLine = anchorLine;
+      currentOdds = aggressive?.odds ?? movement.newOdds ?? currentOdds;
+      currentBook = aggressive?.book ?? movement.latestBookToMove ?? currentBook;
+      booksOnAnchor = Math.max(booksOnAnchor, detailsOnAnchor.length || movement.booksMoved);
+      return;
+    }
+
+    if (anchorLine !== null && movement.newLine !== null && !sameMarketLine(movement.newLine, anchorLine)) {
+      transition = {
+        oldLine: anchorLine,
+        newLine: movement.newLine,
+        time: movement.latestMoveAt ?? movement.publishedAt,
+        reason: "Anchor line no longer appeared in the observed sportsbook movement.",
+      };
+      anchorLine = movement.newLine;
+      anchorOpeningOdds = movement.newOdds ?? anchorOpeningOdds;
+      currentMovement = movement;
+      currentLine = movement.newLine;
+      currentOdds = movement.newOdds;
+      currentBook = movement.latestBookToMove ?? currentBook;
+      booksOnAnchor = movement.booksMoved;
+    }
+  });
+
+  return {
+    openingMovement: opening,
+    currentMovement,
+    openingLine: opening.oldLine ?? opening.newLine,
+    openingOdds: opening.oldOdds ?? opening.newOdds,
+    currentLine,
+    currentOdds,
+    currentBook,
+    booksOnAnchor,
+    anchorLine,
+    anchorOpeningOdds,
+    transition,
+  };
+}
+
 function formatMarketStateLine(selection: string, line: number | null, odds: number | null, market?: MarketImpactEvent["market"]) {
   const selectionText = market === "Totals" ? "Over" : selection.trim();
   const lineText = formatMarketLineOnly(line, market);
@@ -7201,29 +7317,36 @@ function formatMarketStateLine(selection: string, line: number | null, odds: num
 }
 
 function getMarketOpeningMovement(event: ConsolidatedMarketImpactEvent) {
-  return getMarketVisualMovement(event, "first");
+  return getMarketAnchorState(event).openingMovement;
 }
 
 function getMarketCurrentMovement(event: ConsolidatedMarketImpactEvent) {
-  return getMarketVisualMovement(event, "latest");
+  return getMarketAnchorState(event).currentMovement;
 }
 
 function getMarketOpeningLine(event: ConsolidatedMarketImpactEvent) {
-  const opening = getMarketOpeningMovement(event);
-  return opening.oldLine ?? opening.newLine;
+  return getMarketAnchorState(event).openingLine;
 }
 
 function getMarketOpeningOdds(event: ConsolidatedMarketImpactEvent) {
-  const opening = getMarketOpeningMovement(event);
-  return opening.oldOdds ?? opening.newOdds;
+  return getMarketAnchorState(event).openingOdds;
 }
 
 function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
-  const openLine = getMarketOpeningLine(event);
-  const current = getMarketCurrentMovement(event);
-  const currentLine = current.newLine;
-  const openOdds = getMarketOpeningOdds(event);
-  const currentOdds = current.newOdds;
+  const anchor = getMarketAnchorState(event);
+  const openLine = anchor.anchorLine;
+  const currentLine = anchor.currentLine;
+  const openOdds = anchor.anchorOpeningOdds;
+  const currentOdds = anchor.currentOdds;
+
+  if (anchor.transition && sameMarketLine(anchor.transition.newLine, anchor.currentLine)) {
+    return {
+      label: "LINE MOVED",
+      arrow: "↓",
+      tone: "text-orange-300",
+      badge: "border-orange-300/24 bg-orange-300/[0.08]",
+    };
+  }
 
   if (openLine === null || currentLine === null) {
     return {
@@ -7272,11 +7395,11 @@ function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
 }
 
 function getMarketTrend(event: ConsolidatedMarketImpactEvent) {
-  const openLine = getMarketOpeningLine(event);
-  const current = getMarketCurrentMovement(event);
-  const currentLine = current.newLine;
-  const openOdds = getMarketOpeningOdds(event);
-  const currentOdds = current.newOdds;
+  const anchor = getMarketAnchorState(event);
+  const openLine = anchor.anchorLine;
+  const currentLine = anchor.currentLine;
+  const openOdds = anchor.anchorOpeningOdds;
+  const currentOdds = anchor.currentOdds;
 
   if (openLine !== null && currentLine !== null && currentLine !== openLine) {
     const delta = currentLine - openLine;
@@ -7308,32 +7431,47 @@ function getMarketTrend(event: ConsolidatedMarketImpactEvent) {
 
 function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
   const opening = getMarketOpeningMovement(event);
+  let anchorLine = getMarketOpeningLine(event);
   const openingState = formatMarketStateLine(
     getMarketVisualSelection(opening),
-    getMarketOpeningLine(event),
+    anchorLine,
     getMarketOpeningOdds(event),
     event.market,
   );
-  const entries = [
+  const entries: Array<{ time: string; lines: string[] }> = [
     {
       time: opening.firstMoveAt ?? opening.latestMoveAt ?? opening.publishedAt,
       lines: ["OPEN", openingState.market, openingState.odds],
     },
-    ...event.movementsToday.map((movement) => {
-      const state = formatMarketStateLine(getMarketVisualSelection(movement), movement.newLine, movement.newOdds, event.market);
+  ];
+
+  event.movementsToday.forEach((movement) => {
+    if (event.market === "Totals" && movement.selection.trim().toLowerCase() !== "over") return;
+
+    if (anchorLine !== null && movement.newLine !== null && !sameMarketLine(movement.newLine, anchorLine)) {
+      const oldState = formatMarketStateLine(getMarketVisualSelection(movement), anchorLine, null, event.market);
+      const newState = formatMarketStateLine(getMarketVisualSelection(movement), movement.newLine, null, event.market);
+
+      entries.push({
+        time: movement.latestMoveAt ?? movement.publishedAt,
+        lines: ["LINE MOVED", oldState.market, "↓", newState.market],
+      });
+      anchorLine = movement.newLine;
+    }
+
+    const state = formatMarketStateLine(getMarketVisualSelection(movement), anchorLine, movement.newOdds, event.market);
       const bookLines = movement.latestBookToMove ? ["Book", movement.latestBookToMove] : [];
 
-      return {
+      entries.push({
         time: movement.latestMoveAt ?? movement.publishedAt,
         lines: [
-          "LINE",
+          "Odds",
           state.market,
           state.odds,
           ...bookLines,
         ],
-      };
-    }),
-  ];
+      });
+  });
 
   return entries
     .map((entry) => {
@@ -9454,13 +9592,14 @@ const subscriptionPlansBoard = (
                       : teamEvent
                         ? `${primaryTeam} • ${feedItem.sport}`
                         : matchup;
+                  const marketAnchorState = marketEvent ? getMarketAnchorState(marketEvent) : null;
                   const marketOpeningMovement = marketEvent ? getMarketOpeningMovement(marketEvent) : null;
                   const marketCurrentMovement = marketEvent ? getMarketCurrentMovement(marketEvent) : null;
                   const marketOpenState = marketEvent && marketOpeningMovement
                     ? formatMarketStateLine(getMarketVisualSelection(marketOpeningMovement), getMarketOpeningLine(marketEvent), getMarketOpeningOdds(marketEvent), marketEvent.market)
                     : null;
-                  const marketCurrentState = marketEvent && marketCurrentMovement
-                    ? formatMarketStateLine(getMarketVisualSelection(marketCurrentMovement), marketCurrentMovement.newLine, marketCurrentMovement.newOdds, marketEvent.market)
+                  const marketCurrentState = marketEvent && marketCurrentMovement && marketAnchorState
+                    ? formatMarketStateLine(getMarketVisualSelection(marketCurrentMovement), marketAnchorState.currentLine, marketAnchorState.currentOdds, marketEvent.market)
                     : null;
                   const marketLineStatus = marketEvent ? getMarketLineMoveStatus(marketEvent) : null;
                   const marketTrend = marketEvent ? getMarketTrend(marketEvent) : null;
@@ -9476,12 +9615,14 @@ const subscriptionPlansBoard = (
                       ])
                     : isMarketImpact && marketEvent
                       ? joinImpactDetailLines([
-                          `Movement: ${marketLineStatus?.label ?? marketEvent.movementType.replaceAll("_", " ")}`,
+                          `Movement: ${marketAnchorState?.transition ? "Anchor line changed" : "Opening anchor price movement"}`,
                           `Market: ${marketEvent.market}`,
                           `Selection: ${marketCurrentState?.market ?? marketEvent.selection}`,
-                          `Direction: ${marketEvent.direction}`,
+                          marketAnchorState?.currentBook ? `Book: ${marketAnchorState.currentBook}` : null,
+                          marketAnchorState ? `Detected In: ${marketAnchorState.booksOnAnchor || marketEvent.booksMoved} of ${marketEvent.booksObserved} sportsbooks` : null,
                           `Consensus: ${marketEvent.booksMoved} of ${marketEvent.booksObserved} (${marketEvent.consensusPercent.toFixed(0)}%)`,
-                          marketEvent.firstBookToMove ? `First Book: ${marketEvent.firstBookToMove}` : null,
+                          marketAnchorState?.transition ? `Anchor Transition: ${formatMarketLineOnly(marketAnchorState.transition.oldLine, marketEvent.market)} -> ${formatMarketLineOnly(marketAnchorState.transition.newLine, marketEvent.market)}` : null,
+                          marketAnchorState?.transition ? `Reason: ${marketAnchorState.transition.reason}` : null,
                           marketEvent.firstMoveAt ? `First Move: ${formatTeamImpactTimestamp(marketEvent.firstMoveAt)}` : null,
                           marketEvent.sportsbookNamesMoved.length > 0 ? `Books: ${marketEvent.sportsbookNamesMoved.join(", ")}` : null,
                         ])
@@ -9663,6 +9804,9 @@ const subscriptionPlansBoard = (
                               <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current</p>
                               <p className="mt-px truncate text-[16px] font-black leading-none text-orange-300">{marketCurrentState?.market ?? "N/A"}</p>
                               <p className="mt-0.5 text-[10px] font-black leading-none text-orange-200/78">{marketCurrentState?.odds ?? "Odds N/A"}</p>
+                              {marketAnchorState?.currentBook ? (
+                                <p className="mt-px truncate text-[7px] font-black uppercase tracking-[0.06em] text-white/42">{marketAnchorState.currentBook}</p>
+                              ) : null}
                             </div>
                           </div>
 
@@ -9675,6 +9819,9 @@ const subscriptionPlansBoard = (
                               <p className="mt-px text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Status</p>
                               <p className={`truncate text-[10px] font-black uppercase tracking-[0.06em] ${marketLineStatus?.tone ?? "text-white/78"}`}>
                                 <span className="mr-1">{marketLineStatus?.arrow ?? "•"}</span>{marketLineStatus?.label ?? "LINE STATUS"}
+                              </p>
+                              <p className="truncate text-[7px] font-black uppercase tracking-[0.06em] text-white/40">
+                                Detected in {marketAnchorState?.booksOnAnchor || marketEvent.booksMoved} / {marketEvent.booksObserved}
                               </p>
                             </div>
                             <div className="rounded-[10px] border border-white/10 bg-black/16 px-1 py-0.5 text-center">
