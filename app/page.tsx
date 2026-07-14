@@ -8275,12 +8275,12 @@ function AtlasBankrollScreen() {
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
+      <BankrollPlanTrackingTabs />
       <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
       <BankrollSummaryCard config={config} metrics={metrics} />
       <BankrollWeeklyCard />
       <BankrollPerformanceCard metrics={metrics} />
       <BankrollInsightCard />
-      <BankrollPlanTrackingTabs />
       <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
       <BankrollPlanCollectionSheet open={plansOpen} collection={planCollection} onClose={() => setPlansOpen(false)} />
       <BankrollResetSheet open={resetOpen} onCancel={() => setResetOpen(false)} onConfirm={handleResetConfig} />
