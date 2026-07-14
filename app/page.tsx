@@ -31,6 +31,20 @@ import {
 import { AtlasBottomNavigation } from "@/app/components/AtlasBottomNavigation";
 import { HowItWorksSheet } from "@/app/components/signals/HowItWorksSheet";
 import {
+  ATLAS_RECOMMENDED_PERCENTAGE,
+  HIGHER_EXPOSURE_PERCENTAGE,
+  calculateRecommendedUnit,
+  clearBankrollConfig,
+  createBankrollConfig,
+  formatCurrency,
+  loadBankrollConfig,
+  saveBankrollConfig,
+  updateBankrollConfig,
+  validateBankroll,
+  type BankrollConfig,
+  type BankrollProfile,
+} from "@/app/lib/bankroll";
+import {
   OfficialSportSelectorRow,
   officialSelectedSportToSportCode,
   officialSportCodeToSelectedSport,
@@ -7386,6 +7400,101 @@ const atlasBankrollMock = {
   },
 };
 
+const bankrollProfileLabels: Record<BankrollProfile, string> = {
+  atlas_recommended: "Atlas Recommended",
+  higher_exposure: "Higher Exposure",
+};
+
+const bankrollProfileDetails: Record<BankrollProfile, string> = {
+  atlas_recommended: "Recommended",
+  higher_exposure: "Higher Risk",
+};
+
+const bankrollProfileOptions: Array<{
+  profile: BankrollProfile;
+  title: string;
+  badge: string;
+  percentage: string;
+  exposure: string;
+  description: string;
+}> = [
+  {
+    profile: "atlas_recommended",
+    title: "Atlas Recommended",
+    badge: "Recommended",
+    percentage: `${Math.round(ATLAS_RECOMMENDED_PERCENTAGE * 100)}%`,
+    exposure: "Lower Exposure",
+    description: "Stay consistent with your plan.",
+  },
+  {
+    profile: "higher_exposure",
+    title: "Higher Exposure",
+    badge: "Higher Risk",
+    percentage: `${Math.round(HIGHER_EXPOSURE_PERCENTAGE * 100)}%`,
+    exposure: "Higher Exposure",
+    description: "This profile increases risk exposure.",
+  },
+];
+
+type BankrollSummaryItem = {
+  label: string;
+  value: string;
+  detail: string;
+  icon: BankrollUiIconName;
+  tone: keyof typeof bankrollToneClasses;
+};
+
+function getBankrollSummary(config: BankrollConfig | null): BankrollSummaryItem[] {
+  if (!config) return atlasBankrollMock.summary;
+
+  return [
+    {
+      label: "Current Bankroll",
+      value: formatCurrency(config.currentBankroll),
+      detail: "$0",
+      icon: "wallet",
+      tone: "green",
+    },
+    {
+      label: "Initial Bankroll",
+      value: formatCurrency(config.initialBankroll),
+      detail: "Starting point",
+      icon: "trend",
+      tone: "cyan",
+    },
+    {
+      label: "Recommended Unit",
+      value: formatCurrency(config.recommendedUnit),
+      detail: "Plan unit",
+      icon: "coins",
+      tone: "violet",
+    },
+    {
+      label: "Current Profile",
+      value: bankrollProfileLabels[config.profile],
+      detail: bankrollProfileDetails[config.profile],
+      icon: "shield",
+      tone: "green",
+    },
+  ];
+}
+
+function getBankrollPerformance(config: BankrollConfig | null) {
+  if (!config) return atlasBankrollMock.performance;
+
+  return atlasBankrollMock.performance.map((metric) => {
+    if (metric.label === "Current ROI") {
+      return { ...metric, value: "0.00%", detail: "Starting" };
+    }
+
+    if (metric.label === "Profit / Loss") {
+      return { ...metric, value: "$0", detail: "Net" };
+    }
+
+    return metric;
+  });
+}
+
 type BankrollUiIconName = "wallet" | "coins" | "shield" | "trend" | "target" | "bars" | "bulb" | "education" | "arrow";
 
 function BankrollUiIcon({
@@ -7502,7 +7611,15 @@ function BankrollShell({ children, className = "" }: { children: ReactNode; clas
   );
 }
 
-function BankrollHeader() {
+function BankrollHeader({
+  onEdit,
+  onReset,
+  canReset,
+}: {
+  onEdit: () => void;
+  onReset: () => void;
+  canReset: boolean;
+}) {
   return (
     <BankrollShell className="overflow-hidden px-4 py-3.5">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.08),transparent_40%)]" />
@@ -7520,6 +7637,16 @@ function BankrollHeader() {
           <span className="inline-flex rounded-full border border-emerald-300/40 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-300">
             Active
           </span>
+          <div className="mt-1.5 flex justify-end gap-1.5">
+            <button type="button" onClick={onEdit} className="rounded-full border border-cyan-300/25 bg-cyan-300/[0.06] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-cyan-200">
+              Edit
+            </button>
+            {canReset ? (
+              <button type="button" onClick={onReset} className="rounded-full border border-red-300/20 bg-red-400/[0.06] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-red-200">
+                Reset Plan
+              </button>
+            ) : null}
+          </div>
           <p className="mt-1.5 text-[10px] font-black uppercase tracking-[0.13em] text-white/48">{atlasBankrollMock.cycle.week}</p>
           <p className="text-[10px] font-bold text-white/62">{atlasBankrollMock.cycle.day}</p>
         </div>
@@ -7528,11 +7655,13 @@ function BankrollHeader() {
   );
 }
 
-function BankrollSummaryCard() {
+function BankrollSummaryCard({ config }: { config: BankrollConfig | null }) {
+  const summary = getBankrollSummary(config);
+
   return (
     <BankrollShell className="overflow-hidden px-2.5 py-2">
       <div className="grid grid-cols-4 divide-x divide-white/10">
-      {atlasBankrollMock.summary.map((item) => (
+      {summary.map((item) => (
         <div
           key={item.label}
           className="min-w-0 px-2 first:pl-0 last:pr-0"
@@ -7576,12 +7705,12 @@ function BankrollSummaryCard() {
   );
 }
 
-function BankrollPlanCard() {
+function BankrollPlanCard({ config }: { config: BankrollConfig | null }) {
   const rows = [
     ["Package", atlasBankrollMock.plan.package],
     ["Status", atlasBankrollMock.plan.status],
     ["Sport", atlasBankrollMock.plan.sport],
-    ["Unit", atlasBankrollMock.plan.unit],
+    ["Unit", config ? formatCurrency(config.recommendedUnit) : atlasBankrollMock.plan.unit],
   ];
 
   return (
@@ -7649,7 +7778,9 @@ function BankrollWeeklyCard() {
   );
 }
 
-function BankrollPerformanceCard() {
+function BankrollPerformanceCard({ config }: { config: BankrollConfig | null }) {
+  const performance = getBankrollPerformance(config);
+
   return (
     <BankrollShell className="px-2.5 py-2">
       <div className="flex items-center gap-2">
@@ -7657,7 +7788,7 @@ function BankrollPerformanceCard() {
         <p className="text-[13px] font-black uppercase tracking-[0.12em] text-emerald-300">Performance</p>
       </div>
       <div className="mt-2 grid grid-cols-4 divide-x divide-white/10 text-center">
-        {atlasBankrollMock.performance.map((metric) => (
+        {performance.map((metric) => (
           <div key={metric.label} className="min-w-0 px-1.5 first:pl-0 last:pr-0">
             <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-white/45">{metric.label.replace("Current ", "").replace("Today's ", "")}</p>
             <p className="mt-1 text-[20px] font-black leading-tight text-emerald-300">{metric.value}</p>
@@ -7719,16 +7850,243 @@ function BankrollPlanTrackingTabs() {
   );
 }
 
+function BankrollSetupSheet({
+  open,
+  config,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  config: BankrollConfig | null;
+  onClose: () => void;
+  onSave: (config: BankrollConfig) => void;
+}) {
+  const [step, setStep] = useState<"bankroll" | "profile">("bankroll");
+  const [bankrollInput, setBankrollInput] = useState("");
+  const [profile, setProfile] = useState<BankrollProfile>("atlas_recommended");
+  const [error, setError] = useState<string | null>(null);
+  const validation = validateBankroll(bankrollInput);
+  const bankrollValue = validation.valid ? validation.value : 0;
+  const recommendedUnit = validation.valid ? calculateRecommendedUnit(bankrollValue, profile) : 0;
+  const isEditing = Boolean(config);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setStep("bankroll");
+    setBankrollInput(config ? String(config.initialBankroll) : "");
+    setProfile(config?.profile ?? "atlas_recommended");
+    setError(null);
+  }, [config, open]);
+
+  function handleBankrollContinue(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const result = validateBankroll(bankrollInput);
+    if (!result.valid) {
+      setError(result.error);
+      return;
+    }
+
+    setError(null);
+    setStep("profile");
+  }
+
+  function handleSave() {
+    const result = validateBankroll(bankrollInput);
+    if (!result.valid) {
+      setError(result.error);
+      setStep("bankroll");
+      return;
+    }
+
+    onSave(config ? updateBankrollConfig(config, result.value, profile) : createBankrollConfig(result.value, profile));
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/72 px-3 pb-[92px] backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-[28px] border border-emerald-300/22 bg-[#06101d] shadow-[0_-18px_70px_rgba(16,185,129,0.18)]">
+        <div className="relative px-4 pb-4 pt-4">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.15),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.10),transparent_40%)]" />
+          <div className="relative">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-300/80">Atlas Bankroll</p>
+                <h3 className="mt-1 text-[22px] font-black tracking-tight text-white">
+                  {isEditing ? "Update your plan" : "Set your bankroll"}
+                </h3>
+                <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">Stay consistent with your plan.</p>
+              </div>
+              {isEditing ? (
+                <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white/55">
+                  Close
+                </button>
+              ) : null}
+            </div>
+
+            {step === "bankroll" ? (
+              <form className="mt-4 space-y-3" onSubmit={handleBankrollContinue}>
+                <label className="block">
+                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/48">Initial Bankroll</span>
+                  <input
+                    value={bankrollInput}
+                    onChange={(event) => {
+                      setBankrollInput(event.target.value);
+                      setError(null);
+                    }}
+                    inputMode="decimal"
+                    placeholder="$200"
+                    className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-black/26 px-4 text-[24px] font-black text-white outline-none transition focus:border-emerald-300/50"
+                  />
+                </label>
+                <p className="text-[12px] font-semibold leading-5 text-white/55">Enter the bankroll you want Atlas to manage.</p>
+                {error ? <p className="text-[11px] font-black text-red-300">{error}</p> : null}
+                <button type="submit" className="h-11 w-full rounded-[14px] bg-emerald-300 text-[11px] font-black uppercase tracking-[0.14em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
+                  Continue
+                </button>
+              </form>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <div className="grid gap-2">
+                  {bankrollProfileOptions.map((option) => {
+                    const selected = option.profile === profile;
+
+                    return (
+                      <button
+                        key={option.profile}
+                        type="button"
+                        onClick={() => setProfile(option.profile)}
+                        className={`rounded-[18px] border px-3 py-3 text-left transition ${
+                          selected
+                            ? "border-emerald-300/55 bg-emerald-300/[0.10] shadow-[0_0_18px_rgba(52,211,153,0.12)]"
+                            : "border-white/10 bg-white/[0.035]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[14px] font-black text-white">{option.title}</p>
+                            <p className="mt-1 text-[11px] font-bold text-white/50">{option.exposure}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.09em] ${option.profile === "atlas_recommended" ? "bg-emerald-300/14 text-emerald-200" : "bg-amber-300/14 text-amber-200"}`}>
+                              {option.badge}
+                            </span>
+                            <p className="mt-1 text-[18px] font-black text-white">{option.percentage}</p>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[11px] font-semibold text-white/46">{option.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 rounded-[18px] border border-white/10 bg-black/22 p-3 text-center">
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Initial Bankroll</p>
+                    <p className="mt-1 text-[15px] font-black text-white">{formatCurrency(bankrollValue)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Profile</p>
+                    <p className="mt-1 text-[12px] font-black text-emerald-300">{bankrollProfileLabels[profile]}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Recommended Unit</p>
+                    <p className="mt-1 text-[15px] font-black text-violet-300">{formatCurrency(recommendedUnit)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-[0.45fr_1fr] gap-2">
+                  <button type="button" onClick={() => setStep("bankroll")} className="h-11 rounded-[14px] border border-white/10 bg-white/[0.04] text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+                    Back
+                  </button>
+                  <button type="button" onClick={handleSave} className="h-11 rounded-[14px] bg-emerald-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
+                    {isEditing ? "Update Atlas Plan" : "Start Atlas Plan"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BankrollResetSheet({
+  open,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[75] flex items-end justify-center bg-black/72 px-3 pb-[92px] backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-[26px] border border-red-300/20 bg-[#07101f] p-4 shadow-[0_-18px_70px_rgba(248,113,113,0.14)]">
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-200/80">Reset Plan</p>
+        <h3 className="mt-1 text-[22px] font-black text-white">Clear bankroll setup?</h3>
+        <p className="mt-2 text-[12px] font-semibold leading-5 text-white/55">
+          This removes your local Bankroll configuration and returns Atlas Bankroll to onboarding.
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button type="button" onClick={onCancel} className="h-11 rounded-[14px] border border-white/10 bg-white/[0.04] text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm} className="h-11 rounded-[14px] bg-red-300 text-[10px] font-black uppercase tracking-[0.12em] text-black">
+            Reset Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AtlasBankrollScreen() {
+  const [config, setConfig] = useState<BankrollConfig | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+
+  useEffect(() => {
+    const storedConfig = loadBankrollConfig();
+    setConfig(storedConfig);
+    setHydrated(true);
+    setSetupOpen(!storedConfig);
+  }, []);
+
+  function handleSaveConfig(nextConfig: BankrollConfig) {
+    saveBankrollConfig(nextConfig);
+    setConfig(nextConfig);
+    setSetupOpen(false);
+  }
+
+  function handleResetConfig() {
+    clearBankrollConfig();
+    setConfig(null);
+    setResetOpen(false);
+    setSetupOpen(true);
+  }
+
   return (
     <div className="space-y-2.5">
-      <BankrollHeader />
-      <BankrollPlanCard />
-      <BankrollSummaryCard />
+      <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
+      <BankrollPlanCard config={config} />
+      <BankrollSummaryCard config={config} />
       <BankrollWeeklyCard />
-      <BankrollPerformanceCard />
+      <BankrollPerformanceCard config={config} />
       <BankrollInsightCard />
       <BankrollPlanTrackingTabs />
+      {hydrated ? (
+        <>
+          <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
+          <BankrollResetSheet open={resetOpen} onCancel={() => setResetOpen(false)} onConfirm={handleResetConfig} />
+        </>
+      ) : null}
     </div>
   );
 }

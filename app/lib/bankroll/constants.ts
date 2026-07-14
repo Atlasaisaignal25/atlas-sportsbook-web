@@ -1,0 +1,4 @@
+export const ATLAS_RECOMMENDED_PERCENTAGE = 0.05;
+export const HIGHER_EXPOSURE_PERCENTAGE = 0.07;
+export const BANKROLL_CONFIG_VERSION = 1;
+export const BANKROLL_CONFIG_STORAGE_KEY = `atlas-bankroll-config-v${BANKROLL_CONFIG_VERSION}`;
