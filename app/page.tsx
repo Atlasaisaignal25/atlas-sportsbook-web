@@ -7118,7 +7118,7 @@ function getMarketImpactTitle(event: MarketImpactEvent) {
 
 function getMarketImpactSelectionLabel(event: MarketImpactEvent) {
   if (event.market === "Totals") {
-    return `${event.selection} ${formatTeamImpactMarketLine(event.newLine)} Runs`.trim();
+    return `Over ${formatMarketLineOnly(event.newLine, event.market)}`.trim();
   }
 
   if (event.market === "Spread" && event.newLine !== null) {
@@ -7130,7 +7130,7 @@ function getMarketImpactSelectionLabel(event: MarketImpactEvent) {
 
 function getMarketImpactPrimaryTitle(event: MarketImpactEvent, sport: SportTab) {
   if (event.market === "Totals") {
-    return `${event.selection} ${formatTeamImpactMarketLine(event.newLine)} Runs`.trim();
+    return `Over ${formatMarketLineOnly(event.newLine, event.market)}`.trim();
   }
 
   const selection = getDisplayName(getSportDisplayTeamName(event.selection, sport));
@@ -7171,13 +7171,28 @@ function formatMarketDetailValue(line: number | null, odds: number | null) {
   return [lineText, oddsText].filter(Boolean).join(" ");
 }
 
-function formatMarketLineOnly(line: number | null) {
-  return line === null ? "N/A" : formatTeamImpactMarketLine(line);
+function formatMarketLineOnly(line: number | null, market?: MarketImpactEvent["market"]) {
+  if (line === null) return "N/A";
+  if (market === "Totals") return Number.isInteger(line) ? line.toFixed(0) : line.toFixed(1);
+  return formatTeamImpactMarketLine(line);
 }
 
-function formatMarketStateLine(selection: string, line: number | null, odds: number | null) {
-  const selectionText = selection.trim();
-  const lineText = formatMarketLineOnly(line);
+function getMarketVisualSelection(event: MarketImpactEvent) {
+  return event.market === "Totals" ? "Over" : event.selection.trim();
+}
+
+function getMarketVisualMovement(event: ConsolidatedMarketImpactEvent, position: "first" | "latest") {
+  if (event.market !== "Totals") {
+    return position === "first" ? event.movementsToday[0] ?? event : event;
+  }
+
+  const movements = position === "first" ? event.movementsToday : [...event.movementsToday].reverse();
+  return movements.find((movement) => movement.selection.trim().toLowerCase() === "over") ?? (position === "first" ? event.movementsToday[0] ?? event : event);
+}
+
+function formatMarketStateLine(selection: string, line: number | null, odds: number | null, market?: MarketImpactEvent["market"]) {
+  const selectionText = market === "Totals" ? "Over" : selection.trim();
+  const lineText = formatMarketLineOnly(line, market);
   const oddsText = formatAmericanOdds(odds);
   return {
     market: [selectionText, lineText === "N/A" ? null : lineText].filter(Boolean).join(" "),
@@ -7186,7 +7201,11 @@ function formatMarketStateLine(selection: string, line: number | null, odds: num
 }
 
 function getMarketOpeningMovement(event: ConsolidatedMarketImpactEvent) {
-  return event.movementsToday[0] ?? event;
+  return getMarketVisualMovement(event, "first");
+}
+
+function getMarketCurrentMovement(event: ConsolidatedMarketImpactEvent) {
+  return getMarketVisualMovement(event, "latest");
 }
 
 function getMarketOpeningLine(event: ConsolidatedMarketImpactEvent) {
@@ -7201,9 +7220,10 @@ function getMarketOpeningOdds(event: ConsolidatedMarketImpactEvent) {
 
 function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
   const openLine = getMarketOpeningLine(event);
-  const currentLine = event.newLine;
+  const current = getMarketCurrentMovement(event);
+  const currentLine = current.newLine;
   const openOdds = getMarketOpeningOdds(event);
-  const currentOdds = event.newOdds;
+  const currentOdds = current.newOdds;
 
   if (openLine === null || currentLine === null) {
     return {
@@ -7253,9 +7273,10 @@ function getMarketLineMoveStatus(event: ConsolidatedMarketImpactEvent) {
 
 function getMarketTrend(event: ConsolidatedMarketImpactEvent) {
   const openLine = getMarketOpeningLine(event);
-  const currentLine = event.newLine;
+  const current = getMarketCurrentMovement(event);
+  const currentLine = current.newLine;
   const openOdds = getMarketOpeningOdds(event);
-  const currentOdds = event.newOdds;
+  const currentOdds = current.newOdds;
 
   if (openLine !== null && currentLine !== null && currentLine !== openLine) {
     const delta = currentLine - openLine;
@@ -7288,9 +7309,10 @@ function getMarketTrend(event: ConsolidatedMarketImpactEvent) {
 function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
   const opening = getMarketOpeningMovement(event);
   const openingState = formatMarketStateLine(
-    opening.selection,
+    getMarketVisualSelection(opening),
     getMarketOpeningLine(event),
     getMarketOpeningOdds(event),
+    event.market,
   );
   const entries = [
     {
@@ -7298,7 +7320,7 @@ function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
       lines: ["OPEN", openingState.market, openingState.odds],
     },
     ...event.movementsToday.map((movement) => {
-      const state = formatMarketStateLine(movement.selection, movement.newLine, movement.newOdds);
+      const state = formatMarketStateLine(getMarketVisualSelection(movement), movement.newLine, movement.newOdds, event.market);
       const bookLines = movement.latestBookToMove ? ["Book", movement.latestBookToMove] : [];
 
       return {
@@ -9433,11 +9455,12 @@ const subscriptionPlansBoard = (
                         ? `${primaryTeam} • ${feedItem.sport}`
                         : matchup;
                   const marketOpeningMovement = marketEvent ? getMarketOpeningMovement(marketEvent) : null;
+                  const marketCurrentMovement = marketEvent ? getMarketCurrentMovement(marketEvent) : null;
                   const marketOpenState = marketEvent && marketOpeningMovement
-                    ? formatMarketStateLine(marketOpeningMovement.selection, getMarketOpeningLine(marketEvent), getMarketOpeningOdds(marketEvent))
+                    ? formatMarketStateLine(getMarketVisualSelection(marketOpeningMovement), getMarketOpeningLine(marketEvent), getMarketOpeningOdds(marketEvent), marketEvent.market)
                     : null;
-                  const marketCurrentState = marketEvent
-                    ? formatMarketStateLine(marketEvent.selection, marketEvent.newLine, marketEvent.newOdds)
+                  const marketCurrentState = marketEvent && marketCurrentMovement
+                    ? formatMarketStateLine(getMarketVisualSelection(marketCurrentMovement), marketCurrentMovement.newLine, marketCurrentMovement.newOdds, marketEvent.market)
                     : null;
                   const marketLineStatus = marketEvent ? getMarketLineMoveStatus(marketEvent) : null;
                   const marketTrend = marketEvent ? getMarketTrend(marketEvent) : null;
@@ -9586,7 +9609,14 @@ const subscriptionPlansBoard = (
                     >
                       <div className={`-mx-2 mb-1 flex items-center justify-between gap-3 border-b px-2 py-0.5 ${accent.banner}`}>
                         <p className={`min-w-0 truncate text-[10px] font-black uppercase tracking-[0.11em] ${accent.text}`}>
-                          <span className="mr-1.5">{accent.icon}</span>{accent.label}
+                          {isMarketImpact ? (
+                            <span className="mr-1.5 inline-flex align-[-3px]">
+                              <ImpactSummaryIcon name="market" className="h-[14px] w-[14px]" />
+                            </span>
+                          ) : (
+                            <span className="mr-1.5">{accent.icon}</span>
+                          )}
+                          {accent.label}
                         </p>
                         <div className="flex shrink-0 items-center gap-2.5">
                           <span className={`rounded-full border px-1.5 py-px text-[8px] font-black uppercase tracking-[0.08em] ${confidenceClass}`}>
@@ -9636,7 +9666,7 @@ const subscriptionPlansBoard = (
                             </div>
                           </div>
 
-                          <div className="mt-1 grid grid-cols-[1fr_68px] gap-2">
+                          <div className="mt-1 grid grid-cols-2 gap-2">
                             <div className={`rounded-[10px] border px-2 py-0.5 ${marketLineStatus?.badge ?? "border-orange-300/12 bg-black/16"}`}>
                               <div className="flex items-center justify-between gap-2">
                                 <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Last Change</p>
@@ -9682,29 +9712,33 @@ const subscriptionPlansBoard = (
                         onOpen={setImpactDetailSheet}
                       />
 
-                      <div className="mt-1 flex items-center justify-between gap-3 border-t border-white/10 pt-0.5">
-                        <div className="min-w-0">
-                          <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-white/50">
-                            {isMarketImpact
-                              ? `${marketEvent?.market ?? "Market"} • Strong Market Move`
-                              : teamEvent
-                              ? getTeamImpactCompactSummary(teamEvent)
-                              : sourceLabel}
+                      {isMarketImpact ? (
+                        <div className="mt-1 border-t border-white/10 pt-0.5">
+                          <p className="truncate text-[8px] font-black uppercase tracking-[0.1em] text-white/45">
+                            Atlas Market Monitoring
                           </p>
                         </div>
-                        {sourceUrl ? (
-                          <a
-                            href={sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`shrink-0 text-[10px] font-black ${accent.text}`}
-                          >
-                            View Source →
-                          </a>
-                        ) : (
-                          <span className={`shrink-0 text-[10px] font-black ${accent.text}`}>View Source →</span>
-                        )}
-                      </div>
+                      ) : (
+                        <div className="mt-1 flex items-center justify-between gap-3 border-t border-white/10 pt-0.5">
+                          <div className="min-w-0">
+                            <p className="truncate text-[9px] font-black uppercase tracking-[0.1em] text-white/50">
+                              {teamEvent ? getTeamImpactCompactSummary(teamEvent) : sourceLabel}
+                            </p>
+                          </div>
+                          {sourceUrl ? (
+                            <a
+                              href={sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`shrink-0 text-[10px] font-black ${accent.text}`}
+                            >
+                              View Source →
+                            </a>
+                          ) : (
+                            <span className={`shrink-0 text-[10px] font-black ${accent.text}`}>View Source →</span>
+                          )}
+                        </div>
+                      )}
                     </article>
                   );
                 })}
