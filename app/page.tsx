@@ -7905,6 +7905,29 @@ function BankrollPlanTrackingTabs() {
   );
 }
 
+function BankrollHydrationPlaceholder() {
+  return (
+    <div className="min-h-[760px] space-y-2.5" aria-hidden="true">
+      <BankrollShell className="h-[102px] overflow-hidden px-4 py-3.5">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.06),transparent_40%)]" />
+        <div className="relative h-full animate-pulse rounded-[18px] bg-white/[0.025]" />
+      </BankrollShell>
+      <BankrollShell className="h-[145px] overflow-hidden border-emerald-300/18 bg-[#06101d]/78 px-3 py-2.5">
+        <div className="h-full animate-pulse rounded-[18px] bg-white/[0.025]" />
+      </BankrollShell>
+      <BankrollShell className="h-[120px] overflow-hidden px-2.5 py-2">
+        <div className="h-full animate-pulse rounded-[18px] bg-white/[0.025]" />
+      </BankrollShell>
+      <BankrollShell className="h-[96px] overflow-hidden px-2.5 py-2">
+        <div className="h-full animate-pulse rounded-[18px] bg-white/[0.025]" />
+      </BankrollShell>
+      <BankrollShell className="h-[90px] overflow-hidden px-2.5 py-2">
+        <div className="h-full animate-pulse rounded-[18px] bg-white/[0.025]" />
+      </BankrollShell>
+    </div>
+  );
+}
+
 function BankrollSetupSheet({
   open,
   config,
@@ -7981,87 +8004,91 @@ function BankrollSetupSheet({
               ) : null}
             </div>
 
-            {step === "bankroll" ? (
-              <form className="mt-4 space-y-3" onSubmit={handleBankrollContinue}>
-                <label className="block">
-                  <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/48">Initial Bankroll</span>
-                  <input
-                    value={bankrollInput}
-                    onChange={(event) => {
-                      setBankrollInput(event.target.value);
-                      setError(null);
-                    }}
-                    inputMode="decimal"
-                    placeholder="$200"
-                    className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-black/26 px-4 text-[24px] font-black text-white outline-none transition focus:border-emerald-300/50"
-                  />
-                </label>
-                <p className="text-[12px] font-semibold leading-5 text-white/55">Enter the bankroll you want Atlas to manage.</p>
-                {error ? <p className="text-[11px] font-black text-red-300">{error}</p> : null}
-                <button type="submit" className="h-11 w-full rounded-[14px] bg-emerald-300 text-[11px] font-black uppercase tracking-[0.14em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
-                  Continue
-                </button>
-              </form>
-            ) : (
-              <div className="mt-4 space-y-3">
-                <div className="grid gap-2">
-                  {bankrollProfileOptions.map((option) => {
-                    const selected = option.profile === profile;
-
-                    return (
-                      <button
-                        key={option.profile}
-                        type="button"
-                        onClick={() => setProfile(option.profile)}
-                        className={`rounded-[18px] border px-3 py-3 text-left transition ${
-                          selected
-                            ? "border-emerald-300/55 bg-emerald-300/[0.10] shadow-[0_0_18px_rgba(52,211,153,0.12)]"
-                            : "border-white/10 bg-white/[0.035]"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-[14px] font-black text-white">{option.title}</p>
-                            <p className="mt-1 text-[11px] font-bold text-white/50">{option.exposure}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.09em] ${option.profile === "atlas_recommended" ? "bg-emerald-300/14 text-emerald-200" : "bg-amber-300/14 text-amber-200"}`}>
-                              {option.badge}
-                            </span>
-                            <p className="mt-1 text-[18px] font-black text-white">{option.percentage}</p>
-                          </div>
-                        </div>
-                        <p className="mt-2 text-[11px] font-semibold text-white/46">{option.description}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 rounded-[18px] border border-white/10 bg-black/22 p-3 text-center">
-                  <div>
-                    <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Initial Bankroll</p>
-                    <p className="mt-1 text-[15px] font-black text-white">{formatCurrency(bankrollValue)}</p>
+            <div className="mt-4 min-h-[365px]">
+              {step === "bankroll" ? (
+                <form className="flex min-h-[365px] flex-col" onSubmit={handleBankrollContinue}>
+                  <div className="space-y-3">
+                    <label className="block">
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/48">Initial Bankroll</span>
+                      <input
+                        value={bankrollInput}
+                        onChange={(event) => {
+                          setBankrollInput(event.target.value);
+                          setError(null);
+                        }}
+                        inputMode="decimal"
+                        placeholder="$200"
+                        className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-black/26 px-4 text-[24px] font-black text-white outline-none transition focus:border-emerald-300/50"
+                      />
+                    </label>
+                    <p className="text-[12px] font-semibold leading-5 text-white/55">Enter the bankroll you want Atlas to manage.</p>
+                    {error ? <p className="text-[11px] font-black text-red-300">{error}</p> : null}
                   </div>
-                  <div>
-                    <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Profile</p>
-                    <p className="mt-1 text-[12px] font-black text-emerald-300">{bankrollProfileLabels[profile]}</p>
-                  </div>
-                  <div>
-                    <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Recommended Unit</p>
-                    <p className="mt-1 text-[15px] font-black text-violet-300">{formatCurrency(recommendedUnit)}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-[0.45fr_1fr] gap-2">
-                  <button type="button" onClick={() => setStep("bankroll")} className="h-11 rounded-[14px] border border-white/10 bg-white/[0.04] text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
-                    Back
+                  <button type="submit" className="mt-auto h-11 w-full rounded-[14px] bg-emerald-300 text-[11px] font-black uppercase tracking-[0.14em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
+                    Continue
                   </button>
-                  <button type="button" onClick={handleSave} className="h-11 rounded-[14px] bg-emerald-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
-                    {isEditing ? "Update Atlas Plan" : "Start Atlas Plan"}
-                  </button>
+                </form>
+              ) : (
+                <div className="min-h-[365px] space-y-3">
+                  <div className="grid gap-2">
+                    {bankrollProfileOptions.map((option) => {
+                      const selected = option.profile === profile;
+
+                      return (
+                        <button
+                          key={option.profile}
+                          type="button"
+                          onClick={() => setProfile(option.profile)}
+                          className={`rounded-[18px] border px-3 py-3 text-left transition ${
+                            selected
+                              ? "border-emerald-300/55 bg-emerald-300/[0.10] shadow-[0_0_18px_rgba(52,211,153,0.12)]"
+                              : "border-white/10 bg-white/[0.035]"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[14px] font-black text-white">{option.title}</p>
+                              <p className="mt-1 text-[11px] font-bold text-white/50">{option.exposure}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.09em] ${option.profile === "atlas_recommended" ? "bg-emerald-300/14 text-emerald-200" : "bg-amber-300/14 text-amber-200"}`}>
+                                {option.badge}
+                              </span>
+                              <p className="mt-1 text-[18px] font-black text-white">{option.percentage}</p>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[11px] font-semibold text-white/46">{option.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 rounded-[18px] border border-white/10 bg-black/22 p-3 text-center">
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Initial Bankroll</p>
+                      <p className="mt-1 text-[15px] font-black text-white">{formatCurrency(bankrollValue)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Profile</p>
+                      <p className="mt-1 text-[12px] font-black text-emerald-300">{bankrollProfileLabels[profile]}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Recommended Unit</p>
+                      <p className="mt-1 text-[15px] font-black text-violet-300">{formatCurrency(recommendedUnit)}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-[0.45fr_1fr] gap-2">
+                    <button type="button" onClick={() => setStep("bankroll")} className="h-11 rounded-[14px] border border-white/10 bg-white/[0.04] text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+                      Back
+                    </button>
+                    <button type="button" onClick={handleSave} className="h-11 rounded-[14px] bg-emerald-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
+                      {isEditing ? "Update Atlas Plan" : "Start Atlas Plan"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -8131,6 +8158,10 @@ function AtlasBankrollScreen() {
     setSetupOpen(true);
   }
 
+  if (!hydrated) {
+    return <BankrollHydrationPlaceholder />;
+  }
+
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
@@ -8140,12 +8171,8 @@ function AtlasBankrollScreen() {
       <BankrollPerformanceCard metrics={metrics} />
       <BankrollInsightCard />
       <BankrollPlanTrackingTabs />
-      {hydrated ? (
-        <>
-          <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
-          <BankrollResetSheet open={resetOpen} onCancel={() => setResetOpen(false)} onConfirm={handleResetConfig} />
-        </>
-      ) : null}
+      <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
+      <BankrollResetSheet open={resetOpen} onCancel={() => setResetOpen(false)} onConfirm={handleResetConfig} />
     </div>
   );
 }
