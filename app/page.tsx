@@ -5195,7 +5195,7 @@ useEffect(() => {
       const params = new URLSearchParams({
         sport: pulseSportFilter,
         confidence: confidenceParam,
-        limit: "50",
+        limit: "250",
       });
       const [teamResponse, marketResponse, intelligenceResponse] = await Promise.all([
         fetch(`/api/impact/team-impact?${params.toString()}`, { signal: controller.signal }),
@@ -6375,9 +6375,57 @@ const currentFilteredTeamImpactEvents = teamImpactEvents
   .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "TEAM" || item.confidence === pulseImpactFilter)
   .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
+type ConsolidatedMarketImpactEvent = MarketImpactEvent & {
+  movementsToday: MarketImpactEvent[];
+};
+
+function getMarketImpactGroupKey(item: MarketImpactEvent) {
+  return [
+    item.sport,
+    item.awayTeam.trim().toLowerCase(),
+    item.homeTeam.trim().toLowerCase(),
+    item.market,
+    item.selection.trim().toLowerCase(),
+  ].join("|");
+}
+
+function getMarketImpactLatestTime(item: MarketImpactEvent) {
+  const parsed = Date.parse(item.latestMoveAt ?? item.publishedAt);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function consolidateMarketImpactEvents(items: MarketImpactEvent[]): ConsolidatedMarketImpactEvent[] {
+  const groups = new Map<string, MarketImpactEvent[]>();
+
+  items.forEach((item) => {
+    const key = getMarketImpactGroupKey(item);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  });
+
+  return [...groups.values()]
+    .map((group) => {
+      const movementsToday = [...group].sort((a, b) => getMarketImpactLatestTime(a) - getMarketImpactLatestTime(b));
+      const latest = movementsToday[movementsToday.length - 1];
+
+      return {
+        ...latest,
+        eventId: getMarketImpactGroupKey(latest),
+        movementsToday,
+      };
+    })
+    .sort((a, b) => getMarketImpactLatestTime(b) - getMarketImpactLatestTime(a));
+}
+
+const consolidatedMarketImpactEvents = consolidateMarketImpactEvents(
+  marketImpactEvents
+    .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
+    .filter(() => pulseImpactFilter !== "TEAM" && pulseImpactFilter !== "INTELLIGENCE")
+    .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "MARKET" || item.confidence === pulseImpactFilter)
+);
+
 type UnifiedImpactFeedItem =
   | { kind: "team"; item: TeamImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string }
-  | { kind: "market"; item: MarketImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string }
+  | { kind: "market"; item: ConsolidatedMarketImpactEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string }
   | { kind: "intelligence"; item: AtlasIntelligenceEvent; publishedAt: string; confidence: PulseImpact; sport: PulseSport; id: string };
 
 const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
@@ -6389,14 +6437,11 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
     sport: item.sport,
     id: `team-${item.eventId}`,
   })),
-  ...marketImpactEvents
-    .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
-    .filter(() => pulseImpactFilter !== "TEAM" && pulseImpactFilter !== "INTELLIGENCE")
-    .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "MARKET" || item.confidence === pulseImpactFilter)
+  ...consolidatedMarketImpactEvents
     .map((item) => ({
       kind: "market" as const,
       item,
-      publishedAt: item.publishedAt,
+      publishedAt: item.latestMoveAt ?? item.publishedAt,
       confidence: item.confidence,
       sport: item.sport,
       id: `market-${item.eventId}`,
@@ -6416,7 +6461,7 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
 ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
 const impactTeamCount = teamImpactEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
-const impactMarketCount = marketImpactEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
+const impactMarketCount = consolidatedMarketImpactEvents.length;
 const impactIntelligenceCount = atlasIntelligenceEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
 const impactLastUpdateLabel = pulseLastUpdatedAt ? formatTeamImpactTimestamp(pulseLastUpdatedAt) : "Live";
 const impactLastUpdateShortLabel = pulseLastUpdatedAt
@@ -7016,6 +7061,35 @@ function formatMarketDetailValue(line: number | null, odds: number | null) {
   const lineText = line === null ? "" : formatTeamImpactMarketLine(line);
   const oddsText = odds === null ? "" : odds > 0 ? `+${odds}` : `${odds}`;
   return [lineText, oddsText].filter(Boolean).join(" ");
+}
+
+function formatMarketLineOnly(line: number | null) {
+  return line === null ? "N/A" : formatTeamImpactMarketLine(line);
+}
+
+function getMarketLatestMovementLabel(event: MarketImpactEvent) {
+  const oldValue = formatMarketDetailValue(event.oldLine, event.oldOdds) || "N/A";
+  const newValue = formatMarketDetailValue(event.newLine, event.newOdds) || "N/A";
+  return `${oldValue} -> ${newValue}`;
+}
+
+function getMarketImpactHistoryText(event: ConsolidatedMarketImpactEvent) {
+  return event.movementsToday
+    .map((movement, index) => {
+      const label = index === 0 ? "Opening Line" : getMarketImpactSelectionLabel(movement);
+      const current = formatMarketDetailValue(movement.newLine, movement.newOdds) || "N/A";
+      const book = movement.latestBookToMove ? `Book: ${movement.latestBookToMove}` : null;
+
+      return [
+        formatTeamImpactTimestamp(movement.latestMoveAt ?? movement.publishedAt),
+        label,
+        current,
+        book,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n----------------\n\n");
 }
 
 function getAtlasIntelligenceMatchupLabel(event: AtlasIntelligenceEvent) {
@@ -9102,13 +9176,13 @@ const subscriptionPlansBoard = (
                     : isMarketImpact
                       ? getPreviewSentence((item as MarketImpactEvent).why)
                       : getPreviewSentence((item as TeamImpactEvent).why);
-                  const impactLabel = isIntelligenceImpact ? "TIMELINE:" : "IMPACT:";
+                  const impactLabel = isIntelligenceImpact ? "TIMELINE:" : isMarketImpact ? "HISTORY:" : "IMPACT:";
                   const impactText = isIntelligenceImpact
                     ? getPreviewSentence(getAtlasIntelligenceTimeline(item as AtlasIntelligenceEvent))
                     : isMarketImpact
                       ? getPreviewSentence((item as MarketImpactEvent).impact)
                       : getPreviewSentence((item as TeamImpactEvent).impact);
-                  const marketEvent = isMarketImpact ? (item as MarketImpactEvent) : null;
+                  const marketEvent = isMarketImpact ? (item as ConsolidatedMarketImpactEvent) : null;
                   const teamEvent = !isMarketImpact && !isIntelligenceImpact ? (item as TeamImpactEvent) : null;
                   const detailTitle = isIntelligenceImpact
                     ? getAtlasIntelligenceImpact(item as AtlasIntelligenceEvent)
@@ -9139,6 +9213,7 @@ const subscriptionPlansBoard = (
                           marketEvent.why,
                           `Market: ${marketEvent.market}`,
                           `Selection: ${marketEvent.selection}`,
+                          `Line movements today: ${marketEvent.movementsToday.length}`,
                           `Movement: ${marketEvent.movementType.replaceAll("_", " ")}`,
                           `Direction: ${marketEvent.direction}`,
                           `Sportsbooks moved: ${marketEvent.booksMoved} of ${marketEvent.booksObserved}`,
@@ -9168,14 +9243,8 @@ const subscriptionPlansBoard = (
                       ])
                     : isMarketImpact && marketEvent
                       ? joinImpactDetailLines([
-                          marketEvent.impact,
-                          `Market affected: ${marketEvent.market}`,
-                          `Selection affected: ${marketEvent.selection}`,
-                          `Open: ${formatMarketDetailValue(marketEvent.oldLine, marketEvent.oldOdds) || "N/A"}`,
-                          `Now: ${formatMarketDetailValue(marketEvent.newLine, marketEvent.newOdds) || "N/A"}`,
-                          `Consensus: ${marketEvent.consensusPercent.toFixed(0)}% (${marketEvent.consensusLevel})`,
-                          marketEvent.movementWindowMinutes !== null ? `Movement window: ${marketEvent.movementWindowMinutes} minutes` : null,
-                          marketEvent.latestBookToMove ? `Latest book to move: ${marketEvent.latestBookToMove}` : null,
+                          "Complete movement history today",
+                          getMarketImpactHistoryText(marketEvent),
                         ])
                       : teamEvent
                         ? joinImpactDetailLines([
@@ -9313,13 +9382,25 @@ const subscriptionPlansBoard = (
 
                           <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] border border-orange-300/14 bg-orange-400/[0.035] px-2 py-1 text-center shadow-[0_0_14px_rgba(249,115,22,0.08)]">
                             <div>
-                              <p className="truncate text-[22px] font-black leading-none text-white">{formatMarketDetailValue(marketEvent.oldLine, marketEvent.oldOdds) || "N/A"}</p>
-                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Open</p>
+                              <p className="truncate text-[22px] font-black leading-none text-white">{formatMarketLineOnly(marketEvent.newLine)}</p>
+                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current Line</p>
                             </div>
-                            <span className="text-[23px] font-black leading-none text-orange-300">↓</span>
+                            <span className="text-[23px] font-black leading-none text-orange-300">•</span>
                             <div>
-                              <p className="truncate text-[22px] font-black leading-none text-orange-300">{formatMarketDetailValue(marketEvent.newLine, marketEvent.newOdds) || "N/A"}</p>
-                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Now</p>
+                              <p className="truncate text-[22px] font-black leading-none text-orange-300">{formatAmericanOdds(marketEvent.newOdds)}</p>
+                              <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.1em] text-white/42">Current Odds</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-1 grid grid-cols-[1fr_74px] gap-2">
+                            <div className="rounded-[11px] border border-orange-300/12 bg-black/16 px-2 py-1">
+                              <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/42">Latest Movement</p>
+                              <p className="mt-0.5 truncate text-[11px] font-black text-white/78">{getMarketLatestMovementLabel(marketEvent)}</p>
+                              <p className="mt-px text-[9px] font-bold text-orange-200/70">{formatTeamImpactTimestamp(marketEvent.latestMoveAt ?? marketEvent.publishedAt)}</p>
+                            </div>
+                            <div className="rounded-[11px] border border-orange-300/18 bg-orange-300/[0.06] px-1.5 py-1 text-center">
+                              <p className="text-[20px] font-black leading-none text-orange-300">{marketEvent.movementsToday.length}</p>
+                              <p className="mt-0.5 text-[6.5px] font-black uppercase leading-[8px] tracking-[0.08em] text-white/52">Line Movements Today</p>
                             </div>
                           </div>
                         </>
