@@ -8800,7 +8800,7 @@ function AvailableSportsbookPicks({
       </div>
 
       {visiblePicks.length > 0 ? (
-        <div className="overflow-hidden rounded-[12px] border border-white/10 bg-[#060d19]/72">
+        <div className="grid gap-1.5">
           {visiblePicks.map((pick, index) => (
             <AvailableSportsbookPickRow
               key={pick.id}
@@ -8864,7 +8864,7 @@ function SportsbookMyCard({
   const totals = calculateSportsbookCardTotals(cardPicks, activePicks);
 
   return (
-    <div className="rounded-[13px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2">
+    <div className="rounded-[14px] border border-cyan-300/18 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),rgba(3,10,20,0.72)_48%)] p-2 shadow-[0_0_24px_rgba(34,211,238,0.06)]">
       <div className="mb-1.5 grid gap-1.5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">My Card</p>
@@ -8900,12 +8900,12 @@ function SportsbookMyCard({
           ))}
         </div>
       ) : (
-        <div className="rounded-[12px] border border-dashed border-cyan-300/20 bg-black/16 px-3 py-3 text-center">
-          <div className="mx-auto grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
+        <div className="rounded-[12px] border border-dashed border-cyan-300/22 bg-black/20 px-3 py-3 text-center">
+          <div className="mx-auto grid h-9 w-9 place-items-center rounded-[12px] border border-cyan-300/22 bg-cyan-300/[0.08] text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,0.10)]">
             <BankrollUiIcon name="wallet" className="h-5 w-5" />
           </div>
-          <p className="mt-1.5 text-[13px] font-black text-white/78">No Active Signals</p>
-          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Completed signals are available in History.</p>
+          <p className="mt-1.5 text-[13px] font-black text-white/78">Your Tracking Card is Empty</p>
+          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Add Atlas Signals to begin tracking.</p>
         </div>
       )}
     </div>
@@ -8915,21 +8915,20 @@ function SportsbookMyCard({
 function SportsbookDraftCardPick({ item, demoModeEnabled, snapshot, onRemove }: { item: SportsbookCardPick; demoModeEnabled: boolean; snapshot: AtlasDailySnapshot | null; onRemove: () => void }) {
   const { pick, riskAmount } = item;
   const matchup = formatSportsbookMatchup(pick);
+  const selectionLabel = formatSportsbookSelection(pick);
   const potentialReturn = calculatePotentialReturn(riskAmount, pick.odds);
 
   return (
-    <div className="rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1 transition duration-300 ease-out">
-      <div className="grid grid-cols-[30px_minmax(0,1fr)_48px_54px] items-center gap-2">
-        <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
-          {getSportGlyph(pick.sport)}
-        </div>
+    <div className="rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 transition duration-300 ease-out motion-safe:animate-[atlasTrackingFade_180ms_ease-out]">
+      <div className="grid grid-cols-[38px_minmax(0,1fr)_58px_54px] items-center gap-2">
+        <TrackingTeamLogoStack homeTeam={matchup.home} awayTeam={matchup.away} sport={pick.sport} size="card" />
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
-            {demoModeEnabled && snapshot ? <span className="shrink-0 rounded-full bg-amber-300/[0.12] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-amber-200">Last Available</span> : null}
+            <p className="truncate text-[11px] font-black text-white/82">{matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}</p>
+            {demoModeEnabled && snapshot ? <span className="shrink-0 rounded-full bg-cyan-300/[0.10] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-cyan-200">Last Available</span> : null}
           </div>
-          <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market} · {matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}</p>
-          {demoModeEnabled && snapshot ? <p className="mt-0.5 truncate text-[8px] font-semibold text-amber-200/55">Snapshot {formatSnapshotDate(snapshot.snapshotDate)}</p> : null}
+          <p className="mt-0.5 truncate text-[10px] font-black text-cyan-200">{selectionLabel}</p>
+          {demoModeEnabled && snapshot ? <p className="mt-0.5 truncate text-[8px] font-semibold text-cyan-200/55">Snapshot {formatSnapshotDate(snapshot.snapshotDate)}</p> : null}
         </div>
         <div className="text-right">
           <p className="text-[12px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
@@ -8959,16 +8958,16 @@ function SportsbookDraftCardPick({ item, demoModeEnabled, snapshot, onRemove }: 
 
 function SportsbookTrackedCardPick({ pick, onOpen }: { pick: ManualTrackingCollection["picks"][number]; onOpen: () => void }) {
   const tone = getTrackingStatusTone(pick.status);
+  const matchup = formatSportsbookMatchup(pick);
+  const selectionLabel = formatSportsbookSelection(pick);
   const potentialReturn = calculatePotentialReturn(pick.riskAmount ?? 0, pick.odds ?? 0);
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[54px] grid-cols-[30px_1fr_58px_58px_12px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1 text-left transition duration-200">
-      <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
-        {getSportGlyph(pick.sport ?? "AT")}
-      </div>
+    <button type="button" onClick={onOpen} className="grid min-h-[54px] grid-cols-[38px_1fr_58px_58px_12px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 text-left transition duration-200 active:scale-[0.99]">
+      <TrackingTeamLogoStack homeTeam={matchup.home} awayTeam={matchup.away} sport={pick.sport} size="card" />
       <div className="min-w-0">
-        <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
-        <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market} · {formatSportsbookOdds(pick.odds)}</p>
+        <p className="truncate text-[11px] font-black text-white/82">{matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}</p>
+        <p className="mt-0.5 truncate text-[10px] font-black text-cyan-200">{selectionLabel}</p>
       </div>
       <div className="text-right">
         <p className="text-[11px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
@@ -9058,8 +9057,8 @@ function SportsbookBetSlipSheet({
               </button>
             </div>
             {demoModeEnabled && snapshot ? (
-              <div className="rounded-[12px] border border-amber-300/18 bg-amber-300/[0.06] px-2.5 py-1.5">
-                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-200">Last Available · {formatSnapshotDate(snapshot.snapshotDate)}</p>
+              <div className="rounded-[12px] border border-cyan-300/18 bg-cyan-300/[0.06] px-2.5 py-1.5">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-200">Last Available · {formatSnapshotDate(snapshot.snapshotDate)}</p>
               </div>
             ) : null}
 
@@ -9171,12 +9170,12 @@ function SnapshotDemoBanner({ snapshot }: { snapshot: AtlasDailySnapshot }) {
   return (
     <BankrollShell className="px-3 py-2">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 rounded-full border border-amber-300/20 bg-amber-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-amber-200">
+        <span className="mt-0.5 rounded-full border border-cyan-300/22 bg-cyan-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200">
           Last Available
         </span>
         <div className="min-w-0">
-          <p className="text-[11px] font-black text-white/72">No live events are available today.</p>
-          <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/42">Showing the most recent Atlas snapshot from {formatSnapshotDate(snapshot.snapshotDate)} for demonstration purposes.</p>
+          <p className="text-[11px] font-black text-white/72">{formatSnapshotDate(snapshot.snapshotDate)}</p>
+          <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/42">Showing the latest Atlas Snapshot.</p>
         </div>
       </div>
     </BankrollShell>
@@ -9185,8 +9184,8 @@ function SnapshotDemoBanner({ snapshot }: { snapshot: AtlasDailySnapshot }) {
 
 function SnapshotDemoInlineBanner({ snapshot }: { snapshot: AtlasDailySnapshot }) {
   return (
-    <div className="mb-1.5 rounded-[11px] border border-amber-300/16 bg-amber-300/[0.055] px-2.5 py-1.5">
-      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-200">Last Available · {formatSnapshotDate(snapshot.snapshotDate)}</p>
+    <div className="mb-1.5 rounded-[11px] border border-cyan-300/16 bg-cyan-300/[0.055] px-2.5 py-1.5">
+      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-cyan-200">Last Available · {formatSnapshotDate(snapshot.snapshotDate)}</p>
       <p className="mt-0.5 text-[9px] font-semibold leading-3 text-white/38">Showing the latest available Atlas Snapshot.</p>
     </div>
   );
@@ -9196,21 +9195,24 @@ function SportsbookQuickAccess({ onOpen }: { onOpen: (view: "performance" | "his
   return (
     <div className="grid gap-1">
       {[
-        { label: "View Performance", subtitle: "Financial Summary", view: "performance" as const },
-        { label: "Signal History", subtitle: "Timeline & Results", view: "history" as const },
-        { label: "View Analytics", subtitle: "Sports & Markets", view: "analytics" as const },
+        { label: "View Performance", subtitle: "Financial Summary", icon: "bars", view: "performance" as const },
+        { label: "Signal History", subtitle: "Timeline & Results", icon: "wallet", view: "history" as const },
+        { label: "View Analytics", subtitle: "Sports & Markets", icon: "target", view: "analytics" as const },
       ].map((item) => (
         <button
           key={item.view}
           type="button"
           onClick={() => onOpen(item.view)}
-          className="flex min-h-10 items-center justify-between rounded-[11px] border border-cyan-300/12 bg-black/18 px-3 py-1.5 text-left transition duration-200 active:scale-[0.99]"
+          className="grid min-h-11 grid-cols-[28px_1fr_18px] items-center gap-2 rounded-[12px] border border-cyan-300/14 bg-cyan-300/[0.035] px-2.5 py-1.5 text-left transition duration-200 hover:border-cyan-300/26 hover:bg-cyan-300/[0.06] active:scale-[0.985]"
         >
+          <span className="grid h-7 w-7 place-items-center rounded-[9px] border border-cyan-300/18 bg-cyan-300/[0.08] text-cyan-200">
+            <BankrollUiIcon name={item.icon as any} className="h-4 w-4" />
+          </span>
           <span className="min-w-0">
             <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-white/66">{item.label}</span>
-            <span className="mt-0.5 block text-[9px] font-semibold text-cyan-200/52">{item.subtitle} →</span>
+            <span className="mt-0.5 block text-[9px] font-semibold text-cyan-200/52">{item.subtitle}</span>
           </span>
-          <span className="text-cyan-300">→</span>
+          <BankrollUiIcon name="arrow" className="h-4 w-4 text-cyan-300" />
         </button>
       ))}
     </div>
@@ -9239,13 +9241,13 @@ function ManualSummarySnapshot({ manualTracking }: { manualTracking: ManualTrack
     <div className="grid grid-cols-2 gap-1.5">
       <ManualSummaryMiniCard
         title="Weekly"
-        value={latestWeekly ? formatSignedPercent(latestWeekly.roi) : "No Data"}
-        detail={latestWeekly ? `${latestWeekly.completedPicks} completed` : "Summary pending"}
+        value={latestWeekly ? formatSignedPercent(latestWeekly.roi) : "Pending"}
+        detail={latestWeekly ? `${latestWeekly.completedPicks} completed` : "Your first weekly summary will be generated after your first completed tracking cycle."}
       />
       <ManualSummaryMiniCard
         title="Monthly"
-        value={latestMonthly ? formatSignedPercent(latestMonthly.roi) : "No Data"}
-        detail={latestMonthly ? `${latestMonthly.completedPicks} completed` : "Summary pending"}
+        value={latestMonthly ? formatSignedPercent(latestMonthly.roi) : "Pending"}
+        detail={latestMonthly ? `${latestMonthly.completedPicks} completed` : "Your first monthly summary will be generated after your first completed tracking cycle."}
       />
     </div>
   );
@@ -9310,6 +9312,15 @@ function formatTrackingSportCategory(sport: AtlasPlanSport | string | null | und
   return String(sport || "Sport");
 }
 
+function getSportEmoji(sport: AtlasPlanSport | string | null | undefined) {
+  if (sport === "MLB") return "⚾";
+  if (sport === "NBA") return "🏀";
+  if (sport === "NFL") return "🏈";
+  if (sport === "NHL") return "🏒";
+  if (sport === "SOCCER") return "⚽";
+  return "◆";
+}
+
 function getTrackingSportTab(sport: AtlasPlanSport | string | null | undefined): SportTab | null {
   if (sport === "MLB" || sport === "NBA" || sport === "NFL" || sport === "NHL" || sport === "SOCCER") return sport;
   return null;
@@ -9342,11 +9353,13 @@ function getTeamInitials(team: string, sport: AtlasPlanSport | string) {
   return initials.toUpperCase();
 }
 
-function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: AtlasPlanSport | string; muted?: boolean }) {
+function TeamLogoLabel({ team, sport, muted = false, size = "sm" }: { team: string; sport: AtlasPlanSport | string; muted?: boolean; size?: "sm" | "lg" }) {
   const sportTab = getTrackingSportTab(sport);
   const resolvedTeam = sportTab ? resolveTeamNameForSport(team, sportTab) ?? team : team;
   const logo = resolvedTeam && sportTab ? getLogo(resolvedTeam, sportTab) : null;
   const [logoFailed, setLogoFailed] = useState(false);
+  const sizeClass = size === "lg" ? "h-10 w-10" : "h-7 w-7";
+  const fallbackTextClass = size === "lg" ? "text-[10px]" : "text-[8px]";
 
   useEffect(() => {
     setLogoFailed(false);
@@ -9354,7 +9367,7 @@ function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: At
 
   if (logo && !logoFailed) {
     return (
-      <span className="grid h-7 w-7 place-items-center" title={resolvedTeam || team}>
+      <span className={`grid ${sizeClass} place-items-center`} title={resolvedTeam || team}>
         <img
           src={logo}
           alt=""
@@ -9367,7 +9380,7 @@ function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: At
 
   return (
     <div
-      className={`grid h-7 w-7 place-items-center rounded-full border text-[8px] font-black uppercase tracking-[-0.01em] ${
+      className={`grid ${sizeClass} place-items-center rounded-full border ${fallbackTextClass} font-black uppercase tracking-[-0.01em] ${
         muted
           ? "border-sky-300/18 bg-sky-300/[0.055] text-sky-100/70"
           : "border-cyan-300/28 bg-cyan-300/[0.11] text-cyan-100"
@@ -9379,14 +9392,16 @@ function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: At
   );
 }
 
-function TrackingTeamLogoStack({ homeTeam, awayTeam, sport }: { homeTeam: string; awayTeam: string; sport: AtlasPlanSport | string | null | undefined }) {
+function TrackingTeamLogoStack({ homeTeam, awayTeam, sport, size = "row" }: { homeTeam: string; awayTeam: string; sport: AtlasPlanSport | string | null | undefined; size?: "row" | "card" }) {
+  const containerSize = size === "card" ? "h-8 w-8" : "h-[50px] w-[50px]";
+  const logoSize = size === "card" ? "sm" : "sm";
   return (
-    <span className="relative isolate block h-[50px] w-[50px] shrink-0" aria-label={`${awayTeam || homeTeam} team logos`}>
+    <span className={`relative isolate block ${containerSize} shrink-0`} aria-label={`${awayTeam || homeTeam} team logos`}>
       <span className="absolute left-1 top-1 z-10">
-        <TeamLogoLabel team={awayTeam || homeTeam} sport={sport ?? "AT"} muted />
+        <TeamLogoLabel team={awayTeam || homeTeam} sport={sport ?? "AT"} muted size={logoSize} />
       </span>
       <span className="absolute bottom-1 right-1 z-20">
-        <TeamLogoLabel team={homeTeam || awayTeam} sport={sport ?? "AT"} />
+        <TeamLogoLabel team={homeTeam || awayTeam} sport={sport ?? "AT"} size={logoSize} />
       </span>
     </span>
   );
@@ -9732,7 +9747,7 @@ function TrackingHistoryList({
       {history.groups.map((group) => (
         <div key={group.key}>
           <p className="mb-1 border-b border-white/10 pb-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{group.label}</p>
-          <div className="overflow-hidden rounded-[12px] border border-white/10 bg-[#060d19]/72">
+          <div className="grid gap-1.5">
             {group.picks.map((item, index) => (
               <TrackingPickCard key={item.pick.id} item={item} isLast={index === group.picks.length - 1} onOpen={() => onOpenPick(item.pick.id)} />
             ))}
@@ -9817,51 +9832,74 @@ function TrackingSignalListRow({
   const selectionLabel = formatSportsbookSelection(pick);
   const sportLabel = formatTrackingSportCategory(pick.sport ?? "Sport");
   const oddsLabel = formatTrackingOddsValue(pick.odds);
+  const confidence = formatPickConfidence(pick);
   const Container = onOpen ? "button" : "div";
 
   return (
     <Container
       type={onOpen ? "button" : undefined}
       onClick={onOpen}
-      className={`grid w-full grid-cols-[62px_minmax(0,1fr)_auto_42px_14px] items-center gap-2.5 px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
-        !isLast ? "border-b border-white/10" : ""
-      }`}
+      className="relative overflow-hidden rounded-[15px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),rgba(4,11,23,0.82)_46%)] px-3 py-2.5 text-left shadow-[0_0_24px_rgba(34,211,238,0.06)] transition-all duration-200 active:scale-[0.985] motion-safe:animate-[atlasTrackingFade_180ms_ease-out]"
     >
-      <div className="min-w-0">
-        <TrackingTeamLogoStack homeTeam={matchup.home} awayTeam={matchup.away} sport={pick.sport} />
-        <p className="mt-0.5 truncate text-[9px] font-black uppercase tracking-[0.12em] text-white/42">{sportLabel}</p>
-      </div>
-
-      <div className="min-w-0">
-        <p className="truncate text-[13px] font-semibold text-white">
-          {matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}
+      <div className="mb-2 flex min-w-0 items-center justify-between gap-2 text-[8px] font-black uppercase tracking-[0.11em] text-white/38">
+        <p className="min-w-0 truncate">
+          <span className="text-cyan-200/72">{getSportEmoji(pick.sport)} {sportLabel}</span>
+          {pick.league ? <span className="text-white/30"> · {pick.league}</span> : null}
         </p>
-        <p className="truncate text-[13px] font-semibold text-cyan-300">
-          {selectionLabel}
-          {oddsLabel !== "-" ? <span className="ml-1 text-white/55">{oddsLabel}</span> : null}
-        </p>
+        <span className="shrink-0 text-white/45">{timeLabel}</span>
       </div>
 
-      {onRightAction ? (
-        <button
-          type="button"
-          onClick={onRightAction}
-          disabled={rightDisabled}
-          className={`justify-self-end rounded-[9px] border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] transition duration-200 active:scale-[0.97] ${rightClass}`}
-        >
-          {rightLabel}
-        </button>
-      ) : (
-        <span className={`justify-self-end rounded-[9px] border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${rightClass}`}>
-          {rightLabel}
-        </span>
-      )}
-
-      <div className="text-right">
-        <p className="whitespace-pre-line text-[10px] font-black leading-3 text-white/48">{formatTrackingTimeStack(timeLabel)}</p>
-        {footerLabel ? <p className={`mt-1 truncate text-[8px] font-black ${footerClass ?? "text-white/36"}`}>{footerLabel}</p> : null}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="min-w-0 text-center">
+          <div className="mx-auto mb-1 grid h-10 w-10 place-items-center">
+            <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} size="lg" />
+          </div>
+          <p className="truncate text-[12px] font-black text-white">{matchup.home}</p>
+        </div>
+        <span className="rounded-full border border-cyan-300/16 bg-cyan-300/[0.06] px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200/70">vs</span>
+        <div className="min-w-0 text-center">
+          <div className="mx-auto mb-1 grid h-10 w-10 place-items-center">
+            <TeamLogoLabel team={matchup.away || matchup.home} sport={pick.sport ?? "AT"} muted={Boolean(matchup.away)} size="lg" />
+          </div>
+          <p className="truncate text-[12px] font-black text-white">{matchup.away || matchup.home}</p>
+        </div>
       </div>
-      <BankrollUiIcon name="arrow" className="h-3.5 w-3.5 text-white/35" />
+
+      <p className="mt-2 truncate text-[14px] font-black text-cyan-200">{selectionLabel}</p>
+
+      <div className="mt-2 grid grid-cols-[0.58fr_1fr_auto] items-center gap-2 border-t border-white/10 pt-2">
+        <div>
+          <p className="text-[7px] font-black uppercase tracking-[0.1em] text-white/30">Odds</p>
+          <p className="text-[12px] font-black text-white/78">{oddsLabel}</p>
+        </div>
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1">
+            <p className="truncate text-[7px] font-black uppercase tracking-[0.1em] text-white/30">Atlas Confidence</p>
+            <span className="group relative grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full border border-cyan-300/25 text-[9px] font-black text-cyan-200" title="Atlas Confidence represents the internal confidence score generated by Atlas.">
+              i
+              <span className="pointer-events-none absolute bottom-5 left-1/2 z-10 hidden w-44 -translate-x-1/2 rounded-[10px] border border-cyan-300/18 bg-[#07111f] px-2 py-1.5 text-center text-[9px] font-semibold normal-case leading-3 tracking-normal text-white/70 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
+                Atlas Confidence represents the internal confidence score generated by Atlas.
+              </span>
+            </span>
+          </div>
+          <p className="text-[12px] font-black text-cyan-200">{confidence}</p>
+        </div>
+        {onRightAction ? (
+          <button
+            type="button"
+            onClick={onRightAction}
+            disabled={rightDisabled}
+            className={`min-w-[76px] rounded-[11px] border px-3 py-2 text-[9px] font-black uppercase tracking-[0.08em] shadow-[0_0_18px_rgba(34,211,238,0.10)] transition duration-200 hover:translate-y-[-1px] active:scale-[0.96] disabled:opacity-85 ${rightClass}`}
+          >
+            {rightLabel}
+          </button>
+        ) : (
+          <span className={`min-w-[76px] rounded-[11px] border px-3 py-2 text-center text-[9px] font-black uppercase tracking-[0.08em] ${rightClass}`}>
+            {rightLabel}
+          </span>
+        )}
+      </div>
+      {footerLabel ? <p className={`mt-1 text-right text-[8px] font-black ${footerClass ?? "text-white/36"}`}>{footerLabel}</p> : null}
     </Container>
   );
 }

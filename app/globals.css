@@ -116,6 +116,17 @@ body {
   }
 }
 
+@keyframes atlasTrackingFade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .atlas-progress-stripes {
   animation: atlas-progress-flow 1.1s linear infinite;
 }
@@ -159,7 +170,8 @@ body {
   .atlas-top-play-trophy,
   .atlas-unlock-cta,
   .atlas-unlock-cta::after,
-  .atlas-view-all-cta {
+  .atlas-view-all-cta,
+  [class*="atlasTrackingFade"] {
     animation: none;
   }
 }
