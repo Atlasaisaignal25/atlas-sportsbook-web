@@ -38,7 +38,7 @@ export function processManualResult(
       ...config,
       manualTracking: syncedTracking,
       updatedAt: settledAt,
-    });
+    }, settledAt);
   }
 
   const syncedPick = syncResult.pick;
@@ -47,7 +47,7 @@ export function processManualResult(
       ...config,
       manualTracking: syncedTracking,
       updatedAt: settledAt,
-    });
+    }, settledAt);
   }
 
   const resultSyncKey = createResultSyncKey(syncedPick, result, settledAt);
@@ -56,7 +56,7 @@ export function processManualResult(
       ...config,
       manualTracking: syncedTracking,
       updatedAt: settledAt,
-    });
+    }, settledAt);
   }
 
   const resultProfit = calculateManualResultProfit(syncedPick, result);
@@ -68,7 +68,7 @@ export function processManualResult(
     ...config,
     manualTracking: updatedTracking,
     updatedAt: settledAt,
-  });
+  }, settledAt);
 }
 
 export function syncManualTrackingWithAtlas(
@@ -92,7 +92,7 @@ export function syncManualTrackingWithAtlas(
       ...currentConfig,
       manualTracking: replaceManualPick(syncedCollection, syncResult.pick, syncedAt),
       updatedAt: syncedAt,
-    });
+    }, syncedAt);
 
     if (!syncResult.valid || !syncResult.atlasPick) return nextConfig;
     if (syncResult.atlasPick.status === "started") return nextConfig;

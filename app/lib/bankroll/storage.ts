@@ -43,7 +43,7 @@ export function saveBankrollConfig(config: BankrollConfig) {
   }
 }
 
-export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig {
+export function normalizeBankrollConfig(config: BankrollConfig, now = new Date().toISOString()): BankrollConfig {
   const currentBankroll = calculateCurrentBankroll(config.currentBankroll);
   const membership = normalizeMembershipContext(config.membership);
   const normalizedBase = {
@@ -72,7 +72,7 @@ export function normalizeBankrollConfig(config: BankrollConfig): BankrollConfig 
     atlasPlanCollection,
     atlasPlan: atlasPlanCollection.primaryPlan ?? syncedLegacyPlan,
     manualTracking: normalizeManualTracking(normalizedBase.manualTracking, normalizedBase.updatedAt, currentBankroll),
-  })));
+  })), now);
 }
 
 export function clearBankrollConfig() {
