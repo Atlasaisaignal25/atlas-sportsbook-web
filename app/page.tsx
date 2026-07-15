@@ -8176,6 +8176,7 @@ function BankrollInsightCard() {
 function BankrollPlanTrackingTabs({
   config,
   manualTracking,
+  availableAtlasPicks,
   activeTab,
   uiState,
   onTabChange,
@@ -8184,6 +8185,7 @@ function BankrollPlanTrackingTabs({
 }: {
   config: BankrollConfig | null;
   manualTracking: ManualTrackingCollection | null;
+  availableAtlasPicks: AtlasTrackingPickOption[];
   activeTab: "atlas" | "manual";
   onTabChange: (tab: "atlas" | "manual") => void;
   uiState: BankrollUIState;
@@ -8278,6 +8280,7 @@ function BankrollPlanTrackingTabs({
         <div className="mt-1.5">
           <MyTrackingDashboard
             manualTracking={displayManualTracking}
+            availableAtlasPicks={availableAtlasPicks}
             analytics={overallTrackingAnalytics}
             periodAnalytics={trackingAnalytics}
             comparison={overallTrackingComparison ?? trackingComparison}
@@ -8299,20 +8302,11 @@ function BankrollPlanTrackingTabs({
 
 function MyTrackingDashboard({
   manualTracking,
-  analytics,
-  periodAnalytics,
-  comparison,
-  history,
-  selectedTrackingPick,
-  trackingRange,
-  calendarDate,
-  onRangeChange,
-  onCalendarDateChange,
-  onCreateManualPick,
+  availableAtlasPicks,
   onOpenPick,
-  onBackFromTimeline,
 }: {
   manualTracking: ManualTrackingCollection;
+  availableAtlasPicks: AtlasTrackingPickOption[];
   analytics: ManualTrackingAnalytics;
   periodAnalytics: ManualTrackingAnalytics;
   comparison: TrackingComparison | null;
@@ -8327,52 +8321,258 @@ function MyTrackingDashboard({
   onBackFromTimeline: () => void;
 }) {
   const activePicks = manualTracking.activePicks.length > 0 ? manualTracking.activePicks : manualTracking.picks.filter((pick) => !isFinalTrackingStatus(pick.status));
+  const [cardPicks, setCardPicks] = useState<AtlasTrackingPickOption[]>([]);
+  const activeLinkedIds = useMemo(() => new Set(activePicks.map((pick) => pick.linkedAtlasPickId).filter(Boolean)), [activePicks]);
+  const cardPickIds = useMemo(() => new Set(cardPicks.map((pick) => pick.id)), [cardPicks]);
+  const sportsbookPicks = useMemo(
+    () => availableAtlasPicks.filter((pick) => !activeLinkedIds.has(pick.id)),
+    [activeLinkedIds, availableAtlasPicks],
+  );
+
+  function handleAddToCard(pick: AtlasTrackingPickOption) {
+    setCardPicks((currentPicks) => (currentPicks.some((item) => item.id === pick.id) ? currentPicks : [pick, ...currentPicks]));
+  }
+
+  function handleRemoveFromCard(pickId: string) {
+    setCardPicks((currentPicks) => currentPicks.filter((pick) => pick.id !== pickId));
+  }
 
   return (
     <div className="grid gap-1.5 pb-3">
-      <MyTrackingSectionBar />
-
-      <ActivePicksList activePicks={activePicks} onCreateManualPick={onCreateManualPick} onOpenPick={onOpenPick} />
-
-      <MyTrackingMetricCard
-        title="Manual Performance"
-        tone="emerald"
-        metrics={[
-          { label: "Manual Bankroll", value: formatCurrency(analytics.currentBankroll), valueClass: "text-emerald-300" },
-          { label: "Profit / Loss", value: formatTrackingProfit(analytics.profit), valueClass: analytics.profit >= 0 ? "text-emerald-300" : "text-red-300" },
-          { label: "ROI", value: formatSignedPercent(analytics.roi), valueClass: analytics.roi >= 0 ? "text-emerald-300" : "text-red-300" },
-          { label: "Win Rate", value: `${formatCompactNumber(analytics.winRate)}%`, valueClass: "text-white" },
-        ]}
+      <AvailableSportsbookPicks
+        picks={sportsbookPicks}
+        cardPickIds={cardPickIds}
+        onAddPick={handleAddToCard}
       />
 
-      <MyTrackingMetricCard
-        title="Performance"
-        tone="cyan"
-        metrics={[
-          { label: "Current Streak", value: formatManualStreak(analytics.currentStreak, analytics.currentStreakType) },
-          { label: "Completed", value: String(analytics.completedPicks) },
-          { label: "Avg Exposure", value: `${formatCompactNumber(analytics.averageRiskPercentage)}%` },
-          { label: "Discipline", value: String(analytics.disciplineScore), valueClass: getDisciplineTextClass(analytics.disciplineScore) },
-        ]}
+      <SportsbookMyCard
+        cardPicks={cardPicks}
+        activePicks={activePicks}
+        onRemoveDraftPick={handleRemoveFromCard}
+        onOpenTrackedPick={onOpenPick}
       />
-
-      {comparison ? <TrackingComparisonCompact comparison={comparison} /> : null}
-
-      <TrackingHistoryCard
-        history={history}
-        totalPicks={periodAnalytics.totalPicks}
-        trackingRange={trackingRange}
-        calendarDate={calendarDate}
-        onRangeChange={onRangeChange}
-        onCalendarDateChange={onCalendarDateChange}
-        onOpenPick={onOpenPick}
-      />
-
-      <MyTrackingInsightCard analytics={analytics} comparison={comparison} />
-
-      {selectedTrackingPick ? <PickTimelineSheet item={selectedTrackingPick} onClose={onBackFromTimeline} /> : null}
     </div>
   );
+}
+
+function AvailableSportsbookPicks({
+  picks,
+  cardPickIds,
+  onAddPick,
+}: {
+  picks: AtlasTrackingPickOption[];
+  cardPickIds: Set<string>;
+  onAddPick: (pick: AtlasTrackingPickOption) => void;
+}) {
+  const visiblePicks = picks.slice(0, 8);
+
+  return (
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Available Picks</p>
+          <p className="mt-0.5 text-[9px] font-semibold text-white/38">Atlas-generated selections ready to add.</p>
+        </div>
+        <div className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
+          Live Board
+        </div>
+      </div>
+
+      {visiblePicks.length > 0 ? (
+        <div className="grid gap-1">
+          {visiblePicks.map((pick) => (
+            <AvailableSportsbookPickRow
+              key={pick.id}
+              pick={pick}
+              added={cardPickIds.has(pick.id)}
+              onAdd={() => onAddPick(pick)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-3">
+          <p className="text-[11px] font-black text-white/68">No Atlas picks available.</p>
+          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Available picks will appear here when Atlas sources are active.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AvailableSportsbookPickRow({
+  pick,
+  added,
+  onAdd,
+}: {
+  pick: AtlasTrackingPickOption;
+  added: boolean;
+  onAdd: () => void;
+}) {
+  const matchup = formatSportsbookMatchup(pick);
+  const confidence = formatPickConfidence(pick);
+
+  return (
+    <div className="grid min-h-[58px] grid-cols-[34px_1fr_54px_48px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5">
+      <div className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/18 bg-emerald-300/[0.08] text-[15px] font-black text-emerald-200">
+        {getSportGlyph(pick.sport)}
+      </div>
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
+          <span className="shrink-0 text-[8px] font-black uppercase text-white/28">vs</span>
+          <p className="truncate text-[11px] font-black text-white/82">{matchup.away}</p>
+        </div>
+        <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
+          <p className="truncate text-[10px] font-black text-emerald-200">{pick.selection}</p>
+          <span className="h-1 w-1 shrink-0 rounded-full bg-white/20" />
+          <p className="truncate text-[9px] font-semibold text-white/38">{pick.market}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="text-[13px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
+        <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.06em] text-cyan-200/75">{confidence}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={added}
+        className={`h-8 rounded-[9px] border px-2 text-[9px] font-black uppercase tracking-[0.1em] ${
+          added
+            ? "border-white/10 bg-white/[0.035] text-white/35"
+            : "border-emerald-300/35 bg-emerald-300 text-black shadow-[0_0_16px_rgba(52,211,153,0.18)]"
+        }`}
+      >
+        {added ? "Added" : "Add"}
+      </button>
+    </div>
+  );
+}
+
+function SportsbookMyCard({
+  cardPicks,
+  activePicks,
+  onRemoveDraftPick,
+  onOpenTrackedPick,
+}: {
+  cardPicks: AtlasTrackingPickOption[];
+  activePicks: ManualTrackingCollection["picks"];
+  onRemoveDraftPick: (pickId: string) => void;
+  onOpenTrackedPick: (pickId: string) => void;
+}) {
+  const hasPicks = cardPicks.length > 0 || activePicks.length > 0;
+
+  return (
+    <div className="rounded-[13px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">My Card</p>
+          <p className="mt-0.5 text-[9px] font-semibold text-white/38">Your Atlas tracking slip.</p>
+        </div>
+        <p className="rounded-full border border-white/10 bg-black/18 px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-white/42">
+          {cardPicks.length + activePicks.length} Picks
+        </p>
+      </div>
+
+      {hasPicks ? (
+        <div className="grid gap-1">
+          {cardPicks.map((pick) => (
+            <SportsbookDraftCardPick key={pick.id} pick={pick} onRemove={() => onRemoveDraftPick(pick.id)} />
+          ))}
+          {activePicks.map((pick) => (
+            <SportsbookTrackedCardPick key={pick.id} pick={pick} onOpen={() => onOpenTrackedPick(pick.id)} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-[12px] border border-dashed border-cyan-300/20 bg-black/16 px-3 py-5 text-center">
+          <div className="mx-auto grid h-10 w-10 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
+            <BankrollUiIcon name="wallet" className="h-5 w-5" />
+          </div>
+          <p className="mt-2 text-[13px] font-black text-white/78">Your Card is Empty.</p>
+          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Add Atlas Picks to begin tracking them.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SportsbookDraftCardPick({ pick, onRemove }: { pick: AtlasTrackingPickOption; onRemove: () => void }) {
+  const matchup = formatSportsbookMatchup(pick);
+
+  return (
+    <div className="grid min-h-[58px] grid-cols-[30px_1fr_58px_58px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5">
+      <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
+        {getSportGlyph(pick.sport)}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
+        <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{matchup.home} vs {matchup.away}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[12px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
+        <p className="mt-0.5 text-[8px] font-bold text-white/32">Return TBD</p>
+      </div>
+      <button type="button" onClick={onRemove} className="h-8 rounded-[9px] border border-red-300/22 bg-red-300/[0.08] px-2 text-[8px] font-black uppercase tracking-[0.08em] text-red-200">
+        Remove
+      </button>
+    </div>
+  );
+}
+
+function SportsbookTrackedCardPick({ pick, onOpen }: { pick: ManualTrackingCollection["picks"][number]; onOpen: () => void }) {
+  const tone = getTrackingStatusTone(pick.status);
+  const potentialReturn = calculatePotentialReturn(pick.riskAmount ?? 0, pick.odds ?? 0);
+
+  return (
+    <button type="button" onClick={onOpen} className="grid min-h-[58px] grid-cols-[30px_1fr_58px_58px_12px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 text-left">
+      <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
+        {getSportGlyph(pick.sport ?? "AT")}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
+        <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market} · {formatSportsbookOdds(pick.odds)}</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[11px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
+        <p className="mt-0.5 text-[8px] font-bold text-white/32">Risk</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
+        <p className={`mt-0.5 text-[8px] font-black uppercase tracking-[0.05em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
+      </div>
+      <BankrollUiIcon name="arrow" className="h-3 w-3 text-white/32" />
+    </button>
+  );
+}
+
+function getSportGlyph(sport: AtlasPlanSport | string) {
+  if (sport === "MLB") return "MLB";
+  if (sport === "NBA") return "NBA";
+  if (sport === "NFL") return "NFL";
+  if (sport === "NHL") return "NHL";
+  if (sport === "SOCCER") return "FC";
+  return "AT";
+}
+
+function formatSportsbookMatchup(pick: Pick<AtlasTrackingPickOption, "homeTeam" | "awayTeam" | "selection">) {
+  if (pick.homeTeam && pick.awayTeam) return { home: pick.homeTeam, away: pick.awayTeam };
+  const cleanSelection = pick.selection.replace(/\s+(ML|RL|Spread|Moneyline|Over|Under|O\/U).*$/i, "").trim();
+  return { home: cleanSelection || "Atlas Pick", away: "Opponent" };
+}
+
+function formatSportsbookOdds(odds: number | null) {
+  if (odds === null || !Number.isFinite(odds)) return "-";
+  return odds > 0 ? `+${odds}` : String(odds);
+}
+
+function formatPickConfidence(pick: AtlasTrackingPickOption) {
+  const confidence = Math.max(74, Math.min(94, 95 - pick.rank * 3));
+  return `${confidence}%`;
+}
+
+function calculatePotentialReturn(riskAmount: number, odds: number) {
+  if (!Number.isFinite(riskAmount) || riskAmount <= 0 || !Number.isFinite(odds) || odds === 0) return 0;
+  const profit = odds > 0 ? riskAmount * (odds / 100) : riskAmount * (100 / Math.abs(odds));
+  return riskAmount + profit;
 }
 
 function MyTrackingSectionBar() {
@@ -9411,6 +9611,7 @@ function AtlasBankrollScreen({
       <BankrollPlanTrackingTabs
         config={config}
         manualTracking={manualTracking}
+        availableAtlasPicks={availableAtlasPicks}
         activeTab={activeBankrollTab}
         onTabChange={setActiveBankrollTab}
         uiState={uiState}
