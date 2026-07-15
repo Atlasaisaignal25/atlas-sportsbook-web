@@ -13,5 +13,6 @@ export * from "./replacement-engine";
 export * from "./result-engine";
 export * from "./storage";
 export * from "./types";
+export * from "./ui-storage";
 export * from "./utils";
 export * from "./weekly-summary-engine";

@@ -20,7 +20,10 @@ export function loadBankrollConfig(): BankrollConfig | null {
     if (!isValidStoredConfig(parsed)) return null;
 
     const normalizedConfig = normalizeBankrollConfig(parsed);
-    window.localStorage.setItem(BANKROLL_CONFIG_STORAGE_KEY, JSON.stringify(normalizedConfig));
+    const normalizedRaw = JSON.stringify(normalizedConfig);
+    if (normalizedRaw !== raw) {
+      window.localStorage.setItem(BANKROLL_CONFIG_STORAGE_KEY, normalizedRaw);
+    }
 
     return normalizedConfig;
   } catch {
@@ -32,7 +35,9 @@ export function saveBankrollConfig(config: BankrollConfig) {
   if (typeof window === "undefined") return;
 
   try {
-    window.localStorage.setItem(BANKROLL_CONFIG_STORAGE_KEY, JSON.stringify(normalizeBankrollConfig(config)));
+    const normalizedRaw = JSON.stringify(normalizeBankrollConfig(config));
+    if (window.localStorage.getItem(BANKROLL_CONFIG_STORAGE_KEY) === normalizedRaw) return;
+    window.localStorage.setItem(BANKROLL_CONFIG_STORAGE_KEY, normalizedRaw);
   } catch {
     // Bankroll remains usable for the current session if local storage is unavailable.
   }

@@ -52,8 +52,10 @@ import {
   loadAvailableAtlasPicks,
   loadManualSummaryHistory,
   loadTrackingHistory,
+  loadBankrollUIState,
   normalizeBankrollConfig,
   saveBankrollConfig,
+  saveBankrollUIState,
   saveManualTracking,
   syncPlans,
   syncManualTrackingWithAtlas,
@@ -77,6 +79,7 @@ import {
   type ComparisonLeader,
   type ManualTrackingCollection,
   type BankrollProfile,
+  type BankrollUIState,
 } from "@/app/lib/bankroll";
 import {
   OfficialSportSelectorRow,
@@ -8165,18 +8168,22 @@ function BankrollPlanTrackingTabs({
   config,
   manualTracking,
   activeTab,
+  uiState,
   onTabChange,
+  onUIStateChange,
   onCreateManualPick,
 }: {
   config: BankrollConfig | null;
   manualTracking: ManualTrackingCollection | null;
   activeTab: "atlas" | "manual";
   onTabChange: (tab: "atlas" | "manual") => void;
+  uiState: BankrollUIState;
+  onUIStateChange: (updates: Partial<BankrollUIState>) => void;
   onCreateManualPick: () => void;
 }) {
-  const [trackingRange, setTrackingRange] = useState<TrackingRange>("today");
-  const [calendarDate, setCalendarDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(null);
+  const [trackingRange, setTrackingRange] = useState<TrackingRange>(uiState.trackingRange);
+  const [calendarDate, setCalendarDate] = useState(uiState.calendarDate);
+  const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(uiState.timelineOpen ? uiState.selectedTrackingPickId : null);
   const displayManualTracking = useMemo(() => manualTracking ?? createManualTracking(new Date().toISOString(), config?.currentBankroll ?? 0), [config?.currentBankroll, manualTracking]);
   const trackingHistory = useMemo(() => loadTrackingHistory(displayManualTracking, trackingRange, calendarDate), [calendarDate, displayManualTracking, trackingRange]);
   const trackingAnalytics = useMemo(() => buildManualAnalytics(displayManualTracking, trackingRange, calendarDate), [calendarDate, displayManualTracking, trackingRange]);
@@ -8185,23 +8192,62 @@ function BankrollPlanTrackingTabs({
   const overallTrackingComparison = useMemo(() => (config ? buildComparison(config, overallTrackingAnalytics, "all_time", calendarDate) : null), [calendarDate, config, overallTrackingAnalytics]);
   const selectedTrackingPick = trackingHistory.picks.find((item) => item.pick.id === selectedTrackingPickId) ?? null;
 
-  useEffect(() => {
+  function handleTabChange(tab: "atlas" | "manual") {
+    onTabChange(tab);
+    if (tab === "atlas") {
+      setSelectedTrackingPickId(null);
+      onUIStateChange({ activeBankrollTab: tab, selectedTrackingPickId: null, timelineOpen: false });
+      return;
+    }
+
+    onUIStateChange({ activeBankrollTab: tab });
+  }
+
+  function handleRangeChange(range: TrackingRange) {
+    setTrackingRange(range);
     setSelectedTrackingPickId(null);
-  }, [trackingRange, calendarDate]);
+    onUIStateChange({
+      trackingRange: range,
+      selectedHistoryPeriod: range,
+      selectedTrackingPickId: null,
+      timelineOpen: false,
+    });
+  }
+
+  function handleCalendarDateChange(date: string) {
+    setCalendarDate(date);
+    setSelectedTrackingPickId(null);
+    onUIStateChange({
+      calendarDate: date,
+      selectedHistoryDate: date,
+      selectedTrackingPickId: null,
+      timelineOpen: false,
+    });
+  }
+
+  function handleOpenPick(pickId: string) {
+    setSelectedTrackingPickId(pickId);
+    onUIStateChange({ selectedTrackingPickId: pickId, timelineOpen: true });
+  }
+
+  function handleCloseTimeline() {
+    setSelectedTrackingPickId(null);
+    onUIStateChange({ selectedTrackingPickId: null, timelineOpen: false });
+  }
 
   return (
     <BankrollShell className="px-2.5 py-2">
       <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
         <button
           type="button"
-          onClick={() => onTabChange("atlas")}
+          onClick={() => handleTabChange("atlas")}
           className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "atlas" ? "bg-emerald-300 text-black" : "text-white/45"}`}
         >
           Atlas Plan
         </button>
         <button
           type="button"
-          onClick={() => onTabChange("manual")}
+          onClick={() => handleTabChange("manual")}
           className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "manual" ? "bg-emerald-300 text-black" : "text-white/45"}`}
         >
           My Tracking
@@ -8230,11 +8276,11 @@ function BankrollPlanTrackingTabs({
             selectedTrackingPick={selectedTrackingPick}
             trackingRange={trackingRange}
             calendarDate={calendarDate}
-            onRangeChange={setTrackingRange}
-            onCalendarDateChange={setCalendarDate}
+            onRangeChange={handleRangeChange}
+            onCalendarDateChange={handleCalendarDateChange}
             onCreateManualPick={onCreateManualPick}
-            onOpenPick={(pickId) => setSelectedTrackingPickId(pickId)}
-            onBackFromTimeline={() => setSelectedTrackingPickId(null)}
+            onOpenPick={handleOpenPick}
+            onBackFromTimeline={handleCloseTimeline}
           />
         </div>
       )}
@@ -9060,9 +9106,12 @@ function BankrollSetupSheet({
   const bankrollValue = validation.valid ? validation.value : 0;
   const recommendedUnit = validation.valid ? calculateRecommendedUnit(bankrollValue, profile) : 0;
   const isEditing = Boolean(config);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!open || wasOpen) return;
 
     setStep("bankroll");
     setBankrollInput(config ? String(config.initialBankroll) : "");
@@ -9258,6 +9307,7 @@ function AtlasBankrollScreen({
   const [resetOpen, setResetOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [manualPickOpen, setManualPickOpen] = useState(false);
+  const [uiState, setUIState] = useState<BankrollUIState | null>(null);
   const [activeBankrollTab, setActiveBankrollTab] = useState<"atlas" | "manual">("atlas");
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
@@ -9271,7 +9321,10 @@ function AtlasBankrollScreen({
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
 
   useEffect(() => {
+    const storedUIState = loadBankrollUIState();
     const storedConfig = loadBankrollConfig();
+    setUIState(storedUIState);
+    setActiveBankrollTab(storedUIState.activeBankrollTab);
     setConfig(storedConfig);
     setHydrated(true);
     setSetupOpen(!storedConfig);
@@ -9317,6 +9370,14 @@ function AtlasBankrollScreen({
     setSetupOpen(true);
   }
 
+  function handleUpdateUIState(updates: Partial<BankrollUIState>) {
+    setUIState((currentState) => {
+      const nextState = { ...(currentState ?? loadBankrollUIState()), ...updates };
+      saveBankrollUIState(nextState);
+      return nextState;
+    });
+  }
+
   function handleSaveManualPick(atlasPick: AtlasTrackingPickOption, input: AtlasTrackedPickInput) {
     if (!config) return;
 
@@ -9328,7 +9389,7 @@ function AtlasBankrollScreen({
     setManualPickOpen(false);
   }
 
-  if (!hydrated) {
+  if (!hydrated || !uiState) {
     return <BankrollHydrationPlaceholder />;
   }
 
@@ -9340,6 +9401,8 @@ function AtlasBankrollScreen({
         manualTracking={manualTracking}
         activeTab={activeBankrollTab}
         onTabChange={setActiveBankrollTab}
+        uiState={uiState}
+        onUIStateChange={handleUpdateUIState}
         onCreateManualPick={() => setManualPickOpen(true)}
       />
       {activeBankrollTab === "atlas" ? (
