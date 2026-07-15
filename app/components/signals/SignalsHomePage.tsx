@@ -1697,7 +1697,7 @@ function FrameSignalDetectedFeed({
                   <span
                     aria-label={completedResult.label}
                     title={completedResult.label}
-                    className={`inline-flex h-6 w-6 translate-y-1.5 items-center justify-center self-center justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                    className={`inline-flex h-6 w-6 translate-y-1.5 -translate-x-1 items-center justify-center self-center justify-self-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
                   >
                     {completedResult.icon}
                   </span>
@@ -2191,7 +2191,7 @@ function SelectedSportSignalRow({
         <span
           aria-label={completedResult.label}
           title={completedResult.label}
-          className={`inline-flex h-6 w-6 translate-y-1.5 items-center justify-center self-center justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+          className={`inline-flex h-6 w-6 translate-y-1.5 -translate-x-1 items-center justify-center self-center justify-self-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
         >
           {completedResult.icon}
         </span>
@@ -2351,7 +2351,7 @@ function SignalExplorerSheet({
                       <span
                         aria-label={completedResult.label}
                         title={completedResult.label}
-                        className={`inline-flex h-6 w-6 translate-y-1.5 items-center justify-center self-center justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                        className={`inline-flex h-6 w-6 translate-y-1.5 -translate-x-1 items-center justify-center self-center justify-self-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
                       >
                         {completedResult.icon}
                       </span>
