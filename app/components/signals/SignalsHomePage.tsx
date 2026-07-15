@@ -618,21 +618,52 @@ function getSignalViewAllResultBadge(status?: string | null) {
 
   if (["WON", "WIN", "WINNER", "W"].includes(normalized)) {
     return {
-      icon: "✅",
+      icon: "✓",
       label: "Won",
-      className: "border-emerald-300/45 bg-emerald-400/10 text-emerald-200",
+      iconClassName: "text-emerald-300",
     };
   }
 
   if (["LOST", "LOSS", "LOSE", "L"].includes(normalized)) {
     return {
-      icon: "❌",
-      label: "Lose",
-      className: "border-rose-300/45 bg-rose-400/10 text-rose-200",
+      icon: "✕",
+      label: "Lost",
+      iconClassName: "text-rose-300",
+    };
+  }
+
+  if (normalized === "PUSH") {
+    return {
+      icon: "—",
+      label: "Push",
+      iconClassName: "text-white/45",
     };
   }
 
   return null;
+}
+
+function formatCompactSignalScore(score?: string | null) {
+  if (!score) return null;
+  const compactMatch = score.match(/^\s*(\d+)\s*[-|]\s*(\d+)\s*$/);
+  if (compactMatch) return `${compactMatch[1]} | ${compactMatch[2]}`;
+
+  const values = Array.from(score.matchAll(/\b\d+\b/g)).map((match) => match[0]);
+  if (values.length >= 2) return `${values[values.length - 2]} | ${values[values.length - 1]}`;
+
+  return null;
+}
+
+function getCompactSignalResultBadge(row: SignalDetectedRow) {
+  const displayStatus = getSignalDisplayStatus(row);
+  const resultBadge = getSignalViewAllResultBadge(displayStatus);
+  const compactScore = formatCompactSignalScore(row.liveScore);
+  if (!resultBadge || !compactScore) return null;
+
+  return {
+    ...resultBadge,
+    score: compactScore,
+  };
 }
 
 function getSignalDisplayStatus(row: SignalDetectedRow) {
@@ -640,7 +671,7 @@ function getSignalDisplayStatus(row: SignalDetectedRow) {
   if (liveStatus) return liveStatus;
 
   const normalized = row.status?.trim().toUpperCase();
-  if (["WON", "LOST", "PUSH", "LIVE", "FINAL"].includes(normalized)) return normalized;
+  if (["WON", "LOST", "PUSH", "LIVE", "FINAL", "CANCELLED"].includes(normalized)) return normalized;
 
   return "PENDING";
 }
@@ -649,10 +680,8 @@ function getSignalStatusClasses(status: string) {
   const normalized = status.toUpperCase();
 
   if (normalized === "LIVE") return "border-emerald-300/45 bg-emerald-400/10 text-emerald-200";
-  if (normalized === "FINAL") return "border-white/22 bg-white/8 text-white/78";
-  if (normalized === "WON") return "border-emerald-300/45 bg-emerald-400/10 text-emerald-200";
-  if (normalized === "LOST") return "border-rose-300/45 bg-rose-400/10 text-rose-200";
-  if (normalized === "PUSH") return "border-amber-300/45 bg-amber-300/10 text-amber-200";
+  if (normalized === "FINAL" || normalized === "CANCELLED") return "border-white/22 bg-white/8 text-white/70";
+  if (normalized === "WON" || normalized === "LOST" || normalized === "PUSH") return "border-white/20 bg-white/8 text-white/78";
 
   return "border-cyan-300/45 bg-cyan-300/10 text-cyan-200";
 }
@@ -661,7 +690,7 @@ function getSignalPrimaryTimeLabel(row: SignalDetectedRow) {
   const status = getSignalDisplayStatus(row);
 
   if (status === "LIVE" || status === "FINAL" || status === "WON" || status === "LOST" || status === "PUSH") {
-    return row.liveScore || row.displayTime || row.time;
+    return row.displayTime || row.time;
   }
 
   return row.displayTime || row.time;
@@ -671,7 +700,7 @@ function getSignalSecondaryTimeLabel(row: SignalDetectedRow) {
   const status = getSignalDisplayStatus(row);
 
   if (status === "LIVE") return row.liveDetail || "Live";
-  if (status === "FINAL" || status === "WON" || status === "LOST" || status === "PUSH") return row.liveDetail || "Final";
+  if (status === "FINAL" || status === "WON" || status === "LOST" || status === "PUSH") return row.liveDetail;
 
   return null;
 }
@@ -1477,7 +1506,7 @@ function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
 
   return (
     <section className="rounded-[17px] border border-white/14 bg-[radial-gradient(circle_at_top_left,rgba(0,213,255,0.08),transparent_36%),linear-gradient(180deg,rgba(6,18,31,0.92),rgba(3,8,20,0.96))] px-3 py-1.5 shadow-[0_0_18px_rgba(0,213,255,0.06)]">
-      <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-cyan-300">TODAY'S ACTIVITY</h2>
+      <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-cyan-300">TODAY&apos;S ACTIVITY</h2>
       <div className="relative mt-1.5 grid grid-cols-5 text-center">
         {metrics.map((metric, index) => {
           const style = stageStyles[index] ?? stageStyles[1];
@@ -1588,7 +1617,7 @@ function FrameSignalDetectedFeed({
           {visibleRows.map((row) => {
             const label = getSportCompetitionLabel(row.sport);
             const displayStatus = getSignalDisplayStatus(row);
-            const resultBadge = getSignalViewAllResultBadge(displayStatus);
+            const compactResultBadge = getCompactSignalResultBadge(row);
             const primaryTime = getSignalPrimaryTimeLabel(row);
             const secondaryTime = getSignalSecondaryTimeLabel(row);
 
@@ -1610,17 +1639,18 @@ function FrameSignalDetectedFeed({
                   <p className="truncate text-[13px] font-semibold text-cyan-300">{formatSignalPickWithOdds(row)}</p>
                 </div>
                 <div className="flex items-center justify-end gap-2">
-                  {resultBadge ? (
+                  {compactResultBadge ? (
                     <span
-                      aria-label={resultBadge.label}
-                      title={resultBadge.label}
-                      className={`rounded-[9px] border px-2 py-1 text-[10px] font-black uppercase ${resultBadge.className}`}
+                      aria-label={compactResultBadge.label}
+                      title={compactResultBadge.label}
+                      className="inline-flex h-[29px] min-w-[58px] items-center justify-center gap-1 rounded-[9px] border border-white/20 bg-white/8 px-2 py-1 text-[8px] font-black uppercase text-white/78"
                     >
-                      <span aria-hidden="true">{resultBadge.icon}</span>
+                      <span>{compactResultBadge.score}</span>
+                      <span aria-hidden="true" className={compactResultBadge.iconClassName}>{compactResultBadge.icon}</span>
                     </span>
                   ) : (
                     <span className={`rounded-[9px] border px-2 py-1 text-[10px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
-                      {displayStatus === "PENDING" ? "Pending" : displayStatus}
+                      {displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
                     </span>
                   )}
                   <span className="min-w-0 text-right">
@@ -1638,7 +1668,7 @@ function FrameSignalDetectedFeed({
       ) : (
         <div className="px-4 py-4">
           <div className="rounded-[16px] border border-cyan-300/16 bg-cyan-300/[0.055] px-4 py-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-300">Today's Monitoring</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-300">Today&apos;s Monitoring</p>
             <p className="mt-1 text-[13px] font-semibold text-white/74">Atlas is tracking the slate and will surface picks as they qualify.</p>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -2072,6 +2102,7 @@ function SelectedSportSignalRow({
   onOpen: () => void;
 }) {
   const displayStatus = getSignalDisplayStatus(row);
+  const compactResultBadge = getCompactSignalResultBadge(row);
   const primaryTime = getSignalPrimaryTimeLabel(row);
   const secondaryTime = getSignalSecondaryTimeLabel(row);
 
@@ -2095,8 +2126,13 @@ function SelectedSportSignalRow({
         <span className="block truncate text-[12px] font-black text-white">{row.matchup}</span>
         <span className="mt-0.5 block truncate text-[11px] font-medium text-cyan-300">{formatSignalPickWithOdds(row)}</span>
       </span>
-      <span className={`justify-self-end rounded-[7px] border px-2 py-1.5 text-[8px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
-        {displayStatus === "PENDING" ? "Pending" : displayStatus}
+      <span className={`inline-flex h-[29px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[7px] border px-2 py-1.5 text-[8px] font-black uppercase ${compactResultBadge ? "border-white/20 bg-white/8 text-white/78" : getSignalStatusClasses(displayStatus)}`}>
+        {compactResultBadge ? (
+          <>
+            <span>{compactResultBadge.score}</span>
+            <span className={compactResultBadge.iconClassName}>{compactResultBadge.icon}</span>
+          </>
+        ) : displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
       </span>
       <span className="text-lg font-light text-white">›</span>
     </button>
@@ -2196,7 +2232,7 @@ function SignalExplorerSheet({
             <div className="relative z-0 isolate overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(6,18,31,0.82),rgba(3,8,20,0.94))]">
               {orderedRows.map((row) => {
                 const displayStatus = getSignalDisplayStatus(row);
-                const resultBadge = getSignalViewAllResultBadge(displayStatus);
+                const compactResultBadge = getCompactSignalResultBadge(row);
                 const primaryTime = getSignalPrimaryTimeLabel(row);
                 const secondaryTime = getSignalSecondaryTimeLabel(row);
 
@@ -2222,17 +2258,18 @@ function SignalExplorerSheet({
                         {formatSignalPickWithOdds(row)}
                       </span>
                     </span>
-                    {resultBadge ? (
+                    {compactResultBadge ? (
                       <span
-                        aria-label={resultBadge.label}
-                        title={resultBadge.label}
-                        className={`inline-flex h-[30px] min-w-[48px] items-center justify-center justify-self-end rounded-[8px] border px-2 py-1 text-[15px] ${resultBadge.className}`}
+                        aria-label={compactResultBadge.label}
+                        title={compactResultBadge.label}
+                        className="inline-flex h-[30px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[8px] border border-white/20 bg-white/8 px-2 py-1 text-[8px] font-black uppercase text-white/78"
                       >
-                        <span aria-hidden="true">{resultBadge.icon}</span>
+                        <span>{compactResultBadge.score}</span>
+                        <span aria-hidden="true" className={compactResultBadge.iconClassName}>{compactResultBadge.icon}</span>
                       </span>
                     ) : (
                       <span className={`justify-self-end rounded-[8px] border px-2 py-1 text-[9px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
-                        {displayStatus === "PENDING" ? "Pending" : displayStatus}
+                        {displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
                       </span>
                     )}
                     <span className="justify-self-end text-right text-[10px] font-semibold leading-tight text-white/58">

@@ -70,6 +70,44 @@ function normalizeStatus(status: string) {
   return "PENDING";
 }
 
+function getDisplayStatus(row: SignalDetectedRow) {
+  const liveStatus = row.liveStatus?.trim().toUpperCase();
+  if (liveStatus) return liveStatus;
+
+  const status = row.status.trim().toUpperCase();
+  if (["WON", "LOST", "PUSH", "CANCELLED", "LIVE", "FINAL"].includes(status)) return status;
+
+  return normalizeStatus(row.status);
+}
+
+function formatCompactSignalScore(score?: string | null) {
+  if (!score) return null;
+  const compactMatch = score.match(/^\s*(\d+)\s*[-|]\s*(\d+)\s*$/);
+  if (compactMatch) return `${compactMatch[1]} | ${compactMatch[2]}`;
+
+  const values = Array.from(score.matchAll(/\b\d+\b/g)).map((match) => match[0]);
+  if (values.length >= 2) return `${values[values.length - 2]} | ${values[values.length - 1]}`;
+
+  return null;
+}
+
+function getCompactResultBadge(row: SignalDetectedRow) {
+  const status = getDisplayStatus(row);
+  const score = formatCompactSignalScore(row.liveScore);
+  if (!score) return null;
+  if (status === "WON") return { score, icon: "✓", iconClassName: "text-emerald-300", label: "Won" };
+  if (status === "LOST") return { score, icon: "✕", iconClassName: "text-rose-300", label: "Lost" };
+  if (status === "PUSH") return { score, icon: "—", iconClassName: "text-white/45", label: "Push" };
+  return null;
+}
+
+function getStatusBadgeClass(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === "CANCELLED" || normalized === "FINAL") return "border-white/20 bg-white/8 text-white/62";
+  if (normalized === "LIVE") return "border-emerald-300/35 bg-emerald-300/10 text-emerald-200";
+  return "border-cyan-400/25 bg-cyan-400/10 text-cyan-300";
+}
+
 function parseTimeValue(time: string) {
   const parsed = Date.parse(`2000-01-01 ${time}`);
   return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
@@ -237,39 +275,49 @@ export function SignalDetectedFeed({
               </button>
             ) : null}
           </div>
-        ) : visibleRows.length > 0 ? visibleRows.map((row) => (
-          <button
-            key={row.id}
-            type="button"
-            onClick={() => onRowOpen?.(row)}
-            aria-label={`Open Signal Detected details for ${row.matchup}`}
-            className="grid min-h-[64px] w-full grid-cols-[76px_1fr_64px_42px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03]"
-          >
-            <span className="grid place-items-center gap-1 text-cyan-300">
-              <SportLineIcon
-                sport={row.sport}
-                className="h-9 w-9 drop-shadow-[0_0_8px_rgba(34,211,238,0.16)]"
-              />
-              <span className="text-[7px] font-black uppercase text-white/72">{getAtlasSportDisplayName(row.sport)}</span>
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[12px] font-bold text-white">{row.matchup}</span>
-              <span className="block truncate text-[12px] font-semibold text-cyan-300">
-                {row.pick === "Signal Detected" ? "Pending" : row.pick}
-                {formatOdds(row.odds) ? (
-                  <span className="ml-1 text-white/58">{formatOdds(row.odds)}</span>
-                ) : null}
+        ) : visibleRows.length > 0 ? visibleRows.map((row) => {
+          const displayStatus = getDisplayStatus(row);
+          const compactBadge = getCompactResultBadge(row);
+
+          return (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() => onRowOpen?.(row)}
+              aria-label={`Open Signal Detected details for ${row.matchup}`}
+              className="grid min-h-[64px] w-full grid-cols-[76px_1fr_64px_42px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03]"
+            >
+              <span className="grid place-items-center gap-1 text-cyan-300">
+                <SportLineIcon
+                  sport={row.sport}
+                  className="h-9 w-9 drop-shadow-[0_0_8px_rgba(34,211,238,0.16)]"
+                />
+                <span className="text-[7px] font-black uppercase text-white/72">{getAtlasSportDisplayName(row.sport)}</span>
               </span>
-            </span>
-            <span className="justify-self-end rounded-[8px] border border-cyan-400/25 bg-cyan-400/10 px-2 py-1.5 text-[8px] font-black uppercase text-cyan-300">
-              {row.status}
-            </span>
-            <span className="text-right text-[10px] font-medium text-white/52">{row.time}</span>
-            <span className="text-white/42">
-              <ArrowIcon />
-            </span>
-          </button>
-        )) : (
+              <span className="min-w-0">
+                <span className="block truncate text-[12px] font-bold text-white">{row.matchup}</span>
+                <span className="block truncate text-[12px] font-semibold text-cyan-300">
+                  {row.pick === "Signal Detected" ? "Pending" : row.pick}
+                  {formatOdds(row.odds) ? (
+                    <span className="ml-1 text-white/58">{formatOdds(row.odds)}</span>
+                  ) : null}
+                </span>
+              </span>
+              <span className={`inline-flex h-[29px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[8px] border px-2 py-1.5 text-[8px] font-black uppercase ${compactBadge ? "border-white/20 bg-white/8 text-white/78" : getStatusBadgeClass(displayStatus)}`}>
+                {compactBadge ? (
+                  <>
+                    <span>{compactBadge.score}</span>
+                    <span className={compactBadge.iconClassName}>{compactBadge.icon}</span>
+                  </>
+                ) : displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
+              </span>
+              <span className="text-right text-[10px] font-medium text-white/52">{row.time}</span>
+              <span className="text-white/42">
+                <ArrowIcon />
+              </span>
+            </button>
+          );
+        }) : (
           <div className="px-4 py-7 text-center">
             <p className="text-[13px] font-black text-white">
               {rows.length === 0 ? "No signals detected yet." : "No signals match this filter."}

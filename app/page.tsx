@@ -3441,7 +3441,26 @@ function getSignalResultBadge(result: string | null | undefined) {
   if (result === "WON") return "WON";
   if (result === "LOST") return "LOST";
   if (result === "PUSH") return "PUSH";
+  if (result === "CANCELLED") return "CANCELLED";
   return "PENDING";
+}
+
+function formatCompactSignalScore(leftScore: string, rightScore: string) {
+  if (leftScore === "-" || rightScore === "-") return null;
+  return `${leftScore} | ${rightScore}`;
+}
+
+function getCompactSignalResultIcon(resultLabel: string) {
+  if (resultLabel === "WON") return { icon: "✓", className: "text-emerald-300" };
+  if (resultLabel === "LOST") return { icon: "✕", className: "text-red-300" };
+  if (resultLabel === "PUSH") return { icon: "—", className: "text-white/45" };
+  return null;
+}
+
+function getSignalResultBadgeClass(resultLabel: string) {
+  if (resultLabel === "CANCELLED") return "border-white/20 bg-white/8 text-white/55";
+  if (resultLabel === "LIVE") return "border-green-400/25 bg-green-500/15 text-green-300";
+  return "border-cyan-400/25 bg-cyan-400/10 text-cyan-300";
 }
 
 function SignalDetectedRow({
@@ -3474,12 +3493,16 @@ function SignalDetectedRow({
       ? "LIVE"
       : "PENDING";
   const oddsLabel = formatAmericanOdds(odds ?? null);
+  const compactScore = formatCompactSignalScore(awayScore, homeScore);
+  const resultIcon = getCompactSignalResultIcon(resultLabel);
+  const showCompactResultBadge = Boolean(resultIcon && compactScore);
+  const hideResultMeta = showCompactResultBadge || resultLabel === "CANCELLED";
   const timeLabel = hasScore
     ? `${awayScore}-${homeScore}`
     : live
     ? getGameMinute(game)
     : formatTime(game.commence_time);
-  const detailLabel = game.completed ? "Final" : live ? getGameMinute(game) : null;
+  const detailLabel = hideResultMeta ? null : game.completed ? null : live ? getGameMinute(game) : null;
 
   return (
     <button
@@ -3506,25 +3529,22 @@ function SignalDetectedRow({
 
       <div className="text-right">
         <span
-          className={`inline-flex rounded-[9px] border px-2 py-0.5 text-[9px] font-black ${
-            resultLabel === "WON"
-              ? "border-green-400/25 bg-green-500/15 text-green-300"
-              : resultLabel === "LOST"
-              ? "border-red-400/25 bg-red-500/15 text-red-300"
-              : resultLabel === "PUSH"
-              ? "border-yellow-400/25 bg-yellow-500/15 text-yellow-300"
-              : resultLabel === "FINAL"
-              ? "border-white/20 bg-white/8 text-white/70"
-              : resultLabel === "LIVE"
-              ? "border-green-400/25 bg-green-500/15 text-green-300"
-              : "border-cyan-400/25 bg-cyan-400/10 text-cyan-300"
+          className={`inline-flex min-w-[58px] items-center justify-center gap-1 rounded-[9px] border px-2 py-0.5 text-[9px] font-black ${
+            showCompactResultBadge ? "border-white/20 bg-white/8 text-white/78" : getSignalResultBadgeClass(resultLabel)
           }`}
         >
-          {resultLabel}
+          {showCompactResultBadge && resultIcon ? (
+            <>
+              <span>{compactScore}</span>
+              <span className={resultIcon.className}>{resultIcon.icon}</span>
+            </>
+          ) : resultLabel === "FINAL" ? "PENDING" : resultLabel}
         </span>
-        <p className="mt-1 whitespace-nowrap text-[10px] font-medium text-white/45">
-          {timeLabel}
-        </p>
+        {!hideResultMeta ? (
+          <p className="mt-1 whitespace-nowrap text-[10px] font-medium text-white/45">
+            {timeLabel}
+          </p>
+        ) : null}
         {detailLabel ? (
           <p className="whitespace-nowrap text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300/70">
             {detailLabel}
@@ -9065,13 +9085,15 @@ function SnapshotDemoInlineBanner({ snapshot }: { snapshot: AtlasDailySnapshot }
 }
 
 function SportsbookQuickAccess({ onOpen }: { onOpen: (view: "performance" | "history" | "analytics") => void }) {
+  const quickAccessItems: Array<{ label: string; subtitle: string; icon: BankrollUiIconName; view: "performance" | "history" | "analytics" }> = [
+    { label: "View Performance", subtitle: "Financial Summary", icon: "bars", view: "performance" },
+    { label: "Signal History", subtitle: "Timeline & Results", icon: "wallet", view: "history" },
+    { label: "View Analytics", subtitle: "Sports & Markets", icon: "target", view: "analytics" },
+  ];
+
   return (
     <div className="grid gap-1">
-      {[
-        { label: "View Performance", subtitle: "Financial Summary", icon: "bars", view: "performance" as const },
-        { label: "Signal History", subtitle: "Timeline & Results", icon: "wallet", view: "history" as const },
-        { label: "View Analytics", subtitle: "Sports & Markets", icon: "target", view: "analytics" as const },
-      ].map((item) => (
+      {quickAccessItems.map((item) => (
         <button
           key={item.view}
           type="button"
@@ -9079,7 +9101,7 @@ function SportsbookQuickAccess({ onOpen }: { onOpen: (view: "performance" | "his
           className="grid min-h-11 grid-cols-[28px_1fr_18px] items-center gap-2 rounded-[12px] border border-cyan-300/14 bg-cyan-300/[0.035] px-2.5 py-1.5 text-left transition duration-200 hover:border-cyan-300/26 hover:bg-cyan-300/[0.06] active:scale-[0.985]"
         >
           <span className="grid h-7 w-7 place-items-center rounded-[9px] border border-cyan-300/18 bg-cyan-300/[0.08] text-cyan-200">
-            <BankrollUiIcon name={item.icon as any} className="h-4 w-4" />
+            <BankrollUiIcon name={item.icon} className="h-4 w-4" />
           </span>
           <span className="min-w-0">
             <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-white/66">{item.label}</span>
@@ -10897,10 +10919,8 @@ const subscriptionPlansBoard = (
               : live
               ? "LIVE"
               : "PENDING";
-          const liveScore = hasScore
-            ? `${getLiveDisplayName(game.away_team)} ${awayScore} · ${getLiveDisplayName(game.home_team)} ${homeScore}`
-            : null;
-          const liveDetail = game.completed ? "Final" : live ? getGameMinute(game) : null;
+          const liveScore = hasScore ? `${awayScore}-${homeScore}` : null;
+          const liveDetail = game.completed ? null : live ? getGameMinute(game) : null;
 
           return [
             {
