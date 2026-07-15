@@ -8800,12 +8800,13 @@ function AvailableSportsbookPicks({
       </div>
 
       {visiblePicks.length > 0 ? (
-        <div className="grid gap-1">
-          {visiblePicks.map((pick) => (
+        <div className="overflow-hidden rounded-[12px] border border-white/10 bg-[#060d19]/72">
+          {visiblePicks.map((pick, index) => (
             <AvailableSportsbookPickRow
               key={pick.id}
               pick={pick}
               added={cardPickIds.has(pick.id)}
+              isLast={index === visiblePicks.length - 1}
               onAdd={() => onAddPick(pick)}
             />
           ))}
@@ -8823,62 +8824,24 @@ function AvailableSportsbookPicks({
 function AvailableSportsbookPickRow({
   pick,
   added,
+  isLast,
   onAdd,
 }: {
   pick: AtlasTrackingPickOption;
   added: boolean;
+  isLast: boolean;
   onAdd: () => void;
 }) {
-  const matchup = formatSportsbookMatchup(pick);
-  const confidence = formatPickConfidence(pick);
-  const selectionLabel = formatSportsbookSelection(pick);
-  const startLabel = formatTime(pick.startTime);
-
   return (
-    <div className="rounded-[12px] border border-white/10 bg-white/[0.026] px-2 py-1.5 transition duration-200">
-      <div className="mb-1 flex min-w-0 items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/34">
-        <span className="text-cyan-200/68">{formatTrackingSportLabel(pick.sport)}</span>
-        <span className="h-1 w-1 rounded-full bg-white/18" />
-        <span className="truncate">{pick.league}</span>
-        <span className="h-1 w-1 rounded-full bg-white/18" />
-        <span className="shrink-0">{startLabel}</span>
-      </div>
-      <div className="grid grid-cols-[1fr_58px] items-center gap-2">
-        <div className="min-w-0">
-          {matchup.away ? (
-            <div className="grid grid-cols-[28px_minmax(0,1fr)_18px_minmax(0,1fr)_28px] items-center gap-1.5">
-              <TeamLogoLabel team={matchup.home} sport={pick.sport} />
-              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
-              <p className="text-center text-[8px] font-black uppercase text-cyan-200/45">vs</p>
-              <p className="truncate text-right text-[11px] font-black text-white/82">{matchup.away}</p>
-              <TeamLogoLabel team={matchup.away} sport={pick.sport} muted />
-            </div>
-          ) : (
-            <div className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-1.5">
-              <TeamLogoLabel team={matchup.home} sport={pick.sport} />
-              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
-            </div>
-          )}
-          <p className="mt-1 truncate text-[11px] font-black text-cyan-100">{selectionLabel}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={added}
-          className={`h-10 rounded-[10px] border px-2.5 text-[9px] font-black uppercase tracking-[0.1em] transition duration-200 active:scale-[0.97] ${
-            added
-              ? "border-emerald-300/20 bg-emerald-300/[0.12] text-emerald-200"
-              : "border-cyan-300/35 bg-cyan-300 text-black shadow-[0_0_16px_rgba(34,211,238,0.2)]"
-          }`}
-        >
-          {added ? "Added ✓" : "Add"}
-        </button>
-      </div>
-      <div className="mt-1 grid grid-cols-[0.72fr_1fr] gap-1.5 border-t border-white/10 pt-1">
-        <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/36">Odds <span className="text-white/70">{formatSportsbookOdds(pick.odds)}</span></p>
-        <p className="text-right text-[8px] font-black uppercase tracking-[0.08em] text-white/36">Atlas Confidence <span className="text-cyan-200/80">{confidence}</span></p>
-      </div>
-    </div>
+    <TrackingSignalListRow
+      pick={pick}
+      isLast={isLast}
+      rightLabel={added ? "Added ✓" : "Add"}
+      rightClass={added ? "border-emerald-300/25 bg-emerald-300/[0.12] text-emerald-200" : "border-cyan-400/30 bg-cyan-400/10 text-cyan-300"}
+      timeLabel={formatTime(pick.startTime)}
+      onRightAction={onAdd}
+      rightDisabled={added}
+    />
   );
 }
 
@@ -9338,6 +9301,15 @@ function formatTrackingSportLabel(sport: AtlasPlanSport | string) {
   return String(sport || "Sport");
 }
 
+function formatTrackingSportCategory(sport: AtlasPlanSport | string | null | undefined) {
+  if (sport === "MLB") return "Baseball";
+  if (sport === "NBA") return "Basketball";
+  if (sport === "NFL") return "Football";
+  if (sport === "NHL") return "Hockey";
+  if (sport === "SOCCER") return "Soccer";
+  return String(sport || "Sport");
+}
+
 function formatSportsbookSelection(pick: { selection: string; market: string; sport?: AtlasPlanSport | string | null }) {
   const selection = pick.selection.trim();
   const totalMatch = selection.match(/^(Over|Under)\s*\(?(-?\d+(?:\.\d+)?)\)?/i);
@@ -9380,7 +9352,7 @@ function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: At
   );
 }
 
-function formatSportsbookMatchup(pick: Pick<AtlasTrackingPickOption, "homeTeam" | "awayTeam" | "selection">) {
+function formatSportsbookMatchup(pick: { homeTeam?: string | null; awayTeam?: string | null; selection: string }) {
   if (pick.homeTeam && pick.awayTeam) return { home: pick.homeTeam, away: pick.awayTeam };
   const cleanSelection = pick.selection.replace(/\s+(ML|RL|Spread|Moneyline|Over|Under|O\/U).*$/i, "").trim();
   return { home: pick.homeTeam || cleanSelection || "Atlas Signal", away: pick.awayTeam || "" };
@@ -9391,9 +9363,21 @@ function formatSportsbookOdds(odds: number | null) {
   return odds > 0 ? `+${odds}` : String(odds);
 }
 
-function formatPickConfidence(pick: AtlasTrackingPickOption) {
-  const confidence = Math.max(74, Math.min(94, 95 - pick.rank * 3));
+function formatTrackingOddsValue(odds: number | string | null | undefined) {
+  const numericOdds = Number(odds);
+  if (!Number.isFinite(numericOdds)) return "-";
+  return formatSportsbookOdds(numericOdds);
+}
+
+function formatPickConfidence(pick: { rank?: number | null }) {
+  const rank = Number.isFinite(Number(pick.rank)) ? Number(pick.rank) : 1;
+  const confidence = Math.max(74, Math.min(94, 95 - rank * 3));
   return `${confidence}%`;
+}
+
+function formatTrackingTimeStack(value: string) {
+  const [time, suffix] = value.split(" ");
+  return suffix ? `${time}\n${suffix}` : value;
 }
 
 function formatSnapshotDate(date: string) {
@@ -9742,49 +9726,112 @@ function ComparisonMetricRow({
 
 function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen: () => void }) {
   const pick = item.pick;
+  return (
+    <TrackingSignalListRow
+      pick={pick}
+      isLast={false}
+      rightLabel={getTrackingResultLabel(pick.status)}
+      rightClass={getTrackingResultPillClass(pick.status)}
+      timeLabel={formatTime(pick.startTime || pick.createdAt)}
+      footerLabel={pick.result ? formatTrackingProfit(pick.profit) : formatTrackingDate(pick.createdAt)}
+      footerClass={pick.result ? (pick.profit >= 0 ? "text-emerald-300" : "text-red-300") : "text-white/40"}
+      onOpen={onOpen}
+    />
+  );
+}
+
+function TrackingSignalListRow({
+  pick,
+  isLast,
+  rightLabel,
+  rightClass,
+  timeLabel,
+  footerLabel,
+  footerClass,
+  rightDisabled = false,
+  onRightAction,
+  onOpen,
+}: {
+  pick: {
+    sport?: AtlasPlanSport | string | null;
+    league?: string | null;
+    homeTeam?: string | null;
+    awayTeam?: string | null;
+    selection: string;
+    market: string;
+    odds?: number | string | null;
+    confidence?: number | null;
+    rank?: number | null;
+  };
+  isLast: boolean;
+  rightLabel: string;
+  rightClass: string;
+  timeLabel: string;
+  footerLabel?: string;
+  footerClass?: string;
+  rightDisabled?: boolean;
+  onRightAction?: () => void;
+  onOpen?: () => void;
+}) {
   const matchup = formatSportsbookMatchup(pick);
   const selectionLabel = formatSportsbookSelection(pick);
-  const resultLabel = getTrackingResultLabel(pick.status);
-  const startLabel = formatTime(pick.startTime || pick.createdAt);
+  const sportLabel = formatTrackingSportCategory(pick.sport ?? "Sport");
+  const oddsLabel = formatTrackingOddsValue(pick.odds);
+  const confidence = formatPickConfidence(pick);
+  const Container = onOpen ? "button" : "div";
 
   return (
-    <button type="button" onClick={onOpen} className="rounded-[12px] border border-white/10 bg-white/[0.026] px-2 py-1.5 text-left transition duration-200">
-      <div className="mb-1 flex min-w-0 items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/34">
-        <span className="text-cyan-200/68">{formatTrackingSportLabel(pick.sport ?? "Sport")}</span>
-        <span className="h-1 w-1 rounded-full bg-white/18" />
-        <span className="truncate">{pick.league}</span>
-        <span className="h-1 w-1 rounded-full bg-white/18" />
-        <span className="shrink-0">{startLabel}</span>
-      </div>
-      <div className="grid grid-cols-[1fr_64px] items-center gap-2">
-        <div className="min-w-0">
-          {matchup.away ? (
-            <div className="grid grid-cols-[28px_minmax(0,1fr)_18px_minmax(0,1fr)_28px] items-center gap-1.5">
-              <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
-              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
-              <p className="text-center text-[8px] font-black uppercase text-cyan-200/45">vs</p>
-              <p className="truncate text-right text-[11px] font-black text-white/82">{matchup.away}</p>
-              <TeamLogoLabel team={matchup.away} sport={pick.sport ?? "AT"} muted />
-            </div>
-          ) : (
-            <div className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-1.5">
-              <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
-              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
-            </div>
-          )}
-          <p className="mt-1 truncate text-[11px] font-black text-cyan-100">{selectionLabel}</p>
+    <Container
+      type={onOpen ? "button" : undefined}
+      onClick={onOpen}
+      className={`grid w-full grid-cols-[86px_minmax(0,1fr)_70px_42px_12px] items-center gap-2 px-3 py-3 text-left transition-all active:scale-[0.995] ${
+        !isLast ? "border-b border-white/10" : ""
+      }`}
+    >
+      <div className="min-w-0">
+        <div className="flex h-10 items-center">
+          <div className="flex -space-x-2">
+            <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
+            {matchup.away ? <TeamLogoLabel team={matchup.away} sport={pick.sport ?? "AT"} muted /> : null}
+          </div>
         </div>
-        <div className={`grid h-10 place-items-center rounded-[10px] border px-1.5 text-[8px] font-black uppercase tracking-[0.08em] ${getTrackingResultPillClass(pick.status)}`}>
-          {resultLabel}
-        </div>
+        <p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.12em] text-white/42">{sportLabel}</p>
       </div>
-      <div className="mt-1 grid grid-cols-4 gap-1 border-t border-white/10 pt-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/36">
-        <p>Odds <span className="text-white/70">{pick.trackedOdds ?? pick.odds ?? "-"}</span></p>
-        <p>Risk <span className="text-violet-200">{formatCurrency(pick.riskAmount)}</span></p>
-        <p className={pick.result ? (pick.profit >= 0 ? "text-emerald-300" : "text-red-300") : "text-white/34"}>{pick.result ? formatTrackingProfit(pick.profit) : "—"}</p>
-        <p className="text-right text-white/34">{formatTrackingDate(pick.createdAt)}</p>
+
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-black text-white">
+          {matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}
+        </p>
+        <p className="mt-0.5 truncate text-[13px] font-black text-cyan-300">
+          {selectionLabel}
+          {oddsLabel !== "-" ? <span className="ml-1 text-white/55">{oddsLabel}</span> : null}
+        </p>
+        <p className="mt-0.5 truncate text-[8px] font-black uppercase tracking-[0.08em] text-white/32">
+          {pick.league ? `${pick.league} · ` : ""}Atlas Confidence <span className="text-cyan-200/72">{confidence}</span>
+        </p>
       </div>
-    </button>
+
+      {onRightAction ? (
+        <button
+          type="button"
+          onClick={onRightAction}
+          disabled={rightDisabled}
+          className={`justify-self-end rounded-[10px] border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] transition duration-200 active:scale-[0.97] ${rightClass}`}
+        >
+          {rightLabel}
+        </button>
+      ) : (
+        <span className={`justify-self-end rounded-[10px] border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${rightClass}`}>
+          {rightLabel}
+        </span>
+      )}
+
+      <div className="text-right">
+        <p className="whitespace-pre-line text-[10px] font-black leading-3 text-white/48">{formatTrackingTimeStack(timeLabel)}</p>
+        {footerLabel ? <p className={`mt-1 truncate text-[8px] font-black ${footerClass ?? "text-white/36"}`}>{footerLabel}</p> : null}
+      </div>
+      <BankrollUiIcon name="arrow" className="h-3.5 w-3.5 text-white/35" />
+    </Container>
   );
 }
 
