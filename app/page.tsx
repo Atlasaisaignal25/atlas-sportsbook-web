@@ -8179,7 +8179,6 @@ function BankrollPlanTrackingTabs({
   const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(null);
   const displayManualTracking = useMemo(() => manualTracking ?? createManualTracking(new Date().toISOString(), config?.currentBankroll ?? 0), [config?.currentBankroll, manualTracking]);
   const trackingHistory = useMemo(() => loadTrackingHistory(displayManualTracking, trackingRange, calendarDate), [calendarDate, displayManualTracking, trackingRange]);
-  const manualSummaryHistory = useMemo(() => loadManualSummaryHistory(displayManualTracking), [displayManualTracking]);
   const trackingAnalytics = useMemo(() => buildManualAnalytics(displayManualTracking, trackingRange, calendarDate), [calendarDate, displayManualTracking, trackingRange]);
   const overallTrackingAnalytics = useMemo(() => buildManualAnalytics(displayManualTracking, "all_time", calendarDate), [calendarDate, displayManualTracking]);
   const trackingComparison = useMemo(() => (config ? buildComparison(config, trackingAnalytics, trackingRange, calendarDate) : null), [calendarDate, config, trackingAnalytics, trackingRange]);
@@ -8229,7 +8228,6 @@ function BankrollPlanTrackingTabs({
             comparison={overallTrackingComparison ?? trackingComparison}
             history={trackingHistory}
             selectedTrackingPick={selectedTrackingPick}
-            currentCycle={manualSummaryHistory.activeCycle?.cycleNumber ?? 1}
             trackingRange={trackingRange}
             calendarDate={calendarDate}
             onRangeChange={setTrackingRange}
@@ -8251,7 +8249,6 @@ function MyTrackingDashboard({
   comparison,
   history,
   selectedTrackingPick,
-  currentCycle,
   trackingRange,
   calendarDate,
   onRangeChange,
@@ -8266,7 +8263,6 @@ function MyTrackingDashboard({
   comparison: TrackingComparison | null;
   history: ReturnType<typeof loadTrackingHistory>;
   selectedTrackingPick: TrackingHistoryPick | null;
-  currentCycle: number;
   trackingRange: TrackingRange;
   calendarDate: string;
   onRangeChange: (range: TrackingRange) => void;
@@ -8276,11 +8272,12 @@ function MyTrackingDashboard({
   onBackFromTimeline: () => void;
 }) {
   const activePicks = manualTracking.activePicks.length > 0 ? manualTracking.activePicks : manualTracking.picks.filter((pick) => !isFinalTrackingStatus(pick.status));
-  const cycleDay = Math.min(7, Math.max(1, new Date().getDay() || 7));
 
   return (
     <div className="grid gap-1.5 pb-3">
-      <MyTrackingHeader currentCycle={currentCycle} cycleDay={cycleDay} />
+      <MyTrackingSectionBar />
+
+      <ActivePicksList activePicks={activePicks} onCreateManualPick={onCreateManualPick} onOpenPick={onOpenPick} />
 
       <MyTrackingMetricCard
         title="Manual Performance"
@@ -8292,8 +8289,6 @@ function MyTrackingDashboard({
           { label: "Win Rate", value: `${formatCompactNumber(analytics.winRate)}%`, valueClass: "text-white" },
         ]}
       />
-
-      <ActivePicksList activePicks={activePicks} onCreateManualPick={onCreateManualPick} onOpenPick={onOpenPick} />
 
       <MyTrackingMetricCard
         title="Performance"
@@ -8325,19 +8320,14 @@ function MyTrackingDashboard({
   );
 }
 
-function MyTrackingHeader({ currentCycle, cycleDay }: { currentCycle: number; cycleDay: number }) {
+function MyTrackingSectionBar() {
   return (
-    <div className="rounded-[14px] border border-emerald-300/15 bg-emerald-300/[0.035] px-2.5 py-1.5 shadow-[0_0_24px_rgba(16,185,129,0.08)]">
-      <div className="flex items-start justify-between gap-3">
+    <div className="px-0.5 py-1">
+      <div className="flex items-center gap-2">
+        <span className="h-7 w-1 rounded-full bg-emerald-300/70 shadow-[0_0_12px_rgba(16,185,129,0.35)]" />
         <div className="min-w-0">
-          <p className="text-[15px] font-black uppercase tracking-[0.1em] text-white">My Tracking</p>
-          <p className="text-[10px] font-bold text-white/50">Track Your Personal Decisions</p>
-        </div>
-        <div className="shrink-0 text-right">
-          <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-300/[0.10] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-emerald-300">Active</span>
-          <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-white/34">Current Cycle</p>
-          <p className="text-[9px] font-black text-white/68">Week {currentCycle}</p>
-          <p className="text-[8px] font-bold text-white/42">Day {cycleDay} / 7</p>
+          <p className="text-[13px] font-black uppercase leading-4 tracking-[0.13em] text-white">My Tracking</p>
+          <p className="text-[10px] font-bold leading-3 text-emerald-200/60">Personal Performance</p>
         </div>
       </div>
     </div>
@@ -8392,7 +8382,6 @@ function ActivePicksList({
       </div>
       {activePicks.length > 0 ? (
         <div className="mt-1.5 grid gap-1">
-          <TrackingTableHeader />
           {activePicks.slice(0, 6).map((pick) => (
             <ActiveTrackingPickRow key={pick.id} pick={pick} onOpen={() => onOpenPick(pick.id)} />
           ))}
@@ -8407,29 +8396,17 @@ function ActivePicksList({
   );
 }
 
-function TrackingTableHeader() {
-  return (
-    <div className="grid grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.62fr_14px] gap-1.5 px-2 text-[7px] font-black uppercase tracking-[0.07em] text-white/28">
-      <span>Sport</span>
-      <span>Selection</span>
-      <span className="text-right">Odds</span>
-      <span className="text-right">Risk</span>
-      <span className="text-right">Status</span>
-      <span />
-    </div>
-  );
-}
-
 function ActiveTrackingPickRow({ pick, onOpen }: { pick: ManualTrackingCollection["picks"][number]; onOpen: () => void }) {
   const tone = getTrackingStatusTone(pick.status);
+  const amount = pick.result ? formatTrackingProfit(pick.profit) : formatCurrency(pick.riskAmount);
+  const amountClass = pick.result ? (pick.profit >= 0 ? "text-emerald-300" : "text-red-300") : "text-violet-200";
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[46px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.62fr_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1 text-left">
+    <button type="button" onClick={onOpen} className="grid min-h-[48px] grid-cols-[0.46fr_1fr_0.62fr_0.54fr_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1 text-left">
       <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
       <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
-      <p className="text-right text-[10px] font-black text-white/55">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
-      <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
       <p className={`truncate text-right text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
+      <p className={`text-right text-[10px] font-black ${amountClass}`}>{amount}</p>
       <BankrollUiIcon name="arrow" className="h-3.5 w-3.5 text-white/35" />
     </button>
   );
@@ -8455,8 +8432,9 @@ function TrackingComparisonCompact({ comparison }: { comparison: TrackingCompari
         <ComparisonMetricRow label="Discipline" atlasValue={String(comparison.atlasDiscipline)} manualValue={String(comparison.manualDiscipline)} leader={comparison.betterDiscipline} />
         </div>
       ) : (
-        <div className="rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-2">
-          <p className="text-[11px] font-black text-white/65">Comparison will appear after both paths have completed picks.</p>
+        <div className="rounded-[10px] border border-white/10 bg-white/[0.025] px-2.5 py-1.5">
+          <p className="text-[11px] font-black text-white/70">No comparison available yet.</p>
+          <p className="mt-0.5 text-[9px] font-semibold leading-4 text-white/40">Comparison starts after both Atlas Plan and My Tracking complete at least one tracked pick.</p>
         </div>
       )}
     </div>
@@ -8494,7 +8472,6 @@ const trackingRangeOptions: Array<{ label: string; value: TrackingRange }> = [
   { label: "This Week", value: "this_week" },
   { label: "Last Week", value: "last_week" },
   { label: "This Month", value: "this_month" },
-  { label: "Calendar", value: "calendar" },
 ];
 
 function TrackingRangeSelector({
@@ -8564,7 +8541,7 @@ function TrackingHistoryCard({
           </div>
         </div>
         <button type="button" onClick={() => onRangeChange("calendar")} className="rounded-[9px] border border-white/10 bg-white/[0.035] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/50">
-          View Calendar
+          Calendar
         </button>
       </div>
       <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={onRangeChange} onCalendarDateChange={onCalendarDateChange} />
@@ -8590,7 +8567,7 @@ function TrackingHistoryList({
   }
 
   return (
-    <div className="mt-1.5 grid max-h-[260px] gap-1.5 overflow-y-auto pr-1">
+    <div className="mt-1 grid max-h-[230px] gap-1.5 overflow-y-auto pr-1">
       {history.groups.map((group) => (
         <div key={group.key}>
           <p className="mb-1 border-b border-white/10 pb-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{group.label}</p>
