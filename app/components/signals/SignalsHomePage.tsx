@@ -2248,8 +2248,8 @@ function SignalExplorerSheet({
             </div>
           ) : (
             <div className="rounded-[18px] border border-white/10 bg-white/[0.025] px-4 py-8 text-center">
-              <p className="text-sm font-black text-white">No signals detected yet.</p>
-              <p className="mt-1 text-xs text-white/58">Atlas continues monitoring today’s market.</p>
+              <p className="text-sm font-black text-white">No Signals Available Today.</p>
+              <p className="mt-1 text-xs text-white/58">Check back when today&apos;s signals become available.</p>
             </div>
           )}
         </div>

@@ -60,14 +60,7 @@ import {
   saveManualTracking,
   syncPlans,
   syncManualTrackingWithAtlas,
-  createSnapshot,
-  createSnapshotFromSources,
-  deactivateDemoMode,
-  activateDemoMode,
   atlasSourcesToTrackingPicks,
-  loadLatestSnapshot,
-  resolveSnapshotMode,
-  snapshotToAtlasSources,
   updateBankrollConfig,
   validateBankroll,
   type AtlasTrackedPickInput,
@@ -4514,10 +4507,6 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
 }>({
   top5: [],
 });
-const [globalSnapshot, setGlobalSnapshot] = useState<AtlasDailySnapshot | null>(null);
-const [globalSnapshotLookupComplete, setGlobalSnapshotLookupComplete] = useState(false);
-const globalSnapshotNowRef = useRef(new Date().toISOString());
-const globalSnapshotLookupRunRef = useRef(0);
 const bankrollAtlasSources = useMemo(
   () =>
     buildBankrollAtlasSources({
@@ -4532,131 +4521,11 @@ const bankrollAtlasSources = useMemo(
     }),
   [mlbSignalsData, mlbTop5Data, nbaSignalsData, nbaTop5Data, nhlSignalsData, nhlTop5Data, soccerSignalsLiveData, soccerTop5LiveData],
 );
-const globalLiveSnapshotPicks = useMemo(() => atlasSourcesToTrackingPicks(bankrollAtlasSources), [bankrollAtlasSources]);
-const globalSnapshotMode = useMemo(() => resolveSnapshotMode(globalLiveSnapshotPicks, globalSnapshot), [globalLiveSnapshotPicks, globalSnapshot]);
-const effectiveBankrollAtlasSources = useMemo(
-  () => (globalSnapshotMode.demoModeEnabled ? snapshotToAtlasSources(globalSnapshotMode.snapshot) : bankrollAtlasSources),
-  [bankrollAtlasSources, globalSnapshotMode.demoModeEnabled, globalSnapshotMode.snapshot],
-);
+const effectiveBankrollAtlasSources = bankrollAtlasSources;
 const bankrollMembership = useMemo(
   () => getBankrollMembershipFromAccess(userAccess, selectedPackSport, effectiveBankrollAtlasSources),
   [effectiveBankrollAtlasSources, selectedPackSport, userAccess],
 );
-
-useEffect(() => {
-  const storedConfig = loadBankrollConfig();
-  const storedSnapshot = loadLatestSnapshot(storedConfig);
-  setGlobalSnapshot(storedSnapshot);
-  if (storedSnapshot) setGlobalSnapshotLookupComplete(true);
-}, []);
-
-useEffect(() => {
-  let cancelled = false;
-
-  async function initializeHistoricalSnapshot() {
-    if (globalLiveSnapshotPicks.length > 0 || globalSnapshot || globalSnapshotLookupComplete) return;
-
-    const storedSnapshot = loadLatestSnapshot(loadBankrollConfig());
-    if (storedSnapshot) {
-      setGlobalSnapshot(storedSnapshot);
-      setGlobalSnapshotLookupComplete(true);
-      return;
-    }
-
-    const lookupRunId = globalSnapshotLookupRunRef.current + 1;
-    globalSnapshotLookupRunRef.current = lookupRunId;
-
-    const { sources, snapshotDate } = await loadHistoricalSnapshotSources();
-    if (cancelled || lookupRunId !== globalSnapshotLookupRunRef.current) return;
-
-    setGlobalSnapshotLookupComplete(true);
-    if (!snapshotDate || atlasSourcesToTrackingPicks(sources).length === 0) return;
-
-    const createdAt = globalSnapshotNowRef.current;
-    const historicalSnapshot = createSnapshotFromSources(sources, {
-      snapshotDate,
-      createdAt,
-      package: bankrollMembership.package,
-    });
-    if (!historicalSnapshot) return;
-
-    setGlobalSnapshot(historicalSnapshot);
-
-    const storedConfig = loadBankrollConfig();
-    if (!storedConfig) return;
-
-    const nextConfig = normalizeBankrollConfig({
-      ...storedConfig,
-      lastGlobalSnapshot: historicalSnapshot,
-      lastAtlasSnapshot: historicalSnapshot,
-      lastSnapshotDate: historicalSnapshot.snapshotDate,
-      demoModeEnabled: true,
-      updatedAt: createdAt,
-    });
-    const currentState = JSON.stringify({
-      lastGlobalSnapshot: storedConfig.lastGlobalSnapshot ?? null,
-      lastAtlasSnapshot: storedConfig.lastAtlasSnapshot ?? null,
-      lastSnapshotDate: storedConfig.lastSnapshotDate ?? null,
-      demoModeEnabled: Boolean(storedConfig.demoModeEnabled),
-    });
-    const nextState = JSON.stringify({
-      lastGlobalSnapshot: nextConfig.lastGlobalSnapshot ?? null,
-      lastAtlasSnapshot: nextConfig.lastAtlasSnapshot ?? null,
-      lastSnapshotDate: nextConfig.lastSnapshotDate ?? null,
-      demoModeEnabled: Boolean(nextConfig.demoModeEnabled),
-    });
-
-    if (currentState !== nextState) saveBankrollConfig(nextConfig);
-  }
-
-  void initializeHistoricalSnapshot();
-
-  return () => {
-    cancelled = true;
-  };
-}, [bankrollMembership.package, globalLiveSnapshotPicks.length, globalSnapshot, globalSnapshotLookupComplete]);
-
-useEffect(() => {
-  const now = globalSnapshotNowRef.current;
-  const liveSnapshot = globalLiveSnapshotPicks.length > 0
-    ? createSnapshotFromSources(bankrollAtlasSources, {
-        createdAt: now,
-        package: bankrollMembership.package,
-      })
-    : null;
-  const nextSnapshot = liveSnapshot ?? globalSnapshot;
-  const nextDemoEnabled = globalLiveSnapshotPicks.length === 0 && Boolean(nextSnapshot?.picks.length);
-
-  if (JSON.stringify(nextSnapshot ?? null) !== JSON.stringify(globalSnapshot ?? null)) {
-    setGlobalSnapshot(nextSnapshot);
-  }
-
-  const storedConfig = loadBankrollConfig();
-  if (!storedConfig) return;
-
-  const nextConfig = normalizeBankrollConfig({
-    ...storedConfig,
-    lastGlobalSnapshot: nextSnapshot,
-    lastAtlasSnapshot: nextSnapshot ?? storedConfig.lastAtlasSnapshot ?? null,
-    lastSnapshotDate: nextSnapshot?.snapshotDate ?? storedConfig.lastSnapshotDate ?? null,
-    demoModeEnabled: nextDemoEnabled,
-    updatedAt: now,
-  });
-  const currentState = JSON.stringify({
-    lastGlobalSnapshot: storedConfig.lastGlobalSnapshot ?? null,
-    lastAtlasSnapshot: storedConfig.lastAtlasSnapshot ?? null,
-    lastSnapshotDate: storedConfig.lastSnapshotDate ?? null,
-    demoModeEnabled: Boolean(storedConfig.demoModeEnabled),
-  });
-  const nextState = JSON.stringify({
-    lastGlobalSnapshot: nextConfig.lastGlobalSnapshot ?? null,
-    lastAtlasSnapshot: nextConfig.lastAtlasSnapshot ?? null,
-    lastSnapshotDate: nextConfig.lastSnapshotDate ?? null,
-    demoModeEnabled: Boolean(nextConfig.demoModeEnabled),
-  });
-
-  if (currentState !== nextState) saveBankrollConfig(nextConfig);
-}, [bankrollAtlasSources, bankrollMembership.package, globalLiveSnapshotPicks.length, globalSnapshot]);
 
 function navigateAppState(
   updates: Partial<{
@@ -8227,12 +8096,13 @@ function BankrollPlanCard({
 }) {
   const statusTone = atlasPlan ? getPlanStatusTone(atlasPlan.status) : "pending";
   const manualSelectionRequired = Boolean(planCollection?.manualSelectionRequired);
-  const activePackage = atlasPlan ? formatPlanPackage(atlasPlan.package) : planCollection?.manualSelectionRequired ? "Free" : atlasBankrollMock.plan.package;
+  const planUnavailable = !atlasPlan && !manualSelectionRequired;
+  const activePackage = atlasPlan ? formatPlanPackage(atlasPlan.package) : planCollection?.manualSelectionRequired ? "Free" : "-";
   const rows = [
     ["Package", activePackage],
-    ["Status", atlasPlan ? formatPlanStatus(atlasPlan.status) : manualSelectionRequired ? "Manual Required" : atlasBankrollMock.plan.status],
-    ["Sport", atlasPlan?.sport ?? atlasBankrollMock.plan.sport],
-    ["Plan Unit", atlasPlan ? formatCurrency(atlasPlan.riskAmount) : manualSelectionRequired ? "$0" : metrics ? formatCurrency(metrics.recommendedUnit) : atlasBankrollMock.plan.unit],
+    ["Status", atlasPlan ? formatPlanStatus(atlasPlan.status) : manualSelectionRequired ? "Manual Required" : "Unavailable"],
+    ["Sport", atlasPlan?.sport ?? "-"],
+    ["Plan Unit", atlasPlan ? formatCurrency(atlasPlan.riskAmount) : manualSelectionRequired ? "$0" : "-"],
   ];
 
   return (
@@ -8251,7 +8121,10 @@ function BankrollPlanCard({
       <div className="mt-2 grid grid-cols-[1.2fr_1fr] items-end gap-2.5">
         <div className="min-w-0">
           <p className="text-[8.5px] font-black uppercase tracking-[0.11em] text-white/42">Today&apos;s Signal</p>
-          <p className="mt-0.5 text-[30px] font-black leading-none tracking-tight text-white">{atlasPlan?.selection ?? (manualSelectionRequired ? "Manual Selection Required" : atlasBankrollMock.plan.pick)}</p>
+          <p className={`mt-0.5 font-black leading-none tracking-tight text-white ${planUnavailable ? "text-[20px]" : "text-[30px]"}`}>
+            {atlasPlan?.selection ?? (manualSelectionRequired ? "Manual Selection Required" : "No Atlas Plan Available Today.")}
+          </p>
+          {planUnavailable ? <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Check back when today&apos;s Atlas recommendations become available.</p> : null}
         </div>
         <div className="grid grid-cols-2 gap-x-2.5 gap-y-1">
           {rows.map(([label, value]) => (
@@ -8813,8 +8686,8 @@ function AvailableSportsbookPicks({
         </div>
       ) : (
         <div className="rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-3">
-          <p className="text-[11px] font-black text-white/68">No Signals Available Today</p>
-          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Atlas signals will appear here when sources are active.</p>
+          <p className="text-[11px] font-black text-white/68">No Signals Available.</p>
+          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Add Signals when today&apos;s Atlas recommendations become available.</p>
         </div>
       )}
     </div>
@@ -10574,7 +10447,6 @@ function BankrollResetSheet({
 function AtlasBankrollScreen({
   atlasSources,
   membership,
-  globalDemoModeEnabled = false,
 }: {
   atlasSources: AtlasPackageSources;
   membership: {
@@ -10582,7 +10454,6 @@ function AtlasBankrollScreen({
     selectedSport: AtlasPlanSport | null;
     availableSports: AtlasPlanSport[];
   };
-  globalDemoModeEnabled?: boolean;
 }) {
   const [config, setConfig] = useState<BankrollConfig | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -10596,14 +10467,9 @@ function AtlasBankrollScreen({
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
   const liveAvailableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks({ ...config, membership }, bankrollRenderNowRef.current, atlasSources) : []), [atlasSources, config, membership]);
-  const latestSnapshot = useMemo(() => loadLatestSnapshot(config), [config]);
-  const snapshotMode = useMemo(() => resolveSnapshotMode(liveAvailableAtlasPicks, latestSnapshot), [latestSnapshot, liveAvailableAtlasPicks]);
-  const bankrollDemoModeEnabled = globalDemoModeEnabled || snapshotMode.demoModeEnabled;
-  const bankrollDemoSnapshot = snapshotMode.snapshot ?? latestSnapshot;
-  const effectiveAtlasSources = useMemo(
-    () => (bankrollDemoModeEnabled ? snapshotToAtlasSources(bankrollDemoSnapshot) : atlasSources),
-    [atlasSources, bankrollDemoModeEnabled, bankrollDemoSnapshot],
-  );
+  const bankrollDemoModeEnabled = false;
+  const bankrollDemoSnapshot = null;
+  const effectiveAtlasSources = atlasSources;
   const planCollection = useMemo(
     () => (config && metrics ? syncPlans(config.atlasPlanCollection, membership, metrics, bankrollRenderNowRef.current, effectiveAtlasSources) : config?.atlasPlanCollection ?? null),
     [config, effectiveAtlasSources, membership, metrics],
@@ -10613,7 +10479,7 @@ function AtlasBankrollScreen({
   const manualTracking = config?.manualTracking ?? null;
   const sourceAtlasPicks = useMemo(() => atlasSourcesToTrackingPicks(effectiveAtlasSources), [effectiveAtlasSources]);
   const availableAtlasPicks = useMemo(
-    () => snapshotMode.picks.map((pick) => {
+    () => liveAvailableAtlasPicks.map((pick) => {
       const sourcePick = sourceAtlasPicks.find((candidate) => candidate.id === pick.id);
       if (!sourcePick) return pick;
 
@@ -10628,7 +10494,7 @@ function AtlasBankrollScreen({
         startTime: pick.startTime || sourcePick.startTime,
       };
     }),
-    [snapshotMode.picks, sourceAtlasPicks],
+    [liveAvailableAtlasPicks, sourceAtlasPicks],
   );
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
 
@@ -10657,39 +10523,6 @@ function AtlasBankrollScreen({
     saveBankrollConfig(nextConfig);
     setConfig(nextConfig);
   }, [config, membership]);
-
-  useEffect(() => {
-    if (!config) return;
-    if (globalDemoModeEnabled) return;
-
-    const nextSnapshot = liveAvailableAtlasPicks.length > 0
-      ? createSnapshot(liveAvailableAtlasPicks, {
-          createdAt: bankrollRenderNowRef.current,
-          package: membership.package,
-        })
-      : latestSnapshot;
-    const nextConfig = liveAvailableAtlasPicks.length > 0 && nextSnapshot
-      ? deactivateDemoMode(config, nextSnapshot, bankrollRenderNowRef.current)
-      : nextSnapshot
-        ? activateDemoMode(config, nextSnapshot, bankrollRenderNowRef.current)
-        : deactivateDemoMode(config, null, bankrollRenderNowRef.current);
-    const currentSnapshotState = JSON.stringify({
-      lastAtlasSnapshot: config.lastAtlasSnapshot ?? null,
-      lastSnapshotDate: config.lastSnapshotDate ?? null,
-      demoModeEnabled: Boolean(config.demoModeEnabled),
-    });
-    const nextSnapshotState = JSON.stringify({
-      lastAtlasSnapshot: nextConfig.lastAtlasSnapshot ?? null,
-      lastSnapshotDate: nextConfig.lastSnapshotDate ?? null,
-      demoModeEnabled: Boolean(nextConfig.demoModeEnabled),
-    });
-
-    if (currentSnapshotState === nextSnapshotState) return;
-
-    const normalizedConfig = normalizeBankrollConfig(nextConfig);
-    saveBankrollConfig(normalizedConfig);
-    setConfig(normalizedConfig);
-  }, [config, globalDemoModeEnabled, latestSnapshot, liveAvailableAtlasPicks, membership.package]);
 
   useEffect(() => {
     if (!config || availableAtlasPicks.length === 0 || !config.manualTracking?.picks.length) return;
@@ -10767,7 +10600,6 @@ function AtlasBankrollScreen({
         onCreateManualPick={() => setManualPickOpen(true)}
         onTrackPick={handleSaveManualPick}
       />
-      {activeBankrollTab === "atlas" && bankrollDemoModeEnabled && bankrollDemoSnapshot ? <SnapshotDemoBanner snapshot={bankrollDemoSnapshot} /> : null}
       {activeBankrollTab === "atlas" ? (
         atlasPlanLockedForFree ? (
           <AtlasPlanUpgradePlaceholder />
@@ -11123,21 +10955,18 @@ const subscriptionPlansBoard = (
         };
       })
     );
-    const effectiveSignalHomeRows = signalHomeRows.length > 0 ? signalHomeRows : snapshotPicksToSignalRows(globalSnapshotMode.picks, globalSnapshotMode.snapshot);
-    const effectiveSignalsLiveRows = signalsLiveRows.length > 0 ? signalsLiveRows : snapshotPicksToLiveRows(globalSnapshotMode.picks, globalSnapshotMode.snapshot);
-
     return (
       <SignalsHomePage
         topPlay={precisionTopPlay}
         topSignals={precisionTopSignals}
-        signalRows={effectiveSignalHomeRows}
-        liveRows={effectiveSignalsLiveRows}
+        signalRows={signalHomeRows}
+        liveRows={signalsLiveRows}
         liveLoading={liveLoading}
         liveErrorMessage={null}
-        signalGroupCount={effectiveSignalHomeRows.length}
+        signalGroupCount={signalHomeRows.length}
         activeSection={appSection}
-        demoModeEnabled={globalSnapshotMode.demoModeEnabled}
-        demoSnapshotDate={globalSnapshotMode.snapshot?.snapshotDate ?? null}
+        demoModeEnabled={false}
+        demoSnapshotDate={null}
         loading={precisionLoading}
         errorMessage={precisionError}
         journeyMessage={signalsJourneyMessage}
@@ -13179,7 +13008,7 @@ const subscriptionPlansBoard = (
             )}
           </div>
         ) : appSection === "bankroll" ? (
-          <AtlasBankrollScreen atlasSources={effectiveBankrollAtlasSources} membership={bankrollMembership} globalDemoModeEnabled={globalSnapshotMode.demoModeEnabled} />
+          <AtlasBankrollScreen atlasSources={effectiveBankrollAtlasSources} membership={bankrollMembership} />
         ) : false ? (
           <div className="space-y-3">
             <div className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-5">
