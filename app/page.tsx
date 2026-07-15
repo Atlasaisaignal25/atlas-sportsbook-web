@@ -8078,7 +8078,7 @@ function BankrollWeeklyCard() {
   ];
 
   return (
-    <BankrollShell className="px-2.5 py-2">
+    <BankrollShell className="px-2 py-1.5">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <BankrollUiIcon name="bars" className="h-6 w-6 text-emerald-300" />
@@ -8164,13 +8164,16 @@ function BankrollInsightCard() {
 function BankrollPlanTrackingTabs({
   config,
   manualTracking,
+  activeTab,
+  onTabChange,
   onCreateManualPick,
 }: {
   config: BankrollConfig | null;
   manualTracking: ManualTrackingCollection | null;
+  activeTab: "atlas" | "manual";
+  onTabChange: (tab: "atlas" | "manual") => void;
   onCreateManualPick: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"atlas" | "manual">("atlas");
   const [trackingRange, setTrackingRange] = useState<TrackingRange>("today");
   const [calendarDate, setCalendarDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedTrackingPickId, setSelectedTrackingPickId] = useState<string | null>(null);
@@ -8192,49 +8195,51 @@ function BankrollPlanTrackingTabs({
       <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
         <button
           type="button"
-          onClick={() => setActiveTab("atlas")}
+          onClick={() => onTabChange("atlas")}
           className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "atlas" ? "bg-emerald-300 text-black" : "text-white/45"}`}
         >
           Atlas Plan
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("manual")}
+          onClick={() => onTabChange("manual")}
           className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "manual" ? "bg-emerald-300 text-black" : "text-white/45"}`}
         >
           My Tracking
         </button>
       </div>
-      <div className="mt-1.5 grid grid-cols-[28px_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.035] px-2.5 py-1.5">
-        <div className="grid h-7 w-7 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
-          <BankrollUiIcon name="wallet" className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          {activeTab === "atlas" ? (
+      {activeTab === "atlas" ? (
+        <div className="mt-1.5 grid grid-cols-[28px_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.035] px-2.5 py-1.5">
+          <div className="grid h-7 w-7 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+            <BankrollUiIcon name="wallet" className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
             <>
               <p className="text-[12px] font-black text-white/72">Atlas Plan tracking.</p>
               <p className="mt-0.5 text-[10px] leading-4 text-white/45">Automatic Atlas signals remain separate from manual tracking.</p>
             </>
-          ) : (
-            <MyTrackingDashboard
-              manualTracking={displayManualTracking}
-              analytics={overallTrackingAnalytics}
-              periodAnalytics={trackingAnalytics}
-              comparison={overallTrackingComparison ?? trackingComparison}
-              history={trackingHistory}
-              selectedTrackingPick={selectedTrackingPick}
-              currentCycle={manualSummaryHistory.activeCycle?.cycleNumber ?? 1}
-              trackingRange={trackingRange}
-              calendarDate={calendarDate}
-              onRangeChange={setTrackingRange}
-              onCalendarDateChange={setCalendarDate}
-              onCreateManualPick={onCreateManualPick}
-              onOpenPick={(pickId) => setSelectedTrackingPickId(pickId)}
-              onBackFromTimeline={() => setSelectedTrackingPickId(null)}
-            />
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-1.5">
+          <MyTrackingDashboard
+            manualTracking={displayManualTracking}
+            analytics={overallTrackingAnalytics}
+            periodAnalytics={trackingAnalytics}
+            comparison={overallTrackingComparison ?? trackingComparison}
+            history={trackingHistory}
+            selectedTrackingPick={selectedTrackingPick}
+            currentCycle={manualSummaryHistory.activeCycle?.cycleNumber ?? 1}
+            trackingRange={trackingRange}
+            calendarDate={calendarDate}
+            onRangeChange={setTrackingRange}
+            onCalendarDateChange={setCalendarDate}
+            onCreateManualPick={onCreateManualPick}
+            onOpenPick={(pickId) => setSelectedTrackingPickId(pickId)}
+            onBackFromTimeline={() => setSelectedTrackingPickId(null)}
+          />
+        </div>
+      )}
     </BankrollShell>
   );
 }
@@ -8274,7 +8279,7 @@ function MyTrackingDashboard({
   const cycleDay = Math.min(7, Math.max(1, new Date().getDay() || 7));
 
   return (
-    <div className="grid gap-2 pb-3">
+    <div className="grid gap-1.5 pb-3">
       <MyTrackingHeader currentCycle={currentCycle} cycleDay={cycleDay} />
 
       <MyTrackingMetricCard
@@ -8322,17 +8327,17 @@ function MyTrackingDashboard({
 
 function MyTrackingHeader({ currentCycle, cycleDay }: { currentCycle: number; cycleDay: number }) {
   return (
-    <div className="rounded-[15px] border border-emerald-300/15 bg-emerald-300/[0.035] px-3 py-2 shadow-[0_0_24px_rgba(16,185,129,0.08)]">
+    <div className="rounded-[14px] border border-emerald-300/15 bg-emerald-300/[0.035] px-2.5 py-1.5 shadow-[0_0_24px_rgba(16,185,129,0.08)]">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[17px] font-black uppercase tracking-[0.1em] text-white">My Tracking</p>
-          <p className="mt-0.5 text-[11px] font-bold text-white/50">Track Your Personal Decisions</p>
+          <p className="text-[15px] font-black uppercase tracking-[0.1em] text-white">My Tracking</p>
+          <p className="text-[10px] font-bold text-white/50">Track Your Personal Decisions</p>
         </div>
         <div className="shrink-0 text-right">
-          <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-300/[0.10] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-300">Active</span>
-          <p className="mt-1 text-[8px] font-black uppercase tracking-[0.14em] text-white/34">Current Cycle</p>
-          <p className="text-[10px] font-black text-white/68">Week {currentCycle}</p>
-          <p className="text-[9px] font-bold text-white/42">Day {cycleDay} / 7</p>
+          <span className="inline-flex rounded-full border border-emerald-300/35 bg-emerald-300/[0.10] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-emerald-300">Active</span>
+          <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-white/34">Current Cycle</p>
+          <p className="text-[9px] font-black text-white/68">Week {currentCycle}</p>
+          <p className="text-[8px] font-bold text-white/42">Day {cycleDay} / 7</p>
         </div>
       </div>
     </div>
@@ -8351,13 +8356,13 @@ function MyTrackingMetricCard({
   const titleClass = tone === "emerald" ? "text-emerald-300" : "text-cyan-300";
 
   return (
-    <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
-      <p className={`mb-1.5 text-[9px] font-black uppercase tracking-[0.16em] ${titleClass}`}>{title}</p>
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
+      <p className={`mb-1 text-[8px] font-black uppercase tracking-[0.15em] ${titleClass}`}>{title}</p>
       <div className="grid grid-cols-4 divide-x divide-white/10 text-center">
         {metrics.map((metric) => (
           <div key={metric.label} className="min-w-0 px-1 first:pl-0 last:pr-0">
             <p className="min-h-[18px] text-[7px] font-black uppercase leading-[9px] tracking-[0.07em] text-white/35">{metric.label}</p>
-            <p className={`mt-0.5 truncate text-[13px] font-black leading-tight ${metric.valueClass ?? "text-white"}`}>{metric.value}</p>
+            <p className={`truncate text-[13px] font-black leading-tight ${metric.valueClass ?? "text-white"}`}>{metric.value}</p>
           </div>
         ))}
       </div>
@@ -8375,18 +8380,18 @@ function ActivePicksList({
   onOpenPick: (pickId: string) => void;
 }) {
   return (
-    <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <BankrollUiIcon name="target" className="h-4 w-4 text-emerald-300" />
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Active Picks</p>
         </div>
-        <button type="button" onClick={onCreateManualPick} className="rounded-[10px] border border-emerald-300/30 bg-emerald-300/[0.10] px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
+        <button type="button" onClick={onCreateManualPick} className="rounded-[9px] border border-emerald-300/30 bg-emerald-300/[0.10] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
           + Add Pick
         </button>
       </div>
       {activePicks.length > 0 ? (
-        <div className="mt-2 grid gap-1">
+        <div className="mt-1.5 grid gap-1">
           <TrackingTableHeader />
           {activePicks.slice(0, 6).map((pick) => (
             <ActiveTrackingPickRow key={pick.id} pick={pick} onOpen={() => onOpenPick(pick.id)} />
@@ -8419,7 +8424,7 @@ function ActiveTrackingPickRow({ pick, onOpen }: { pick: ManualTrackingCollectio
   const tone = getTrackingStatusTone(pick.status);
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[48px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.62fr_14px] items-center gap-1.5 rounded-[11px] border border-white/10 bg-white/[0.025] px-2 py-1.5 text-left">
+    <button type="button" onClick={onOpen} className="grid min-h-[46px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.62fr_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1 text-left">
       <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
       <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
       <p className="text-right text-[10px] font-black text-white/55">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
@@ -8432,8 +8437,8 @@ function ActiveTrackingPickRow({ pick, onOpen }: { pick: ManualTrackingCollectio
 
 function TrackingComparisonCompact({ comparison }: { comparison: TrackingComparison }) {
   return (
-    <div className="rounded-[14px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2.5">
-      <div className="mb-2 flex items-center justify-between gap-2">
+    <div className="rounded-[13px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Atlas vs My Tracking</p>
         <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">Cycle Comparison</p>
       </div>
@@ -8462,7 +8467,7 @@ function MyTrackingInsightCard({ analytics, comparison }: { analytics: ManualTra
   const insight = comparison?.insights[0] ?? (analytics.disciplineScore >= 85 ? "Your discipline has remained consistent this week." : "Keep each tracked decision aligned with your plan.");
 
   return (
-    <div className="rounded-[14px] border border-sky-300/15 bg-sky-300/[0.035] px-3 py-2.5">
+    <div className="rounded-[13px] border border-sky-300/15 bg-sky-300/[0.035] px-2.5 py-2">
       <div className="grid grid-cols-[28px_1fr_auto] items-center gap-2">
         <div className="grid h-7 w-7 place-items-center rounded-full border border-sky-300/25 bg-sky-300/10 text-sky-300">
           <BankrollUiIcon name="bulb" className="h-4 w-4" />
@@ -8471,7 +8476,7 @@ function MyTrackingInsightCard({ analytics, comparison }: { analytics: ManualTra
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-300">Insight</p>
           <p className="mt-0.5 text-[11px] font-semibold leading-4 text-white/64">{insight}</p>
         </div>
-        <button type="button" className="rounded-[10px] border border-sky-300/20 bg-sky-300/[0.06] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-sky-200">
+        <button type="button" className="rounded-[9px] border border-sky-300/20 bg-sky-300/[0.06] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-sky-200">
           View More
         </button>
       </div>
@@ -8504,14 +8509,14 @@ function TrackingRangeSelector({
   onCalendarDateChange: (date: string) => void;
 }) {
   return (
-    <div className="mt-2">
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
+    <div className="mt-1.5">
+      <div className="flex gap-1 overflow-x-auto pb-1">
         {trackingRangeOptions.map((option) => (
           <button
             key={option.value}
             type="button"
             onClick={() => onRangeChange(option.value)}
-            className={`shrink-0 rounded-[10px] border px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] ${
+            className={`shrink-0 rounded-[9px] border px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] ${
               range === option.value ? "border-emerald-300/45 bg-emerald-300/[0.12] text-emerald-200" : "border-white/10 bg-black/18 text-white/42"
             }`}
           >
@@ -8549,7 +8554,7 @@ function TrackingHistoryCard({
   onOpenPick: (pickId: string) => void;
 }) {
   return (
-    <div className="rounded-[14px] border border-white/10 bg-black/18 p-2.5">
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <BankrollUiIcon name="wallet" className="h-4 w-4 text-emerald-300" />
@@ -8558,7 +8563,7 @@ function TrackingHistoryCard({
             <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totalPicks} tracked this period</p>
           </div>
         </div>
-        <button type="button" onClick={() => onRangeChange("calendar")} className="rounded-[10px] border border-white/10 bg-white/[0.035] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/50">
+        <button type="button" onClick={() => onRangeChange("calendar")} className="rounded-[9px] border border-white/10 bg-white/[0.035] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/50">
           View Calendar
         </button>
       </div>
@@ -8585,7 +8590,7 @@ function TrackingHistoryList({
   }
 
   return (
-    <div className="mt-2 grid max-h-[285px] gap-2 overflow-y-auto pr-1">
+    <div className="mt-1.5 grid max-h-[260px] gap-1.5 overflow-y-auto pr-1">
       {history.groups.map((group) => (
         <div key={group.key}>
           <p className="mb-1 border-b border-white/10 pb-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{group.label}</p>
@@ -8626,7 +8631,7 @@ function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen:
   const tone = getTrackingStatusTone(pick.status);
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[50px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.6fr_14px] items-center gap-1.5 rounded-[11px] border border-white/10 bg-black/16 px-2 py-1.5 text-left">
+    <button type="button" onClick={onOpen} className="grid min-h-[46px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.6fr_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-black/16 px-2 py-1 text-left">
       <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
       <div className="min-w-0">
         <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
@@ -9276,6 +9281,7 @@ function AtlasBankrollScreen({
   const [resetOpen, setResetOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [manualPickOpen, setManualPickOpen] = useState(false);
+  const [activeBankrollTab, setActiveBankrollTab] = useState<"atlas" | "manual">("atlas");
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
   const planCollection = useMemo(
@@ -9352,12 +9358,22 @@ function AtlasBankrollScreen({
   return (
     <div className="space-y-2.5">
       <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
-      <BankrollPlanTrackingTabs config={config} manualTracking={manualTracking} onCreateManualPick={() => setManualPickOpen(true)} />
-      <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
-      <BankrollSummaryCard config={config} metrics={metrics} />
-      <BankrollWeeklyCard />
-      <BankrollPerformanceCard metrics={metrics} />
-      <BankrollInsightCard />
+      <BankrollPlanTrackingTabs
+        config={config}
+        manualTracking={manualTracking}
+        activeTab={activeBankrollTab}
+        onTabChange={setActiveBankrollTab}
+        onCreateManualPick={() => setManualPickOpen(true)}
+      />
+      {activeBankrollTab === "atlas" ? (
+        <>
+          <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
+          <BankrollSummaryCard config={config} metrics={metrics} />
+          <BankrollWeeklyCard />
+          <BankrollPerformanceCard metrics={metrics} />
+          <BankrollInsightCard />
+        </>
+      ) : null}
       <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
       <ManualPickCreatorSheet
         open={manualPickOpen}
