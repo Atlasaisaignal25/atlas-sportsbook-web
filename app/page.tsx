@@ -8303,7 +8303,17 @@ function BankrollPlanTrackingTabs({
 function MyTrackingDashboard({
   manualTracking,
   availableAtlasPicks,
+  analytics,
+  periodAnalytics,
+  comparison,
+  history,
+  selectedTrackingPick,
+  trackingRange,
+  calendarDate,
+  onRangeChange,
+  onCalendarDateChange,
   onOpenPick,
+  onBackFromTimeline,
 }: {
   manualTracking: ManualTrackingCollection;
   availableAtlasPicks: AtlasTrackingPickOption[];
@@ -8321,20 +8331,78 @@ function MyTrackingDashboard({
   onBackFromTimeline: () => void;
 }) {
   const activePicks = manualTracking.activePicks.length > 0 ? manualTracking.activePicks : manualTracking.picks.filter((pick) => !isFinalTrackingStatus(pick.status));
-  const [cardPicks, setCardPicks] = useState<AtlasTrackingPickOption[]>([]);
+  const [secondaryView, setSecondaryView] = useState<"main" | "performance" | "history" | "analytics">("main");
+  const [cardPicks, setCardPicks] = useState<SportsbookCardPick[]>([]);
+  const defaultCardRisk = manualTracking.manualFinancialState.recommendedUnit || manualTracking.manualFinancialState.currentBankroll * ATLAS_RECOMMENDED_PERCENTAGE;
   const activeLinkedIds = useMemo(() => new Set(activePicks.map((pick) => pick.linkedAtlasPickId).filter(Boolean)), [activePicks]);
-  const cardPickIds = useMemo(() => new Set(cardPicks.map((pick) => pick.id)), [cardPicks]);
+  const cardPickIds = useMemo(() => new Set(cardPicks.map((item) => item.pick.id)), [cardPicks]);
   const sportsbookPicks = useMemo(
     () => availableAtlasPicks.filter((pick) => !activeLinkedIds.has(pick.id)),
     [activeLinkedIds, availableAtlasPicks],
   );
 
   function handleAddToCard(pick: AtlasTrackingPickOption) {
-    setCardPicks((currentPicks) => (currentPicks.some((item) => item.id === pick.id) ? currentPicks : [pick, ...currentPicks]));
+    setCardPicks((currentPicks) => (currentPicks.some((item) => item.pick.id === pick.id) ? currentPicks : [{ pick, riskAmount: defaultCardRisk }, ...currentPicks]));
   }
 
   function handleRemoveFromCard(pickId: string) {
-    setCardPicks((currentPicks) => currentPicks.filter((pick) => pick.id !== pickId));
+    setCardPicks((currentPicks) => currentPicks.filter((item) => item.pick.id !== pickId));
+  }
+
+  if (secondaryView === "performance") {
+    return (
+      <MyTrackingSecondaryPanel title="Performance" onBack={() => setSecondaryView("main")}>
+        <MyTrackingMetricCard
+          title="Manual Performance"
+          tone="emerald"
+          metrics={[
+            { label: "Manual Bankroll", value: formatCurrency(analytics.currentBankroll), valueClass: "text-emerald-300" },
+            { label: "Profit / Loss", value: formatTrackingProfit(analytics.profit), valueClass: analytics.profit >= 0 ? "text-emerald-300" : "text-red-300" },
+            { label: "ROI", value: formatSignedPercent(analytics.roi), valueClass: analytics.roi >= 0 ? "text-emerald-300" : "text-red-300" },
+            { label: "Win Rate", value: `${formatCompactNumber(analytics.winRate)}%`, valueClass: "text-white" },
+          ]}
+        />
+        <MyTrackingMetricCard
+          title="Discipline"
+          tone="cyan"
+          metrics={[
+            { label: "Current Streak", value: formatManualStreak(analytics.currentStreak, analytics.currentStreakType) },
+            { label: "Completed", value: String(analytics.completedPicks) },
+            { label: "Avg Exposure", value: `${formatCompactNumber(analytics.averageRiskPercentage)}%` },
+            { label: "Score", value: String(analytics.disciplineScore), valueClass: getDisciplineTextClass(analytics.disciplineScore) },
+          ]}
+        />
+        <ManualSummarySnapshot manualTracking={manualTracking} />
+      </MyTrackingSecondaryPanel>
+    );
+  }
+
+  if (secondaryView === "history") {
+    return (
+      <MyTrackingSecondaryPanel title="History" onBack={() => setSecondaryView("main")}>
+        <TrackingHistoryCard
+          history={history}
+          totalPicks={periodAnalytics.totalPicks}
+          trackingRange={trackingRange}
+          calendarDate={calendarDate}
+          onRangeChange={onRangeChange}
+          onCalendarDateChange={onCalendarDateChange}
+          onOpenPick={onOpenPick}
+        />
+        {selectedTrackingPick ? <PickTimelineSheet item={selectedTrackingPick} onClose={onBackFromTimeline} /> : null}
+      </MyTrackingSecondaryPanel>
+    );
+  }
+
+  if (secondaryView === "analytics") {
+    return (
+      <MyTrackingSecondaryPanel title="Analytics" onBack={() => setSecondaryView("main")}>
+        {comparison ? <TrackingComparisonCompact comparison={comparison} /> : null}
+        <ManualBreakdownCard title="Performance By Sport" groups={analytics.performanceBySport} />
+        <ManualBreakdownCard title="Performance By Market" groups={analytics.performanceByMarket} />
+        <MyTrackingInsightCard analytics={analytics} comparison={comparison} />
+      </MyTrackingSecondaryPanel>
+    );
   }
 
   return (
@@ -8351,9 +8419,15 @@ function MyTrackingDashboard({
         onRemoveDraftPick={handleRemoveFromCard}
         onOpenTrackedPick={onOpenPick}
       />
+      <SportsbookQuickAccess onOpen={setSecondaryView} />
     </div>
   );
 }
+
+type SportsbookCardPick = {
+  pick: AtlasTrackingPickOption;
+  riskAmount: number;
+};
 
 function AvailableSportsbookPicks({
   picks,
@@ -8365,13 +8439,14 @@ function AvailableSportsbookPicks({
   onAddPick: (pick: AtlasTrackingPickOption) => void;
 }) {
   const visiblePicks = picks.slice(0, 8);
+  const availabilityLabel = picks.length > 0 ? `${picks.length} Picks Available Today` : "No Picks Available Today";
 
   return (
     <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Available Picks</p>
-          <p className="mt-0.5 text-[9px] font-semibold text-white/38">Atlas-generated selections ready to add.</p>
+          <p className="mt-0.5 text-[10px] font-black text-white/58">{availabilityLabel}</p>
         </div>
         <div className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
           Live Board
@@ -8391,8 +8466,8 @@ function AvailableSportsbookPicks({
         </div>
       ) : (
         <div className="rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-3">
-          <p className="text-[11px] font-black text-white/68">No Atlas picks available.</p>
-          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Available picks will appear here when Atlas sources are active.</p>
+          <p className="text-[11px] font-black text-white/68">No Picks Available Today</p>
+          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Atlas picks will appear here when sources are active.</p>
         </div>
       )}
     </div>
@@ -8436,13 +8511,13 @@ function AvailableSportsbookPickRow({
         type="button"
         onClick={onAdd}
         disabled={added}
-        className={`h-8 rounded-[9px] border px-2 text-[9px] font-black uppercase tracking-[0.1em] ${
+        className={`h-8 rounded-[9px] border px-2 text-[9px] font-black uppercase tracking-[0.1em] transition duration-200 ${
           added
-            ? "border-white/10 bg-white/[0.035] text-white/35"
+            ? "border-emerald-300/20 bg-emerald-300/[0.12] text-emerald-200"
             : "border-emerald-300/35 bg-emerald-300 text-black shadow-[0_0_16px_rgba(52,211,153,0.18)]"
         }`}
       >
-        {added ? "Added" : "Add"}
+        {added ? "Added ✓" : "Add"}
       </button>
     </div>
   );
@@ -8454,40 +8529,51 @@ function SportsbookMyCard({
   onRemoveDraftPick,
   onOpenTrackedPick,
 }: {
-  cardPicks: AtlasTrackingPickOption[];
+  cardPicks: SportsbookCardPick[];
   activePicks: ManualTrackingCollection["picks"];
   onRemoveDraftPick: (pickId: string) => void;
   onOpenTrackedPick: (pickId: string) => void;
 }) {
   const hasPicks = cardPicks.length > 0 || activePicks.length > 0;
+  const totals = calculateSportsbookCardTotals(cardPicks, activePicks);
 
   return (
     <div className="rounded-[13px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
+      <div className="mb-1.5 grid gap-1.5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">My Card</p>
-          <p className="mt-0.5 text-[9px] font-semibold text-white/38">Your Atlas tracking slip.</p>
         </div>
-        <p className="rounded-full border border-white/10 bg-black/18 px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-white/42">
-          {cardPicks.length + activePicks.length} Picks
-        </p>
+        <div className="grid grid-cols-3 divide-x divide-white/10 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1 text-center">
+          <div>
+            <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Total Picks</p>
+            <p className="text-[11px] font-black text-white">{totals.count}</p>
+          </div>
+          <div>
+            <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Risk</p>
+            <p className="text-[11px] font-black text-violet-200">{formatCurrency(totals.risk)}</p>
+          </div>
+          <div>
+            <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Potential Return</p>
+            <p className="text-[11px] font-black text-emerald-200">{formatCurrency(totals.returnAmount)}</p>
+          </div>
+        </div>
       </div>
 
       {hasPicks ? (
         <div className="grid gap-1">
-          {cardPicks.map((pick) => (
-            <SportsbookDraftCardPick key={pick.id} pick={pick} onRemove={() => onRemoveDraftPick(pick.id)} />
+          {cardPicks.map((item) => (
+            <SportsbookDraftCardPick key={item.pick.id} item={item} onRemove={() => onRemoveDraftPick(item.pick.id)} />
           ))}
           {activePicks.map((pick) => (
             <SportsbookTrackedCardPick key={pick.id} pick={pick} onOpen={() => onOpenTrackedPick(pick.id)} />
           ))}
         </div>
       ) : (
-        <div className="rounded-[12px] border border-dashed border-cyan-300/20 bg-black/16 px-3 py-5 text-center">
-          <div className="mx-auto grid h-10 w-10 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
+        <div className="rounded-[12px] border border-dashed border-cyan-300/20 bg-black/16 px-3 py-3 text-center">
+          <div className="mx-auto grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
             <BankrollUiIcon name="wallet" className="h-5 w-5" />
           </div>
-          <p className="mt-2 text-[13px] font-black text-white/78">Your Card is Empty.</p>
+          <p className="mt-1.5 text-[13px] font-black text-white/78">Your Card is Empty</p>
           <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Add Atlas Picks to begin tracking them.</p>
         </div>
       )}
@@ -8495,21 +8581,32 @@ function SportsbookMyCard({
   );
 }
 
-function SportsbookDraftCardPick({ pick, onRemove }: { pick: AtlasTrackingPickOption; onRemove: () => void }) {
+function SportsbookDraftCardPick({ item, onRemove }: { item: SportsbookCardPick; onRemove: () => void }) {
+  const { pick, riskAmount } = item;
   const matchup = formatSportsbookMatchup(pick);
+  const potentialReturn = calculatePotentialReturn(riskAmount, pick.odds);
 
   return (
-    <div className="grid min-h-[58px] grid-cols-[30px_1fr_58px_58px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5">
+    <div className="grid min-h-[62px] grid-cols-[30px_1fr_60px_62px_54px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 transition duration-200">
       <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
         {getSportGlyph(pick.sport)}
       </div>
       <div className="min-w-0">
         <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
-        <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{matchup.home} vs {matchup.away}</p>
+        <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market}</p>
+        <p className="mt-0.5 truncate text-[8px] font-semibold text-white/28">{matchup.home} vs {matchup.away}</p>
       </div>
       <div className="text-right">
         <p className="text-[12px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
-        <p className="mt-0.5 text-[8px] font-bold text-white/32">Return TBD</p>
+        <p className="mt-0.5 text-[8px] font-bold text-amber-200">Pending</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[11px] font-black text-violet-200">{formatCurrency(riskAmount)}</p>
+        <p className="mt-0.5 text-[8px] font-bold text-white/32">Risk</p>
+      </div>
+      <div className="text-right">
+        <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
+        <p className="mt-0.5 text-[8px] font-bold text-white/32">Return</p>
       </div>
       <button type="button" onClick={onRemove} className="h-8 rounded-[9px] border border-red-300/22 bg-red-300/[0.08] px-2 text-[8px] font-black uppercase tracking-[0.08em] text-red-200">
         Remove
@@ -8523,7 +8620,7 @@ function SportsbookTrackedCardPick({ pick, onOpen }: { pick: ManualTrackingColle
   const potentialReturn = calculatePotentialReturn(pick.riskAmount ?? 0, pick.odds ?? 0);
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[58px] grid-cols-[30px_1fr_58px_58px_12px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 text-left">
+    <button type="button" onClick={onOpen} className="grid min-h-[62px] grid-cols-[30px_1fr_58px_58px_12px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 text-left">
       <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
         {getSportGlyph(pick.sport ?? "AT")}
       </div>
@@ -8541,6 +8638,98 @@ function SportsbookTrackedCardPick({ pick, onOpen }: { pick: ManualTrackingColle
       </div>
       <BankrollUiIcon name="arrow" className="h-3 w-3 text-white/32" />
     </button>
+  );
+}
+
+function SportsbookQuickAccess({ onOpen }: { onOpen: (view: "performance" | "history" | "analytics") => void }) {
+  return (
+    <div className="grid gap-1">
+      {[
+        { label: "View Performance", view: "performance" as const },
+        { label: "View History", view: "history" as const },
+        { label: "View Analytics", view: "analytics" as const },
+      ].map((item) => (
+        <button
+          key={item.view}
+          type="button"
+          onClick={() => onOpen(item.view)}
+          className="flex h-9 items-center justify-between rounded-[11px] border border-white/10 bg-black/18 px-3 text-left text-[10px] font-black uppercase tracking-[0.12em] text-white/62"
+        >
+          <span>{item.label}</span>
+          <span className="text-emerald-300">→</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MyTrackingSecondaryPanel({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
+  return (
+    <div className="grid gap-1.5 pb-3">
+      <div className="flex h-10 items-center justify-between rounded-[13px] border border-white/10 bg-black/18 px-2.5">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">{title}</p>
+        <button type="button" onClick={onBack} className="rounded-[9px] border border-white/10 bg-white/[0.035] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-white/55">
+          Back
+        </button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ManualSummarySnapshot({ manualTracking }: { manualTracking: ManualTrackingCollection }) {
+  const latestWeekly = manualTracking.manualWeeklySummaries.at(-1);
+  const latestMonthly = manualTracking.manualMonthlySummaries.at(-1);
+
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      <ManualSummaryMiniCard
+        title="Weekly"
+        value={latestWeekly ? formatSignedPercent(latestWeekly.roi) : "No Data"}
+        detail={latestWeekly ? `${latestWeekly.completedPicks} completed` : "Summary pending"}
+      />
+      <ManualSummaryMiniCard
+        title="Monthly"
+        value={latestMonthly ? formatSignedPercent(latestMonthly.roi) : "No Data"}
+        detail={latestMonthly ? `${latestMonthly.completedPicks} completed` : "Summary pending"}
+      />
+    </div>
+  );
+}
+
+function ManualSummaryMiniCard({ title, value, detail }: { title: string; value: string; detail: string }) {
+  return (
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
+      <p className="text-[8px] font-black uppercase tracking-[0.14em] text-white/36">{title}</p>
+      <p className="mt-1 text-[13px] font-black text-white">{value}</p>
+      <p className="mt-0.5 text-[9px] font-semibold text-white/40">{detail}</p>
+    </div>
+  );
+}
+
+function ManualBreakdownCard({ title, groups }: { title: string; groups: ManualTrackingAnalytics["performanceBySport"] }) {
+  const visibleGroups = groups.slice(0, 4);
+
+  return (
+    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
+      <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">{title}</p>
+      {visibleGroups.length > 0 ? (
+        <div className="grid gap-1">
+          {visibleGroups.map((group) => (
+            <div key={group.key} className="grid grid-cols-[1fr_44px_52px_52px] items-center gap-2 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1.5">
+              <p className="truncate text-[10px] font-black text-white/72">{group.label}</p>
+              <p className="text-right text-[9px] font-bold text-white/38">{group.picks} picks</p>
+              <p className="text-right text-[10px] font-black text-white">{formatCompactNumber(group.winRate)}%</p>
+              <p className={`text-right text-[10px] font-black ${group.profit >= 0 ? "text-emerald-300" : "text-red-300"}`}>{formatTrackingProfit(group.profit)}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-[10px] border border-white/10 bg-white/[0.025] px-2.5 py-2">
+          <p className="text-[10px] font-semibold text-white/42">Analytics will appear after tracked picks are completed.</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -8573,6 +8762,19 @@ function calculatePotentialReturn(riskAmount: number, odds: number) {
   if (!Number.isFinite(riskAmount) || riskAmount <= 0 || !Number.isFinite(odds) || odds === 0) return 0;
   const profit = odds > 0 ? riskAmount * (odds / 100) : riskAmount * (100 / Math.abs(odds));
   return riskAmount + profit;
+}
+
+function calculateSportsbookCardTotals(cardPicks: SportsbookCardPick[], activePicks: ManualTrackingCollection["picks"]) {
+  const draftRisk = cardPicks.reduce((sum, item) => sum + item.riskAmount, 0);
+  const trackedRisk = activePicks.reduce((sum, pick) => sum + (pick.riskAmount ?? 0), 0);
+  const draftReturn = cardPicks.reduce((sum, item) => sum + calculatePotentialReturn(item.riskAmount, item.pick.odds), 0);
+  const trackedReturn = activePicks.reduce((sum, pick) => sum + calculatePotentialReturn(pick.riskAmount ?? 0, pick.odds ?? 0), 0);
+
+  return {
+    count: cardPicks.length + activePicks.length,
+    risk: draftRisk + trackedRisk,
+    returnAmount: draftReturn + trackedReturn,
+  };
 }
 
 function MyTrackingSectionBar() {
