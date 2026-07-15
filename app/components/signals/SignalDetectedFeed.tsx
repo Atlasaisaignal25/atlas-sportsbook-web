@@ -335,8 +335,18 @@ export function SignalDetectedFeed({
               type="button"
               onClick={() => onRowOpen?.(row)}
               aria-label={`Open Signal Detected details for ${row.matchup}`}
-              className={`grid min-h-[64px] w-full grid-cols-[76px_1fr_92px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03] ${completedResult?.rowClassName ?? ""}`}
+              className={`relative grid min-h-[64px] w-full grid-cols-[76px_1fr_92px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03] ${completedResult?.rowClassName ?? ""}`}
             >
+              {completedResult?.icon ? (
+                <span
+                  aria-label={completedResult.label}
+                  title={completedResult.label}
+                  className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                >
+                  {completedResult.icon}
+                </span>
+              ) : null}
+
               <span className="grid place-items-center gap-1 text-cyan-300">
                 <SportLineIcon
                   sport={row.sport}
@@ -354,17 +364,13 @@ export function SignalDetectedFeed({
                 </span>
               </span>
               {completedResult ? (
-                <span className="flex flex-col items-end justify-self-end">
+                <span className="flex min-w-[76px] flex-col items-center justify-self-center">
                   <span className="text-[7px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
                   {completedResult.score ? (
-                    <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+                    <span className="mt-1 whitespace-nowrap text-[19px] font-black leading-none text-white">
                       {completedResult.score}
                     </span>
                   ) : null}
-                  <span className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[8px] border px-2 py-1 text-[8px] font-black uppercase ${completedResult.badgeClassName}`}>
-                    {completedResult.icon ? <span className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
-                    <span>{completedResult.label}</span>
-                  </span>
                 </span>
               ) : (
                 <span className="flex items-center justify-self-end gap-2">

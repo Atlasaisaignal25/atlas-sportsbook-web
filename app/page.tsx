@@ -3540,12 +3540,22 @@ function SignalDetectedRow({
     <button
       type="button"
       onClick={onOpen}
-      className={`grid w-full grid-cols-[62px_minmax(0,1fr)_86px_14px] items-center gap-2.5 px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
+      className={`relative grid w-full grid-cols-[62px_minmax(0,1fr)_88px_14px] items-center gap-2.5 px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
         completedResult?.cardClassName ?? ""
       } ${
         !isLast ? "border-b border-white/10" : ""
       }`}
     >
+      {showCompletedResult && completedResult?.icon ? (
+        <span
+          aria-label={completedResult.label}
+          title={completedResult.label}
+          className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+        >
+          {completedResult.icon}
+        </span>
+      ) : null}
+
       <div className="flex items-center gap-2">
         <SportMark sport={sport} size="sm" />
         <span className="text-[10px] font-black text-white/64">{sport}</span>
@@ -3561,21 +3571,15 @@ function SignalDetectedRow({
         </p>
       </div>
 
-      <div className="text-right">
+      <div className={showCompletedResult ? "justify-self-center text-center" : "text-right"}>
         {showCompletedResult && completedResult ? (
-          <div className="flex flex-col items-end">
+          <div className="flex min-w-[76px] flex-col items-center">
             <span className="text-[8px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
             {finalScore ? (
-              <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+              <span className="mt-1 whitespace-nowrap text-[19px] font-black leading-none text-white">
                 {finalScore}
               </span>
             ) : null}
-            <span
-              className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[9px] border px-2 py-1 text-[9px] font-black uppercase ${completedResult.badgeClassName}`}
-            >
-              {completedResult.icon ? <span aria-hidden="true">{completedResult.icon}</span> : null}
-              <span>{completedResult.label}</span>
-            </span>
           </div>
         ) : (
           <span

@@ -1653,8 +1653,18 @@ function FrameSignalDetectedFeed({
                 key={row.id}
                 type="button"
                 onClick={() => onRowOpen(row)}
-                className={`grid min-h-[60px] w-full grid-cols-[74px_minmax(0,1fr)_92px_20px] items-center gap-2 border-b border-white/10 px-3 py-1.5 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
+                className={`relative grid min-h-[60px] w-full grid-cols-[74px_minmax(0,1fr)_92px_20px] items-center gap-2 border-b border-white/10 px-3 py-1.5 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
               >
+                {completedResult?.icon ? (
+                  <span
+                    aria-label={completedResult.label}
+                    title={completedResult.label}
+                    className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                  >
+                    {completedResult.icon}
+                  </span>
+                ) : null}
+
                 <div className="grid place-items-center gap-1">
                   <SignalTeamLogoStack row={row} />
                   <span className="max-w-[72px] truncate text-[8px] font-black uppercase tracking-[0.03em] text-white/58">
@@ -1665,19 +1675,15 @@ function FrameSignalDetectedFeed({
                   <p className="truncate text-[13px] font-black text-white">{row.matchup}</p>
                   <p className="truncate text-[13px] font-semibold text-cyan-300">{formatSignalPickWithOdds(row)}</p>
                 </div>
-                <div className="flex items-center justify-end gap-2">
+                <div className={completedResult ? "flex items-center justify-center" : "flex items-center justify-end gap-2"}>
                   {completedResult ? (
-                    <span className="flex flex-col items-end">
+                    <span className="flex min-w-[76px] flex-col items-center">
                       <span className="text-[7px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
                       {completedResult.score ? (
-                        <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+                        <span className="mt-1 whitespace-nowrap text-[19px] font-black leading-none text-white">
                           {completedResult.score}
                         </span>
                       ) : null}
-                      <span className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[9px] border px-2 py-1 text-[8px] font-black uppercase ${completedResult.badgeClassName}`}>
-                        {completedResult.icon ? <span aria-hidden="true" className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
-                        <span>{completedResult.label}</span>
-                      </span>
                     </span>
                   ) : (
                     <>
@@ -2143,38 +2149,43 @@ function SelectedSportSignalRow({
     <button
       type="button"
       onClick={onOpen}
-      className={`grid min-h-[66px] w-full grid-cols-[50px_56px_minmax(0,1fr)_68px_12px] items-center gap-2 rounded-[14px] border border-white/10 bg-[linear-gradient(135deg,rgba(6,24,42,0.92),rgba(3,8,20,0.94))] px-2.5 text-left shadow-[inset_0_0_30px_rgba(34,211,238,0.03)] transition hover:border-cyan-300/25 ${completedResult?.cardClassName ?? ""}`}
+      className={`relative grid min-h-[66px] w-full ${
+        completedResult ? "grid-cols-[50px_minmax(0,1fr)_88px_12px]" : "grid-cols-[50px_56px_minmax(0,1fr)_68px_12px]"
+      } items-center gap-2 rounded-[14px] border border-white/10 bg-[linear-gradient(135deg,rgba(6,24,42,0.92),rgba(3,8,20,0.94))] px-2.5 text-left shadow-[inset_0_0_30px_rgba(34,211,238,0.03)] transition hover:border-cyan-300/25 ${completedResult?.cardClassName ?? ""}`}
     >
+      {completedResult?.icon ? (
+        <span
+          aria-label={completedResult.label}
+          title={completedResult.label}
+          className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+        >
+          {completedResult.icon}
+        </span>
+      ) : null}
+
       <span className="grid place-items-center gap-1 border-r border-cyan-300/20 pr-3 text-cyan-300">
         <SignalTeamLogoStack row={row} size="compact" />
         <span className="text-[7px] font-black uppercase text-white">{selectedSportLabels[sport]}</span>
       </span>
-      <span className="border-r border-cyan-300/20 pr-2 text-[11px] font-black leading-tight text-white">
-        {completedResult ? (
-          <>
-            <span className="block text-[7px] uppercase tracking-[0.14em] text-white/45">Final</span>
-            {completedResult.score ? (
-              <span className="mt-0.5 block whitespace-nowrap text-[16px] leading-none text-white">{completedResult.score}</span>
-            ) : null}
-          </>
-        ) : (
-          <>
+      {!completedResult ? (
+        <span className="border-r border-cyan-300/20 pr-2 text-[11px] font-black leading-tight text-white">
             <span className="block">{formatSelectedSportTime(primaryTime)}</span>
             {secondaryTime ? (
               <span className="mt-0.5 block text-[8px] uppercase tracking-[0.08em] text-cyan-300/75">{secondaryTime}</span>
             ) : null}
-          </>
-        )}
-      </span>
+        </span>
+      ) : null}
       <span className="min-w-0">
         <span className="block truncate text-[12px] font-black text-white">{row.matchup}</span>
         <span className="mt-0.5 block truncate text-[11px] font-medium text-cyan-300">{formatSignalPickWithOdds(row)}</span>
       </span>
-      <span className={`inline-flex min-h-[29px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[7px] border px-2 py-1.5 text-[8px] font-black uppercase ${completedResult ? completedResult.badgeClassName : getSignalStatusClasses(displayStatus)}`}>
+      <span className={`justify-self-center ${completedResult ? "flex min-w-[76px] flex-col items-center" : `inline-flex min-h-[29px] min-w-[58px] items-center justify-center gap-1 rounded-[7px] border px-2 py-1.5 text-[8px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}`}>
         {completedResult ? (
           <>
-            {completedResult.icon ? <span className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
-            <span>{completedResult.label}</span>
+            <span className="text-[7px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
+            {completedResult.score ? (
+              <span className="mt-1 whitespace-nowrap text-[18px] font-black leading-none text-white">{completedResult.score}</span>
+            ) : null}
           </>
         ) : displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
       </span>
@@ -2288,8 +2299,18 @@ function SignalExplorerSheet({
                       onClose();
                       onRowOpen(row);
                     }}
-                    className={`grid min-h-[64px] w-full grid-cols-[60px_minmax(0,1fr)_92px_14px] items-center gap-2 border-b border-white/10 px-3 py-2 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
+                    className={`relative grid min-h-[64px] w-full grid-cols-[60px_minmax(0,1fr)_92px_14px] items-center gap-2 border-b border-white/10 px-3 py-2 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
                   >
+                    {completedResult?.icon ? (
+                      <span
+                        aria-label={completedResult.label}
+                        title={completedResult.label}
+                        className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                      >
+                        {completedResult.icon}
+                      </span>
+                    ) : null}
+
                     <span className="grid place-items-center gap-1 text-cyan-300">
                       <SignalTeamLogoStack row={row} />
                       <span className="max-w-[58px] truncate text-[7.5px] font-black uppercase tracking-[0.03em] text-white/58">
@@ -2303,17 +2324,13 @@ function SignalExplorerSheet({
                       </span>
                     </span>
                     {completedResult ? (
-                      <span className="flex flex-col items-end justify-self-end">
+                      <span className="flex min-w-[76px] flex-col items-center justify-self-center">
                         <span className="text-[7px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
                         {completedResult.score ? (
-                          <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+                          <span className="mt-1 whitespace-nowrap text-[19px] font-black leading-none text-white">
                             {completedResult.score}
                           </span>
                         ) : null}
-                        <span className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[8px] border px-2 py-1 text-[8px] font-black uppercase ${completedResult.badgeClassName}`}>
-                          {completedResult.icon ? <span aria-hidden="true" className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
-                          <span>{completedResult.label}</span>
-                        </span>
                       </span>
                     ) : (
                       <span className="flex items-center justify-self-end gap-2">
