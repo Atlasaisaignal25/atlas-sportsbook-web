@@ -5436,7 +5436,8 @@ useEffect(() => {
   }
 
   async function loadLiveGames() {
-    if (viewMode !== "live" && appSection !== "scores") return;
+    if (appSection !== "signals" && appSection !== "scores") return;
+    if (appSection === "signals" && viewMode !== "live") return;
 
     try {
       setLiveLoading(true);
@@ -5809,6 +5810,8 @@ useEffect(() => {
 const isTopTab = selectedSport === "TOP";
 
 useEffect(() => {
+  if (appSection !== "signals") return;
+
   async function loadRecord() {
     try {
       const endpoint = getRecordEndpoint(selectedSport, "top-signal");
@@ -5851,9 +5854,11 @@ setSoccerRecord(emptyRecordStats());
   }
 
   loadRecord();
-}, [selectedSport, activeDay]);
+}, [appSection, selectedSport, activeDay]);
 
 useEffect(() => {
+  if (appSection !== "signals") return;
+
   async function loadTop5Record() {
     try {
       const endpoint = getRecordEndpoint(selectedSport, "top5");
@@ -5877,9 +5882,11 @@ useEffect(() => {
   }
 
   loadTop5Record();
-}, [selectedSport, activeDay]);
+}, [appSection, selectedSport, activeDay]);
 
 useEffect(() => {
+  if (appSection !== "signals") return;
+
   async function loadHistory() {
     try {
       let endpoint = "";
@@ -5919,9 +5926,11 @@ if (selectedSport === "SOCCER") {
   }
 
   loadHistory();
-}, [selectedSport, activeDay]);
+}, [appSection, selectedSport, activeDay]);
 
 useEffect(() => {
+  if (appSection !== "signals") return;
+
   async function loadTop5History() {
     try {
       let endpoint = "";
@@ -5965,7 +5974,7 @@ if (selectedSport === "SOCCER") {
   }
 
   loadTop5History();
-}, [selectedSport, viewMode, activeDay]);
+}, [appSection, selectedSport, viewMode, activeDay]);
 
 const subsPicks = useMemo(() => {
   return getSubPicksForUser(
@@ -9309,15 +9318,16 @@ function AtlasBankrollScreen({
   const [manualPickOpen, setManualPickOpen] = useState(false);
   const [uiState, setUIState] = useState<BankrollUIState | null>(null);
   const [activeBankrollTab, setActiveBankrollTab] = useState<"atlas" | "manual">("atlas");
+  const bankrollRenderNowRef = useRef(new Date().toISOString());
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
   const planCollection = useMemo(
-    () => (config && metrics ? syncPlans(config.atlasPlanCollection, membership, metrics, new Date().toISOString(), atlasSources) : config?.atlasPlanCollection ?? null),
+    () => (config && metrics ? syncPlans(config.atlasPlanCollection, membership, metrics, bankrollRenderNowRef.current, atlasSources) : config?.atlasPlanCollection ?? null),
     [atlasSources, config, membership, metrics],
   );
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
   const manualTracking = config?.manualTracking ?? null;
-  const availableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks({ ...config, membership }, new Date().toISOString(), atlasSources) : []), [atlasSources, config, membership]);
+  const availableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks({ ...config, membership }, bankrollRenderNowRef.current, atlasSources) : []), [atlasSources, config, membership]);
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
 
   useEffect(() => {
@@ -9341,6 +9351,7 @@ function AtlasBankrollScreen({
     }
 
     const nextConfig = normalizeBankrollConfig({ ...config, membership });
+    if (JSON.stringify(nextConfig) === JSON.stringify(config)) return;
     saveBankrollConfig(nextConfig);
     setConfig(nextConfig);
   }, [config, membership]);
@@ -9348,7 +9359,7 @@ function AtlasBankrollScreen({
   useEffect(() => {
     if (!config || availableAtlasPicks.length === 0 || !config.manualTracking?.picks.length) return;
 
-    const nextConfig = syncManualTrackingWithAtlas(config, availableAtlasPicks, new Date().toISOString());
+    const nextConfig = syncManualTrackingWithAtlas(config, availableAtlasPicks, bankrollRenderNowRef.current);
     if (JSON.stringify(nextConfig.manualTracking) === JSON.stringify(config.manualTracking)) return;
 
     saveBankrollConfig(nextConfig);
@@ -9373,6 +9384,7 @@ function AtlasBankrollScreen({
   function handleUpdateUIState(updates: Partial<BankrollUIState>) {
     setUIState((currentState) => {
       const nextState = { ...(currentState ?? loadBankrollUIState()), ...updates };
+      if (currentState && JSON.stringify(nextState) === JSON.stringify(currentState)) return currentState;
       saveBankrollUIState(nextState);
       return nextState;
     });
