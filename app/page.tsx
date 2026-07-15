@@ -59,12 +59,19 @@ import {
   saveManualTracking,
   syncPlans,
   syncManualTrackingWithAtlas,
+  createSnapshot,
+  deactivateDemoMode,
+  activateDemoMode,
+  loadLatestSnapshot,
+  resolveSnapshotMode,
+  snapshotToAtlasSources,
   updateBankrollConfig,
   validateBankroll,
   type AtlasTrackedPickInput,
   type AtlasPackageSourcePick,
   type AtlasPackageSources,
   type AtlasTrackingPickOption,
+  type AtlasDailySnapshot,
   type AtlasPlanPackage,
   type AtlasPlanSport,
   type AtlasPlanStatus,
@@ -8177,6 +8184,8 @@ function BankrollPlanTrackingTabs({
   config,
   manualTracking,
   availableAtlasPicks,
+  demoModeEnabled,
+  snapshot,
   activeTab,
   uiState,
   onTabChange,
@@ -8186,6 +8195,8 @@ function BankrollPlanTrackingTabs({
   config: BankrollConfig | null;
   manualTracking: ManualTrackingCollection | null;
   availableAtlasPicks: AtlasTrackingPickOption[];
+  demoModeEnabled: boolean;
+  snapshot: AtlasDailySnapshot | null;
   activeTab: "atlas" | "manual";
   onTabChange: (tab: "atlas" | "manual") => void;
   uiState: BankrollUIState;
@@ -8281,6 +8292,8 @@ function BankrollPlanTrackingTabs({
           <MyTrackingDashboard
             manualTracking={displayManualTracking}
             availableAtlasPicks={availableAtlasPicks}
+            demoModeEnabled={demoModeEnabled}
+            snapshot={snapshot}
             analytics={overallTrackingAnalytics}
             periodAnalytics={trackingAnalytics}
             comparison={overallTrackingComparison ?? trackingComparison}
@@ -8303,6 +8316,8 @@ function BankrollPlanTrackingTabs({
 function MyTrackingDashboard({
   manualTracking,
   availableAtlasPicks,
+  demoModeEnabled,
+  snapshot,
   analytics,
   periodAnalytics,
   comparison,
@@ -8317,6 +8332,8 @@ function MyTrackingDashboard({
 }: {
   manualTracking: ManualTrackingCollection;
   availableAtlasPicks: AtlasTrackingPickOption[];
+  demoModeEnabled: boolean;
+  snapshot: AtlasDailySnapshot | null;
   analytics: ManualTrackingAnalytics;
   periodAnalytics: ManualTrackingAnalytics;
   comparison: TrackingComparison | null;
@@ -8422,12 +8439,16 @@ function MyTrackingDashboard({
       <AvailableSportsbookPicks
         picks={sportsbookPicks}
         cardPickIds={cardPickIds}
+        demoModeEnabled={demoModeEnabled}
+        snapshot={snapshot}
         onAddPick={handleAddToCard}
       />
 
       <SportsbookMyCard
         cardPicks={cardPicks}
         activePicks={activePicks}
+        demoModeEnabled={demoModeEnabled}
+        snapshot={snapshot}
         onRemoveDraftPick={handleRemoveFromCard}
         onOpenTrackedPick={onOpenPick}
       />
@@ -8436,6 +8457,8 @@ function MyTrackingDashboard({
         pick={betSlipPick}
         recommendedUnit={defaultCardRisk}
         manualBankroll={manualTracking.manualFinancialState.currentBankroll}
+        demoModeEnabled={demoModeEnabled}
+        snapshot={snapshot}
         onCancel={() => setBetSlipPick(null)}
         onConfirm={handleConfirmBetSlip}
       />
@@ -8452,10 +8475,14 @@ type SportsbookCardPick = {
 function AvailableSportsbookPicks({
   picks,
   cardPickIds,
+  demoModeEnabled,
+  snapshot,
   onAddPick,
 }: {
   picks: AtlasTrackingPickOption[];
   cardPickIds: Set<string>;
+  demoModeEnabled: boolean;
+  snapshot: AtlasDailySnapshot | null;
   onAddPick: (pick: AtlasTrackingPickOption) => void;
 }) {
   const visiblePicks = picks.slice(0, 8);
@@ -8468,10 +8495,11 @@ function AvailableSportsbookPicks({
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Available Picks</p>
           <p className="mt-0.5 text-[10px] font-black text-white/58">{availabilityLabel}</p>
         </div>
-        <div className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
-          Live Board
+        <div className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${demoModeEnabled ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-200" : "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200"}`}>
+          {demoModeEnabled ? "Demo" : "Live Board"}
         </div>
       </div>
+      {demoModeEnabled && snapshot ? <SnapshotDemoInlineBanner snapshot={snapshot} /> : null}
 
       {visiblePicks.length > 0 ? (
         <div className="grid gap-1">
@@ -8546,11 +8574,15 @@ function AvailableSportsbookPickRow({
 function SportsbookMyCard({
   cardPicks,
   activePicks,
+  demoModeEnabled,
+  snapshot,
   onRemoveDraftPick,
   onOpenTrackedPick,
 }: {
   cardPicks: SportsbookCardPick[];
   activePicks: ManualTrackingCollection["picks"];
+  demoModeEnabled: boolean;
+  snapshot: AtlasDailySnapshot | null;
   onRemoveDraftPick: (pickId: string) => void;
   onOpenTrackedPick: (pickId: string) => void;
 }) {
@@ -8586,7 +8618,7 @@ function SportsbookMyCard({
       {hasPicks ? (
         <div className="grid gap-1">
           {cardPicks.map((item) => (
-            <SportsbookDraftCardPick key={item.pick.id} item={item} onRemove={() => onRemoveDraftPick(item.pick.id)} />
+            <SportsbookDraftCardPick key={item.pick.id} item={item} demoModeEnabled={demoModeEnabled} snapshot={snapshot} onRemove={() => onRemoveDraftPick(item.pick.id)} />
           ))}
           {activePicks.map((pick) => (
             <SportsbookTrackedCardPick key={pick.id} pick={pick} onOpen={() => onOpenTrackedPick(pick.id)} />
@@ -8605,7 +8637,7 @@ function SportsbookMyCard({
   );
 }
 
-function SportsbookDraftCardPick({ item, onRemove }: { item: SportsbookCardPick; onRemove: () => void }) {
+function SportsbookDraftCardPick({ item, demoModeEnabled, snapshot, onRemove }: { item: SportsbookCardPick; demoModeEnabled: boolean; snapshot: AtlasDailySnapshot | null; onRemove: () => void }) {
   const { pick, riskAmount } = item;
   const matchup = formatSportsbookMatchup(pick);
   const potentialReturn = calculatePotentialReturn(riskAmount, pick.odds);
@@ -8617,8 +8649,12 @@ function SportsbookDraftCardPick({ item, onRemove }: { item: SportsbookCardPick;
           {getSportGlyph(pick.sport)}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
+            {demoModeEnabled && snapshot ? <span className="shrink-0 rounded-full bg-amber-300/[0.12] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-amber-200">Demo</span> : null}
+          </div>
           <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market} · {matchup.home} vs {matchup.away}</p>
+          {demoModeEnabled && snapshot ? <p className="mt-0.5 truncate text-[8px] font-semibold text-amber-200/55">Snapshot {formatSnapshotDate(snapshot.snapshotDate)}</p> : null}
         </div>
         <div className="text-right">
           <p className="text-[12px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
@@ -8676,12 +8712,16 @@ function SportsbookBetSlipSheet({
   pick,
   recommendedUnit,
   manualBankroll,
+  demoModeEnabled,
+  snapshot,
   onCancel,
   onConfirm,
 }: {
   pick: AtlasTrackingPickOption | null;
   recommendedUnit: number;
   manualBankroll: number;
+  demoModeEnabled: boolean;
+  snapshot: AtlasDailySnapshot | null;
   onCancel: () => void;
   onConfirm: (input: { riskAmount: number; notes: string }) => void;
 }) {
@@ -8738,6 +8778,11 @@ function SportsbookBetSlipSheet({
                 Cancel
               </button>
             </div>
+            {demoModeEnabled && snapshot ? (
+              <div className="rounded-[12px] border border-amber-300/18 bg-amber-300/[0.06] px-2.5 py-1.5">
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-200">Demo Snapshot · {formatSnapshotDate(snapshot.snapshotDate)}</p>
+              </div>
+            ) : null}
 
             <div className="rounded-[15px] border border-white/10 bg-black/20 p-2">
               <div className="grid grid-cols-[34px_1fr_52px] items-center gap-2">
@@ -8838,6 +8883,31 @@ function SportsbookBetSlipSheet({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SnapshotDemoBanner({ snapshot }: { snapshot: AtlasDailySnapshot }) {
+  return (
+    <BankrollShell className="px-3 py-2">
+      <div className="flex items-start gap-2">
+        <span className="mt-0.5 rounded-full border border-amber-300/20 bg-amber-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-amber-200">
+          Last Available
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black text-white/72">No live events are available today.</p>
+          <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/42">Showing the most recent Atlas snapshot from {formatSnapshotDate(snapshot.snapshotDate)} for demonstration purposes.</p>
+        </div>
+      </div>
+    </BankrollShell>
+  );
+}
+
+function SnapshotDemoInlineBanner({ snapshot }: { snapshot: AtlasDailySnapshot }) {
+  return (
+    <div className="mb-1.5 rounded-[11px] border border-amber-300/16 bg-amber-300/[0.055] px-2.5 py-1.5">
+      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-200">Last Available · {formatSnapshotDate(snapshot.snapshotDate)}</p>
+      <p className="mt-0.5 text-[9px] font-semibold leading-3 text-white/38">Snapshot picks are for demonstration and navigation.</p>
     </div>
   );
 }
@@ -8957,6 +9027,12 @@ function formatSportsbookOdds(odds: number | null) {
 function formatPickConfidence(pick: AtlasTrackingPickOption) {
   const confidence = Math.max(74, Math.min(94, 95 - pick.rank * 3));
   return `${confidence}%`;
+}
+
+function formatSnapshotDate(date: string) {
+  const parsed = new Date(`${date}T12:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function calculatePotentialReturn(riskAmount: number, odds: number) {
@@ -9941,13 +10017,20 @@ function AtlasBankrollScreen({
   const bankrollRenderNowRef = useRef(new Date().toISOString());
   const financialPlan = useMemo(() => (config ? buildFinancialPlan(config) : null), [config]);
   const metrics = financialPlan?.metrics ?? null;
+  const liveAvailableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks({ ...config, membership }, bankrollRenderNowRef.current, atlasSources) : []), [atlasSources, config, membership]);
+  const latestSnapshot = useMemo(() => loadLatestSnapshot(config), [config]);
+  const snapshotMode = useMemo(() => resolveSnapshotMode(liveAvailableAtlasPicks, latestSnapshot), [latestSnapshot, liveAvailableAtlasPicks]);
+  const effectiveAtlasSources = useMemo(
+    () => (snapshotMode.demoModeEnabled ? snapshotToAtlasSources(snapshotMode.snapshot) : atlasSources),
+    [atlasSources, snapshotMode.demoModeEnabled, snapshotMode.snapshot],
+  );
   const planCollection = useMemo(
-    () => (config && metrics ? syncPlans(config.atlasPlanCollection, membership, metrics, bankrollRenderNowRef.current, atlasSources) : config?.atlasPlanCollection ?? null),
-    [atlasSources, config, membership, metrics],
+    () => (config && metrics ? syncPlans(config.atlasPlanCollection, membership, metrics, bankrollRenderNowRef.current, effectiveAtlasSources) : config?.atlasPlanCollection ?? null),
+    [config, effectiveAtlasSources, membership, metrics],
   );
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
   const manualTracking = config?.manualTracking ?? null;
-  const availableAtlasPicks = useMemo(() => (config ? loadAvailableAtlasPicks({ ...config, membership }, bankrollRenderNowRef.current, atlasSources) : []), [atlasSources, config, membership]);
+  const availableAtlasPicks = snapshotMode.picks;
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
 
   useEffect(() => {
@@ -9975,6 +10058,38 @@ function AtlasBankrollScreen({
     saveBankrollConfig(nextConfig);
     setConfig(nextConfig);
   }, [config, membership]);
+
+  useEffect(() => {
+    if (!config) return;
+
+    const nextSnapshot = liveAvailableAtlasPicks.length > 0
+      ? createSnapshot(liveAvailableAtlasPicks, {
+          createdAt: bankrollRenderNowRef.current,
+          package: membership.package,
+        })
+      : latestSnapshot;
+    const nextConfig = liveAvailableAtlasPicks.length > 0 && nextSnapshot
+      ? deactivateDemoMode(config, nextSnapshot, bankrollRenderNowRef.current)
+      : nextSnapshot
+        ? activateDemoMode(config, nextSnapshot, bankrollRenderNowRef.current)
+        : deactivateDemoMode(config, null, bankrollRenderNowRef.current);
+    const currentSnapshotState = JSON.stringify({
+      lastAtlasSnapshot: config.lastAtlasSnapshot ?? null,
+      lastSnapshotDate: config.lastSnapshotDate ?? null,
+      demoModeEnabled: Boolean(config.demoModeEnabled),
+    });
+    const nextSnapshotState = JSON.stringify({
+      lastAtlasSnapshot: nextConfig.lastAtlasSnapshot ?? null,
+      lastSnapshotDate: nextConfig.lastSnapshotDate ?? null,
+      demoModeEnabled: Boolean(nextConfig.demoModeEnabled),
+    });
+
+    if (currentSnapshotState === nextSnapshotState) return;
+
+    const normalizedConfig = normalizeBankrollConfig(nextConfig);
+    saveBankrollConfig(normalizedConfig);
+    setConfig(normalizedConfig);
+  }, [config, latestSnapshot, liveAvailableAtlasPicks, membership.package]);
 
   useEffect(() => {
     if (!config || availableAtlasPicks.length === 0 || !config.manualTracking?.picks.length) return;
@@ -10032,12 +10147,15 @@ function AtlasBankrollScreen({
         config={config}
         manualTracking={manualTracking}
         availableAtlasPicks={availableAtlasPicks}
+        demoModeEnabled={snapshotMode.demoModeEnabled}
+        snapshot={snapshotMode.snapshot}
         activeTab={activeBankrollTab}
         onTabChange={setActiveBankrollTab}
         uiState={uiState}
         onUIStateChange={handleUpdateUIState}
         onCreateManualPick={() => setManualPickOpen(true)}
       />
+      {snapshotMode.demoModeEnabled && snapshotMode.snapshot ? <SnapshotDemoBanner snapshot={snapshotMode.snapshot} /> : null}
       {activeBankrollTab === "atlas" ? (
         <>
           <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />

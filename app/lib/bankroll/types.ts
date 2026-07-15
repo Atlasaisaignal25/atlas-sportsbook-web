@@ -34,6 +34,33 @@ export type MembershipContext = {
   availableSports: AtlasPlanSport[];
 };
 
+export type AtlasSnapshotPick = {
+  id: string;
+  snapshotDate: string;
+  sport: AtlasPlanSport;
+  league: string;
+  eventId: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  selection: string;
+  market: string;
+  odds: number;
+  confidence: number;
+  package: AtlasPlanPackage;
+  rank: number;
+  status: AtlasPlanStatus;
+  source: AtlasPlanSource;
+  startTime: string;
+};
+
+export type AtlasDailySnapshot = {
+  id: string;
+  snapshotDate: string;
+  createdAt: string;
+  updatedAt: string;
+  picks: AtlasSnapshotPick[];
+};
+
 export type ReplacementReason = "removed" | "downgraded" | "started_unavailable" | "candidate_invalid";
 
 export type ReplacementRecord = {
@@ -413,6 +440,9 @@ export type BankrollConfig = {
   weeklySummaries?: WeeklySummary[];
   monthlySummaries?: MonthlySummary[];
   manualTracking?: ManualTrackingCollection;
+  lastAtlasSnapshot?: AtlasDailySnapshot | null;
+  lastSnapshotDate?: string | null;
+  demoModeEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 };

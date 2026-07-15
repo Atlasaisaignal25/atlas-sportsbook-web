@@ -7,6 +7,7 @@ import { syncManualSummaries } from "./manual-summary-engine";
 import { normalizeManualTracking } from "./manual-tracking-engine";
 import { normalizeMonthlyState } from "./monthly-summary-engine";
 import { normalizeMembershipContext, syncPlans } from "./package-engine";
+import { normalizeSnapshot } from "./snapshot-engine";
 import { normalizeWeeklyState } from "./weekly-summary-engine";
 
 export function loadBankrollConfig(): BankrollConfig | null {
@@ -46,9 +47,13 @@ export function saveBankrollConfig(config: BankrollConfig) {
 export function normalizeBankrollConfig(config: BankrollConfig, now = new Date().toISOString()): BankrollConfig {
   const currentBankroll = calculateCurrentBankroll(config.currentBankroll);
   const membership = normalizeMembershipContext(config.membership);
+  const lastAtlasSnapshot = normalizeSnapshot(config.lastAtlasSnapshot);
   const normalizedBase = {
     ...config,
     membership,
+    lastAtlasSnapshot,
+    lastSnapshotDate: lastAtlasSnapshot?.snapshotDate ?? config.lastSnapshotDate ?? null,
+    demoModeEnabled: Boolean(config.demoModeEnabled && lastAtlasSnapshot),
     initialBankroll: roundCurrency(Math.max(0, config.initialBankroll)),
     currentBankroll,
     recommendedUnit: calculateRecommendedUnit(currentBankroll, config.profile),

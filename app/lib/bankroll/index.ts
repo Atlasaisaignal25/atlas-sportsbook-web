@@ -11,6 +11,7 @@ export * from "./monthly-summary-engine";
 export * from "./package-engine";
 export * from "./replacement-engine";
 export * from "./result-engine";
+export * from "./snapshot-engine";
 export * from "./storage";
 export * from "./types";
 export * from "./ui-storage";
