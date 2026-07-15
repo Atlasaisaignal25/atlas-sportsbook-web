@@ -338,7 +338,7 @@ export function SignalDetectedFeed({
               className={`relative grid min-h-[64px] w-full grid-cols-[76px_1fr_92px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03] ${completedResult?.rowClassName ?? ""}`}
             >
               {completedResult ? (
-                <span className="absolute right-1.5 top-1.5 z-10 text-xl leading-none text-white/38">
+                <span className="absolute right-1.5 top-0.5 z-10 text-xl leading-none text-white/38">
                   <ArrowIcon />
                 </span>
               ) : null}
@@ -380,7 +380,7 @@ export function SignalDetectedFeed({
                 <span
                   aria-label={completedResult.label}
                   title={completedResult.label}
-                  className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center self-end justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                  className={`inline-flex h-6 w-6 translate-y-1.5 items-center justify-center self-center justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
                 >
                   {completedResult.icon}
                 </span>

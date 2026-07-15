@@ -3547,7 +3547,7 @@ function SignalDetectedRow({
       }`}
     >
       {showCompletedResult ? (
-        <span className="absolute right-1.5 top-1.5 z-10 text-[20px] leading-none text-white/34">›</span>
+        <span className="absolute right-1.5 top-0.5 z-10 text-[20px] leading-none text-white/34">›</span>
       ) : null}
 
       <div className="flex items-center gap-2">
@@ -3598,7 +3598,7 @@ function SignalDetectedRow({
         <span
           aria-label={completedResult.label}
           title={completedResult.label}
-          className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center self-end justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+          className={`inline-flex h-6 w-6 translate-y-1.5 items-center justify-center self-center justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
         >
           {completedResult.icon}
         </span>
