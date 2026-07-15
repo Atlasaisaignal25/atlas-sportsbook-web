@@ -8406,6 +8406,7 @@ function BankrollPlanTrackingTabs({
   onTabChange,
   onUIStateChange,
   onCreateManualPick,
+  onTrackPick,
 }: {
   config: BankrollConfig | null;
   manualTracking: ManualTrackingCollection | null;
@@ -8417,6 +8418,7 @@ function BankrollPlanTrackingTabs({
   uiState: BankrollUIState;
   onUIStateChange: (updates: Partial<BankrollUIState>) => void;
   onCreateManualPick: () => void;
+  onTrackPick: (atlasPick: AtlasTrackingPickOption, input: AtlasTrackedPickInput) => void;
 }) {
   const [trackingRange, setTrackingRange] = useState<TrackingRange>(uiState.trackingRange);
   const [calendarDate, setCalendarDate] = useState(uiState.calendarDate);
@@ -8527,6 +8529,7 @@ function BankrollPlanTrackingTabs({
             onRangeChange={handleRangeChange}
             onCalendarDateChange={handleCalendarDateChange}
             onCreateManualPick={onCreateManualPick}
+            onTrackPick={onTrackPick}
             onOpenPick={handleOpenPick}
             onBackFromTimeline={handleCloseTimeline}
           />
@@ -8550,6 +8553,7 @@ function MyTrackingDashboard({
   calendarDate,
   onRangeChange,
   onCalendarDateChange,
+  onTrackPick,
   onOpenPick,
   onBackFromTimeline,
 }: {
@@ -8567,6 +8571,7 @@ function MyTrackingDashboard({
   onRangeChange: (range: TrackingRange) => void;
   onCalendarDateChange: (date: string) => void;
   onCreateManualPick: () => void;
+  onTrackPick: (atlasPick: AtlasTrackingPickOption, input: AtlasTrackedPickInput) => void;
   onOpenPick: (pickId: string) => void;
   onBackFromTimeline: () => void;
 }) {
@@ -8589,11 +8594,11 @@ function MyTrackingDashboard({
   function handleConfirmBetSlip(input: { riskAmount: number; notes: string }) {
     if (!betSlipPick) return;
 
-    setCardPicks((currentPicks) =>
-      currentPicks.some((item) => item.pick.id === betSlipPick.id)
-        ? currentPicks
-        : [{ pick: betSlipPick, riskAmount: input.riskAmount, notes: input.notes }, ...currentPicks],
-    );
+    onTrackPick(betSlipPick, {
+      atlasPickId: betSlipPick.id,
+      riskAmount: formatSlipInputAmount(input.riskAmount),
+      notes: input.notes,
+    });
     setBetSlipPick(null);
   }
 
@@ -9013,7 +9018,11 @@ function SportsbookBetSlipSheet({
       return;
     }
 
-    onConfirm({ riskAmount, notes: notes.trim() });
+    try {
+      onConfirm({ riskAmount, notes: notes.trim() });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to add this pick.");
+    }
   }
 
   return (
@@ -10461,6 +10470,7 @@ function AtlasBankrollScreen({
         uiState={uiState}
         onUIStateChange={handleUpdateUIState}
         onCreateManualPick={() => setManualPickOpen(true)}
+        onTrackPick={handleSaveManualPick}
       />
       {bankrollDemoModeEnabled && bankrollDemoSnapshot ? <SnapshotDemoBanner snapshot={bankrollDemoSnapshot} /> : null}
       {activeBankrollTab === "atlas" ? (
