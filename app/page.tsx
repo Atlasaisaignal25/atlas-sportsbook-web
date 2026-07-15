@@ -304,6 +304,7 @@ type CheckoutSport = Exclude<SportTab, "TOP">;
 type ImpactFeedFilter = "ALL" | "TEAM" | "MARKET" | "INTELLIGENCE" | PulseImpact;
 const checkoutSports = ["MLB", "NBA", "NHL", "SOCCER", "NFL"] as const satisfies readonly CheckoutSport[];
 const precisionDisplaySports = ["MLB", "NBA", "NFL", "NHL", "SOCCER"] as const satisfies readonly CheckoutSport[];
+const snapshotLookupSports = ["MLB", "NBA", "NFL", "NHL", "SOCCER"] as const satisfies readonly AtlasPlanSport[];
 const scoreBoardSports = ["MLB", "SOCCER"] as const satisfies readonly SportTab[];
 type PrecisionLifecycleStatus =
   | "scanning"
@@ -2356,6 +2357,76 @@ function mapHistoryRowToTop5Entry(row: any): Top5Entry {
     modelFactors: row.model_factors ?? row.modelFactors ?? null,
     startTime: row.start_time ?? row.startTime ?? null,
   } as Top5Entry;
+}
+
+function getTop5HistoryEndpointForSport(sport: AtlasPlanSport) {
+  if (sport === "MLB") return "/api/top5-history-live/mlb";
+  if (sport === "NBA") return "/api/top5-history-live/nba";
+  if (sport === "NHL") return "/api/top5-history-live/nhl";
+  if (sport === "SOCCER") return "/api/top5-history-live/soccer";
+  return "";
+}
+
+function getSnapshotLookupDates(daysBack = 21) {
+  const dates: string[] = [];
+  const baseDate = new Date();
+
+  for (let offset = 1; offset <= daysBack; offset += 1) {
+    const date = new Date(baseDate);
+    date.setDate(baseDate.getDate() - offset);
+    dates.push(date.toLocaleDateString("en-CA", { timeZone: "America/New_York" }));
+  }
+
+  return dates;
+}
+
+async function loadHistoricalSnapshotSources(): Promise<{ sources: AtlasPackageSources; snapshotDate: string | null }> {
+  for (const date of getSnapshotLookupDates()) {
+    const top5BySport = await Promise.all(
+      snapshotLookupSports.map(async (sport) => {
+        const endpoint = getTop5HistoryEndpointForSport(sport);
+        if (!endpoint) return { sport, top5: [] as Top5Entry[] };
+
+        try {
+          const response = await fetch(`${endpoint}?date=${encodeURIComponent(date)}`, { cache: "no-store" });
+          if (!response.ok) return { sport, top5: [] as Top5Entry[] };
+
+          const data = await response.json();
+          const top5 = data?.success && Array.isArray(data.history)
+            ? sortPicksByStartTime(data.history.map(mapHistoryRowToTop5Entry))
+            : [];
+
+          return { sport, top5 };
+        } catch {
+          return { sport, top5: [] as Top5Entry[] };
+        }
+      }),
+    );
+
+    const sources = buildBankrollAtlasSources({
+      mlbSignals: [],
+      nbaSignals: [],
+      nhlSignals: [],
+      soccerSignals: [],
+      mlbTop5: top5BySport.find((item) => item.sport === "MLB")?.top5 ?? [],
+      nbaTop5: top5BySport.find((item) => item.sport === "NBA")?.top5 ?? [],
+      nhlTop5: top5BySport.find((item) => item.sport === "NHL")?.top5 ?? [],
+      soccerTop5: top5BySport.find((item) => item.sport === "SOCCER")?.top5 ?? [],
+    });
+
+    if (atlasSourcesToTrackingPicks(sources).length > 0) {
+      return { sources, snapshotDate: date };
+    }
+  }
+
+  return {
+    sources: {
+      signals: [],
+      top3: [],
+      top5: [],
+    },
+    snapshotDate: null,
+  };
 }
 
 function getSubPicksForUser(
@@ -4444,7 +4515,9 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
   top5: [],
 });
 const [globalSnapshot, setGlobalSnapshot] = useState<AtlasDailySnapshot | null>(null);
+const [globalSnapshotLookupComplete, setGlobalSnapshotLookupComplete] = useState(false);
 const globalSnapshotNowRef = useRef(new Date().toISOString());
+const globalSnapshotLookupRunRef = useRef(0);
 const bankrollAtlasSources = useMemo(
   () =>
     buildBankrollAtlasSources({
@@ -4472,8 +4545,76 @@ const bankrollMembership = useMemo(
 
 useEffect(() => {
   const storedConfig = loadBankrollConfig();
-  setGlobalSnapshot(loadLatestSnapshot(storedConfig));
+  const storedSnapshot = loadLatestSnapshot(storedConfig);
+  setGlobalSnapshot(storedSnapshot);
+  if (storedSnapshot) setGlobalSnapshotLookupComplete(true);
 }, []);
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function initializeHistoricalSnapshot() {
+    if (globalLiveSnapshotPicks.length > 0 || globalSnapshot || globalSnapshotLookupComplete) return;
+
+    const storedSnapshot = loadLatestSnapshot(loadBankrollConfig());
+    if (storedSnapshot) {
+      setGlobalSnapshot(storedSnapshot);
+      setGlobalSnapshotLookupComplete(true);
+      return;
+    }
+
+    const lookupRunId = globalSnapshotLookupRunRef.current + 1;
+    globalSnapshotLookupRunRef.current = lookupRunId;
+
+    const { sources, snapshotDate } = await loadHistoricalSnapshotSources();
+    if (cancelled || lookupRunId !== globalSnapshotLookupRunRef.current) return;
+
+    setGlobalSnapshotLookupComplete(true);
+    if (!snapshotDate || atlasSourcesToTrackingPicks(sources).length === 0) return;
+
+    const createdAt = globalSnapshotNowRef.current;
+    const historicalSnapshot = createSnapshotFromSources(sources, {
+      snapshotDate,
+      createdAt,
+      package: bankrollMembership.package,
+    });
+    if (!historicalSnapshot) return;
+
+    setGlobalSnapshot(historicalSnapshot);
+
+    const storedConfig = loadBankrollConfig();
+    if (!storedConfig) return;
+
+    const nextConfig = normalizeBankrollConfig({
+      ...storedConfig,
+      lastGlobalSnapshot: historicalSnapshot,
+      lastAtlasSnapshot: historicalSnapshot,
+      lastSnapshotDate: historicalSnapshot.snapshotDate,
+      demoModeEnabled: true,
+      updatedAt: createdAt,
+    });
+    const currentState = JSON.stringify({
+      lastGlobalSnapshot: storedConfig.lastGlobalSnapshot ?? null,
+      lastAtlasSnapshot: storedConfig.lastAtlasSnapshot ?? null,
+      lastSnapshotDate: storedConfig.lastSnapshotDate ?? null,
+      demoModeEnabled: Boolean(storedConfig.demoModeEnabled),
+    });
+    const nextState = JSON.stringify({
+      lastGlobalSnapshot: nextConfig.lastGlobalSnapshot ?? null,
+      lastAtlasSnapshot: nextConfig.lastAtlasSnapshot ?? null,
+      lastSnapshotDate: nextConfig.lastSnapshotDate ?? null,
+      demoModeEnabled: Boolean(nextConfig.demoModeEnabled),
+    });
+
+    if (currentState !== nextState) saveBankrollConfig(nextConfig);
+  }
+
+  void initializeHistoricalSnapshot();
+
+  return () => {
+    cancelled = true;
+  };
+}, [bankrollMembership.package, globalLiveSnapshotPicks.length, globalSnapshot, globalSnapshotLookupComplete]);
 
 useEffect(() => {
   const now = globalSnapshotNowRef.current;
