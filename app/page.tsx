@@ -9310,6 +9310,11 @@ function formatTrackingSportCategory(sport: AtlasPlanSport | string | null | und
   return String(sport || "Sport");
 }
 
+function getTrackingSportTab(sport: AtlasPlanSport | string | null | undefined): SportTab | null {
+  if (sport === "MLB" || sport === "NBA" || sport === "NFL" || sport === "NHL" || sport === "SOCCER") return sport;
+  return null;
+}
+
 function formatSportsbookSelection(pick: { selection: string; market: string; sport?: AtlasPlanSport | string | null }) {
   const selection = pick.selection.trim();
   const totalMatch = selection.match(/^(Over|Under)\s*\(?(-?\d+(?:\.\d+)?)\)?/i);
@@ -9338,6 +9343,28 @@ function getTeamInitials(team: string, sport: AtlasPlanSport | string) {
 }
 
 function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: AtlasPlanSport | string; muted?: boolean }) {
+  const sportTab = getTrackingSportTab(sport);
+  const resolvedTeam = sportTab ? resolveTeamNameForSport(team, sportTab) ?? team : team;
+  const logo = resolvedTeam && sportTab ? getLogo(resolvedTeam, sportTab) : null;
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    setLogoFailed(false);
+  }, [logo]);
+
+  if (logo && !logoFailed) {
+    return (
+      <span className="grid h-7 w-7 place-items-center" title={resolvedTeam || team}>
+        <img
+          src={logo}
+          alt=""
+          className={`h-full w-full object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.18)] ${muted ? "opacity-80" : ""}`}
+          onError={() => setLogoFailed(true)}
+        />
+      </span>
+    );
+  }
+
   return (
     <div
       className={`grid h-7 w-7 place-items-center rounded-full border text-[8px] font-black uppercase tracking-[-0.01em] ${
@@ -9345,10 +9372,23 @@ function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: At
           ? "border-sky-300/18 bg-sky-300/[0.055] text-sky-100/70"
           : "border-cyan-300/28 bg-cyan-300/[0.11] text-cyan-100"
       }`}
-      title={team || getSportGlyph(sport)}
+      title={resolvedTeam || team || getSportGlyph(sport)}
     >
-      {getTeamInitials(team, sport)}
+      {getTeamInitials(resolvedTeam || team, sport)}
     </div>
+  );
+}
+
+function TrackingTeamLogoStack({ homeTeam, awayTeam, sport }: { homeTeam: string; awayTeam: string; sport: AtlasPlanSport | string | null | undefined }) {
+  return (
+    <span className="relative isolate block h-[50px] w-[50px] shrink-0" aria-label={`${awayTeam || homeTeam} team logos`}>
+      <span className="absolute left-1 top-1 z-10">
+        <TeamLogoLabel team={awayTeam || homeTeam} sport={sport ?? "AT"} muted />
+      </span>
+      <span className="absolute bottom-1 right-1 z-20">
+        <TeamLogoLabel team={homeTeam || awayTeam} sport={sport ?? "AT"} />
+      </span>
+    </span>
   );
 }
 
@@ -9692,9 +9732,9 @@ function TrackingHistoryList({
       {history.groups.map((group) => (
         <div key={group.key}>
           <p className="mb-1 border-b border-white/10 pb-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/38">{group.label}</p>
-          <div className="grid gap-1">
-            {group.picks.map((item) => (
-              <TrackingPickCard key={item.pick.id} item={item} onOpen={() => onOpenPick(item.pick.id)} />
+          <div className="overflow-hidden rounded-[12px] border border-white/10 bg-[#060d19]/72">
+            {group.picks.map((item, index) => (
+              <TrackingPickCard key={item.pick.id} item={item} isLast={index === group.picks.length - 1} onOpen={() => onOpenPick(item.pick.id)} />
             ))}
           </div>
         </div>
@@ -9724,12 +9764,12 @@ function ComparisonMetricRow({
   );
 }
 
-function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen: () => void }) {
+function TrackingPickCard({ item, isLast, onOpen }: { item: TrackingHistoryPick; isLast: boolean; onOpen: () => void }) {
   const pick = item.pick;
   return (
     <TrackingSignalListRow
       pick={pick}
-      isLast={false}
+      isLast={isLast}
       rightLabel={getTrackingResultLabel(pick.status)}
       rightClass={getTrackingResultPillClass(pick.status)}
       timeLabel={formatTime(pick.startTime || pick.createdAt)}
@@ -9777,37 +9817,28 @@ function TrackingSignalListRow({
   const selectionLabel = formatSportsbookSelection(pick);
   const sportLabel = formatTrackingSportCategory(pick.sport ?? "Sport");
   const oddsLabel = formatTrackingOddsValue(pick.odds);
-  const confidence = formatPickConfidence(pick);
   const Container = onOpen ? "button" : "div";
 
   return (
     <Container
       type={onOpen ? "button" : undefined}
       onClick={onOpen}
-      className={`grid w-full grid-cols-[86px_minmax(0,1fr)_70px_42px_12px] items-center gap-2 px-3 py-3 text-left transition-all active:scale-[0.995] ${
+      className={`grid w-full grid-cols-[62px_minmax(0,1fr)_auto_42px_14px] items-center gap-2.5 px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
         !isLast ? "border-b border-white/10" : ""
       }`}
     >
       <div className="min-w-0">
-        <div className="flex h-10 items-center">
-          <div className="flex -space-x-2">
-            <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
-            {matchup.away ? <TeamLogoLabel team={matchup.away} sport={pick.sport ?? "AT"} muted /> : null}
-          </div>
-        </div>
-        <p className="mt-1 truncate text-[9px] font-black uppercase tracking-[0.12em] text-white/42">{sportLabel}</p>
+        <TrackingTeamLogoStack homeTeam={matchup.home} awayTeam={matchup.away} sport={pick.sport} />
+        <p className="mt-0.5 truncate text-[9px] font-black uppercase tracking-[0.12em] text-white/42">{sportLabel}</p>
       </div>
 
       <div className="min-w-0">
-        <p className="truncate text-[13px] font-black text-white">
+        <p className="truncate text-[13px] font-semibold text-white">
           {matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}
         </p>
-        <p className="mt-0.5 truncate text-[13px] font-black text-cyan-300">
+        <p className="truncate text-[13px] font-semibold text-cyan-300">
           {selectionLabel}
           {oddsLabel !== "-" ? <span className="ml-1 text-white/55">{oddsLabel}</span> : null}
-        </p>
-        <p className="mt-0.5 truncate text-[8px] font-black uppercase tracking-[0.08em] text-white/32">
-          {pick.league ? `${pick.league} · ` : ""}Atlas Confidence <span className="text-cyan-200/72">{confidence}</span>
         </p>
       </div>
 
@@ -9816,12 +9847,12 @@ function TrackingSignalListRow({
           type="button"
           onClick={onRightAction}
           disabled={rightDisabled}
-          className={`justify-self-end rounded-[10px] border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] transition duration-200 active:scale-[0.97] ${rightClass}`}
+          className={`justify-self-end rounded-[9px] border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] transition duration-200 active:scale-[0.97] ${rightClass}`}
         >
           {rightLabel}
         </button>
       ) : (
-        <span className={`justify-self-end rounded-[10px] border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${rightClass}`}>
+        <span className={`justify-self-end rounded-[9px] border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${rightClass}`}>
           {rightLabel}
         </span>
       )}
