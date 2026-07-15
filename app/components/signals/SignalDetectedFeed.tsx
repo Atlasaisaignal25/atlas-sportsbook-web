@@ -337,13 +337,9 @@ export function SignalDetectedFeed({
               aria-label={`Open Signal Detected details for ${row.matchup}`}
               className={`relative grid min-h-[64px] w-full grid-cols-[76px_1fr_92px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03] ${completedResult?.rowClassName ?? ""}`}
             >
-              {completedResult?.icon ? (
-                <span
-                  aria-label={completedResult.label}
-                  title={completedResult.label}
-                  className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
-                >
-                  {completedResult.icon}
+              {completedResult ? (
+                <span className="absolute right-1.5 top-1.5 z-10 text-xl leading-none text-white/38">
+                  <ArrowIcon />
                 </span>
               ) : null}
 
@@ -380,9 +376,19 @@ export function SignalDetectedFeed({
                   <span className="text-right text-[10px] font-medium text-white/52">{row.time}</span>
                 </span>
               )}
-              <span className="text-white/42">
-                <ArrowIcon />
-              </span>
+              {completedResult?.icon ? (
+                <span
+                  aria-label={completedResult.label}
+                  title={completedResult.label}
+                  className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center self-end justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                >
+                  {completedResult.icon}
+                </span>
+              ) : (
+                <span className="text-white/42">
+                  <ArrowIcon />
+                </span>
+              )}
             </button>
           );
         }) : (

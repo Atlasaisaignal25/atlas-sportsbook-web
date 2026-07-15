@@ -1655,14 +1655,8 @@ function FrameSignalDetectedFeed({
                 onClick={() => onRowOpen(row)}
                 className={`relative grid min-h-[60px] w-full grid-cols-[74px_minmax(0,1fr)_92px_20px] items-center gap-2 border-b border-white/10 px-3 py-1.5 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
               >
-                {completedResult?.icon ? (
-                  <span
-                    aria-label={completedResult.label}
-                    title={completedResult.label}
-                    className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
-                  >
-                    {completedResult.icon}
-                  </span>
+                {completedResult ? (
+                  <span className="absolute right-1.5 top-1.5 z-10 text-2xl font-light leading-none text-white/38">›</span>
                 ) : null}
 
                 <div className="grid place-items-center gap-1">
@@ -1699,7 +1693,17 @@ function FrameSignalDetectedFeed({
                     </>
                   )}
                 </div>
-                <span className="text-2xl font-light text-white/70">›</span>
+                {completedResult?.icon ? (
+                  <span
+                    aria-label={completedResult.label}
+                    title={completedResult.label}
+                    className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center self-end justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                  >
+                    {completedResult.icon}
+                  </span>
+                ) : (
+                  <span className="text-2xl font-light text-white/70">›</span>
+                )}
               </button>
             );
           })}
@@ -2153,14 +2157,8 @@ function SelectedSportSignalRow({
         completedResult ? "grid-cols-[50px_minmax(0,1fr)_88px_12px]" : "grid-cols-[50px_56px_minmax(0,1fr)_68px_12px]"
       } items-center gap-2 rounded-[14px] border border-white/10 bg-[linear-gradient(135deg,rgba(6,24,42,0.92),rgba(3,8,20,0.94))] px-2.5 text-left shadow-[inset_0_0_30px_rgba(34,211,238,0.03)] transition hover:border-cyan-300/25 ${completedResult?.cardClassName ?? ""}`}
     >
-      {completedResult?.icon ? (
-        <span
-          aria-label={completedResult.label}
-          title={completedResult.label}
-          className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
-        >
-          {completedResult.icon}
-        </span>
+      {completedResult ? (
+        <span className="absolute right-1.5 top-1.5 z-10 text-lg font-light leading-none text-white/38">›</span>
       ) : null}
 
       <span className="grid place-items-center gap-1 border-r border-cyan-300/20 pr-3 text-cyan-300">
@@ -2189,7 +2187,17 @@ function SelectedSportSignalRow({
           </>
         ) : displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
       </span>
-      <span className="text-lg font-light text-white">›</span>
+      {completedResult?.icon ? (
+        <span
+          aria-label={completedResult.label}
+          title={completedResult.label}
+          className={`mb-1 inline-flex h-6 w-6 items-center justify-center self-end justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+        >
+          {completedResult.icon}
+        </span>
+      ) : (
+        <span className="text-lg font-light text-white">›</span>
+      )}
     </button>
   );
 }
@@ -2301,14 +2309,8 @@ function SignalExplorerSheet({
                     }}
                     className={`relative grid min-h-[64px] w-full grid-cols-[60px_minmax(0,1fr)_92px_14px] items-center gap-2 border-b border-white/10 px-3 py-2 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
                   >
-                    {completedResult?.icon ? (
-                      <span
-                        aria-label={completedResult.label}
-                        title={completedResult.label}
-                        className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
-                      >
-                        {completedResult.icon}
-                      </span>
+                    {completedResult ? (
+                      <span className="absolute right-1.5 top-1.5 z-10 text-xl font-light leading-none text-white/38">›</span>
                     ) : null}
 
                     <span className="grid place-items-center gap-1 text-cyan-300">
@@ -2345,7 +2347,17 @@ function SignalExplorerSheet({
                         </span>
                       </span>
                     )}
-                    <span className="text-xl font-light text-white/65">›</span>
+                    {completedResult?.icon ? (
+                      <span
+                        aria-label={completedResult.label}
+                        title={completedResult.label}
+                        className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center self-end justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+                      >
+                        {completedResult.icon}
+                      </span>
+                    ) : (
+                      <span className="text-xl font-light text-white/65">›</span>
+                    )}
                   </button>
                 );
               })}

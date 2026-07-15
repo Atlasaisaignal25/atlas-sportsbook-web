@@ -3546,14 +3546,8 @@ function SignalDetectedRow({
         !isLast ? "border-b border-white/10" : ""
       }`}
     >
-      {showCompletedResult && completedResult?.icon ? (
-        <span
-          aria-label={completedResult.label}
-          title={completedResult.label}
-          className={`absolute right-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
-        >
-          {completedResult.icon}
-        </span>
+      {showCompletedResult ? (
+        <span className="absolute right-1.5 top-1.5 z-10 text-[20px] leading-none text-white/34">›</span>
       ) : null}
 
       <div className="flex items-center gap-2">
@@ -3600,7 +3594,17 @@ function SignalDetectedRow({
         ) : null}
       </div>
 
-      <span className="text-[20px] leading-none text-white/28">›</span>
+      {showCompletedResult && completedResult?.icon ? (
+        <span
+          aria-label={completedResult.label}
+          title={completedResult.label}
+          className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center self-end justify-self-end rounded-[8px] border text-[12px] font-black ${completedResult.badgeClassName}`}
+        >
+          {completedResult.icon}
+        </span>
+      ) : (
+        <span className="text-[20px] leading-none text-white/28">›</span>
+      )}
     </button>
   );
 }
