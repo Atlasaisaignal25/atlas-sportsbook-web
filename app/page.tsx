@@ -8133,6 +8133,22 @@ function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | nul
   );
 }
 
+function AtlasPlanUpgradePlaceholder() {
+  return (
+    <BankrollShell className="px-3 py-3">
+      <div className="grid grid-cols-[34px_1fr] items-center gap-2.5">
+        <div className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
+          <BankrollUiIcon name="shield" className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-black text-white/78">Atlas Plan is available with membership.</p>
+          <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/45">Exclusive, Premium, and Unlimited unlock the guided Atlas Plan experience. My Tracking remains open with Signals Detected.</p>
+        </div>
+      </div>
+    </BankrollShell>
+  );
+}
+
 function BankrollPlanCard({
   metrics,
   atlasPlan,
@@ -8412,6 +8428,7 @@ function BankrollPlanTrackingTabs({
   const trackingComparison = useMemo(() => (config ? buildComparison(config, trackingAnalytics, trackingRange, calendarDate) : null), [calendarDate, config, trackingAnalytics, trackingRange]);
   const overallTrackingComparison = useMemo(() => (config ? buildComparison(config, overallTrackingAnalytics, "all_time", calendarDate) : null), [calendarDate, config, overallTrackingAnalytics]);
   const selectedTrackingPick = trackingHistory.picks.find((item) => item.pick.id === selectedTrackingPickId) ?? null;
+  const atlasPlanLockedForFree = Boolean(config?.atlasPlanCollection?.manualSelectionRequired);
 
   function handleTabChange(tab: "atlas" | "manual") {
     onTabChange(tab);
@@ -8462,28 +8479,35 @@ function BankrollPlanTrackingTabs({
         <button
           type="button"
           onClick={() => handleTabChange("atlas")}
-          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "atlas" ? "bg-emerald-300 text-black" : "text-white/45"}`}
+          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition duration-200 ${activeTab === "atlas" ? "bg-cyan-300 text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]" : "text-white/45"}`}
         >
           Atlas Plan
         </button>
         <button
           type="button"
           onClick={() => handleTabChange("manual")}
-          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] ${activeTab === "manual" ? "bg-emerald-300 text-black" : "text-white/45"}`}
+          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition duration-200 ${activeTab === "manual" ? "bg-cyan-300 text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]" : "text-white/45"}`}
         >
           My Tracking
         </button>
       </div>
       {activeTab === "atlas" ? (
         <div className="mt-1.5 grid grid-cols-[28px_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.035] px-2.5 py-1.5">
-          <div className="grid h-7 w-7 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+          <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-300">
             <BankrollUiIcon name="wallet" className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <>
-              <p className="text-[12px] font-black text-white/72">Atlas Plan tracking.</p>
-              <p className="mt-0.5 text-[10px] leading-4 text-white/45">Automatic Atlas signals remain separate from manual tracking.</p>
-            </>
+            {atlasPlanLockedForFree ? (
+              <>
+                <p className="text-[12px] font-black text-white/72">Atlas Plan requires membership.</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-white/45">My Tracking remains available with Signals Detected.</p>
+              </>
+            ) : (
+              <>
+                <p className="text-[12px] font-black text-white/72">Atlas Plan tracking.</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-white/45">Automatic Atlas signals remain separate from personal tracking.</p>
+              </>
+            )}
           </div>
         </div>
       ) : (
@@ -8582,9 +8606,9 @@ function MyTrackingDashboard({
       <MyTrackingSecondaryPanel title="Performance" onBack={() => setSecondaryView("main")}>
         <MyTrackingMetricCard
           title="Manual Performance"
-          tone="emerald"
+          tone="cyan"
           metrics={[
-            { label: "Manual Bankroll", value: formatCurrency(analytics.currentBankroll), valueClass: "text-emerald-300" },
+            { label: "Manual Bankroll", value: formatCurrency(analytics.currentBankroll), valueClass: "text-cyan-200" },
             { label: "Profit / Loss", value: formatTrackingProfit(analytics.profit), valueClass: analytics.profit >= 0 ? "text-emerald-300" : "text-red-300" },
             { label: "ROI", value: formatSignedPercent(analytics.roi), valueClass: analytics.roi >= 0 ? "text-emerald-300" : "text-red-300" },
             { label: "Win Rate", value: `${formatCompactNumber(analytics.winRate)}%`, valueClass: "text-white" },
@@ -8635,6 +8659,7 @@ function MyTrackingDashboard({
 
   return (
     <div className="grid gap-1.5 pb-3">
+      <MyTrackingSportsbookHeader demoModeEnabled={demoModeEnabled} snapshot={snapshot} />
       <AvailableSportsbookPicks
         picks={sportsbookPicks}
         cardPickIds={cardPickIds}
@@ -8665,6 +8690,29 @@ function MyTrackingDashboard({
   );
 }
 
+function MyTrackingSportsbookHeader({ demoModeEnabled, snapshot }: { demoModeEnabled: boolean; snapshot: AtlasDailySnapshot | null }) {
+  return (
+    <div className="rounded-[14px] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(14,116,144,0.14),rgba(15,23,42,0.28))] px-3 py-2 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[15px] font-black uppercase leading-4 tracking-[0.12em] text-white">My Tracking</p>
+          <p className="mt-0.5 truncate text-[10px] font-bold leading-3 text-cyan-200/65">Track Your Atlas Picks</p>
+        </div>
+        {demoModeEnabled && snapshot ? (
+          <div className="shrink-0 rounded-full border border-amber-300/20 bg-amber-300/[0.07] px-2 py-1 text-right">
+            <p className="text-[7px] font-black uppercase tracking-[0.1em] text-amber-200">Last Available</p>
+            <p className="text-[9px] font-black text-white/72">{formatSnapshotDate(snapshot.snapshotDate)}</p>
+          </div>
+        ) : (
+          <div className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-300/[0.07] px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200">
+            Live Board
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type SportsbookCardPick = {
   pick: AtlasTrackingPickOption;
   riskAmount: number;
@@ -8688,14 +8736,14 @@ function AvailableSportsbookPicks({
   const availabilityLabel = picks.length > 0 ? `${picks.length} Picks Available Today` : "No Picks Available Today";
 
   return (
-    <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
+    <div className="rounded-[13px] border border-cyan-300/12 bg-black/18 p-2">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Available Picks</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Available Picks</p>
           <p className="mt-0.5 text-[10px] font-black text-white/58">{availabilityLabel}</p>
         </div>
-        <div className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${demoModeEnabled ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-200" : "border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200"}`}>
-          {demoModeEnabled ? "Demo" : "Live Board"}
+        <div className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${demoModeEnabled ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-200" : "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200"}`}>
+          {demoModeEnabled && snapshot ? `Last Available · ${formatSnapshotDate(snapshot.snapshotDate)}` : "Live Board"}
         </div>
       </div>
       {demoModeEnabled && snapshot ? <SnapshotDemoInlineBanner snapshot={snapshot} /> : null}
@@ -8734,18 +8782,23 @@ function AvailableSportsbookPickRow({
   const confidence = formatPickConfidence(pick);
 
   return (
-    <div className="grid min-h-[58px] grid-cols-[34px_1fr_54px_48px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5">
-      <div className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/18 bg-emerald-300/[0.08] text-[15px] font-black text-emerald-200">
-        {getSportGlyph(pick.sport)}
+    <div className="grid min-h-[54px] grid-cols-[42px_1fr_52px_46px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.026] px-2 py-1.5 transition duration-200">
+      <div className="flex -space-x-2">
+        <TeamLogoLabel team={matchup.home} sport={pick.sport} />
+        <TeamLogoLabel team={matchup.away} sport={pick.sport} muted />
       </div>
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-1.5">
           <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
-          <span className="shrink-0 text-[8px] font-black uppercase text-white/28">vs</span>
-          <p className="truncate text-[11px] font-black text-white/82">{matchup.away}</p>
+          {matchup.away ? (
+            <>
+              <span className="shrink-0 text-[8px] font-black uppercase text-cyan-200/38">vs</span>
+              <p className="truncate text-[11px] font-black text-white/82">{matchup.away}</p>
+            </>
+          ) : null}
         </div>
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-          <p className="truncate text-[10px] font-black text-emerald-200">{pick.selection}</p>
+          <p className="truncate text-[10px] font-black text-cyan-200">{pick.selection}</p>
           <span className="h-1 w-1 shrink-0 rounded-full bg-white/20" />
           <p className="truncate text-[9px] font-semibold text-white/38">{pick.market}</p>
         </div>
@@ -8761,7 +8814,7 @@ function AvailableSportsbookPickRow({
         className={`h-8 rounded-[9px] border px-2 text-[9px] font-black uppercase tracking-[0.1em] transition duration-200 ${
           added
             ? "border-emerald-300/20 bg-emerald-300/[0.12] text-emerald-200"
-            : "border-emerald-300/35 bg-emerald-300 text-black shadow-[0_0_16px_rgba(52,211,153,0.18)]"
+            : "border-cyan-300/35 bg-cyan-300 text-black shadow-[0_0_16px_rgba(34,211,238,0.2)]"
         }`}
       >
         {added ? "Added ✓" : "Add"}
@@ -8793,6 +8846,7 @@ function SportsbookMyCard({
       <div className="mb-1.5 grid gap-1.5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">My Card</p>
+          <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totals.count} {totals.count === 1 ? "Pick" : "Picks"} Selected</p>
         </div>
         <div className="grid grid-cols-4 divide-x divide-white/10 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1 text-center">
           <div>
@@ -8805,11 +8859,11 @@ function SportsbookMyCard({
           </div>
           <div>
             <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Potential Return</p>
-            <p className="text-[11px] font-black text-emerald-200">{formatCurrency(totals.returnAmount)}</p>
+            <p className="text-[11px] font-black text-cyan-200">{formatCurrency(totals.returnAmount)}</p>
           </div>
           <div>
             <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Profit</p>
-            <p className="text-[11px] font-black text-emerald-200">{formatCurrency(totals.profit)}</p>
+            <p className="text-[11px] font-black text-cyan-200">{formatCurrency(totals.profit)}</p>
           </div>
         </div>
       </div>
@@ -8842,7 +8896,7 @@ function SportsbookDraftCardPick({ item, demoModeEnabled, snapshot, onRemove }: 
   const potentialReturn = calculatePotentialReturn(riskAmount, pick.odds);
 
   return (
-    <div className="rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 transition duration-200">
+    <div className="rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1 transition duration-300 ease-out">
       <div className="grid grid-cols-[30px_minmax(0,1fr)_48px_54px] items-center gap-2">
         <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
           {getSportGlyph(pick.sport)}
@@ -8850,9 +8904,9 @@ function SportsbookDraftCardPick({ item, demoModeEnabled, snapshot, onRemove }: 
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
             <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
-            {demoModeEnabled && snapshot ? <span className="shrink-0 rounded-full bg-amber-300/[0.12] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-amber-200">Demo</span> : null}
+            {demoModeEnabled && snapshot ? <span className="shrink-0 rounded-full bg-amber-300/[0.12] px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.08em] text-amber-200">Last Available</span> : null}
           </div>
-          <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market} · {matchup.home} vs {matchup.away}</p>
+          <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market} · {matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}</p>
           {demoModeEnabled && snapshot ? <p className="mt-0.5 truncate text-[8px] font-semibold text-amber-200/55">Snapshot {formatSnapshotDate(snapshot.snapshotDate)}</p> : null}
         </div>
         <div className="text-right">
@@ -8870,11 +8924,11 @@ function SportsbookDraftCardPick({ item, demoModeEnabled, snapshot, onRemove }: 
         </div>
         <div>
           <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Potential Return</p>
-          <p className="text-[10px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
+          <p className="text-[10px] font-black text-cyan-200">{formatCurrency(potentialReturn)}</p>
         </div>
         <div>
           <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Profit</p>
-          <p className="text-[10px] font-black text-emerald-200">{formatCurrency(calculatePotentialProfit(riskAmount, pick.odds))}</p>
+          <p className="text-[10px] font-black text-cyan-200">{formatCurrency(calculatePotentialProfit(riskAmount, pick.odds))}</p>
         </div>
       </div>
     </div>
@@ -8886,7 +8940,7 @@ function SportsbookTrackedCardPick({ pick, onOpen }: { pick: ManualTrackingColle
   const potentialReturn = calculatePotentialReturn(pick.riskAmount ?? 0, pick.odds ?? 0);
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[62px] grid-cols-[30px_1fr_58px_58px_12px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 text-left">
+    <button type="button" onClick={onOpen} className="grid min-h-[54px] grid-cols-[30px_1fr_58px_58px_12px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1 text-left transition duration-200">
       <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
         {getSportGlyph(pick.sport ?? "AT")}
       </div>
@@ -8899,7 +8953,7 @@ function SportsbookTrackedCardPick({ pick, onOpen }: { pick: ManualTrackingColle
         <p className="mt-0.5 text-[8px] font-bold text-white/32">Risk</p>
       </div>
       <div className="text-right">
-        <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
+        <p className="text-[11px] font-black text-cyan-200">{formatCurrency(potentialReturn)}</p>
         <p className={`mt-0.5 text-[8px] font-black uppercase tracking-[0.05em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
       </div>
       <BankrollUiIcon name="arrow" className="h-3 w-3 text-white/32" />
@@ -8964,13 +9018,13 @@ function SportsbookBetSlipSheet({
 
   return (
     <div className="fixed inset-0 z-[76] flex items-end justify-center bg-black/72 px-3 pb-[calc(76px+env(safe-area-inset-bottom))] backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-[24px] border border-emerald-300/22 bg-[#06101d] shadow-[0_-18px_70px_rgba(16,185,129,0.18)]">
+      <div className="w-full max-w-md overflow-hidden rounded-[24px] border border-cyan-300/22 bg-[#06101d] shadow-[0_-18px_70px_rgba(34,211,238,0.18)]">
         <div className="relative px-3 pb-3 pt-3">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.10),transparent_40%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.15),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_40%)]" />
           <div className="relative grid gap-2">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Bet Slip</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Bet Slip</p>
                 <p className="mt-0.5 text-[11px] font-semibold text-white/42">{pick.sport} · {pick.league}</p>
               </div>
               <button type="button" onClick={onCancel} className="rounded-[10px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-white/55">
@@ -8979,18 +9033,19 @@ function SportsbookBetSlipSheet({
             </div>
             {demoModeEnabled && snapshot ? (
               <div className="rounded-[12px] border border-amber-300/18 bg-amber-300/[0.06] px-2.5 py-1.5">
-                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-200">Demo Snapshot · {formatSnapshotDate(snapshot.snapshotDate)}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-200">Last Available · {formatSnapshotDate(snapshot.snapshotDate)}</p>
               </div>
             ) : null}
 
             <div className="rounded-[15px] border border-white/10 bg-black/20 p-2">
-              <div className="grid grid-cols-[34px_1fr_52px] items-center gap-2">
-                <div className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] text-[14px] font-black text-emerald-200">
-                  {getSportGlyph(pick.sport)}
+              <div className="grid grid-cols-[42px_1fr_52px] items-center gap-2">
+                <div className="flex -space-x-2">
+                  <TeamLogoLabel team={matchup.home} sport={pick.sport} />
+                  <TeamLogoLabel team={matchup.away} sport={pick.sport} muted />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-[11px] font-black text-white/82">{matchup.home} <span className="text-white/28">vs</span> {matchup.away}</p>
-                  <p className="mt-0.5 truncate text-[13px] font-black text-emerald-200">{pick.selection}</p>
+                  <p className="truncate text-[11px] font-black text-white/82">{matchup.home}{matchup.away ? <><span className="text-white/28"> vs </span>{matchup.away}</> : null}</p>
+                  <p className="mt-0.5 truncate text-[13px] font-black text-cyan-200">{pick.selection}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[13px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
@@ -9023,7 +9078,7 @@ function SportsbookBetSlipSheet({
                 }}
                 placeholder="$25"
                 inputMode="decimal"
-                className="mt-1 h-11 w-full rounded-[14px] border border-white/10 bg-black/28 px-3 text-[20px] font-black text-white outline-none focus:border-emerald-300/45"
+                className="mt-1 h-11 w-full rounded-[14px] border border-white/10 bg-black/28 px-3 text-[20px] font-black text-white outline-none focus:border-cyan-300/45"
               />
             </label>
 
@@ -9038,7 +9093,7 @@ function SportsbookBetSlipSheet({
                   key={option.label}
                   type="button"
                   onClick={() => handleQuickAmount(option.value)}
-                  className="h-8 rounded-[10px] border border-emerald-300/20 bg-emerald-300/[0.08] text-[9px] font-black uppercase tracking-[0.08em] text-emerald-200"
+                  className="h-8 rounded-[10px] border border-cyan-300/20 bg-cyan-300/[0.08] text-[9px] font-black uppercase tracking-[0.08em] text-cyan-200 transition duration-200 active:scale-[0.98]"
                 >
                   {option.label}
                 </button>
@@ -9052,11 +9107,11 @@ function SportsbookBetSlipSheet({
               </div>
               <div>
                 <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Potential Return</p>
-                <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
+                <p className="text-[11px] font-black text-cyan-200">{formatCurrency(potentialReturn)}</p>
               </div>
               <div>
                 <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Potential Profit</p>
-                <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialProfit)}</p>
+                <p className="text-[11px] font-black text-cyan-200">{formatCurrency(potentialProfit)}</p>
               </div>
             </div>
 
@@ -9066,7 +9121,7 @@ function SportsbookBetSlipSheet({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value.slice(0, 500))}
                 placeholder="Why are you tracking this pick?"
-                className="mt-1 h-[74px] w-full resize-none rounded-[14px] border border-white/10 bg-black/28 p-2 text-[12px] font-semibold leading-4 text-white outline-none focus:border-emerald-300/45"
+                className="mt-1 h-[74px] w-full resize-none rounded-[14px] border border-white/10 bg-black/28 p-2 text-[12px] font-semibold leading-4 text-white outline-none focus:border-cyan-300/45"
               />
             </label>
 
@@ -9075,7 +9130,7 @@ function SportsbookBetSlipSheet({
               <button type="button" onClick={onCancel} className="h-10 rounded-[13px] border border-white/10 bg-white/[0.04] text-[9px] font-black uppercase tracking-[0.12em] text-white/58">
                 Cancel
               </button>
-              <button type="button" onClick={handleConfirm} className="h-10 rounded-[13px] bg-emerald-300 text-[9px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
+              <button type="button" onClick={handleConfirm} className="h-10 rounded-[13px] bg-cyan-300 text-[9px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(34,211,238,0.18)] transition duration-200 active:scale-[0.99]">
                 Add To My Card
               </button>
             </div>
@@ -9106,7 +9161,7 @@ function SnapshotDemoInlineBanner({ snapshot }: { snapshot: AtlasDailySnapshot }
   return (
     <div className="mb-1.5 rounded-[11px] border border-amber-300/16 bg-amber-300/[0.055] px-2.5 py-1.5">
       <p className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-200">Last Available · {formatSnapshotDate(snapshot.snapshotDate)}</p>
-      <p className="mt-0.5 text-[9px] font-semibold leading-3 text-white/38">Snapshot picks are for demonstration and navigation.</p>
+      <p className="mt-0.5 text-[9px] font-semibold leading-3 text-white/38">Showing the latest available Atlas Snapshot.</p>
     </div>
   );
 }
@@ -9115,18 +9170,21 @@ function SportsbookQuickAccess({ onOpen }: { onOpen: (view: "performance" | "his
   return (
     <div className="grid gap-1">
       {[
-        { label: "View Performance", view: "performance" as const },
-        { label: "View History", view: "history" as const },
-        { label: "View Analytics", view: "analytics" as const },
+        { label: "View Performance", subtitle: "Financial Summary", view: "performance" as const },
+        { label: "View History", subtitle: "Timeline & Results", view: "history" as const },
+        { label: "View Analytics", subtitle: "Sports & Markets", view: "analytics" as const },
       ].map((item) => (
         <button
           key={item.view}
           type="button"
           onClick={() => onOpen(item.view)}
-          className="flex h-9 items-center justify-between rounded-[11px] border border-white/10 bg-black/18 px-3 text-left text-[10px] font-black uppercase tracking-[0.12em] text-white/62"
+          className="flex min-h-10 items-center justify-between rounded-[11px] border border-cyan-300/12 bg-black/18 px-3 py-1.5 text-left transition duration-200 active:scale-[0.99]"
         >
-          <span>{item.label}</span>
-          <span className="text-emerald-300">→</span>
+          <span className="min-w-0">
+            <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-white/66">{item.label}</span>
+            <span className="mt-0.5 block text-[9px] font-semibold text-cyan-200/52">{item.subtitle} →</span>
+          </span>
+          <span className="text-cyan-300">→</span>
         </button>
       ))}
     </div>
@@ -9137,7 +9195,7 @@ function MyTrackingSecondaryPanel({ title, onBack, children }: { title: string; 
   return (
     <div className="grid gap-1.5 pb-3">
       <div className="flex h-10 items-center justify-between rounded-[13px] border border-white/10 bg-black/18 px-2.5">
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">{title}</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">{title}</p>
         <button type="button" onClick={onBack} className="rounded-[9px] border border-white/10 bg-white/[0.035] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-white/55">
           Back
         </button>
@@ -9208,14 +9266,39 @@ function getSportGlyph(sport: AtlasPlanSport | string) {
   if (sport === "NBA") return "NBA";
   if (sport === "NFL") return "NFL";
   if (sport === "NHL") return "NHL";
-  if (sport === "SOCCER") return "FC";
+  if (sport === "SOCCER") return "SOC";
   return "AT";
+}
+
+function getTeamInitials(team: string, sport: AtlasPlanSport | string) {
+  const cleanTeam = team.trim();
+  if (!cleanTeam) return getSportGlyph(sport).slice(0, 2);
+  const words = cleanTeam.split(/\s+/).filter(Boolean);
+  const initials = words.length === 1
+    ? words[0].slice(0, 2)
+    : `${words[0][0] ?? ""}${words[words.length - 1]?.[0] ?? ""}`;
+  return initials.toUpperCase();
+}
+
+function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: AtlasPlanSport | string; muted?: boolean }) {
+  return (
+    <div
+      className={`grid h-7 w-7 place-items-center rounded-full border text-[8px] font-black uppercase tracking-[-0.01em] ${
+        muted
+          ? "border-sky-300/18 bg-sky-300/[0.055] text-sky-100/70"
+          : "border-cyan-300/28 bg-cyan-300/[0.11] text-cyan-100"
+      }`}
+      title={team || getSportGlyph(sport)}
+    >
+      {getTeamInitials(team, sport)}
+    </div>
+  );
 }
 
 function formatSportsbookMatchup(pick: Pick<AtlasTrackingPickOption, "homeTeam" | "awayTeam" | "selection">) {
   if (pick.homeTeam && pick.awayTeam) return { home: pick.homeTeam, away: pick.awayTeam };
   const cleanSelection = pick.selection.replace(/\s+(ML|RL|Spread|Moneyline|Over|Under|O\/U).*$/i, "").trim();
-  return { home: cleanSelection || "Atlas Pick", away: "Opponent" };
+  return { home: pick.homeTeam || cleanSelection || "Atlas Pick", away: pick.awayTeam || "" };
 }
 
 function formatSportsbookOdds(odds: number | null) {
@@ -9306,20 +9389,6 @@ function calculateSportsbookCardTotals(cardPicks: SportsbookCardPick[], activePi
   };
 }
 
-function MyTrackingSectionBar() {
-  return (
-    <div className="px-0.5 py-1">
-      <div className="flex items-center gap-2">
-        <span className="h-7 w-1 rounded-full bg-emerald-300/70 shadow-[0_0_12px_rgba(16,185,129,0.35)]" />
-        <div className="min-w-0">
-          <p className="text-[13px] font-black uppercase leading-4 tracking-[0.13em] text-white">My Tracking</p>
-          <p className="text-[10px] font-bold leading-3 text-emerald-200/60">Personal Performance</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MyTrackingMetricCard({
   title,
   metrics,
@@ -9359,10 +9428,10 @@ function ActivePicksList({
     <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <BankrollUiIcon name="target" className="h-4 w-4 text-emerald-300" />
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">Active Picks</p>
+          <BankrollUiIcon name="target" className="h-4 w-4 text-cyan-300" />
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Active Picks</p>
         </div>
-        <button type="button" onClick={onCreateManualPick} className="rounded-[9px] border border-emerald-300/30 bg-emerald-300/[0.10] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-emerald-200">
+        <button type="button" onClick={onCreateManualPick} className="rounded-[9px] border border-cyan-300/30 bg-cyan-300/[0.10] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-cyan-200">
           + Add Pick
         </button>
       </div>
@@ -9389,7 +9458,7 @@ function ActiveTrackingPickRow({ pick, onOpen }: { pick: ManualTrackingCollectio
 
   return (
     <button type="button" onClick={onOpen} className="grid min-h-[48px] grid-cols-[0.46fr_1fr_0.62fr_0.54fr_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-white/[0.025] px-2 py-1 text-left">
-      <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
+      <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-cyan-300">{pick.sport ?? "Sport"}</p>
       <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
       <p className={`truncate text-right text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
       <p className={`text-right text-[10px] font-black ${amountClass}`}>{amount}</p>
@@ -9419,8 +9488,7 @@ function TrackingComparisonCompact({ comparison }: { comparison: TrackingCompari
         </div>
       ) : (
         <div className="rounded-[10px] border border-white/10 bg-white/[0.025] px-2.5 py-1.5">
-          <p className="text-[11px] font-black text-white/70">No comparison available yet.</p>
-          <p className="mt-0.5 text-[9px] font-semibold leading-4 text-white/40">Comparison starts after both Atlas Plan and My Tracking complete at least one tracked pick.</p>
+          <p className="text-[10px] font-semibold leading-4 text-white/48">Comparison will become available after both Atlas Plan and My Tracking complete tracked picks.</p>
         </div>
       )}
     </div>
@@ -9458,6 +9526,7 @@ const trackingRangeOptions: Array<{ label: string; value: TrackingRange }> = [
   { label: "This Week", value: "this_week" },
   { label: "Last Week", value: "last_week" },
   { label: "This Month", value: "this_month" },
+  { label: "Calendar", value: "calendar" },
 ];
 
 function TrackingRangeSelector({
@@ -9480,7 +9549,7 @@ function TrackingRangeSelector({
             type="button"
             onClick={() => onRangeChange(option.value)}
             className={`shrink-0 rounded-[9px] border px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] ${
-              range === option.value ? "border-emerald-300/45 bg-emerald-300/[0.12] text-emerald-200" : "border-white/10 bg-black/18 text-white/42"
+              range === option.value ? "border-cyan-300/45 bg-cyan-300/[0.12] text-cyan-200" : "border-white/10 bg-black/18 text-white/42"
             }`}
           >
             {option.label}
@@ -9492,7 +9561,7 @@ function TrackingRangeSelector({
           type="date"
           value={calendarDate}
           onChange={(event) => onCalendarDateChange(event.target.value)}
-          className="mt-1 h-8 w-full rounded-[11px] border border-white/10 bg-black/24 px-2 text-[11px] font-bold text-white/72 outline-none focus:border-emerald-300/45"
+          className="mt-1 h-8 w-full rounded-[11px] border border-white/10 bg-black/24 px-2 text-[11px] font-bold text-white/72 outline-none focus:border-cyan-300/45"
         />
       ) : null}
     </div>
@@ -9520,15 +9589,12 @@ function TrackingHistoryCard({
     <div className="rounded-[13px] border border-white/10 bg-black/18 p-2">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <BankrollUiIcon name="wallet" className="h-4 w-4 text-emerald-300" />
+          <BankrollUiIcon name="wallet" className="h-4 w-4 text-cyan-300" />
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Performance History</p>
             <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totalPicks} tracked this period</p>
           </div>
         </div>
-        <button type="button" onClick={() => onRangeChange("calendar")} className="rounded-[9px] border border-white/10 bg-white/[0.035] px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/50">
-          Calendar
-        </button>
       </div>
       <TrackingRangeSelector range={trackingRange} calendarDate={calendarDate} onRangeChange={onRangeChange} onCalendarDateChange={onCalendarDateChange} />
       <TrackingHistoryList history={history} onOpenPick={onOpenPick} />
@@ -10268,6 +10334,7 @@ function AtlasBankrollScreen({
     [config, effectiveAtlasSources, membership, metrics],
   );
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
+  const atlasPlanLockedForFree = Boolean(planCollection?.manualSelectionRequired);
   const manualTracking = config?.manualTracking ?? null;
   const availableAtlasPicks = snapshotMode.picks;
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
@@ -10397,13 +10464,17 @@ function AtlasBankrollScreen({
       />
       {bankrollDemoModeEnabled && bankrollDemoSnapshot ? <SnapshotDemoBanner snapshot={bankrollDemoSnapshot} /> : null}
       {activeBankrollTab === "atlas" ? (
-        <>
-          <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
-          <BankrollSummaryCard config={config} metrics={metrics} />
-          <BankrollWeeklyCard />
-          <BankrollPerformanceCard metrics={metrics} />
-          <BankrollInsightCard />
-        </>
+        atlasPlanLockedForFree ? (
+          <AtlasPlanUpgradePlaceholder />
+        ) : (
+          <>
+            <BankrollPlanCard metrics={metrics} atlasPlan={atlasPlan} planCollection={planCollection} onViewPlans={() => setPlansOpen(true)} />
+            <BankrollSummaryCard config={config} metrics={metrics} />
+            <BankrollWeeklyCard />
+            <BankrollPerformanceCard metrics={metrics} />
+            <BankrollInsightCard />
+          </>
+        )
       ) : null}
       <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
       <ManualPickCreatorSheet
