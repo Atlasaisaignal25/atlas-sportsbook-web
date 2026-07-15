@@ -83,21 +83,71 @@ function getDisplayStatus(row: SignalDetectedRow) {
 function formatCompactSignalScore(score?: string | null) {
   if (!score) return null;
   const compactMatch = score.match(/^\s*(\d+)\s*[-|]\s*(\d+)\s*$/);
-  if (compactMatch) return `${compactMatch[1]} | ${compactMatch[2]}`;
+  if (compactMatch) return `${compactMatch[1]}-${compactMatch[2]}`;
 
   const values = Array.from(score.matchAll(/\b\d+\b/g)).map((match) => match[0]);
-  if (values.length >= 2) return `${values[values.length - 2]} | ${values[values.length - 1]}`;
+  if (values.length >= 2) return `${values[values.length - 2]}-${values[values.length - 1]}`;
 
   return null;
 }
 
-function getCompactResultBadge(row: SignalDetectedRow) {
+function getCompletedResultCard(row: SignalDetectedRow) {
   const status = getDisplayStatus(row);
   const score = formatCompactSignalScore(row.liveScore);
-  if (!score) return null;
-  if (status === "WON") return { score, icon: "✓", iconClassName: "text-emerald-300", label: "Won" };
-  if (status === "LOST") return { score, icon: "✕", iconClassName: "text-rose-300", label: "Lost" };
-  if (status === "PUSH") return { score, icon: "—", iconClassName: "text-white/45", label: "Push" };
+  if (status === "WON") {
+    if (!score) return null;
+    return {
+      score,
+      icon: "✓",
+      iconClassName: "text-emerald-200",
+      label: "WIN",
+      badgeClassName: "border-emerald-300/55 bg-emerald-400/10 text-emerald-200 shadow-[0_0_14px_rgba(52,211,153,0.16)]",
+      rowClassName: "ring-1 ring-inset ring-emerald-300/18 bg-emerald-400/[0.025]",
+    };
+  }
+  if (status === "LOST") {
+    if (!score) return null;
+    return {
+      score,
+      icon: "✕",
+      iconClassName: "text-rose-200",
+      label: "LOSS",
+      badgeClassName: "border-red-300/55 bg-red-400/10 text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.14)]",
+      rowClassName: "ring-1 ring-inset ring-red-300/18 bg-red-400/[0.025]",
+    };
+  }
+  if (status === "PUSH") {
+    if (!score) return null;
+    return {
+      score,
+      icon: null,
+      iconClassName: "text-white/45",
+      label: "PUSH",
+      badgeClassName: "border-white/24 bg-white/8 text-white/66",
+      rowClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
+    };
+  }
+  if (status === "FINAL") {
+    if (!score) return null;
+    return {
+      score,
+      icon: null,
+      iconClassName: "text-white/45",
+      label: "FINAL",
+      badgeClassName: "border-white/20 bg-white/8 text-white/62",
+      rowClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
+    };
+  }
+  if (status === "CANCELLED") {
+    return {
+      score: null,
+      icon: null,
+      iconClassName: "text-white/45",
+      label: "CANCELLED",
+      badgeClassName: "border-white/20 bg-white/8 text-white/56",
+      rowClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
+    };
+  }
   return null;
 }
 
@@ -277,7 +327,7 @@ export function SignalDetectedFeed({
           </div>
         ) : visibleRows.length > 0 ? visibleRows.map((row) => {
           const displayStatus = getDisplayStatus(row);
-          const compactBadge = getCompactResultBadge(row);
+          const completedResult = getCompletedResultCard(row);
 
           return (
             <button
@@ -285,7 +335,7 @@ export function SignalDetectedFeed({
               type="button"
               onClick={() => onRowOpen?.(row)}
               aria-label={`Open Signal Detected details for ${row.matchup}`}
-              className="grid min-h-[64px] w-full grid-cols-[76px_1fr_64px_42px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03]"
+              className={`grid min-h-[64px] w-full grid-cols-[76px_1fr_92px_12px] items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-white/[0.03] ${completedResult?.rowClassName ?? ""}`}
             >
               <span className="grid place-items-center gap-1 text-cyan-300">
                 <SportLineIcon
@@ -303,15 +353,27 @@ export function SignalDetectedFeed({
                   ) : null}
                 </span>
               </span>
-              <span className={`inline-flex h-[29px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[8px] border px-2 py-1.5 text-[8px] font-black uppercase ${compactBadge ? "border-white/20 bg-white/8 text-white/78" : getStatusBadgeClass(displayStatus)}`}>
-                {compactBadge ? (
-                  <>
-                    <span>{compactBadge.score}</span>
-                    <span className={compactBadge.iconClassName}>{compactBadge.icon}</span>
-                  </>
-                ) : displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
-              </span>
-              <span className="text-right text-[10px] font-medium text-white/52">{row.time}</span>
+              {completedResult ? (
+                <span className="flex flex-col items-end justify-self-end">
+                  <span className="text-[7px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
+                  {completedResult.score ? (
+                    <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+                      {completedResult.score}
+                    </span>
+                  ) : null}
+                  <span className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[8px] border px-2 py-1 text-[8px] font-black uppercase ${completedResult.badgeClassName}`}>
+                    {completedResult.icon ? <span className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
+                    <span>{completedResult.label}</span>
+                  </span>
+                </span>
+              ) : (
+                <span className="flex items-center justify-self-end gap-2">
+                  <span className={`inline-flex h-[29px] min-w-[58px] items-center justify-center rounded-[8px] border px-2 py-1.5 text-[8px] font-black uppercase ${getStatusBadgeClass(displayStatus)}`}>
+                    {displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
+                  </span>
+                  <span className="text-right text-[10px] font-medium text-white/52">{row.time}</span>
+                </span>
+              )}
               <span className="text-white/42">
                 <ArrowIcon />
               </span>

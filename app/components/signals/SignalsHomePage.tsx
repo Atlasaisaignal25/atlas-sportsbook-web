@@ -619,24 +619,50 @@ function getSignalViewAllResultBadge(status?: string | null) {
   if (["WON", "WIN", "WINNER", "W"].includes(normalized)) {
     return {
       icon: "✓",
-      label: "Won",
-      iconClassName: "text-emerald-300",
+      label: "WIN",
+      iconClassName: "text-emerald-200",
+      badgeClassName: "border-emerald-300/55 bg-emerald-400/10 text-emerald-200 shadow-[0_0_14px_rgba(52,211,153,0.16)]",
+      cardClassName: "ring-1 ring-inset ring-emerald-300/18 bg-emerald-400/[0.025]",
     };
   }
 
   if (["LOST", "LOSS", "LOSE", "L"].includes(normalized)) {
     return {
       icon: "✕",
-      label: "Lost",
-      iconClassName: "text-rose-300",
+      label: "LOSS",
+      iconClassName: "text-rose-200",
+      badgeClassName: "border-red-300/55 bg-red-400/10 text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.14)]",
+      cardClassName: "ring-1 ring-inset ring-red-300/18 bg-red-400/[0.025]",
     };
   }
 
   if (normalized === "PUSH") {
     return {
-      icon: "—",
-      label: "Push",
+      icon: null,
+      label: "PUSH",
       iconClassName: "text-white/45",
+      badgeClassName: "border-white/24 bg-white/8 text-white/66",
+      cardClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
+    };
+  }
+
+  if (normalized === "CANCELLED") {
+    return {
+      icon: null,
+      label: "CANCELLED",
+      iconClassName: "text-white/45",
+      badgeClassName: "border-white/20 bg-white/8 text-white/56",
+      cardClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
+    };
+  }
+
+  if (normalized === "FINAL") {
+    return {
+      icon: null,
+      label: "FINAL",
+      iconClassName: "text-white/45",
+      badgeClassName: "border-white/20 bg-white/8 text-white/62",
+      cardClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
     };
   }
 
@@ -646,19 +672,20 @@ function getSignalViewAllResultBadge(status?: string | null) {
 function formatCompactSignalScore(score?: string | null) {
   if (!score) return null;
   const compactMatch = score.match(/^\s*(\d+)\s*[-|]\s*(\d+)\s*$/);
-  if (compactMatch) return `${compactMatch[1]} | ${compactMatch[2]}`;
+  if (compactMatch) return `${compactMatch[1]}-${compactMatch[2]}`;
 
   const values = Array.from(score.matchAll(/\b\d+\b/g)).map((match) => match[0]);
-  if (values.length >= 2) return `${values[values.length - 2]} | ${values[values.length - 1]}`;
+  if (values.length >= 2) return `${values[values.length - 2]}-${values[values.length - 1]}`;
 
   return null;
 }
 
-function getCompactSignalResultBadge(row: SignalDetectedRow) {
+function getCompletedSignalResultCard(row: SignalDetectedRow) {
   const displayStatus = getSignalDisplayStatus(row);
   const resultBadge = getSignalViewAllResultBadge(displayStatus);
   const compactScore = formatCompactSignalScore(row.liveScore);
-  if (!resultBadge || !compactScore) return null;
+  if (!resultBadge) return null;
+  if (displayStatus !== "CANCELLED" && !compactScore) return null;
 
   return {
     ...resultBadge,
@@ -1617,7 +1644,7 @@ function FrameSignalDetectedFeed({
           {visibleRows.map((row) => {
             const label = getSportCompetitionLabel(row.sport);
             const displayStatus = getSignalDisplayStatus(row);
-            const compactResultBadge = getCompactSignalResultBadge(row);
+            const completedResult = getCompletedSignalResultCard(row);
             const primaryTime = getSignalPrimaryTimeLabel(row);
             const secondaryTime = getSignalSecondaryTimeLabel(row);
 
@@ -1626,7 +1653,7 @@ function FrameSignalDetectedFeed({
                 key={row.id}
                 type="button"
                 onClick={() => onRowOpen(row)}
-                className="grid min-h-[60px] w-full grid-cols-[74px_minmax(0,1fr)_76px_20px] items-center gap-2 border-b border-white/10 px-3 py-1.5 text-left last:border-b-0"
+                className={`grid min-h-[60px] w-full grid-cols-[74px_minmax(0,1fr)_92px_20px] items-center gap-2 border-b border-white/10 px-3 py-1.5 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
               >
                 <div className="grid place-items-center gap-1">
                   <SignalTeamLogoStack row={row} />
@@ -1639,26 +1666,32 @@ function FrameSignalDetectedFeed({
                   <p className="truncate text-[13px] font-semibold text-cyan-300">{formatSignalPickWithOdds(row)}</p>
                 </div>
                 <div className="flex items-center justify-end gap-2">
-                  {compactResultBadge ? (
-                    <span
-                      aria-label={compactResultBadge.label}
-                      title={compactResultBadge.label}
-                      className="inline-flex h-[29px] min-w-[58px] items-center justify-center gap-1 rounded-[9px] border border-white/20 bg-white/8 px-2 py-1 text-[8px] font-black uppercase text-white/78"
-                    >
-                      <span>{compactResultBadge.score}</span>
-                      <span aria-hidden="true" className={compactResultBadge.iconClassName}>{compactResultBadge.icon}</span>
+                  {completedResult ? (
+                    <span className="flex flex-col items-end">
+                      <span className="text-[7px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
+                      {completedResult.score ? (
+                        <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+                          {completedResult.score}
+                        </span>
+                      ) : null}
+                      <span className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[9px] border px-2 py-1 text-[8px] font-black uppercase ${completedResult.badgeClassName}`}>
+                        {completedResult.icon ? <span aria-hidden="true" className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
+                        <span>{completedResult.label}</span>
+                      </span>
                     </span>
                   ) : (
-                    <span className={`rounded-[9px] border px-2 py-1 text-[10px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
-                      {displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
-                    </span>
+                    <>
+                      <span className={`rounded-[9px] border px-2 py-1 text-[10px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
+                        {displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
+                      </span>
+                      <span className="min-w-0 text-right">
+                        <span className="block text-[11px] font-semibold leading-tight text-white/72">{primaryTime}</span>
+                        {secondaryTime ? (
+                          <span className="block text-[9px] font-black uppercase tracking-[0.08em] text-cyan-300/80">{secondaryTime}</span>
+                        ) : null}
+                      </span>
+                    </>
                   )}
-                  <span className="min-w-0 text-right">
-                    <span className="block text-[11px] font-semibold leading-tight text-white/72">{primaryTime}</span>
-                    {secondaryTime ? (
-                      <span className="block text-[9px] font-black uppercase tracking-[0.08em] text-cyan-300/80">{secondaryTime}</span>
-                    ) : null}
-                  </span>
                 </div>
                 <span className="text-2xl font-light text-white/70">›</span>
               </button>
@@ -2102,7 +2135,7 @@ function SelectedSportSignalRow({
   onOpen: () => void;
 }) {
   const displayStatus = getSignalDisplayStatus(row);
-  const compactResultBadge = getCompactSignalResultBadge(row);
+  const completedResult = getCompletedSignalResultCard(row);
   const primaryTime = getSignalPrimaryTimeLabel(row);
   const secondaryTime = getSignalSecondaryTimeLabel(row);
 
@@ -2110,27 +2143,38 @@ function SelectedSportSignalRow({
     <button
       type="button"
       onClick={onOpen}
-      className="grid min-h-[66px] w-full grid-cols-[50px_50px_1fr_58px_12px] items-center gap-2 rounded-[14px] border border-white/10 bg-[linear-gradient(135deg,rgba(6,24,42,0.92),rgba(3,8,20,0.94))] px-2.5 text-left shadow-[inset_0_0_30px_rgba(34,211,238,0.03)] transition hover:border-cyan-300/25"
+      className={`grid min-h-[66px] w-full grid-cols-[50px_56px_minmax(0,1fr)_68px_12px] items-center gap-2 rounded-[14px] border border-white/10 bg-[linear-gradient(135deg,rgba(6,24,42,0.92),rgba(3,8,20,0.94))] px-2.5 text-left shadow-[inset_0_0_30px_rgba(34,211,238,0.03)] transition hover:border-cyan-300/25 ${completedResult?.cardClassName ?? ""}`}
     >
       <span className="grid place-items-center gap-1 border-r border-cyan-300/20 pr-3 text-cyan-300">
         <SignalTeamLogoStack row={row} size="compact" />
         <span className="text-[7px] font-black uppercase text-white">{selectedSportLabels[sport]}</span>
       </span>
       <span className="border-r border-cyan-300/20 pr-2 text-[11px] font-black leading-tight text-white">
-        <span className="block">{formatSelectedSportTime(primaryTime)}</span>
-        {secondaryTime ? (
-          <span className="mt-0.5 block text-[8px] uppercase tracking-[0.08em] text-cyan-300/75">{secondaryTime}</span>
-        ) : null}
+        {completedResult ? (
+          <>
+            <span className="block text-[7px] uppercase tracking-[0.14em] text-white/45">Final</span>
+            {completedResult.score ? (
+              <span className="mt-0.5 block whitespace-nowrap text-[16px] leading-none text-white">{completedResult.score}</span>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <span className="block">{formatSelectedSportTime(primaryTime)}</span>
+            {secondaryTime ? (
+              <span className="mt-0.5 block text-[8px] uppercase tracking-[0.08em] text-cyan-300/75">{secondaryTime}</span>
+            ) : null}
+          </>
+        )}
       </span>
       <span className="min-w-0">
         <span className="block truncate text-[12px] font-black text-white">{row.matchup}</span>
         <span className="mt-0.5 block truncate text-[11px] font-medium text-cyan-300">{formatSignalPickWithOdds(row)}</span>
       </span>
-      <span className={`inline-flex h-[29px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[7px] border px-2 py-1.5 text-[8px] font-black uppercase ${compactResultBadge ? "border-white/20 bg-white/8 text-white/78" : getSignalStatusClasses(displayStatus)}`}>
-        {compactResultBadge ? (
+      <span className={`inline-flex min-h-[29px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[7px] border px-2 py-1.5 text-[8px] font-black uppercase ${completedResult ? completedResult.badgeClassName : getSignalStatusClasses(displayStatus)}`}>
+        {completedResult ? (
           <>
-            <span>{compactResultBadge.score}</span>
-            <span className={compactResultBadge.iconClassName}>{compactResultBadge.icon}</span>
+            {completedResult.icon ? <span className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
+            <span>{completedResult.label}</span>
           </>
         ) : displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
       </span>
@@ -2232,7 +2276,7 @@ function SignalExplorerSheet({
             <div className="relative z-0 isolate overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(6,18,31,0.82),rgba(3,8,20,0.94))]">
               {orderedRows.map((row) => {
                 const displayStatus = getSignalDisplayStatus(row);
-                const compactResultBadge = getCompactSignalResultBadge(row);
+                const completedResult = getCompletedSignalResultCard(row);
                 const primaryTime = getSignalPrimaryTimeLabel(row);
                 const secondaryTime = getSignalSecondaryTimeLabel(row);
 
@@ -2244,7 +2288,7 @@ function SignalExplorerSheet({
                       onClose();
                       onRowOpen(row);
                     }}
-                    className="grid min-h-[64px] w-full grid-cols-[60px_minmax(0,1fr)_64px_40px_14px] items-center gap-2 border-b border-white/10 px-3 py-2 text-left last:border-b-0"
+                    className={`grid min-h-[64px] w-full grid-cols-[60px_minmax(0,1fr)_92px_14px] items-center gap-2 border-b border-white/10 px-3 py-2 text-left last:border-b-0 ${completedResult?.cardClassName ?? ""}`}
                   >
                     <span className="grid place-items-center gap-1 text-cyan-300">
                       <SignalTeamLogoStack row={row} />
@@ -2258,26 +2302,32 @@ function SignalExplorerSheet({
                         {formatSignalPickWithOdds(row)}
                       </span>
                     </span>
-                    {compactResultBadge ? (
-                      <span
-                        aria-label={compactResultBadge.label}
-                        title={compactResultBadge.label}
-                        className="inline-flex h-[30px] min-w-[58px] items-center justify-center gap-1 justify-self-end rounded-[8px] border border-white/20 bg-white/8 px-2 py-1 text-[8px] font-black uppercase text-white/78"
-                      >
-                        <span>{compactResultBadge.score}</span>
-                        <span aria-hidden="true" className={compactResultBadge.iconClassName}>{compactResultBadge.icon}</span>
+                    {completedResult ? (
+                      <span className="flex flex-col items-end justify-self-end">
+                        <span className="text-[7px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
+                        {completedResult.score ? (
+                          <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+                            {completedResult.score}
+                          </span>
+                        ) : null}
+                        <span className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[8px] border px-2 py-1 text-[8px] font-black uppercase ${completedResult.badgeClassName}`}>
+                          {completedResult.icon ? <span aria-hidden="true" className={completedResult.iconClassName}>{completedResult.icon}</span> : null}
+                          <span>{completedResult.label}</span>
+                        </span>
                       </span>
                     ) : (
-                      <span className={`justify-self-end rounded-[8px] border px-2 py-1 text-[9px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
-                        {displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
+                      <span className="flex items-center justify-self-end gap-2">
+                        <span className={`rounded-[8px] border px-2 py-1 text-[9px] font-black uppercase ${getSignalStatusClasses(displayStatus)}`}>
+                          {displayStatus === "PENDING" ? "Pending" : displayStatus === "FINAL" ? "Pending" : displayStatus}
+                        </span>
+                        <span className="text-right text-[10px] font-semibold leading-tight text-white/58">
+                          <span className="block">{primaryTime}</span>
+                          {secondaryTime ? (
+                            <span className="block text-[8px] uppercase tracking-[0.08em] text-cyan-300/75">{secondaryTime}</span>
+                          ) : null}
+                        </span>
                       </span>
                     )}
-                    <span className="justify-self-end text-right text-[10px] font-semibold leading-tight text-white/58">
-                      <span className="block">{primaryTime}</span>
-                      {secondaryTime ? (
-                        <span className="block text-[8px] uppercase tracking-[0.08em] text-cyan-300/75">{secondaryTime}</span>
-                      ) : null}
-                    </span>
                     <span className="text-xl font-light text-white/65">›</span>
                   </button>
                 );

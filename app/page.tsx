@@ -3445,15 +3445,48 @@ function getSignalResultBadge(result: string | null | undefined) {
   return "PENDING";
 }
 
-function formatCompactSignalScore(leftScore: string, rightScore: string) {
+function formatCompletedSignalScore(leftScore: string, rightScore: string) {
   if (leftScore === "-" || rightScore === "-") return null;
-  return `${leftScore} | ${rightScore}`;
+  return `${leftScore}-${rightScore}`;
 }
 
-function getCompactSignalResultIcon(resultLabel: string) {
-  if (resultLabel === "WON") return { icon: "✓", className: "text-emerald-300" };
-  if (resultLabel === "LOST") return { icon: "✕", className: "text-red-300" };
-  if (resultLabel === "PUSH") return { icon: "—", className: "text-white/45" };
+function getCompletedSignalResultPresentation(resultLabel: string) {
+  if (resultLabel === "WON") {
+    return {
+      label: "WIN",
+      icon: "✓",
+      badgeClassName: "border-emerald-300/55 bg-emerald-400/10 text-emerald-200 shadow-[0_0_14px_rgba(52,211,153,0.16)]",
+      cardClassName: "ring-1 ring-inset ring-emerald-300/18 bg-emerald-400/[0.025]",
+    };
+  }
+
+  if (resultLabel === "LOST") {
+    return {
+      label: "LOSS",
+      icon: "✕",
+      badgeClassName: "border-red-300/55 bg-red-400/10 text-red-200 shadow-[0_0_14px_rgba(248,113,113,0.14)]",
+      cardClassName: "ring-1 ring-inset ring-red-300/18 bg-red-400/[0.025]",
+    };
+  }
+
+  if (resultLabel === "PUSH") {
+    return {
+      label: "PUSH",
+      icon: null,
+      badgeClassName: "border-white/24 bg-white/8 text-white/66",
+      cardClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
+    };
+  }
+
+  if (resultLabel === "CANCELLED") {
+    return {
+      label: "CANCELLED",
+      icon: null,
+      badgeClassName: "border-white/20 bg-white/8 text-white/56",
+      cardClassName: "ring-1 ring-inset ring-white/10 bg-white/[0.015]",
+    };
+  }
+
   return null;
 }
 
@@ -3493,22 +3526,23 @@ function SignalDetectedRow({
       ? "LIVE"
       : "PENDING";
   const oddsLabel = formatAmericanOdds(odds ?? null);
-  const compactScore = formatCompactSignalScore(awayScore, homeScore);
-  const resultIcon = getCompactSignalResultIcon(resultLabel);
-  const showCompactResultBadge = Boolean(resultIcon && compactScore);
-  const hideResultMeta = showCompactResultBadge || resultLabel === "CANCELLED";
+  const finalScore = formatCompletedSignalScore(awayScore, homeScore);
+  const completedResult = getCompletedSignalResultPresentation(resultLabel);
+  const showCompletedResult = Boolean(completedResult && (finalScore || resultLabel === "CANCELLED"));
   const timeLabel = hasScore
     ? `${awayScore}-${homeScore}`
     : live
     ? getGameMinute(game)
     : formatTime(game.commence_time);
-  const detailLabel = hideResultMeta ? null : game.completed ? null : live ? getGameMinute(game) : null;
+  const detailLabel = showCompletedResult ? null : game.completed ? null : live ? getGameMinute(game) : null;
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`grid w-full grid-cols-[62px_1fr_auto_14px] items-center gap-2.5 px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
+      className={`grid w-full grid-cols-[62px_minmax(0,1fr)_86px_14px] items-center gap-2.5 px-3 py-2.5 text-left transition-all active:scale-[0.995] ${
+        completedResult?.cardClassName ?? ""
+      } ${
         !isLast ? "border-b border-white/10" : ""
       }`}
     >
@@ -3528,19 +3562,29 @@ function SignalDetectedRow({
       </div>
 
       <div className="text-right">
-        <span
-          className={`inline-flex min-w-[58px] items-center justify-center gap-1 rounded-[9px] border px-2 py-0.5 text-[9px] font-black ${
-            showCompactResultBadge ? "border-white/20 bg-white/8 text-white/78" : getSignalResultBadgeClass(resultLabel)
-          }`}
-        >
-          {showCompactResultBadge && resultIcon ? (
-            <>
-              <span>{compactScore}</span>
-              <span className={resultIcon.className}>{resultIcon.icon}</span>
-            </>
-          ) : resultLabel === "FINAL" ? "PENDING" : resultLabel}
-        </span>
-        {!hideResultMeta ? (
+        {showCompletedResult && completedResult ? (
+          <div className="flex flex-col items-end">
+            <span className="text-[8px] font-black uppercase tracking-[0.14em] text-white/45">Final</span>
+            {finalScore ? (
+              <span className="mt-0.5 whitespace-nowrap text-[18px] font-black leading-none text-white">
+                {finalScore}
+              </span>
+            ) : null}
+            <span
+              className={`mt-1 inline-flex min-w-[62px] items-center justify-center gap-1 rounded-[9px] border px-2 py-1 text-[9px] font-black uppercase ${completedResult.badgeClassName}`}
+            >
+              {completedResult.icon ? <span aria-hidden="true">{completedResult.icon}</span> : null}
+              <span>{completedResult.label}</span>
+            </span>
+          </div>
+        ) : (
+          <span
+            className={`inline-flex min-w-[58px] items-center justify-center gap-1 rounded-[9px] border px-2 py-0.5 text-[9px] font-black ${getSignalResultBadgeClass(resultLabel)}`}
+          >
+            {resultLabel === "FINAL" ? "PENDING" : resultLabel}
+          </span>
+        )}
+        {!showCompletedResult ? (
           <p className="mt-1 whitespace-nowrap text-[10px] font-medium text-white/45">
             {timeLabel}
           </p>
