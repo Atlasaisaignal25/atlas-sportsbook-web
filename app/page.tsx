@@ -8705,7 +8705,7 @@ function MyTrackingDashboard({
 
   if (secondaryView === "history") {
     return (
-      <MyTrackingSecondaryPanel title="History" onBack={() => setSecondaryView("main")}>
+      <MyTrackingSecondaryPanel title="Signal History" onBack={() => setSecondaryView("main")}>
         <TrackingHistoryCard
           history={history}
           totalPicks={periodAnalytics.totalPicks}
@@ -8783,13 +8783,13 @@ function AvailableSportsbookPicks({
   onAddPick: (pick: AtlasTrackingPickOption) => void;
 }) {
   const visiblePicks = picks.slice(0, 8);
-  const availabilityLabel = picks.length > 0 ? `${picks.length} Picks Available Today` : "No Picks Available Today";
+  const availabilityLabel = picks.length > 0 ? `${picks.length} Signals Available Today` : "No Signals Available Today";
 
   return (
     <div className="rounded-[13px] border border-cyan-300/12 bg-black/18 p-2">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Available Picks</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Available Signals</p>
           <p className="mt-0.5 text-[10px] font-black text-white/58">{availabilityLabel}</p>
         </div>
         {!demoModeEnabled ? (
@@ -8812,8 +8812,8 @@ function AvailableSportsbookPicks({
         </div>
       ) : (
         <div className="rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-3">
-          <p className="text-[11px] font-black text-white/68">No Picks Available Today</p>
-          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Atlas picks will appear here when sources are active.</p>
+          <p className="text-[11px] font-black text-white/68">No Signals Available Today</p>
+          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Atlas signals will appear here when sources are active.</p>
         </div>
       )}
     </div>
@@ -8905,11 +8905,11 @@ function SportsbookMyCard({
       <div className="mb-1.5 grid gap-1.5">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">My Card</p>
-          <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totals.count} {totals.count === 1 ? "Pick" : "Picks"} Selected</p>
+          <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totals.count} {totals.count === 1 ? "Signal" : "Signals"} Selected</p>
         </div>
         <div className="grid grid-cols-4 divide-x divide-white/10 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1 text-center">
           <div>
-            <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Total Picks</p>
+            <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Signals</p>
             <p className="text-[11px] font-black text-white">{totals.count}</p>
           </div>
           <div>
@@ -8941,8 +8941,8 @@ function SportsbookMyCard({
           <div className="mx-auto grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
             <BankrollUiIcon name="wallet" className="h-5 w-5" />
           </div>
-          <p className="mt-1.5 text-[13px] font-black text-white/78">No Active Picks</p>
-          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Completed picks are available in History.</p>
+          <p className="mt-1.5 text-[13px] font-black text-white/78">No Active Signals</p>
+          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Completed signals are available in History.</p>
         </div>
       )}
     </div>
@@ -9075,7 +9075,7 @@ function SportsbookBetSlipSheet({
     try {
       onConfirm({ riskAmount, notes: notes.trim() });
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Unable to add this pick.");
+      setError(error instanceof Error ? error.message : "Unable to add this signal.");
     }
   }
 
@@ -9183,7 +9183,7 @@ function SportsbookBetSlipSheet({
               <textarea
                 value={notes}
                 onChange={(event) => setNotes(event.target.value.slice(0, 500))}
-                placeholder="Why are you tracking this pick?"
+                placeholder="Why are you tracking this signal?"
                 className="mt-1 h-[74px] w-full resize-none rounded-[14px] border border-white/10 bg-black/28 p-2 text-[12px] font-semibold leading-4 text-white outline-none focus:border-cyan-300/45"
               />
             </label>
@@ -9234,7 +9234,7 @@ function SportsbookQuickAccess({ onOpen }: { onOpen: (view: "performance" | "his
     <div className="grid gap-1">
       {[
         { label: "View Performance", subtitle: "Financial Summary", view: "performance" as const },
-        { label: "View History", subtitle: "Timeline & Results", view: "history" as const },
+        { label: "Signal History", subtitle: "Timeline & Results", view: "history" as const },
         { label: "View Analytics", subtitle: "Sports & Markets", view: "analytics" as const },
       ].map((item) => (
         <button
@@ -9338,7 +9338,7 @@ function formatTrackingSportLabel(sport: AtlasPlanSport | string) {
   return String(sport || "Sport");
 }
 
-function formatSportsbookSelection(pick: Pick<AtlasTrackingPickOption, "selection" | "market" | "sport">) {
+function formatSportsbookSelection(pick: { selection: string; market: string; sport?: AtlasPlanSport | string | null }) {
   const selection = pick.selection.trim();
   const totalMatch = selection.match(/^(Over|Under)\s*\(?(-?\d+(?:\.\d+)?)\)?/i);
   if (totalMatch) {
@@ -9383,7 +9383,7 @@ function TeamLogoLabel({ team, sport, muted = false }: { team: string; sport: At
 function formatSportsbookMatchup(pick: Pick<AtlasTrackingPickOption, "homeTeam" | "awayTeam" | "selection">) {
   if (pick.homeTeam && pick.awayTeam) return { home: pick.homeTeam, away: pick.awayTeam };
   const cleanSelection = pick.selection.replace(/\s+(ML|RL|Spread|Moneyline|Over|Under|O\/U).*$/i, "").trim();
-  return { home: pick.homeTeam || cleanSelection || "Atlas Pick", away: pick.awayTeam || "" };
+  return { home: pick.homeTeam || cleanSelection || "Atlas Signal", away: pick.awayTeam || "" };
 }
 
 function formatSportsbookOdds(odds: number | null) {
@@ -9514,10 +9514,10 @@ function ActivePicksList({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <BankrollUiIcon name="target" className="h-4 w-4 text-cyan-300" />
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Active Picks</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Active Signals</p>
         </div>
         <button type="button" onClick={onCreateManualPick} className="rounded-[9px] border border-cyan-300/30 bg-cyan-300/[0.10] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-cyan-200">
-          + Add Pick
+          + Add Signal
         </button>
       </div>
       {activePicks.length > 0 ? (
@@ -9528,8 +9528,8 @@ function ActivePicksList({
         </div>
       ) : (
         <div className="mt-2 rounded-[11px] border border-white/10 bg-white/[0.025] px-3 py-2">
-          <p className="text-[11px] font-black text-white/68">No active picks.</p>
-          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Track an Atlas pick when you are ready to follow it.</p>
+          <p className="text-[11px] font-black text-white/68">No active signals.</p>
+          <p className="mt-0.5 text-[10px] font-semibold text-white/40">Track an Atlas signal when you are ready to follow it.</p>
         </div>
       )}
     </div>
@@ -9676,8 +9676,8 @@ function TrackingHistoryCard({
         <div className="flex items-center gap-2">
           <BankrollUiIcon name="wallet" className="h-4 w-4 text-cyan-300" />
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Performance History</p>
-            <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totalPicks} tracked this period</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Signal History</p>
+            <p className="mt-0.5 text-[9px] font-semibold text-white/38">{totalPicks} signals tracked this period</p>
           </div>
         </div>
       </div>
@@ -9697,8 +9697,8 @@ function TrackingHistoryList({
   if (history.picks.length === 0) {
     return (
       <div className="mt-2 rounded-[12px] border border-white/10 bg-black/18 px-3 py-3">
-        <p className="text-[11px] font-black text-white/65">No picks for this period.</p>
-        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">Tracked Atlas picks will appear here automatically.</p>
+        <p className="text-[11px] font-black text-white/65">No signals for this period.</p>
+        <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/40">Tracked Atlas signals will appear here automatically.</p>
       </div>
     );
   }
@@ -9742,28 +9742,48 @@ function ComparisonMetricRow({
 
 function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen: () => void }) {
   const pick = item.pick;
-  const tone = getTrackingStatusTone(pick.status);
   const matchup = formatSportsbookMatchup(pick);
+  const selectionLabel = formatSportsbookSelection(pick);
+  const resultLabel = getTrackingResultLabel(pick.status);
+  const startLabel = formatTime(pick.startTime || pick.createdAt);
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[52px] grid-cols-[42px_1fr_48px_54px_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-black/16 px-2 py-1 text-left">
-      <div className="flex -space-x-2">
-        <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
-        <TeamLogoLabel team={matchup.away} sport={pick.sport ?? "AT"} muted />
+    <button type="button" onClick={onOpen} className="rounded-[12px] border border-white/10 bg-white/[0.026] px-2 py-1.5 text-left transition duration-200">
+      <div className="mb-1 flex min-w-0 items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/34">
+        <span className="text-cyan-200/68">{formatTrackingSportLabel(pick.sport ?? "Sport")}</span>
+        <span className="h-1 w-1 rounded-full bg-white/18" />
+        <span className="truncate">{pick.league}</span>
+        <span className="h-1 w-1 rounded-full bg-white/18" />
+        <span className="shrink-0">{startLabel}</span>
       </div>
-      <div className="min-w-0">
-        <p className="truncate text-[10px] font-black text-white/78">{matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}</p>
-        <p className="truncate text-[9px] font-bold text-cyan-200/72">{pick.selection}</p>
-        <p className="truncate text-[8px] font-bold text-white/34">{formatTrackingDate(pick.createdAt)}</p>
+      <div className="grid grid-cols-[1fr_64px] items-center gap-2">
+        <div className="min-w-0">
+          {matchup.away ? (
+            <div className="grid grid-cols-[28px_minmax(0,1fr)_18px_minmax(0,1fr)_28px] items-center gap-1.5">
+              <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
+              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
+              <p className="text-center text-[8px] font-black uppercase text-cyan-200/45">vs</p>
+              <p className="truncate text-right text-[11px] font-black text-white/82">{matchup.away}</p>
+              <TeamLogoLabel team={matchup.away} sport={pick.sport ?? "AT"} muted />
+            </div>
+          ) : (
+            <div className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-1.5">
+              <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
+              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
+            </div>
+          )}
+          <p className="mt-1 truncate text-[11px] font-black text-cyan-100">{selectionLabel}</p>
+        </div>
+        <div className={`grid h-10 place-items-center rounded-[10px] border px-1.5 text-[8px] font-black uppercase tracking-[0.08em] ${getTrackingResultPillClass(pick.status)}`}>
+          {resultLabel}
+        </div>
       </div>
-      <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
-      <div className="text-right">
-        <p className={`text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
-        <p className={pick.result ? (pick.profit >= 0 ? "text-[9px] font-black text-emerald-300" : "text-[9px] font-black text-red-300") : "text-[9px] font-black text-white/30"}>
-          {pick.result ? formatTrackingProfit(pick.profit) : "—"}
-        </p>
+      <div className="mt-1 grid grid-cols-4 gap-1 border-t border-white/10 pt-1 text-[8px] font-black uppercase tracking-[0.08em] text-white/36">
+        <p>Odds <span className="text-white/70">{pick.trackedOdds ?? pick.odds ?? "-"}</span></p>
+        <p>Risk <span className="text-violet-200">{formatCurrency(pick.riskAmount)}</span></p>
+        <p className={pick.result ? (pick.profit >= 0 ? "text-emerald-300" : "text-red-300") : "text-white/34"}>{pick.result ? formatTrackingProfit(pick.profit) : "—"}</p>
+        <p className="text-right text-white/34">{formatTrackingDate(pick.createdAt)}</p>
       </div>
-      <BankrollUiIcon name="arrow" className="h-3.5 w-3.5 text-white/35" />
     </button>
   );
 }
@@ -9776,7 +9796,7 @@ function PickTimelineSheet({ item, onClose }: { item: TrackingHistoryPick; onClo
 
   return (
     <div className="fixed inset-0 z-[76] flex items-end justify-center bg-black/70 px-3 pb-[88px] backdrop-blur-sm" role="dialog" aria-modal="true">
-      <button type="button" aria-label="Close pick timeline" onClick={onClose} className="absolute inset-0 cursor-default" />
+      <button type="button" aria-label="Close signal timeline" onClick={onClose} className="absolute inset-0 cursor-default" />
       <div className="relative w-full max-w-md overflow-hidden rounded-[24px] border border-white/12 bg-[#07111f] shadow-[0_-18px_70px_rgba(34,211,238,0.14)]">
         <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-white/28" />
         <div className="relative p-3">
@@ -9814,7 +9834,7 @@ function PickTimelineSheet({ item, onClose }: { item: TrackingHistoryPick; onClo
                     </div>
                     <p className="pt-0.5 text-[8px] font-black uppercase tracking-[0.06em] text-white/35">{formatTrackingTime(event.time)}</p>
                     <div className="min-w-0 pb-1.5">
-                      <p className="truncate text-[11px] font-black text-white/78">{event.description}</p>
+                      <p className="truncate text-[11px] font-black text-white/78">{formatTimelineDescription(event.description)}</p>
                       <p className="mt-0.5 text-[9px] font-semibold leading-4 text-white/40">{formatTimelineHelper(event.description, event.status)}</p>
                     </div>
                   </div>
@@ -9904,6 +9924,22 @@ function getTrackingStatusLabel(status: TrackingHistoryPick["pick"]["status"]) {
   return formatPlanStatus(status);
 }
 
+function getTrackingResultLabel(status: TrackingHistoryPick["pick"]["status"]) {
+  if (status === "won") return "Won ✓";
+  if (status === "lost") return "Lost ✕";
+  if (status === "push") return "Push";
+  if (status === "cancelled") return "Cancelled";
+  return getTrackingStatusLabel(status);
+}
+
+function getTrackingResultPillClass(status: TrackingHistoryPick["pick"]["status"]) {
+  if (status === "won") return "border-emerald-300/24 bg-emerald-300/[0.10] text-emerald-200";
+  if (status === "lost") return "border-red-300/24 bg-red-300/[0.09] text-red-200";
+  if (status === "push" || status === "cancelled") return "border-white/15 bg-white/[0.055] text-white/55";
+  if (status === "started") return "border-cyan-300/24 bg-cyan-300/[0.08] text-cyan-200";
+  return "border-amber-300/24 bg-amber-300/[0.08] text-amber-200";
+}
+
 function getTimelineEventClass(status: TrackingHistoryPick["timeline"][number]["status"]) {
   if (status === "won") return "border-emerald-300/30 bg-emerald-300/[0.12] text-emerald-300";
   if (status === "lost") return "border-red-300/30 bg-red-300/[0.12] text-red-300";
@@ -9921,14 +9957,18 @@ function getTimelineEventSymbol(status: TrackingHistoryPick["timeline"][number][
 }
 
 function formatTimelineHelper(description: string, status: TrackingHistoryPick["timeline"][number]["status"]) {
-  if (description.toLowerCase().includes("created")) return "Pick added to your tracking.";
-  if (description.toLowerCase().includes("tracking")) return "You started following this pick.";
+  if (description.toLowerCase().includes("created")) return "Signal added to your tracking.";
+  if (description.toLowerCase().includes("tracking")) return "You started following this signal.";
   if (description.toLowerCase().includes("bankroll")) return "Your manual bankroll was updated.";
   if (description.toLowerCase().includes("weekly")) return "Included in weekly summary.";
   if (description.toLowerCase().includes("monthly")) return "Included in monthly summary.";
   if (status === "won" || status === "lost" || status === "push" || status === "cancelled") return "Result recorded from Atlas.";
   if (status === "started") return "The event has started.";
   return "Waiting for the next update.";
+}
+
+function formatTimelineDescription(description: string) {
+  return description.replace(/\bPick\b/g, "Signal").replace(/\bpick\b/g, "signal");
 }
 
 function formatTrackingDate(value: string) {
@@ -10013,7 +10053,7 @@ function ManualPickCreatorSheet({
       return;
     }
     if (step === 2 && !selectedPickId) {
-      setError("Select an Atlas pick.");
+      setError("Select an Atlas signal.");
       return;
     }
     if (step === 3) {
@@ -10033,14 +10073,14 @@ function ManualPickCreatorSheet({
 
   function handleSave() {
     if (!selectedPick) {
-      setError("Select an Atlas pick.");
+      setError("Select an Atlas signal.");
       return;
     }
 
     try {
       onSave(selectedPick, { atlasPickId: selectedPick.id, riskAmount, notes });
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Unable to track pick.");
+      setError(error instanceof Error ? error.message : "Unable to track signal.");
     }
   }
 
@@ -10055,8 +10095,8 @@ function ManualPickCreatorSheet({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300/80">Atlas Tracking</p>
-                <h3 className="mt-1 text-[22px] font-black tracking-tight text-white">Track Atlas Pick</h3>
-                <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">Choose an Atlas-generated pick to follow.</p>
+                <h3 className="mt-1 text-[22px] font-black tracking-tight text-white">Track Atlas Signal</h3>
+                <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">Choose an Atlas-generated signal to follow.</p>
               </div>
               <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white/55">
                 Cancel
@@ -10085,7 +10125,7 @@ function ManualPickCreatorSheet({
                       </button>
                     ))}
                   </div>
-                  {sports.length === 0 ? <p className="text-[11px] font-semibold text-white/45">No Atlas picks available for your package yet.</p> : null}
+                  {sports.length === 0 ? <p className="text-[11px] font-semibold text-white/45">No Atlas signals available for your package yet.</p> : null}
                 </div>
               ) : null}
 
@@ -10177,7 +10217,7 @@ function ManualPickCreatorSheet({
                 {step === 1 ? "Cancel" : "Back"}
               </button>
               <button type="button" onClick={step === 5 ? handleSave : handleNext} className="h-11 rounded-[14px] bg-emerald-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
-                {step === 5 ? "Track Pick" : "Continue"}
+                {step === 5 ? "Track Signal" : "Continue"}
               </button>
             </div>
           </div>
