@@ -8333,6 +8333,7 @@ function MyTrackingDashboard({
   const activePicks = manualTracking.activePicks.length > 0 ? manualTracking.activePicks : manualTracking.picks.filter((pick) => !isFinalTrackingStatus(pick.status));
   const [secondaryView, setSecondaryView] = useState<"main" | "performance" | "history" | "analytics">("main");
   const [cardPicks, setCardPicks] = useState<SportsbookCardPick[]>([]);
+  const [betSlipPick, setBetSlipPick] = useState<AtlasTrackingPickOption | null>(null);
   const defaultCardRisk = manualTracking.manualFinancialState.recommendedUnit || manualTracking.manualFinancialState.currentBankroll * ATLAS_RECOMMENDED_PERCENTAGE;
   const activeLinkedIds = useMemo(() => new Set(activePicks.map((pick) => pick.linkedAtlasPickId).filter(Boolean)), [activePicks]);
   const cardPickIds = useMemo(() => new Set(cardPicks.map((item) => item.pick.id)), [cardPicks]);
@@ -8342,7 +8343,18 @@ function MyTrackingDashboard({
   );
 
   function handleAddToCard(pick: AtlasTrackingPickOption) {
-    setCardPicks((currentPicks) => (currentPicks.some((item) => item.pick.id === pick.id) ? currentPicks : [{ pick, riskAmount: defaultCardRisk }, ...currentPicks]));
+    setBetSlipPick(pick);
+  }
+
+  function handleConfirmBetSlip(input: { riskAmount: number; notes: string }) {
+    if (!betSlipPick) return;
+
+    setCardPicks((currentPicks) =>
+      currentPicks.some((item) => item.pick.id === betSlipPick.id)
+        ? currentPicks
+        : [{ pick: betSlipPick, riskAmount: input.riskAmount, notes: input.notes }, ...currentPicks],
+    );
+    setBetSlipPick(null);
   }
 
   function handleRemoveFromCard(pickId: string) {
@@ -8420,6 +8432,13 @@ function MyTrackingDashboard({
         onOpenTrackedPick={onOpenPick}
       />
       <SportsbookQuickAccess onOpen={setSecondaryView} />
+      <SportsbookBetSlipSheet
+        pick={betSlipPick}
+        recommendedUnit={defaultCardRisk}
+        manualBankroll={manualTracking.manualFinancialState.currentBankroll}
+        onCancel={() => setBetSlipPick(null)}
+        onConfirm={handleConfirmBetSlip}
+      />
     </div>
   );
 }
@@ -8427,6 +8446,7 @@ function MyTrackingDashboard({
 type SportsbookCardPick = {
   pick: AtlasTrackingPickOption;
   riskAmount: number;
+  notes: string;
 };
 
 function AvailableSportsbookPicks({
@@ -8543,7 +8563,7 @@ function SportsbookMyCard({
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">My Card</p>
         </div>
-        <div className="grid grid-cols-3 divide-x divide-white/10 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1 text-center">
+        <div className="grid grid-cols-4 divide-x divide-white/10 rounded-[10px] border border-white/10 bg-black/18 px-2 py-1 text-center">
           <div>
             <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Total Picks</p>
             <p className="text-[11px] font-black text-white">{totals.count}</p>
@@ -8555,6 +8575,10 @@ function SportsbookMyCard({
           <div>
             <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Potential Return</p>
             <p className="text-[11px] font-black text-emerald-200">{formatCurrency(totals.returnAmount)}</p>
+          </div>
+          <div>
+            <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/32">Profit</p>
+            <p className="text-[11px] font-black text-emerald-200">{formatCurrency(totals.profit)}</p>
           </div>
         </div>
       </div>
@@ -8574,7 +8598,7 @@ function SportsbookMyCard({
             <BankrollUiIcon name="wallet" className="h-5 w-5" />
           </div>
           <p className="mt-1.5 text-[13px] font-black text-white/78">Your Card is Empty</p>
-          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Add Atlas Picks to begin tracking them.</p>
+          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Track Atlas Picks to begin building your card.</p>
         </div>
       )}
     </div>
@@ -8587,30 +8611,37 @@ function SportsbookDraftCardPick({ item, onRemove }: { item: SportsbookCardPick;
   const potentialReturn = calculatePotentialReturn(riskAmount, pick.odds);
 
   return (
-    <div className="grid min-h-[62px] grid-cols-[30px_1fr_60px_62px_54px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 transition duration-200">
-      <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
-        {getSportGlyph(pick.sport)}
+    <div className="rounded-[11px] border border-white/10 bg-white/[0.028] px-2 py-1.5 transition duration-200">
+      <div className="grid grid-cols-[30px_minmax(0,1fr)_48px_54px] items-center gap-2">
+        <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-[14px] font-black text-cyan-200">
+          {getSportGlyph(pick.sport)}
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
+          <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market} · {matchup.home} vs {matchup.away}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[12px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
+          <p className="mt-0.5 text-[8px] font-bold text-amber-200">Pending</p>
+        </div>
+        <button type="button" onClick={onRemove} className="h-8 rounded-[9px] border border-red-300/22 bg-red-300/[0.08] px-2 text-[8px] font-black uppercase tracking-[0.08em] text-red-200">
+          Remove
+        </button>
       </div>
-      <div className="min-w-0">
-        <p className="truncate text-[11px] font-black text-white/82">{pick.selection}</p>
-        <p className="mt-0.5 truncate text-[9px] font-semibold text-white/38">{pick.market}</p>
-        <p className="mt-0.5 truncate text-[8px] font-semibold text-white/28">{matchup.home} vs {matchup.away}</p>
+      <div className="mt-1 grid grid-cols-3 divide-x divide-white/10 rounded-[9px] bg-black/16 px-2 py-1 text-center">
+        <div>
+          <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Risk</p>
+          <p className="text-[10px] font-black text-violet-200">{formatCurrency(riskAmount)}</p>
+        </div>
+        <div>
+          <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Potential Return</p>
+          <p className="text-[10px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
+        </div>
+        <div>
+          <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Profit</p>
+          <p className="text-[10px] font-black text-emerald-200">{formatCurrency(calculatePotentialProfit(riskAmount, pick.odds))}</p>
+        </div>
       </div>
-      <div className="text-right">
-        <p className="text-[12px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
-        <p className="mt-0.5 text-[8px] font-bold text-amber-200">Pending</p>
-      </div>
-      <div className="text-right">
-        <p className="text-[11px] font-black text-violet-200">{formatCurrency(riskAmount)}</p>
-        <p className="mt-0.5 text-[8px] font-bold text-white/32">Risk</p>
-      </div>
-      <div className="text-right">
-        <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
-        <p className="mt-0.5 text-[8px] font-bold text-white/32">Return</p>
-      </div>
-      <button type="button" onClick={onRemove} className="h-8 rounded-[9px] border border-red-300/22 bg-red-300/[0.08] px-2 text-[8px] font-black uppercase tracking-[0.08em] text-red-200">
-        Remove
-      </button>
     </div>
   );
 }
@@ -8638,6 +8669,176 @@ function SportsbookTrackedCardPick({ pick, onOpen }: { pick: ManualTrackingColle
       </div>
       <BankrollUiIcon name="arrow" className="h-3 w-3 text-white/32" />
     </button>
+  );
+}
+
+function SportsbookBetSlipSheet({
+  pick,
+  recommendedUnit,
+  manualBankroll,
+  onCancel,
+  onConfirm,
+}: {
+  pick: AtlasTrackingPickOption | null;
+  recommendedUnit: number;
+  manualBankroll: number;
+  onCancel: () => void;
+  onConfirm: (input: { riskAmount: number; notes: string }) => void;
+}) {
+  const [riskInput, setRiskInput] = useState("");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const matchup = pick ? formatSportsbookMatchup(pick) : null;
+  const riskAmount = parseSportsbookCurrencyInput(riskInput);
+  const riskPercentage = riskAmount > 0 ? calculateRiskPercentage(riskAmount, manualBankroll) : 0;
+  const potentialReturn = pick ? calculatePotentialReturn(riskAmount, pick.odds) : 0;
+  const potentialProfit = pick ? calculatePotentialProfit(riskAmount, pick.odds) : 0;
+
+  useEffect(() => {
+    if (!pick) return;
+    setRiskInput(recommendedUnit > 0 ? formatSlipInputAmount(recommendedUnit) : "");
+    setNotes("");
+    setError(null);
+  }, [pick, recommendedUnit]);
+
+  if (!pick || !matchup) return null;
+
+  function handleQuickAmount(multiplier: number) {
+    const amount = recommendedUnit * multiplier;
+    setRiskInput(formatSlipInputAmount(amount));
+    setError(null);
+  }
+
+  function handleConfirm() {
+    if (riskAmount <= 0) {
+      setError("Enter a valid risk amount.");
+      return;
+    }
+
+    if (riskAmount > manualBankroll) {
+      setError("Risk amount cannot exceed manual bankroll.");
+      return;
+    }
+
+    onConfirm({ riskAmount, notes: notes.trim() });
+  }
+
+  return (
+    <div className="fixed inset-0 z-[76] flex items-end justify-center bg-black/72 px-3 pb-[calc(76px+env(safe-area-inset-bottom))] backdrop-blur-sm">
+      <div className="w-full max-w-md overflow-hidden rounded-[24px] border border-emerald-300/22 bg-[#06101d] shadow-[0_-18px_70px_rgba(16,185,129,0.18)]">
+        <div className="relative px-3 pb-3 pt-3">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.10),transparent_40%)]" />
+          <div className="relative grid gap-2">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Bet Slip</p>
+                <p className="mt-0.5 text-[11px] font-semibold text-white/42">{pick.sport} · {pick.league}</p>
+              </div>
+              <button type="button" onClick={onCancel} className="rounded-[10px] border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-white/55">
+                Cancel
+              </button>
+            </div>
+
+            <div className="rounded-[15px] border border-white/10 bg-black/20 p-2">
+              <div className="grid grid-cols-[34px_1fr_52px] items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] text-[14px] font-black text-emerald-200">
+                  {getSportGlyph(pick.sport)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[11px] font-black text-white/82">{matchup.home} <span className="text-white/28">vs</span> {matchup.away}</p>
+                  <p className="mt-0.5 truncate text-[13px] font-black text-emerald-200">{pick.selection}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[13px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
+                  <p className="mt-0.5 text-[8px] font-bold text-amber-200">{formatPlanStatus(pick.status)}</p>
+                </div>
+              </div>
+              <div className="mt-2 grid grid-cols-3 divide-x divide-white/10 rounded-[11px] bg-white/[0.025] px-2 py-1 text-center">
+                <div>
+                  <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Market</p>
+                  <p className="truncate text-[10px] font-black text-white/70">{pick.market}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Status</p>
+                  <p className="truncate text-[10px] font-black text-amber-200">{formatPlanStatus(pick.status)}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Unit</p>
+                  <p className="truncate text-[10px] font-black text-violet-200">{formatCurrency(recommendedUnit)}</p>
+                </div>
+              </div>
+            </div>
+
+            <label className="block">
+              <span className="text-[8px] font-black uppercase tracking-[0.14em] text-white/42">Risk Amount</span>
+              <input
+                value={riskInput}
+                onChange={(event) => {
+                  setRiskInput(event.target.value);
+                  setError(null);
+                }}
+                placeholder="$25"
+                inputMode="decimal"
+                className="mt-1 h-11 w-full rounded-[14px] border border-white/10 bg-black/28 px-3 text-[20px] font-black text-white outline-none focus:border-emerald-300/45"
+              />
+            </label>
+
+            <div className="grid grid-cols-4 gap-1">
+              {[
+                { label: "25%", value: 0.25 },
+                { label: "50%", value: 0.5 },
+                { label: "75%", value: 0.75 },
+                { label: "100%", value: 1 },
+              ].map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => handleQuickAmount(option.value)}
+                  className="h-8 rounded-[10px] border border-emerald-300/20 bg-emerald-300/[0.08] text-[9px] font-black uppercase tracking-[0.08em] text-emerald-200"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 divide-x divide-white/10 rounded-[13px] border border-white/10 bg-black/20 px-2 py-1.5 text-center">
+              <div>
+                <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Risk %</p>
+                <p className="text-[11px] font-black text-violet-200">{formatPercentage(riskPercentage).replace("+", "")}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Potential Return</p>
+                <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialReturn)}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-black uppercase tracking-[0.08em] text-white/30">Potential Profit</p>
+                <p className="text-[11px] font-black text-emerald-200">{formatCurrency(potentialProfit)}</p>
+              </div>
+            </div>
+
+            <label className="block">
+              <span className="text-[8px] font-black uppercase tracking-[0.14em] text-white/42">Notes</span>
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value.slice(0, 500))}
+                placeholder="Why are you tracking this pick?"
+                className="mt-1 h-[74px] w-full resize-none rounded-[14px] border border-white/10 bg-black/28 p-2 text-[12px] font-semibold leading-4 text-white outline-none focus:border-emerald-300/45"
+              />
+            </label>
+
+            {error ? <p className="text-[10px] font-black text-red-300">{error}</p> : null}
+            <div className="grid grid-cols-[0.42fr_1fr] gap-2">
+              <button type="button" onClick={onCancel} className="h-10 rounded-[13px] border border-white/10 bg-white/[0.04] text-[9px] font-black uppercase tracking-[0.12em] text-white/58">
+                Cancel
+              </button>
+              <button type="button" onClick={handleConfirm} className="h-10 rounded-[13px] bg-emerald-300 text-[9px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
+                Add To My Card
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -8760,8 +8961,22 @@ function formatPickConfidence(pick: AtlasTrackingPickOption) {
 
 function calculatePotentialReturn(riskAmount: number, odds: number) {
   if (!Number.isFinite(riskAmount) || riskAmount <= 0 || !Number.isFinite(odds) || odds === 0) return 0;
-  const profit = odds > 0 ? riskAmount * (odds / 100) : riskAmount * (100 / Math.abs(odds));
-  return riskAmount + profit;
+  return riskAmount + calculatePotentialProfit(riskAmount, odds);
+}
+
+function calculatePotentialProfit(riskAmount: number, odds: number) {
+  if (!Number.isFinite(riskAmount) || riskAmount <= 0 || !Number.isFinite(odds) || odds === 0) return 0;
+  return odds > 0 ? riskAmount * (odds / 100) : riskAmount * (100 / Math.abs(odds));
+}
+
+function parseSportsbookCurrencyInput(value: string) {
+  const parsed = Number(value.trim().replace(/^\$/, "").replaceAll(",", ""));
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+function formatSlipInputAmount(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 function calculateSportsbookCardTotals(cardPicks: SportsbookCardPick[], activePicks: ManualTrackingCollection["picks"]) {
@@ -8769,11 +8984,14 @@ function calculateSportsbookCardTotals(cardPicks: SportsbookCardPick[], activePi
   const trackedRisk = activePicks.reduce((sum, pick) => sum + (pick.riskAmount ?? 0), 0);
   const draftReturn = cardPicks.reduce((sum, item) => sum + calculatePotentialReturn(item.riskAmount, item.pick.odds), 0);
   const trackedReturn = activePicks.reduce((sum, pick) => sum + calculatePotentialReturn(pick.riskAmount ?? 0, pick.odds ?? 0), 0);
+  const draftProfit = cardPicks.reduce((sum, item) => sum + calculatePotentialProfit(item.riskAmount, item.pick.odds), 0);
+  const trackedProfit = activePicks.reduce((sum, pick) => sum + calculatePotentialProfit(pick.riskAmount ?? 0, pick.odds ?? 0), 0);
 
   return {
     count: cardPicks.length + activePicks.length,
     risk: draftRisk + trackedRisk,
     returnAmount: draftReturn + trackedReturn,
+    profit: draftProfit + trackedProfit,
   };
 }
 
