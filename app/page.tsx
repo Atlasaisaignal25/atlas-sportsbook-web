@@ -8087,6 +8087,58 @@ function BankrollHeader({
   );
 }
 
+function AtlasTrackingHeader({
+  demoModeEnabled,
+  snapshot,
+  onEdit,
+  onReset,
+  canReset,
+}: {
+  demoModeEnabled: boolean;
+  snapshot: AtlasDailySnapshot | null;
+  onEdit: () => void;
+  onReset: () => void;
+  canReset: boolean;
+}) {
+  return (
+    <BankrollShell className="overflow-hidden px-3.5 py-3">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.09),transparent_40%)]" />
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[22px] font-black uppercase leading-6 tracking-[0.08em] text-white">
+            ATLAS <span className="text-cyan-300">TRACKING</span>
+          </h2>
+          <p className="mt-0.5 text-[12px] font-bold text-cyan-100/58">Signal Tracking Center</p>
+          {demoModeEnabled && snapshot ? (
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-amber-300/18 bg-amber-300/[0.06] px-2 py-1">
+              <span className="text-[7px] font-black uppercase tracking-[0.12em] text-amber-200">Last Available</span>
+              <span className="text-[9px] font-black text-white/70">{formatSnapshotDate(snapshot.snapshotDate)}</span>
+              <span className="text-[8px] font-bold text-white/32">Snapshot</span>
+            </div>
+          ) : (
+            <p className="mt-2 text-[9px] font-black uppercase tracking-[0.14em] text-cyan-200/45">Live Signal Board</p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="inline-flex rounded-full border border-cyan-300/28 bg-cyan-300/[0.08] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-cyan-200">
+            Active
+          </span>
+          <div className="flex justify-end gap-1.5">
+            <button type="button" onClick={onEdit} className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.055] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-cyan-100/80">
+              Edit
+            </button>
+            {canReset ? (
+              <button type="button" onClick={onReset} className="rounded-full border border-red-300/20 bg-red-400/[0.06] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-red-200">
+                Reset
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </BankrollShell>
+  );
+}
+
 function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | null; metrics: FinancialMetrics | null }) {
   const summary = getBankrollSummary(config, metrics);
   const activePackage = config?.membership ? formatPlanPackage(config.membership.package) : atlasBankrollMock.plan.package;
@@ -8402,6 +8454,7 @@ function BankrollPlanTrackingTabs({
   demoModeEnabled,
   snapshot,
   activeTab,
+  trackingOnly,
   uiState,
   onTabChange,
   onUIStateChange,
@@ -8414,6 +8467,7 @@ function BankrollPlanTrackingTabs({
   demoModeEnabled: boolean;
   snapshot: AtlasDailySnapshot | null;
   activeTab: "atlas" | "manual";
+  trackingOnly: boolean;
   onTabChange: (tab: "atlas" | "manual") => void;
   uiState: BankrollUIState;
   onUIStateChange: (updates: Partial<BankrollUIState>) => void;
@@ -8477,23 +8531,25 @@ function BankrollPlanTrackingTabs({
 
   return (
     <BankrollShell className="px-2.5 py-2">
-      <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
-        <button
-          type="button"
-          onClick={() => handleTabChange("atlas")}
-          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition duration-200 ${activeTab === "atlas" ? "bg-cyan-300 text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]" : "text-white/45"}`}
-        >
-          Atlas Plan
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange("manual")}
-          className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition duration-200 ${activeTab === "manual" ? "bg-cyan-300 text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]" : "text-white/45"}`}
-        >
-          My Tracking
-        </button>
-      </div>
-      {activeTab === "atlas" ? (
+      {trackingOnly ? null : (
+        <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
+          <button
+            type="button"
+            onClick={() => handleTabChange("atlas")}
+            className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition duration-200 ${activeTab === "atlas" ? "bg-cyan-300 text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]" : "text-white/45"}`}
+          >
+            Atlas Plan
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("manual")}
+            className={`rounded-[10px] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.1em] transition duration-200 ${activeTab === "manual" ? "bg-cyan-300 text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]" : "text-white/45"}`}
+          >
+            Atlas Tracking
+          </button>
+        </div>
+      )}
+      {!trackingOnly && activeTab === "atlas" ? (
         <div className="mt-1.5 grid grid-cols-[28px_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.035] px-2.5 py-1.5">
           <div className="grid h-7 w-7 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-300">
             <BankrollUiIcon name="wallet" className="h-4 w-4" />
@@ -8513,7 +8569,7 @@ function BankrollPlanTrackingTabs({
           </div>
         </div>
       ) : (
-        <div className="mt-1.5">
+        <div className={trackingOnly ? "" : "mt-1.5"}>
           <MyTrackingDashboard
             manualTracking={displayManualTracking}
             availableAtlasPicks={availableAtlasPicks}
@@ -8664,7 +8720,6 @@ function MyTrackingDashboard({
 
   return (
     <div className="grid gap-1.5 pb-3">
-      <MyTrackingSportsbookHeader demoModeEnabled={demoModeEnabled} snapshot={snapshot} />
       <AvailableSportsbookPicks
         picks={sportsbookPicks}
         cardPickIds={cardPickIds}
@@ -8691,29 +8746,6 @@ function MyTrackingDashboard({
         onCancel={() => setBetSlipPick(null)}
         onConfirm={handleConfirmBetSlip}
       />
-    </div>
-  );
-}
-
-function MyTrackingSportsbookHeader({ demoModeEnabled, snapshot }: { demoModeEnabled: boolean; snapshot: AtlasDailySnapshot | null }) {
-  return (
-    <div className="rounded-[14px] border border-cyan-300/15 bg-[linear-gradient(135deg,rgba(14,116,144,0.14),rgba(15,23,42,0.28))] px-3 py-2 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[15px] font-black uppercase leading-4 tracking-[0.12em] text-white">My Tracking</p>
-          <p className="mt-0.5 truncate text-[10px] font-bold leading-3 text-cyan-200/65">Track Your Atlas Picks</p>
-        </div>
-        {demoModeEnabled && snapshot ? (
-          <div className="shrink-0 rounded-full border border-amber-300/20 bg-amber-300/[0.07] px-2 py-1 text-right">
-            <p className="text-[7px] font-black uppercase tracking-[0.1em] text-amber-200">Last Available</p>
-            <p className="text-[9px] font-black text-white/72">{formatSnapshotDate(snapshot.snapshotDate)}</p>
-          </div>
-        ) : (
-          <div className="shrink-0 rounded-full border border-cyan-300/20 bg-cyan-300/[0.07] px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200">
-            Live Board
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -8747,11 +8779,12 @@ function AvailableSportsbookPicks({
           <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Available Picks</p>
           <p className="mt-0.5 text-[10px] font-black text-white/58">{availabilityLabel}</p>
         </div>
-        <div className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] ${demoModeEnabled ? "border-amber-300/25 bg-amber-300/[0.08] text-amber-200" : "border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200"}`}>
-          {demoModeEnabled && snapshot ? `Last Available · ${formatSnapshotDate(snapshot.snapshotDate)}` : "Live Board"}
-        </div>
+        {!demoModeEnabled ? (
+          <div className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] px-2 py-1 text-[8px] font-black uppercase tracking-[0.1em] text-cyan-200">
+            Live Board
+          </div>
+        ) : null}
       </div>
-      {demoModeEnabled && snapshot ? <SnapshotDemoInlineBanner snapshot={snapshot} /> : null}
 
       {visiblePicks.length > 0 ? (
         <div className="grid gap-1">
@@ -8787,7 +8820,7 @@ function AvailableSportsbookPickRow({
   const confidence = formatPickConfidence(pick);
 
   return (
-    <div className="grid min-h-[54px] grid-cols-[42px_1fr_52px_46px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.026] px-2 py-1.5 transition duration-200">
+    <div className="grid min-h-[54px] grid-cols-[42px_1fr_52px_58px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.026] px-2 py-1.5 transition duration-200">
       <div className="flex -space-x-2">
         <TeamLogoLabel team={matchup.home} sport={pick.sport} />
         <TeamLogoLabel team={matchup.away} sport={pick.sport} muted />
@@ -8816,7 +8849,7 @@ function AvailableSportsbookPickRow({
         type="button"
         onClick={onAdd}
         disabled={added}
-        className={`h-8 rounded-[9px] border px-2 text-[9px] font-black uppercase tracking-[0.1em] transition duration-200 ${
+        className={`h-8 rounded-[9px] border px-2.5 text-[9px] font-black uppercase tracking-[0.1em] transition duration-200 active:scale-[0.97] ${
           added
             ? "border-emerald-300/20 bg-emerald-300/[0.12] text-emerald-200"
             : "border-cyan-300/35 bg-cyan-300 text-black shadow-[0_0_16px_rgba(34,211,238,0.2)]"
@@ -8887,8 +8920,8 @@ function SportsbookMyCard({
           <div className="mx-auto grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
             <BankrollUiIcon name="wallet" className="h-5 w-5" />
           </div>
-          <p className="mt-1.5 text-[13px] font-black text-white/78">Your Card is Empty</p>
-          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Track Atlas Picks to begin building your card.</p>
+          <p className="mt-1.5 text-[13px] font-black text-white/78">No Active Picks</p>
+          <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">Completed picks are available in History.</p>
         </div>
       )}
     </div>
@@ -9667,15 +9700,19 @@ function ComparisonMetricRow({
 function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen: () => void }) {
   const pick = item.pick;
   const tone = getTrackingStatusTone(pick.status);
+  const matchup = formatSportsbookMatchup(pick);
 
   return (
-    <button type="button" onClick={onOpen} className="grid min-h-[46px] grid-cols-[0.42fr_1fr_0.4fr_0.42fr_0.6fr_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-black/16 px-2 py-1 text-left">
-      <p className="truncate text-[8px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
-      <div className="min-w-0">
-        <p className="truncate text-[11px] font-black text-white/78">{pick.selection}</p>
-        <p className="truncate text-[8px] font-bold text-white/38">{formatTrackingDate(pick.createdAt)} · {formatTrackingTime(pick.createdAt)}</p>
+    <button type="button" onClick={onOpen} className="grid min-h-[52px] grid-cols-[42px_1fr_48px_54px_14px] items-center gap-1.5 rounded-[10px] border border-white/10 bg-black/16 px-2 py-1 text-left">
+      <div className="flex -space-x-2">
+        <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
+        <TeamLogoLabel team={matchup.away} sport={pick.sport ?? "AT"} muted />
       </div>
-      <p className="text-right text-[10px] font-black text-white/55">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
+      <div className="min-w-0">
+        <p className="truncate text-[10px] font-black text-white/78">{matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}</p>
+        <p className="truncate text-[9px] font-bold text-cyan-200/72">{pick.selection}</p>
+        <p className="truncate text-[8px] font-bold text-white/34">{formatTrackingDate(pick.createdAt)}</p>
+      </div>
       <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
       <div className="text-right">
         <p className={`text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
@@ -9691,36 +9728,43 @@ function TrackingPickCard({ item, onOpen }: { item: TrackingHistoryPick; onOpen:
 function PickTimelineSheet({ item, onClose }: { item: TrackingHistoryPick; onClose: () => void }) {
   const pick = item.pick;
   const tone = getTrackingStatusTone(pick.status);
+  const matchup = formatSportsbookMatchup(pick);
+  const orderedTimeline = orderTrackingTimeline(item.timeline);
 
   return (
     <div className="fixed inset-0 z-[76] flex items-end justify-center bg-black/70 px-3 pb-[88px] backdrop-blur-sm" role="dialog" aria-modal="true">
       <button type="button" aria-label="Close pick timeline" onClick={onClose} className="absolute inset-0 cursor-default" />
-      <div className="relative w-full max-w-md overflow-hidden rounded-[24px] border border-white/12 bg-[#07111f] shadow-[0_-18px_70px_rgba(0,229,168,0.14)]">
+      <div className="relative w-full max-w-md overflow-hidden rounded-[24px] border border-white/12 bg-[#07111f] shadow-[0_-18px_70px_rgba(34,211,238,0.14)]">
         <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-white/28" />
         <div className="relative p-3">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.13),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.08),transparent_42%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.13),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_42%)]" />
           <div className="relative">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/45">Pick Timeline</p>
-                <p className="mt-1 truncate text-[14px] font-black text-white">{pick.selection}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200/60">Signal Timeline</p>
+                <p className="mt-1 truncate text-[14px] font-black text-white">{matchup.home}{matchup.away ? ` vs ${matchup.away}` : ""}</p>
               </div>
               <button type="button" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-[18px] leading-none text-white/55">
                 ×
               </button>
             </div>
-            <div className="mt-2 grid grid-cols-[0.46fr_1fr_0.44fr_0.44fr_0.62fr] items-center gap-1.5 rounded-[12px] border border-white/10 bg-white/[0.035] px-2 py-2">
-              <p className="truncate text-[9px] font-black uppercase tracking-[0.08em] text-emerald-300">{pick.sport ?? "Sport"}</p>
-              <p className="truncate text-[10px] font-black text-white/76">{pick.market}</p>
+            <div className="mt-2 grid grid-cols-[42px_1fr_44px_58px] items-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.035] px-2 py-2">
+              <div className="flex -space-x-2">
+                <TeamLogoLabel team={matchup.home} sport={pick.sport ?? "AT"} />
+                <TeamLogoLabel team={matchup.away} sport={pick.sport ?? "AT"} muted />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[11px] font-black text-cyan-100">{pick.selection}</p>
+                <p className="truncate text-[8px] font-bold text-white/38">{pick.market}</p>
+              </div>
               <p className="text-right text-[10px] font-black text-white/60">{pick.trackedOdds ?? pick.odds ?? "-"}</p>
-              <p className="text-right text-[10px] font-black text-violet-200">{formatCurrency(pick.riskAmount)}</p>
               <p className={`truncate text-right text-[8px] font-black uppercase tracking-[0.06em] ${tone.textClass}`}>{getTrackingStatusLabel(pick.status)}</p>
             </div>
 
             <div className="mt-3 max-h-[410px] overflow-y-auto pr-1">
               <div className="relative grid gap-2">
-                <div className="absolute bottom-3 left-[9px] top-3 w-px bg-emerald-300/25" />
-                {item.timeline.map((event) => (
+                <div className="absolute bottom-3 left-[9px] top-3 w-px bg-cyan-300/22" />
+                {orderedTimeline.map((event) => (
                   <div key={event.id} className="relative grid grid-cols-[20px_48px_1fr] gap-2">
                     <div className={`relative z-10 mt-0.5 grid h-5 w-5 place-items-center rounded-full border bg-[#07111f] text-[9px] font-black ${getTimelineEventClass(event.status)}`}>
                       {getTimelineEventSymbol(event.status)}
@@ -9739,6 +9783,27 @@ function PickTimelineSheet({ item, onClose }: { item: TrackingHistoryPick; onClo
       </div>
     </div>
   );
+}
+
+function orderTrackingTimeline(events: TrackingHistoryPick["timeline"]) {
+  const order = [
+    "Manual Pick Created",
+    "Tracking Started",
+    "Game Started",
+    "Result Synced",
+    "Manual Bankroll Updated",
+    "Weekly Summary Generated",
+    "Monthly Summary Generated",
+  ];
+
+  return [...events].sort((a, b) => {
+    const aIndex = order.indexOf(a.description);
+    const bIndex = order.indexOf(b.description);
+    const normalizedA = aIndex === -1 ? order.length : aIndex;
+    const normalizedB = bIndex === -1 ? order.length : bIndex;
+    if (normalizedA !== normalizedB) return normalizedA - normalizedB;
+    return new Date(a.time).getTime() - new Date(b.time).getTime();
+  });
 }
 
 function getTrackingStatusTone(status: TrackingHistoryPick["pick"]["status"]) {
@@ -10105,11 +10170,13 @@ function BankrollHydrationPlaceholder() {
 function BankrollSetupSheet({
   open,
   config,
+  trackingMode = false,
   onClose,
   onSave,
 }: {
   open: boolean;
   config: BankrollConfig | null;
+  trackingMode?: boolean;
   onClose: () => void;
   onSave: (config: BankrollConfig) => void;
 }) {
@@ -10168,11 +10235,11 @@ function BankrollSetupSheet({
           <div className="relative">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-300/80">Atlas Bankroll</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300/80">{trackingMode ? "Atlas Tracking" : "Atlas Bankroll"}</p>
                 <h3 className="mt-1 text-[22px] font-black tracking-tight text-white">
-                  {isEditing ? "Update your plan" : "Set your bankroll"}
+                  {trackingMode ? (isEditing ? "Update tracking balance" : "Set tracking balance") : (isEditing ? "Update your plan" : "Set your bankroll")}
                 </h3>
-                <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">Stay consistent with your plan.</p>
+                <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">{trackingMode ? "Track your signals with a separate balance." : "Stay consistent with your plan."}</p>
               </div>
               {isEditing ? (
                 <button type="button" onClick={onClose} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-white/55">
@@ -10186,7 +10253,7 @@ function BankrollSetupSheet({
                 <form className="flex min-h-[365px] flex-col" onSubmit={handleBankrollContinue}>
                   <div className="space-y-3">
                     <label className="block">
-                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/48">Initial Bankroll</span>
+                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-white/48">{trackingMode ? "Tracking Balance" : "Initial Bankroll"}</span>
                       <input
                         value={bankrollInput}
                         onChange={(event) => {
@@ -10198,7 +10265,7 @@ function BankrollSetupSheet({
                         className="mt-2 h-12 w-full rounded-[16px] border border-white/10 bg-black/26 px-4 text-[24px] font-black text-white outline-none transition focus:border-emerald-300/50"
                       />
                     </label>
-                    <p className="text-[12px] font-semibold leading-5 text-white/55">Enter the bankroll you want Atlas to manage.</p>
+                    <p className="text-[12px] font-semibold leading-5 text-white/55">{trackingMode ? "Enter the balance you want to use for Atlas Tracking." : "Enter the bankroll you want Atlas to manage."}</p>
                     {error ? <p className="text-[11px] font-black text-red-300">{error}</p> : null}
                   </div>
                   <button type="submit" className="mt-auto h-11 w-full rounded-[14px] bg-emerald-300 text-[11px] font-black uppercase tracking-[0.14em] text-black shadow-[0_0_22px_rgba(52,211,153,0.18)]">
@@ -10344,6 +10411,7 @@ function AtlasBankrollScreen({
   );
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
   const atlasPlanLockedForFree = Boolean(planCollection?.manualSelectionRequired);
+  const trackingOnlyMode = membership.package === "free";
   const manualTracking = config?.manualTracking ?? null;
   const availableAtlasPicks = snapshotMode.picks;
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
@@ -10352,11 +10420,11 @@ function AtlasBankrollScreen({
     const storedUIState = loadBankrollUIState();
     const storedConfig = loadBankrollConfig();
     setUIState(storedUIState);
-    setActiveBankrollTab(storedUIState.activeBankrollTab);
+    setActiveBankrollTab(membership.package === "free" ? "manual" : storedUIState.activeBankrollTab);
     setConfig(storedConfig);
     setHydrated(true);
     setSetupOpen(!storedConfig);
-  }, []);
+  }, [membership.package]);
 
   useEffect(() => {
     if (!config) return;
@@ -10458,7 +10526,17 @@ function AtlasBankrollScreen({
 
   return (
     <div className="space-y-2.5">
-      <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
+      {activeBankrollTab === "manual" ? (
+        <AtlasTrackingHeader
+          demoModeEnabled={bankrollDemoModeEnabled}
+          snapshot={bankrollDemoSnapshot}
+          onEdit={() => setSetupOpen(true)}
+          onReset={() => setResetOpen(true)}
+          canReset={Boolean(config)}
+        />
+      ) : (
+        <BankrollHeader onEdit={() => setSetupOpen(true)} onReset={() => setResetOpen(true)} canReset={Boolean(config)} />
+      )}
       <BankrollPlanTrackingTabs
         config={config}
         manualTracking={manualTracking}
@@ -10466,13 +10544,14 @@ function AtlasBankrollScreen({
         demoModeEnabled={bankrollDemoModeEnabled}
         snapshot={bankrollDemoSnapshot}
         activeTab={activeBankrollTab}
+        trackingOnly={trackingOnlyMode}
         onTabChange={setActiveBankrollTab}
         uiState={uiState}
         onUIStateChange={handleUpdateUIState}
         onCreateManualPick={() => setManualPickOpen(true)}
         onTrackPick={handleSaveManualPick}
       />
-      {bankrollDemoModeEnabled && bankrollDemoSnapshot ? <SnapshotDemoBanner snapshot={bankrollDemoSnapshot} /> : null}
+      {activeBankrollTab === "atlas" && bankrollDemoModeEnabled && bankrollDemoSnapshot ? <SnapshotDemoBanner snapshot={bankrollDemoSnapshot} /> : null}
       {activeBankrollTab === "atlas" ? (
         atlasPlanLockedForFree ? (
           <AtlasPlanUpgradePlaceholder />
@@ -10486,7 +10565,7 @@ function AtlasBankrollScreen({
           </>
         )
       ) : null}
-      <BankrollSetupSheet open={setupOpen} config={config} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
+      <BankrollSetupSheet open={setupOpen} config={config} trackingMode={trackingOnlyMode} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
       <ManualPickCreatorSheet
         open={manualPickOpen}
         currentBankroll={manualCurrentBankroll}
