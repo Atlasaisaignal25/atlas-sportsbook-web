@@ -47,10 +47,12 @@ export function saveBankrollConfig(config: BankrollConfig) {
 export function normalizeBankrollConfig(config: BankrollConfig, now = new Date().toISOString()): BankrollConfig {
   const currentBankroll = calculateCurrentBankroll(config.currentBankroll);
   const membership = normalizeMembershipContext(config.membership);
-  const lastAtlasSnapshot = normalizeSnapshot(config.lastAtlasSnapshot);
+  const lastGlobalSnapshot = normalizeSnapshot(config.lastGlobalSnapshot);
+  const lastAtlasSnapshot = normalizeSnapshot(config.lastAtlasSnapshot) ?? lastGlobalSnapshot;
   const normalizedBase = {
     ...config,
     membership,
+    lastGlobalSnapshot,
     lastAtlasSnapshot,
     lastSnapshotDate: lastAtlasSnapshot?.snapshotDate ?? config.lastSnapshotDate ?? null,
     demoModeEnabled: Boolean(config.demoModeEnabled && lastAtlasSnapshot),

@@ -57,8 +57,27 @@ export function createSnapshot(
   };
 }
 
-export function loadLatestSnapshot(config: Pick<BankrollConfig, "lastAtlasSnapshot"> | null | undefined) {
-  return normalizeSnapshot(config?.lastAtlasSnapshot);
+export function loadLatestSnapshot(config: Pick<BankrollConfig, "lastAtlasSnapshot" | "lastGlobalSnapshot"> | null | undefined) {
+  return normalizeSnapshot(config?.lastGlobalSnapshot) ?? normalizeSnapshot(config?.lastAtlasSnapshot);
+}
+
+export function atlasSourcesToTrackingPicks(sources: AtlasPackageSources): AtlasTrackingPickOption[] {
+  return [
+    ...sourcePicksToTrackingPicks(sources.signals, "signals"),
+    ...sourcePicksToTrackingPicks(sources.top3, "top3"),
+    ...sourcePicksToTrackingPicks(sources.top5, "top5"),
+  ].sort((a, b) => a.source.localeCompare(b.source) || a.sport.localeCompare(b.sport) || a.rank - b.rank);
+}
+
+export function createSnapshotFromSources(
+  sources: AtlasPackageSources,
+  options: {
+    snapshotDate?: string;
+    createdAt?: string;
+    package?: AtlasPlanPackage;
+  } = {},
+) {
+  return createSnapshot(atlasSourcesToTrackingPicks(sources), options);
 }
 
 export function shouldUseSnapshot(livePicks: AtlasTrackingPickOption[], snapshot: AtlasDailySnapshot | null | undefined) {
@@ -219,6 +238,29 @@ function snapshotPickToSourcePick(pick: AtlasSnapshotPick): AtlasPackageSourcePi
     rank: pick.rank,
     startTime: pick.startTime,
   };
+}
+
+function sourcePicksToTrackingPicks(picks: AtlasPackageSourcePick[], source: AtlasPlanSource): AtlasTrackingPickOption[] {
+  return picks
+    .filter((pick) => pick.id && pick.selection && pick.market && Number.isFinite(pick.odds))
+    .map((pick, index) => ({
+      id: pick.id,
+      sport: pick.sport,
+      league: pick.league ?? pick.sport,
+      eventId: pick.eventId ?? pick.id,
+      homeTeam: pick.homeTeam ?? "",
+      awayTeam: pick.awayTeam ?? "",
+      eventDate: pick.startTime.slice(0, 10),
+      eventTime: new Date(pick.startTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+      startTime: pick.startTime,
+      market: pick.market,
+      selection: pick.selection,
+      odds: pick.odds,
+      status: pick.status,
+      source,
+      rank: pick.rank ?? index + 1,
+      completedAt: null,
+    }));
 }
 
 function getSnapshotConfidence(rank: number) {

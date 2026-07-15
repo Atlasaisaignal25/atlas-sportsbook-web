@@ -440,6 +440,7 @@ export type BankrollConfig = {
   weeklySummaries?: WeeklySummary[];
   monthlySummaries?: MonthlySummary[];
   manualTracking?: ManualTrackingCollection;
+  lastGlobalSnapshot?: AtlasDailySnapshot | null;
   lastAtlasSnapshot?: AtlasDailySnapshot | null;
   lastSnapshotDate?: string | null;
   demoModeEnabled?: boolean;

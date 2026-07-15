@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {
   activateDemoMode,
+  atlasSourcesToTrackingPicks,
   createSnapshot,
+  createSnapshotFromSources,
   deactivateDemoMode,
   filterPicksByMembership,
   loadLatestSnapshot,
@@ -30,6 +32,7 @@ const premiumMembership: MembershipContext = {
 
 const livePicks = filterPicksByMembership(premiumMembership, now, validationAtlasSources);
 assert.equal(livePicks.length, 5);
+assert.equal(atlasSourcesToTrackingPicks(validationAtlasSources).length, 44);
 
 const snapshot = createSnapshot(livePicks, {
   snapshotDate: "2026-07-13",
@@ -61,6 +64,14 @@ const snapshotSources = snapshotToAtlasSources(snapshot);
 assert.equal(snapshotSources.top5.length, 5);
 assert.equal(snapshotSources.signals.length, 0);
 
+const globalSnapshot = createSnapshotFromSources(validationAtlasSources, {
+  snapshotDate: "2026-07-13",
+  createdAt: "2026-07-13T12:00:00.000Z",
+  package: "unlimited",
+});
+assert.ok(globalSnapshot);
+assert.equal(globalSnapshot.picks.length, 44);
+
 const activeConfig = activateDemoMode(baseConfig, snapshot, now);
 assert.equal(activeConfig.demoModeEnabled, true);
 assert.equal(activeConfig.lastSnapshotDate, "2026-07-13");
@@ -73,5 +84,15 @@ assert.equal(inactiveConfig.lastSnapshotDate, "2026-07-13");
 const normalizedConfig = normalizeBankrollConfig(activeConfig);
 assert.equal(normalizedConfig.demoModeEnabled, true);
 assert.equal(loadLatestSnapshot(normalizedConfig)?.snapshotDate, "2026-07-13");
+
+const normalizedGlobalConfig = normalizeBankrollConfig({
+  ...baseConfig,
+  lastGlobalSnapshot: globalSnapshot,
+  lastAtlasSnapshot: null,
+  lastSnapshotDate: null,
+  demoModeEnabled: true,
+});
+assert.equal(loadLatestSnapshot(normalizedGlobalConfig)?.picks.length, 44);
+assert.equal(normalizedGlobalConfig.lastAtlasSnapshot?.picks.length, 44);
 
 console.log("validate-snapshot-engine: OK");

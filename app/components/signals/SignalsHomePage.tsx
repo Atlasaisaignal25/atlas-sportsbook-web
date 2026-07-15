@@ -168,6 +168,8 @@ type SignalsHomePageProps = {
   liveErrorMessage?: string | null;
   signalGroupCount?: number;
   activeSection?: SignalsHomeNavSection;
+  demoModeEnabled?: boolean;
+  demoSnapshotDate?: string | null;
   onNavigate?: (section: SignalsHomeNavSection) => void;
   onSportProductAction?: (sport: SportCode) => Promise<PrecisionUnlockResult> | PrecisionUnlockResult | void;
   onTopPlayAction?: () => Promise<PrecisionUnlockResult> | PrecisionUnlockResult | void;
@@ -217,6 +219,12 @@ function getTodayKey() {
   return new Date().toLocaleDateString("en-CA", {
     timeZone: "America/New_York",
   });
+}
+
+function formatDemoSnapshotDate(date: string) {
+  const parsed = new Date(`${date}T12:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function parseDateKey(dateKey: string) {
@@ -2785,6 +2793,8 @@ export function SignalsHomePage({
   liveErrorMessage,
   signalGroupCount,
   activeSection = "signals",
+  demoModeEnabled = false,
+  demoSnapshotDate = null,
   onNavigate,
   onSportProductAction,
   onTopPlayAction,
@@ -3010,6 +3020,21 @@ export function SignalsHomePage({
                         ×
                       </button>
                     ) : null}
+                  </div>
+                </div>
+              ) : null}
+              {demoModeEnabled ? (
+                <div className="mb-2 rounded-2xl border border-cyan-300/18 bg-cyan-300/[0.075] px-3 py-2 text-xs shadow-2xl backdrop-blur-md">
+                  <div className="flex items-start gap-2">
+                    <span className="rounded-full border border-cyan-300/25 bg-cyan-300/[0.10] px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-cyan-200">
+                      Last Available
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-black text-white/80">No live games are available today.</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-white/52">
+                        Showing the most recent Atlas snapshot{demoSnapshotDate ? ` from ${formatDemoSnapshotDate(demoSnapshotDate)}` : ""} for demonstration purposes.
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : null}
