@@ -8108,7 +8108,7 @@ function AtlasTrackingHeader({
           <h2 className="text-[22px] font-black uppercase leading-6 tracking-[0.08em] text-white">
             ATLAS <span className="text-cyan-300">TRACKING</span>
           </h2>
-          <p className="mt-0.5 text-[12px] font-bold text-cyan-100/58">Signal Tracking Center</p>
+          <p className="mt-0.5 text-[12px] font-bold text-cyan-100/58">Track Your Atlas Signals</p>
           {demoModeEnabled && snapshot ? (
             <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-amber-300/18 bg-amber-300/[0.06] px-2 py-1">
               <span className="text-[7px] font-black uppercase tracking-[0.12em] text-amber-200">Last Available</span>
@@ -8187,15 +8187,28 @@ function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | nul
 
 function AtlasPlanUpgradePlaceholder() {
   return (
-    <BankrollShell className="px-3 py-3">
-      <div className="grid grid-cols-[34px_1fr] items-center gap-2.5">
-        <div className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
-          <BankrollUiIcon name="shield" className="h-4 w-4" />
+    <BankrollShell className="overflow-hidden px-3 py-3">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_38%)]" />
+      <div className="relative grid gap-3">
+        <div className="grid grid-cols-[34px_1fr] items-start gap-2.5">
+          <div className="grid h-8 w-8 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] text-cyan-200">
+            <BankrollUiIcon name="shield" className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[14px] font-black text-white/82">Atlas Plan is a premium education module.</p>
+            <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/45">Atlas Bankroll teaches responsible planning through a guided weekly framework.</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-[13px] font-black text-white/78">Atlas Plan is available with membership.</p>
-          <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/45">Exclusive, Premium, and Unlimited unlock the guided Atlas Plan experience. My Tracking remains open with Signals Detected.</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {["Bankroll Management", "Discipline", "Consistency", "Planning", "Responsible Administration"].map((item) => (
+            <div key={item} className="rounded-[11px] border border-cyan-300/12 bg-cyan-300/[0.035] px-2 py-1.5">
+              <p className="text-[9px] font-black text-cyan-100/76">{item}</p>
+            </div>
+          ))}
         </div>
+        <button type="button" className="h-10 rounded-[13px] border border-cyan-300/30 bg-cyan-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]">
+          Upgrade Membership
+        </button>
       </div>
     </BankrollShell>
   );
@@ -8558,7 +8571,7 @@ function BankrollPlanTrackingTabs({
             {atlasPlanLockedForFree ? (
               <>
                 <p className="text-[12px] font-black text-white/72">Atlas Plan requires membership.</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-white/45">My Tracking remains available with Signals Detected.</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-white/45">Atlas Tracking remains available with Signals Detected.</p>
               </>
             ) : (
               <>
@@ -8818,45 +8831,53 @@ function AvailableSportsbookPickRow({
 }) {
   const matchup = formatSportsbookMatchup(pick);
   const confidence = formatPickConfidence(pick);
+  const selectionLabel = formatSportsbookSelection(pick);
+  const startLabel = formatTime(pick.startTime);
 
   return (
-    <div className="grid min-h-[54px] grid-cols-[42px_1fr_52px_58px] items-center gap-2 rounded-[11px] border border-white/10 bg-white/[0.026] px-2 py-1.5 transition duration-200">
-      <div className="flex -space-x-2">
-        <TeamLogoLabel team={matchup.home} sport={pick.sport} />
-        <TeamLogoLabel team={matchup.away} sport={pick.sport} muted />
+    <div className="rounded-[12px] border border-white/10 bg-white/[0.026] px-2 py-1.5 transition duration-200">
+      <div className="mb-1 flex min-w-0 items-center gap-1.5 text-[7px] font-black uppercase tracking-[0.08em] text-white/34">
+        <span className="text-cyan-200/68">{formatTrackingSportLabel(pick.sport)}</span>
+        <span className="h-1 w-1 rounded-full bg-white/18" />
+        <span className="truncate">{pick.league}</span>
+        <span className="h-1 w-1 rounded-full bg-white/18" />
+        <span className="shrink-0">{startLabel}</span>
       </div>
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
+      <div className="grid grid-cols-[1fr_58px] items-center gap-2">
+        <div className="min-w-0">
           {matchup.away ? (
-            <>
-              <span className="shrink-0 text-[8px] font-black uppercase text-cyan-200/38">vs</span>
-              <p className="truncate text-[11px] font-black text-white/82">{matchup.away}</p>
-            </>
-          ) : null}
+            <div className="grid grid-cols-[28px_minmax(0,1fr)_18px_minmax(0,1fr)_28px] items-center gap-1.5">
+              <TeamLogoLabel team={matchup.home} sport={pick.sport} />
+              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
+              <p className="text-center text-[8px] font-black uppercase text-cyan-200/45">vs</p>
+              <p className="truncate text-right text-[11px] font-black text-white/82">{matchup.away}</p>
+              <TeamLogoLabel team={matchup.away} sport={pick.sport} muted />
+            </div>
+          ) : (
+            <div className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-1.5">
+              <TeamLogoLabel team={matchup.home} sport={pick.sport} />
+              <p className="truncate text-[11px] font-black text-white/82">{matchup.home}</p>
+            </div>
+          )}
+          <p className="mt-1 truncate text-[11px] font-black text-cyan-100">{selectionLabel}</p>
         </div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-          <p className="truncate text-[10px] font-black text-cyan-200">{pick.selection}</p>
-          <span className="h-1 w-1 shrink-0 rounded-full bg-white/20" />
-          <p className="truncate text-[9px] font-semibold text-white/38">{pick.market}</p>
-        </div>
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={added}
+          className={`h-10 rounded-[10px] border px-2.5 text-[9px] font-black uppercase tracking-[0.1em] transition duration-200 active:scale-[0.97] ${
+            added
+              ? "border-emerald-300/20 bg-emerald-300/[0.12] text-emerald-200"
+              : "border-cyan-300/35 bg-cyan-300 text-black shadow-[0_0_16px_rgba(34,211,238,0.2)]"
+          }`}
+        >
+          {added ? "Added ✓" : "Add"}
+        </button>
       </div>
-      <div className="text-right">
-        <p className="text-[13px] font-black text-white">{formatSportsbookOdds(pick.odds)}</p>
-        <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.06em] text-cyan-200/75">{confidence}</p>
+      <div className="mt-1 grid grid-cols-[0.72fr_1fr] gap-1.5 border-t border-white/10 pt-1">
+        <p className="text-[8px] font-black uppercase tracking-[0.08em] text-white/36">Odds <span className="text-white/70">{formatSportsbookOdds(pick.odds)}</span></p>
+        <p className="text-right text-[8px] font-black uppercase tracking-[0.08em] text-white/36">Atlas Confidence <span className="text-cyan-200/80">{confidence}</span></p>
       </div>
-      <button
-        type="button"
-        onClick={onAdd}
-        disabled={added}
-        className={`h-8 rounded-[9px] border px-2.5 text-[9px] font-black uppercase tracking-[0.1em] transition duration-200 active:scale-[0.97] ${
-          added
-            ? "border-emerald-300/20 bg-emerald-300/[0.12] text-emerald-200"
-            : "border-cyan-300/35 bg-cyan-300 text-black shadow-[0_0_16px_rgba(34,211,238,0.2)]"
-        }`}
-      >
-        {added ? "Added ✓" : "Add"}
-      </button>
     </div>
   );
 }
@@ -9312,6 +9333,28 @@ function getSportGlyph(sport: AtlasPlanSport | string) {
   return "AT";
 }
 
+function formatTrackingSportLabel(sport: AtlasPlanSport | string) {
+  if (sport === "SOCCER") return "Soccer";
+  return String(sport || "Sport");
+}
+
+function formatSportsbookSelection(pick: Pick<AtlasTrackingPickOption, "selection" | "market" | "sport">) {
+  const selection = pick.selection.trim();
+  const totalMatch = selection.match(/^(Over|Under)\s*\(?(-?\d+(?:\.\d+)?)\)?/i);
+  if (totalMatch) {
+    const suffix = pick.sport === "SOCCER" ? "Goals" : pick.market.toLowerCase().includes("total") ? "Total" : "";
+    return `${capitalizeWord(totalMatch[1])} ${totalMatch[2]}${suffix ? ` ${suffix}` : ""}`;
+  }
+
+  return selection
+    .replace(/\bML\b/g, "Moneyline")
+    .replace(/\bRL\b/g, "Run Line");
+}
+
+function capitalizeWord(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+}
+
 function getTeamInitials(team: string, sport: AtlasPlanSport | string) {
   const cleanTeam = team.trim();
   if (!cleanTeam) return getSportGlyph(sport).slice(0, 2);
@@ -9513,7 +9556,7 @@ function TrackingComparisonCompact({ comparison }: { comparison: TrackingCompari
   return (
     <div className="rounded-[13px] border border-cyan-300/15 bg-cyan-300/[0.035] p-2">
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Atlas vs My Tracking</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Atlas vs Tracking</p>
         <p className="text-[8px] font-black uppercase tracking-[0.1em] text-white/35">Cycle Comparison</p>
       </div>
       {comparison.hasComparisonData ? (
@@ -9530,7 +9573,7 @@ function TrackingComparisonCompact({ comparison }: { comparison: TrackingCompari
         </div>
       ) : (
         <div className="rounded-[10px] border border-white/10 bg-white/[0.025] px-2.5 py-1.5">
-          <p className="text-[10px] font-semibold leading-4 text-white/48">Comparison will become available after both Atlas Plan and My Tracking complete tracked picks.</p>
+          <p className="text-[10px] font-semibold leading-4 text-white/48">Comparison will become available after both Atlas Plan and Atlas Tracking complete tracked signals.</p>
         </div>
       )}
     </div>
@@ -10011,7 +10054,7 @@ function ManualPickCreatorSheet({
           <div className="relative">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-emerald-300/80">My Tracking</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.22em] text-cyan-300/80">Atlas Tracking</p>
                 <h3 className="mt-1 text-[22px] font-black tracking-tight text-white">Track Atlas Pick</h3>
                 <p className="mt-1 text-[12px] font-semibold leading-5 text-white/55">Choose an Atlas-generated pick to follow.</p>
               </div>
@@ -10411,20 +10454,37 @@ function AtlasBankrollScreen({
   );
   const atlasPlan = planCollection?.primaryPlan ?? config?.atlasPlan ?? null;
   const atlasPlanLockedForFree = Boolean(planCollection?.manualSelectionRequired);
-  const trackingOnlyMode = membership.package === "free";
   const manualTracking = config?.manualTracking ?? null;
-  const availableAtlasPicks = snapshotMode.picks;
+  const sourceAtlasPicks = useMemo(() => atlasSourcesToTrackingPicks(effectiveAtlasSources), [effectiveAtlasSources]);
+  const availableAtlasPicks = useMemo(
+    () => snapshotMode.picks.map((pick) => {
+      const sourcePick = sourceAtlasPicks.find((candidate) => candidate.id === pick.id);
+      if (!sourcePick) return pick;
+
+      return {
+        ...pick,
+        league: pick.league || sourcePick.league,
+        eventId: pick.eventId || sourcePick.eventId,
+        homeTeam: pick.homeTeam || sourcePick.homeTeam,
+        awayTeam: pick.awayTeam || sourcePick.awayTeam,
+        eventDate: pick.eventDate || sourcePick.eventDate,
+        eventTime: pick.eventTime || sourcePick.eventTime,
+        startTime: pick.startTime || sourcePick.startTime,
+      };
+    }),
+    [snapshotMode.picks, sourceAtlasPicks],
+  );
   const manualCurrentBankroll = manualTracking?.manualFinancialState.currentBankroll ?? metrics?.currentBankroll ?? config?.currentBankroll ?? 0;
 
   useEffect(() => {
     const storedUIState = loadBankrollUIState();
     const storedConfig = loadBankrollConfig();
     setUIState(storedUIState);
-    setActiveBankrollTab(membership.package === "free" ? "manual" : storedUIState.activeBankrollTab);
+    setActiveBankrollTab(storedUIState.activeBankrollTab);
     setConfig(storedConfig);
     setHydrated(true);
     setSetupOpen(!storedConfig);
-  }, [membership.package]);
+  }, []);
 
   useEffect(() => {
     if (!config) return;
@@ -10544,7 +10604,7 @@ function AtlasBankrollScreen({
         demoModeEnabled={bankrollDemoModeEnabled}
         snapshot={bankrollDemoSnapshot}
         activeTab={activeBankrollTab}
-        trackingOnly={trackingOnlyMode}
+        trackingOnly={false}
         onTabChange={setActiveBankrollTab}
         uiState={uiState}
         onUIStateChange={handleUpdateUIState}
@@ -10565,7 +10625,7 @@ function AtlasBankrollScreen({
           </>
         )
       ) : null}
-      <BankrollSetupSheet open={setupOpen} config={config} trackingMode={trackingOnlyMode} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
+      <BankrollSetupSheet open={setupOpen} config={config} trackingMode={membership.package === "free"} onClose={() => setSetupOpen(false)} onSave={handleSaveConfig} />
       <ManualPickCreatorSheet
         open={manualPickOpen}
         currentBankroll={manualCurrentBankroll}
