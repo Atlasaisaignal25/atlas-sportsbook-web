@@ -5339,11 +5339,27 @@ const restrictedImpactAccessNotice =
     ? {
         title: "Premium Pack Required",
         description: "Upgrade to Premium Pack to unlock Team + Market Impact.",
+        details: [
+          "Live line movement tracking across sportsbooks.",
+          "Odds changes and price movement detection.",
+          "Opening line vs current line comparison.",
+          "Consensus movement across multiple sportsbooks.",
+          "Market direction, trend and movement history.",
+          "Continuous sportsbook monitoring during the slate.",
+        ],
       }
     : pulseImpactFilter === "INTELLIGENCE" && !canViewAtlasIntelligence
       ? {
           title: "Unlimited Pack Required",
           description: "Upgrade to Unlimited Pack to unlock Team + Market + Atlas Intelligence.",
+          details: [
+            "Correlation between Team Impact and Market Impact.",
+            "Signals when team news appears before market movement.",
+            "Timeline between news events and sportsbook reaction.",
+            "Higher-level context for why the market is moving.",
+            "Combined intelligence from injuries, lineups, odds and consensus.",
+            "Full access to the complete Impact intelligence stack.",
+          ],
         }
       : null;
 
@@ -6605,7 +6621,9 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
     sport: item.sport,
     id: `team-${item.eventId}`,
   })),
-  ...consolidatedMarketImpactEvents
+  ...(pulseImpactFilter === "MARKET" || (pulseImpactFilter === "ALL" && canViewMarketImpact)
+    ? consolidatedMarketImpactEvents
+    : [])
     .map((item) => ({
       kind: "market" as const,
       item,
@@ -6614,7 +6632,9 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
       sport: item.sport,
       id: `market-${item.eventId}`,
     })),
-  ...atlasIntelligenceEvents
+  ...(pulseImpactFilter === "INTELLIGENCE" || (pulseImpactFilter === "ALL" && canViewAtlasIntelligence)
+    ? atlasIntelligenceEvents
+    : [])
     .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
     .filter(() => pulseImpactFilter !== "TEAM" && pulseImpactFilter !== "MARKET")
     .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "INTELLIGENCE" || item.confidence === pulseImpactFilter)
@@ -12738,6 +12758,13 @@ const subscriptionPlansBoard = (
                 <p className="mx-auto mt-2 max-w-[300px] text-[12px] font-semibold leading-5 text-white/58">
                   {restrictedImpactAccessNotice.description}
                 </p>
+                <div className="mx-auto mt-3 max-w-[330px] rounded-[16px] border border-white/10 bg-black/18 px-3 py-2 text-left">
+                  {restrictedImpactAccessNotice.details.map((detail) => (
+                    <p key={detail} className="py-1 text-[11px] font-semibold leading-4 text-white/62">
+                      - {detail}
+                    </p>
+                  ))}
+                </div>
                 <button
                   type="button"
                   onClick={() => handleSubscribe(pulseImpactFilter === "MARKET" ? "premium" : "unlimited")}
