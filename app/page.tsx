@@ -12232,6 +12232,7 @@ const subscriptionPlansBoard = (
                 src="/join-atlas-frame.jpeg"
                 alt="Join Atlas Signals"
                 className="h-full w-full object-cover object-top"
+                style={{ transform: "translateY(-5.5vh) scale(1.06)", transformOrigin: "top center" }}
               />
             </div>
             <button
@@ -12243,9 +12244,9 @@ const subscriptionPlansBoard = (
 
             <div
               className="fixed inset-0 z-10 mx-auto w-full max-w-md overflow-y-auto overscroll-contain"
-              style={{ clipPath: "inset(19vh 0 0 0)" }}
+              style={{ clipPath: "inset(13.5vh 0 0 0)" }}
             >
-            <div className="space-y-4 px-4 pb-[108px] pt-[19vh]">
+            <div className="space-y-4 px-4 pb-[108px] pt-[13.5vh]">
             {subscriptionPlansBoard}
             {false ? (
               <>
