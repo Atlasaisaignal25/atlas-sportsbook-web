@@ -275,7 +275,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
 
           <Link
-            href="/?section=signals&view=live&sport=TOP"
+            href="/?board=1&section=signals&view=live&sport=TOP"
             className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-[12px] font-black uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-400/15"
           >
             View Board
@@ -412,7 +412,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
               {!subscriptionMode ? (
                 <Link
-                  href={loginOnlyMode ? "/login?intent=free" : "/?section=signals&view=live&sport=TOP"}
+                  href={loginOnlyMode ? "/login?intent=free" : "/?board=1&section=signals&view=live&sport=TOP"}
                   className="mt-3 block w-full rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-center text-sm font-bold text-cyan-100 transition-colors hover:bg-cyan-400/10"
                 >
                   {loginOnlyMode ? "Create FREE account" : "View Board as Guest"}
@@ -482,7 +482,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
               {!subscriptionMode ? (
                 <Link
-                  href={freeMode ? "/login?mode=login" : "/?section=signals&view=live&sport=TOP"}
+                  href={freeMode ? "/login?mode=login" : "/?board=1&section=signals&view=live&sport=TOP"}
                   className="mt-3 block w-full rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-center text-sm font-bold text-cyan-100 transition-colors hover:bg-cyan-400/10"
                 >
                   {freeMode ? "Login to existing account" : "View Board before creating account"}

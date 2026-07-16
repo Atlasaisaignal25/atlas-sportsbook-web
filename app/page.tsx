@@ -11407,7 +11407,7 @@ const subscriptionPlansBoard = (
         onLogin={() => router.push("/login?mode=login")}
         onViewBoard={() =>
           router.push(
-            `/?section=signals&sport=TOP&view=live&day=${activeDay}`
+            `/?board=1&section=signals&sport=TOP&view=live&day=${activeDay}`
           )
         }
       />
