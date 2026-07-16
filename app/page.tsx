@@ -11217,13 +11217,7 @@ const subscriptionPlansBoard = (
       <p>Not included in monthly memberships.</p>
     </div>
 
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-      <span className="h-px bg-white/12" />
-      <p className="text-[7.5px] font-black uppercase tracking-[0.14em] text-white/70">Monthly Subscriptions</p>
-      <span className="h-px bg-white/12" />
-    </div>
-
-    <div className="grid grid-cols-3 gap-1 pb-0.5">
+    <div className="!mt-0.5 grid grid-cols-3 gap-1 pb-0.5">
       {homeMembershipPlans.map((plan) => {
         const styles = homeMembershipStyles[plan.accent];
 
