@@ -11212,12 +11212,11 @@ const subscriptionPlansBoard = (
       </button>
       <p className="mt-0.5 text-center text-[5.5px] font-semibold leading-[7px] text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
     </article>
-    <div className="text-center text-[6px] font-semibold leading-[8px] text-white/42">
-      <p>Top Signal is a separate daily purchase.</p>
-      <p>Not included in monthly memberships.</p>
+    <div className="text-center text-[5.5px] font-semibold leading-[7px] text-white/42">
+      <p className="truncate">Top Signal is a separate daily purchase · Not included in monthly memberships.</p>
     </div>
 
-    <div className="!mt-0.5 grid grid-cols-3 gap-1 pb-0.5">
+    <div className="!mt-0 grid grid-cols-3 gap-1 pb-0.5">
       {homeMembershipPlans.map((plan) => {
         const styles = homeMembershipStyles[plan.accent];
 
