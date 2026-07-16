@@ -4607,6 +4607,50 @@ const bankrollMembership = useMemo(
   [effectiveBankrollAtlasSources, selectedPackSport, userAccess],
 );
 
+function getAccountRequiredCopy(section: AppSection) {
+  if (section === "news") {
+    return {
+      title: "Create your free account.",
+      body: "Team Impact is included with a free Atlas account. Sign up to access Market, then upgrade later for Market Impact and Atlas Intelligence.",
+    };
+  }
+
+  if (section === "bankroll") {
+    return {
+      title: "Create your free account.",
+      body: "Atlas Tracking is available with a free Atlas account. Sign up to track Atlas Signals and keep your activity connected to your profile.",
+    };
+  }
+
+  return null;
+}
+
+function requireAccountForSection(section: AppSection) {
+  if (authSession.authenticated) return false;
+
+  const copy = getAccountRequiredCopy(section);
+  if (!copy) return false;
+
+  setJoinAuthMode("signup");
+  setJoinAuthOpen(true);
+  setJoinAuthMessage({
+    tone: "info",
+    title: copy.title,
+    body: copy.body,
+  });
+
+  setAppSection("more");
+  const params = new URLSearchParams({
+    board: "1",
+    section: "more",
+    sport: selectedSport,
+    view: viewMode,
+    day: activeDay,
+  });
+  router.push(`/?${params.toString()}`, { scroll: false });
+  return true;
+}
+
 function navigateAppState(
   updates: Partial<{
     section: AppSection;
@@ -4620,6 +4664,10 @@ function navigateAppState(
   const nextView = updates.view ?? viewMode;
   const nextDay = updates.day ?? activeDay;
   const params = new URLSearchParams();
+
+  if (updates.section && requireAccountForSection(updates.section)) {
+    return;
+  }
 
   params.set("section", nextSection);
   params.set("sport", nextSport);
@@ -4637,6 +4685,32 @@ function navigateAppState(
 
   router.push(`/?${params.toString()}`, { scroll: false });
 }
+
+useEffect(() => {
+  if (!authLoaded || authSession.authenticated || !guestBoardMode) return;
+  if (appSection !== "bankroll" && appSection !== "news") return;
+
+  const copy = getAccountRequiredCopy(appSection);
+  if (!copy) return;
+
+  setJoinAuthMode("signup");
+  setJoinAuthOpen(true);
+  setJoinAuthMessage({
+    tone: "info",
+    title: copy.title,
+    body: copy.body,
+  });
+  setAppSection("more");
+
+  const params = new URLSearchParams({
+    board: "1",
+    section: "more",
+    sport: selectedSport,
+    view: viewMode,
+    day: activeDay,
+  });
+  router.replace(`/?${params.toString()}`, { scroll: false });
+}, [activeDay, appSection, authLoaded, authSession.authenticated, guestBoardMode, router, selectedSport, viewMode]);
 
 useEffect(() => {
   try {
