@@ -10878,16 +10878,16 @@ function HomeMembershipIcon({ type, className = "" }: { type: "star" | "crown" |
 }
 
 const subscriptionPlansBoard = (
-  <section className="space-y-2">
+  <section className="space-y-1.5">
     <div className="text-center">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <span className="h-px bg-cyan-300/22" />
-        <h2 className="text-[24px] font-black uppercase tracking-[-0.035em] text-white">
+        <h2 className="text-[21px] font-black uppercase tracking-[-0.035em] text-white">
           Choose Your Plan
         </h2>
         <span className="h-px bg-cyan-300/22" />
       </div>
-      <p className="mt-0.5 text-[9px] font-semibold text-white/50">
+      <p className="text-[8px] font-semibold text-white/50">
         Choose the Atlas intelligence level that matches your strategy.
       </p>
     </div>
@@ -10909,28 +10909,28 @@ const subscriptionPlansBoard = (
       sports={activeSubscriptionSports}
     />
 
-    <article className="relative overflow-hidden rounded-[16px] border border-purple-300/70 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.22),rgba(168,85,247,0.05)_42%,rgba(5,8,22,0.94))] p-2.5 shadow-[0_0_22px_rgba(168,85,247,0.16)]">
-      <span className="absolute left-0 top-0 rounded-br-[12px] border-b border-r border-purple-300/55 bg-purple-500/18 px-3 py-0.5 text-[8px] font-black uppercase tracking-[0.10em] text-purple-100">Daily Access</span>
-      <div className="mt-5 grid grid-cols-[42px_1fr_auto] items-center gap-2">
-        <span className="grid h-11 w-11 place-items-center rounded-full border border-purple-300/45 bg-purple-400/12 text-purple-200 shadow-[0_0_20px_rgba(168,85,247,0.24)]">
-          <HomeMembershipIcon type="star" className="h-7 w-7" />
+    <article className="relative overflow-hidden rounded-[13px] border border-purple-300/70 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.20),rgba(168,85,247,0.045)_42%,rgba(5,8,22,0.94))] p-2 shadow-[0_0_18px_rgba(168,85,247,0.14)]">
+      <span className="absolute left-0 top-0 rounded-br-[10px] border-b border-r border-purple-300/55 bg-purple-500/18 px-2 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] text-purple-100">Daily Access</span>
+      <div className="mt-4 grid grid-cols-[30px_1fr_auto] items-center gap-1.5">
+        <span className="grid h-8 w-8 place-items-center rounded-full border border-purple-300/45 bg-purple-400/12 text-purple-200 shadow-[0_0_14px_rgba(168,85,247,0.22)]">
+          <HomeMembershipIcon type="star" className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h3 className="text-[19px] font-black uppercase leading-none text-white">Top Signal</h3>
-          <p className="mt-0.5 text-[9px] font-black text-purple-200">One Selected Sport · Daily Access</p>
-          <p className="mt-1 inline-flex h-[20px] items-center rounded-[8px] border border-purple-300/45 bg-purple-400/10 px-2 text-[6.5px] font-black uppercase tracking-[0.06em] text-purple-100">Atlas Highest-Rated Official Signal</p>
+          <h3 className="text-[16px] font-black uppercase leading-none text-white">Top Signal</h3>
+          <p className="text-[7.5px] font-black leading-3 text-purple-200">One Selected Sport · Daily Access</p>
+          <p className="mt-0.5 inline-flex h-[15px] items-center rounded-[6px] border border-purple-300/45 bg-purple-400/10 px-1.5 text-[5.5px] font-black uppercase tracking-[0.04em] text-purple-100">Atlas Highest-Rated Official Signal</p>
         </div>
         <div className="text-right">
-          <p className="text-[20px] font-black text-white">$24.99</p>
-          <p className="text-[9px] font-semibold text-white/62">/ day</p>
-          <p className="mt-1 text-[7px] font-semibold leading-3 text-white/62">One-Time<br />Daily Access</p>
+          <p className="text-[17px] font-black leading-none text-white">$24.99</p>
+          <p className="text-[7px] font-semibold text-white/62">/ day</p>
+          <p className="mt-0.5 text-[5.5px] font-semibold leading-[7px] text-white/62">One-Time<br />Daily Access</p>
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-left">
+      <div className="mt-1.5 grid grid-cols-4 gap-x-1 gap-y-0.5 text-left">
         {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
-          <p key={feature} className="grid grid-cols-[10px_1fr] gap-1 text-[7.5px] font-semibold leading-3 text-white/76">
+          <p key={feature} className="grid grid-cols-[7px_1fr] gap-0.5 text-[5.5px] font-semibold leading-[7px] text-white/76">
             <span className="text-purple-300">✓</span>
-            <span>{feature}</span>
+            <span className="truncate">{feature}</span>
           </p>
         ))}
       </div>
@@ -10938,78 +10938,78 @@ const subscriptionPlansBoard = (
         type="button"
         onClick={() => handleSubscribe(topSignalProductForSport(selectedPackSport), selectedPackSport)}
         disabled={checkoutPlan !== null}
-        className="mt-2 h-9 w-full rounded-[11px] border border-purple-300/55 bg-purple-500/60 text-[9px] font-black uppercase tracking-[0.10em] text-white shadow-[0_0_18px_rgba(168,85,247,0.20)] disabled:opacity-60"
+        className="mt-1.5 h-7 w-full rounded-[9px] border border-purple-300/55 bg-purple-500/60 text-[7.5px] font-black uppercase tracking-[0.08em] text-white shadow-[0_0_14px_rgba(168,85,247,0.18)] disabled:opacity-60"
       >
         Unlock Top Signal
       </button>
-      <p className="mt-1 text-center text-[7.5px] font-semibold leading-3 text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
+      <p className="mt-0.5 text-center text-[5.5px] font-semibold leading-[7px] text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
     </article>
 
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
       <span className="h-px bg-white/12" />
-      <p className="text-[9px] font-black uppercase tracking-[0.18em] text-white/70">Monthly Subscriptions</p>
+      <p className="text-[7.5px] font-black uppercase tracking-[0.14em] text-white/70">Monthly Subscriptions</p>
       <span className="h-px bg-white/12" />
     </div>
 
-    <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-[14%] pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="grid grid-cols-3 gap-1 pb-0.5">
       {homeMembershipPlans.map((plan) => {
         const styles = homeMembershipStyles[plan.accent];
 
         return (
           <article
             key={`home-membership-${plan.plan}`}
-            className={`relative flex h-[370px] w-[72%] shrink-0 snap-center flex-col rounded-[15px] border px-2.5 pb-2 pt-3 text-left ${styles.shell}`}
+            className={`relative flex h-[188px] min-w-0 flex-col rounded-[10px] border px-1.5 pb-1 pt-1.5 text-left ${styles.shell}`}
           >
             {plan.badge ? (
-              <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
+              <span className="absolute left-1/2 top-0.5 max-w-[88%] -translate-x-1/2 truncate rounded-full bg-amber-300 px-1.5 py-0.5 text-[5.5px] font-black uppercase tracking-[0.03em] text-black">
                 {plan.badge}
               </span>
             ) : null}
 
             <div className="flex justify-center">
-              <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_14px_currentColor] ${styles.icon}`}>
+              <span className={`grid h-6 w-6 place-items-center rounded-full border shadow-[0_0_9px_currentColor] ${styles.icon}`}>
                 <HomeMembershipIcon
                   type={plan.plan === "premium" ? "crown" : plan.plan === "unlimited" ? "diamond" : "star"}
-                  className="h-5 w-5"
+                  className="h-3.5 w-3.5"
                 />
               </span>
             </div>
 
-            <p className={`mt-1.5 text-center text-[16px] font-black uppercase tracking-[0.04em] ${styles.text}`}>
+            <p className={`mt-0.5 text-center text-[9px] font-black uppercase tracking-[0.01em] ${styles.text}`}>
               {plan.title}
             </p>
-            <p className="mt-0 text-center text-[8.5px] font-bold leading-tight text-white/78">
+            <p className="text-center text-[5.5px] font-bold leading-[6.5px] text-white/78">
               {plan.subtitle}
             </p>
 
-            <div className={`mt-2 flex h-[34px] items-center justify-center rounded-[10px] border px-2 text-center ${styles.pill}`}>
-              <p className={`text-[7px] font-black uppercase leading-[10px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
+            <div className={`mt-0.5 flex h-[19px] items-center justify-center rounded-[6px] border px-1 text-center ${styles.pill}`}>
+              <p className={`line-clamp-2 text-[4.8px] font-black uppercase leading-[6px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
             </div>
 
-            <p className="mt-1 text-center text-[7px] font-semibold leading-[10px] text-white/58">
+            <p className="hidden">
               {plan.value}
             </p>
 
-            <div className="mt-2 grid grid-cols-1 gap-1">
+            <div className="mt-0.5 grid grid-cols-1 gap-0">
               {plan.features.map((feature) => (
-                <p key={feature} className="grid grid-cols-[10px_1fr] gap-1 text-[7px] font-semibold leading-[10px] text-white/76">
+                <p key={feature} className="grid grid-cols-[6px_1fr] gap-0.5 text-[4.7px] font-semibold leading-[5.8px] text-white/76">
                   <span className={`${styles.check} leading-tight`}>✓</span>
-                  <span>{feature}</span>
+                  <span className="truncate">{feature}</span>
                 </p>
               ))}
             </div>
 
-            <div className="mt-auto pt-1.5">
+            <div className="mt-auto pt-0.5">
               <div className="text-center">
-                <span className="text-[18px] font-black leading-none text-white">{plan.price}</span>
-                <span className="ml-1 text-[8px] font-bold text-white/52">/ month</span>
+                <span className="text-[10px] font-black leading-none text-white">{plan.price}</span>
+                <span className="ml-0.5 text-[4.8px] font-bold text-white/52">/ month</span>
               </div>
 
               <button
                 type="button"
                 onClick={() => handleSubscribe(plan.plan, selectedPackSport)}
                 disabled={checkoutPlan !== null}
-                className={`mt-2 h-8 w-full rounded-[9px] border px-2 text-[8px] font-black uppercase tracking-[0.04em] disabled:opacity-60 ${styles.button}`}
+                className={`mt-0.5 h-[18px] w-full rounded-[6px] border px-1 text-[4.8px] font-black uppercase tracking-[0.01em] disabled:opacity-60 ${styles.button}`}
               >
                 {plan.cta}
               </button>
