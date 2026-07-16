@@ -2383,6 +2383,7 @@ type PricingPlan = {
   subtitle: string;
   featureTitle: string;
   featureSubtitle?: string;
+  value: string;
   features: string[];
   cta: string;
   accent: "cyan" | "gold" | "purple";
@@ -2394,10 +2395,11 @@ const pricingPlans: PricingPlan[] = [
     code: "exclusive",
     title: "Exclusive",
     price: "$34.99",
-    subtitle: "All Available Sports",
-    featureTitle: "Ranked Top 3",
-    featureSubtitle: "Signals Detected",
-    features: ["All Available Sports", "Top 3 Signals Detected", "Live Status Updates", "Progressive Delivery", "No Top Signal"],
+    subtitle: "One Selected Sport",
+    featureTitle: "Up to 3",
+    featureSubtitle: "Official Ranked Signals",
+    value: "Focused ranked intelligence for one selected sport.",
+    features: ["One Selected Sport", "Up to 3 Official Ranked Signals", "Official Signal Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
     cta: "Get Exclusive",
     accent: "cyan",
   },
@@ -2405,10 +2407,11 @@ const pricingPlans: PricingPlan[] = [
     code: "premium",
     title: "Premium",
     price: "$59.99",
-    subtitle: "Choose Your Sport",
-    featureTitle: "Up to 5 Official",
-    featureSubtitle: "Ranked Signals",
-    features: ["Choose 1 Sport", "Up to 5 Official Signals", "Ranked Signals", "Live Status Updates", "No Top Signal"],
+    subtitle: "One Selected Sport",
+    featureTitle: "Top Signal +",
+    featureSubtitle: "Official Ranked Signals",
+    value: "Unlock Atlas official intelligence for one selected sport.",
+    features: ["One Selected Sport", "Official Top Signal", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
     cta: "Get Premium",
     accent: "gold",
     badge: "Most Popular",
@@ -2417,10 +2420,11 @@ const pricingPlans: PricingPlan[] = [
     code: "unlimited",
     title: "Atlas Unlimited",
     price: "$99.99",
-    subtitle: "Every Available Sport",
-    featureTitle: "Up to 5 Official",
-    featureSubtitle: "For Every Sport",
-    features: ["All Available Sports", "Up to 5 Per Sport", "Ranked Signals", "Auto-Includes New Sports", "Live Status Updates"],
+    subtitle: "All Available Sports",
+    featureTitle: "All Sports",
+    featureSubtitle: "Top Signals + Ranked Signals",
+    value: "Complete access across every available Atlas sport.",
+    features: ["Every Available Sport", "Official Top Signal for Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
     cta: "Get Unlimited",
     accent: "purple",
   },
@@ -2563,15 +2567,58 @@ function PricingPacksSection({
         <div className="min-h-0 overflow-hidden">
           <div className="border-t border-white/10 p-1">
             <div className="text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">
+              <p className="text-[26px] font-black uppercase tracking-[-0.035em] text-white">
                 Choose Your Plan
               </p>
-              <p className="mt-0.5 text-[8.5px] font-semibold text-white/58">
-                More clarity. Less risk. Better results.
+              <p className="mt-1 text-[10px] font-semibold text-white/58">
+                Choose the Atlas intelligence level that matches your strategy.
               </p>
             </div>
 
-            <div className="mt-2 grid grid-cols-3 gap-1.5">
+            <article className="mt-3 rounded-[22px] border border-purple-300/70 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.24),rgba(168,85,247,0.055)_42%,rgba(5,8,22,0.94))] p-3 shadow-[0_0_30px_rgba(168,85,247,0.18)]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="rounded-full border border-purple-300/45 bg-purple-400/12 px-3 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-purple-200">Daily Access</span>
+                <span className="text-[8px] font-black uppercase tracking-[0.10em] text-white/42">One-Time Daily Access</span>
+              </div>
+              <div className="mt-3 grid grid-cols-[54px_1fr_auto] items-center gap-3">
+                <span className="grid h-[54px] w-[54px] place-items-center rounded-full border border-purple-300/45 bg-purple-400/12 text-purple-200 shadow-[0_0_22px_rgba(168,85,247,0.22)]">
+                  <PricingIcon type="star" className="h-8 w-8" />
+                </span>
+                <div className="min-w-0 text-left">
+                  <h3 className="text-[22px] font-black uppercase leading-none text-white">Top Signal</h3>
+                  <p className="mt-1 text-[10px] font-black text-purple-200">One Selected Sport · Daily Access</p>
+                  <p className="mt-1 inline-flex min-h-[26px] items-center rounded-[9px] border border-purple-300/45 bg-purple-400/10 px-2 text-[8px] font-black uppercase tracking-[0.08em] text-purple-100">Atlas Highest-Rated Official Signal</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[24px] font-black text-white">$24.99</p>
+                  <p className="text-[10px] font-semibold text-white/58">/ day</p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-left">
+                {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
+                  <p key={feature} className="grid grid-cols-[12px_1fr] gap-1 text-[8.5px] font-semibold leading-3 text-white/74">
+                    <span className="text-purple-300">✓</span>
+                    <span>{feature}</span>
+                  </p>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => onTopSignalAction?.(selectedSport)}
+                className="mt-3 h-10 w-full rounded-[12px] border border-purple-300/55 bg-purple-500/55 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-[0_0_20px_rgba(168,85,247,0.20)]"
+              >
+                Unlock Top Signal
+              </button>
+              <p className="mt-2 text-center text-[8.5px] font-semibold leading-3 text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
+            </article>
+
+            <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+              <span className="h-px bg-white/12" />
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">Monthly Subscriptions</p>
+              <span className="h-px bg-white/12" />
+            </div>
+
+            <div className="mt-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-[12%] pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {pricingPlans.map((plan) => {
                 const styles = pricingAccentStyles[plan.accent];
                 const sportForPlan = plan.code === "unlimited" ? undefined : selectedSport;
@@ -2579,7 +2626,7 @@ function PricingPacksSection({
                 return (
                   <article
                     key={plan.code}
-                    className={`relative flex min-h-[270px] min-w-0 flex-col rounded-[15px] border px-1.5 pb-1.5 pt-3.5 ${styles.shell}`}
+                    className={`relative flex h-[468px] w-[76%] shrink-0 snap-center flex-col rounded-[16px] border px-4 pb-3 pt-5 ${styles.shell}`}
                   >
                     {plan.badge ? (
                       <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
@@ -2588,31 +2635,30 @@ function PricingPacksSection({
                     ) : null}
 
                     <div className="flex justify-center">
-                      <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
+                      <span className={`grid h-14 w-14 place-items-center rounded-full border shadow-[0_0_16px_currentColor] ${styles.icon}`}>
                         <PricingIcon
                           type={plan.code === "premium" ? "crown" : plan.code === "unlimited" ? "diamond" : "star"}
-                          className="h-5 w-5"
+                          className="h-8 w-8"
                         />
                       </span>
                     </div>
 
-                    <p className={`mt-1.5 text-center text-[11.5px] font-black uppercase tracking-[0.07em] ${styles.text}`}>
+                    <p className={`mt-3 text-center text-[21px] font-black uppercase tracking-[0.04em] ${styles.text}`}>
                       {plan.title}
                     </p>
-                    <p className="mt-0.5 text-center text-[7.5px] font-bold leading-tight text-white/78">
+                    <p className="mt-0.5 text-center text-[11px] font-bold leading-tight text-white/78">
                       {plan.subtitle}
                     </p>
 
-                    <div className={`mt-1.5 rounded-[10px] border px-1 py-1.5 text-center ${styles.pill}`}>
-                      <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
-                      {plan.featureSubtitle ? (
-                        <p className={`mt-0.5 text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
-                      ) : null}
+                    <div className={`mt-3 flex h-[48px] items-center justify-center rounded-[10px] border px-2 text-center ${styles.pill}`}>
+                      <p className={`text-[9px] font-black uppercase leading-[13px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
                     </div>
 
-                    <div className="mt-2 grid grid-cols-1 gap-0.5">
+                    <p className="mt-2 text-center text-[9px] font-semibold leading-3 text-white/58">{plan.value}</p>
+
+                    <div className="mt-3 grid grid-cols-1 gap-1.5">
                       {plan.features.map((feature) => (
-                        <p key={feature} className="grid grid-cols-[9px_1fr] gap-1 text-[7.5px] font-semibold leading-tight text-white/76">
+                        <p key={feature} className="grid grid-cols-[14px_1fr] gap-2 text-[9px] font-semibold leading-3 text-white/76">
                           <span className={`${styles.check} leading-tight`}>✓</span>
                           <span>{feature}</span>
                         </p>
@@ -2621,14 +2667,14 @@ function PricingPacksSection({
 
                     <div className="mt-auto pt-1.5">
                       <div className="text-center">
-                        <span className="text-[14px] font-black leading-none text-white">{plan.price}</span>
-                        <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
+                        <span className="text-[24px] font-black leading-none text-white">{plan.price}</span>
+                        <span className="ml-1 text-[11px] font-bold text-white/52">/ month</span>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
-                        className={`mt-1.5 h-[29px] w-full rounded-[9px] border px-0.5 text-[8px] font-black uppercase tracking-[0.035em] ${styles.button}`}
+                        className={`mt-3 h-11 w-full rounded-[10px] border px-2 text-[11px] font-black uppercase tracking-[0.06em] ${styles.button}`}
                       >
                         {plan.cta}
                       </button>
@@ -2658,7 +2704,7 @@ function PricingPacksSection({
               </div>
             ) : null}
 
-            <div className="mt-1.5 rounded-[14px] border border-white/10 bg-black/20 p-1.5">
+            {false ? <div className="mt-1.5 rounded-[14px] border border-white/10 bg-black/20 p-1.5">
               <div className="mb-1.5 flex items-center justify-center gap-1.5">
                 <span className="h-px flex-1 bg-white/10" />
                 <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/86">Premium Add-ons</p>
@@ -2685,7 +2731,7 @@ function PricingPacksSection({
                   <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-purple-300/45 px-2 py-1 text-[8px] font-black uppercase text-purple-200">Unlock</span>
                 </button>
               </div>
-            </div>
+            </div> : null}
           </div>
         </div>
       </div>

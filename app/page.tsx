@@ -10878,11 +10878,11 @@ function HomeMembershipIcon({ type, className = "" }: { type: "star" | "crown" |
 }
 
 const subscriptionPlansBoard = (
-  <section className="space-y-3">
+  <section className="space-y-4">
     <div className="text-center">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
         <span className="h-px bg-cyan-300/22" />
-        <h2 className="text-[14px] font-black uppercase tracking-[0.22em] text-cyan-300">
+        <h2 className="text-[30px] font-black uppercase tracking-[-0.035em] text-white">
           Choose Your Plan
         </h2>
         <span className="h-px bg-cyan-300/22" />
@@ -10909,14 +10909,56 @@ const subscriptionPlansBoard = (
       sports={activeSubscriptionSports}
     />
 
-    <div className="grid grid-cols-3 gap-1.5">
+    <article className="relative overflow-hidden rounded-[22px] border border-purple-300/70 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.24),rgba(168,85,247,0.055)_42%,rgba(5,8,22,0.94))] p-3.5 shadow-[0_0_30px_rgba(168,85,247,0.18)]">
+      <span className="absolute left-0 top-0 rounded-br-[14px] border-b border-r border-purple-300/55 bg-purple-500/18 px-4 py-1 text-[9px] font-black uppercase tracking-[0.10em] text-purple-100">Daily Access</span>
+      <div className="mt-6 grid grid-cols-[64px_1fr_auto] items-center gap-3">
+        <span className="grid h-16 w-16 place-items-center rounded-full border border-purple-300/45 bg-purple-400/12 text-purple-200 shadow-[0_0_26px_rgba(168,85,247,0.28)]">
+          <HomeMembershipIcon type="star" className="h-10 w-10" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-[27px] font-black uppercase leading-none text-white">Top Signal</h3>
+          <p className="mt-1 text-[12px] font-black text-purple-200">One Selected Sport · Daily Access</p>
+          <p className="mt-2 inline-flex min-h-[26px] items-center rounded-[9px] border border-purple-300/45 bg-purple-400/10 px-3 text-[9px] font-black uppercase tracking-[0.08em] text-purple-100">Atlas Highest-Rated Official Signal</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[28px] font-black text-white">$24.99</p>
+          <p className="text-[12px] font-semibold text-white/62">/ day</p>
+          <p className="mt-2 text-[10px] font-semibold leading-3 text-white/62">One-Time<br />Daily Access</p>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-2 text-left">
+        {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
+          <p key={feature} className="grid grid-cols-[14px_1fr] gap-2 text-[10px] font-semibold leading-4 text-white/76">
+            <span className="text-purple-300">✓</span>
+            <span>{feature}</span>
+          </p>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => handleSubscribe(topSignalProductForSport(selectedPackSport), selectedPackSport)}
+        disabled={checkoutPlan !== null}
+        className="mt-4 h-12 w-full rounded-[13px] border border-purple-300/55 bg-purple-500/60 text-[12px] font-black uppercase tracking-[0.12em] text-white shadow-[0_0_22px_rgba(168,85,247,0.22)] disabled:opacity-60"
+      >
+        Unlock Top Signal
+      </button>
+      <p className="mt-2 text-center text-[9.5px] font-semibold leading-3 text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
+    </article>
+
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+      <span className="h-px bg-white/12" />
+      <p className="text-[11px] font-black uppercase tracking-[0.28em] text-white/70">Monthly Subscriptions</p>
+      <span className="h-px bg-white/12" />
+    </div>
+
+    <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-[12%] pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {homeMembershipPlans.map((plan) => {
         const styles = homeMembershipStyles[plan.accent];
 
         return (
           <article
             key={`home-membership-${plan.plan}`}
-            className={`relative flex min-h-[270px] min-w-0 flex-col rounded-[15px] border px-1.5 pb-1.5 pt-3.5 text-left ${styles.shell}`}
+            className={`relative flex h-[468px] w-[76%] shrink-0 snap-center flex-col rounded-[16px] border px-4 pb-3 pt-5 text-left ${styles.shell}`}
           >
             {plan.badge ? (
               <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-300 px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.06em] text-black">
@@ -10925,33 +10967,32 @@ const subscriptionPlansBoard = (
             ) : null}
 
             <div className="flex justify-center">
-              <span className={`grid h-9 w-9 place-items-center rounded-full border shadow-[0_0_12px_currentColor] ${styles.icon}`}>
+              <span className={`grid h-14 w-14 place-items-center rounded-full border shadow-[0_0_16px_currentColor] ${styles.icon}`}>
                 <HomeMembershipIcon
                   type={plan.plan === "premium" ? "crown" : plan.plan === "unlimited" ? "diamond" : "star"}
-                  className="h-5 w-5"
+                  className="h-8 w-8"
                 />
               </span>
             </div>
 
-            <p className={`mt-1.5 text-center text-[11.5px] font-black uppercase tracking-[0.07em] ${styles.text}`}>
+            <p className={`mt-3 text-center text-[21px] font-black uppercase tracking-[0.04em] ${styles.text}`}>
               {plan.title}
             </p>
-            <p className="mt-0.5 text-center text-[7.5px] font-bold leading-tight text-white/78">
+            <p className="mt-0.5 text-center text-[11px] font-bold leading-tight text-white/78">
               {plan.subtitle}
             </p>
 
-            <div className={`mt-1.5 rounded-[10px] border px-1 py-1.5 text-center ${styles.pill}`}>
-              <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
-              <p className={`mt-0.5 text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
+            <div className={`mt-3 flex h-[48px] items-center justify-center rounded-[10px] border px-2 text-center ${styles.pill}`}>
+              <p className={`text-[9px] font-black uppercase leading-[13px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
             </div>
 
-            <p className="mt-1.5 text-center text-[7.5px] font-semibold leading-tight text-white/58">
+            <p className="mt-2 text-center text-[9px] font-semibold leading-3 text-white/58">
               {plan.value}
             </p>
 
-            <div className="mt-2 grid grid-cols-1 gap-0.5">
+            <div className="mt-3 grid grid-cols-1 gap-1.5">
               {plan.features.map((feature) => (
-                <p key={feature} className="grid grid-cols-[9px_1fr] gap-1 text-[7.5px] font-semibold leading-tight text-white/76">
+                <p key={feature} className="grid grid-cols-[14px_1fr] gap-2 text-[9px] font-semibold leading-3 text-white/76">
                   <span className={`${styles.check} leading-tight`}>✓</span>
                   <span>{feature}</span>
                 </p>
@@ -10960,15 +11001,15 @@ const subscriptionPlansBoard = (
 
             <div className="mt-auto pt-1.5">
               <div className="text-center">
-                <span className="text-[14px] font-black leading-none text-white">{plan.price}</span>
-                <span className="ml-0.5 text-[7px] font-bold text-white/52">/mo</span>
+                <span className="text-[24px] font-black leading-none text-white">{plan.price}</span>
+                <span className="ml-1 text-[11px] font-bold text-white/52">/ month</span>
               </div>
 
               <button
                 type="button"
                 onClick={() => handleSubscribe(plan.plan, selectedPackSport)}
                 disabled={checkoutPlan !== null}
-                className={`mt-1.5 h-[29px] w-full rounded-[9px] border px-0.5 text-[8px] font-black uppercase tracking-[0.035em] disabled:opacity-60 ${styles.button}`}
+                className={`mt-3 h-11 w-full rounded-[10px] border px-2 text-[11px] font-black uppercase tracking-[0.06em] disabled:opacity-60 ${styles.button}`}
               >
                 {plan.cta}
               </button>
@@ -10977,6 +11018,71 @@ const subscriptionPlansBoard = (
         );
       })}
     </div>
+
+    <section>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <span className="h-px bg-cyan-300/20" />
+        <h3 className="text-[13px] font-black uppercase tracking-[0.18em] text-cyan-300">Compare Plans</h3>
+        <span className="h-px bg-cyan-300/20" />
+      </div>
+      <div className="mt-3 overflow-hidden rounded-[16px] border border-white/12 bg-cyan-300/[0.035] text-[9px]">
+        <div className="grid grid-cols-[1.28fr_0.82fr_0.82fr_0.92fr_0.95fr] border-b border-white/10 text-center font-black uppercase tracking-[0.04em]">
+          <div className="px-2 py-3 text-left text-cyan-300">Features</div>
+          <div className="px-2 py-3 text-cyan-300">Exclusive</div>
+          <div className="px-2 py-3 text-amber-300">Premium</div>
+          <div className="px-2 py-3 text-purple-300">Unlimited</div>
+          <div className="px-2 py-3 text-violet-300">Top Signal</div>
+        </div>
+        {[
+          ["Selected Sports", "1", "1", "All", "1"],
+          ["Official Ranked Signals", "Up to 3", "Yes", "All Sports", "No"],
+          ["Official Top Signal", "No", "Yes", "Every Sport", "1 Daily"],
+          ["Market Impact", "Yes", "Yes", "Yes", "No"],
+          ["Atlas Bankroll", "Yes", "Yes", "Yes", "Purchased Signal Only"],
+          ["Signal History", "Yes", "Yes", "Yes", "Purchased Signals"],
+          ["Live Updates", "Yes", "Yes", "Yes", "Yes"],
+          ["Billing Type", "Monthly", "Monthly", "Monthly", "One-Time Daily"],
+        ].map(([feature, exclusive, premium, unlimited, topSignal]) => (
+          <div key={feature} className="grid grid-cols-[1.28fr_0.82fr_0.82fr_0.92fr_0.95fr] border-b border-white/8 last:border-b-0">
+            <div className="px-1.5 py-2.5 font-semibold text-white/72">{feature}</div>
+            <div className="px-1 py-2.5 text-center font-black text-cyan-300">{exclusive}</div>
+            <div className="px-1 py-2.5 text-center font-black text-amber-300">{premium}</div>
+            <div className="px-1 py-2.5 text-center font-black text-purple-300">{unlimited}</div>
+            <div className="px-1 py-2.5 text-center font-black text-violet-300">{topSignal}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section className="grid grid-cols-2 gap-2 rounded-[18px] border border-cyan-300/16 bg-[#07111d]/86 p-3 shadow-[0_0_24px_rgba(34,211,238,0.07)]">
+      {[
+        ["Official Ranked Signals", "Signals ordered by Atlas internal ranking after analysis and validation.", "cyan" as const],
+        ["Top Signal", "The highest-rated official Atlas Signal available for the selected sport.", "gold" as const],
+        ["Atlas Bankroll", "Educational bankroll management and Signal tracking tools.", "purple" as const],
+        ["Market Impact", "Market movement and impact insights available with monthly memberships.", "blue" as const],
+      ].map(([title, body, tone]) => {
+        const toneClass =
+          tone === "gold"
+            ? "border-amber-300/35 bg-amber-300/10 text-amber-300"
+            : tone === "purple"
+              ? "border-purple-300/35 bg-purple-300/10 text-purple-300"
+              : tone === "blue"
+                ? "border-blue-300/35 bg-blue-300/10 text-blue-300"
+                : "border-cyan-300/35 bg-cyan-300/10 text-cyan-300";
+
+        return (
+          <div key={title} className="grid grid-cols-[34px_1fr] gap-2">
+            <span className={`grid h-9 w-9 place-items-center rounded-full border ${toneClass}`}>
+              <HomeMembershipIcon type={tone === "gold" ? "crown" : tone === "purple" ? "diamond" : "star"} className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 text-left">
+              <span className="block text-[10px] font-black leading-tight text-white/82">{title}</span>
+              <span className="mt-0.5 block text-[8px] font-semibold leading-[1.3] text-white/45">{body}</span>
+            </span>
+          </div>
+        );
+      })}
+    </section>
 
     <StripeTrustBar />
   </section>
@@ -11478,6 +11584,9 @@ const subscriptionPlansBoard = (
               </div>
             </section>
 
+            {subscriptionPlansBoard}
+            {false ? (
+              <>
             <section className="text-center">
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
                 <span className="h-px bg-cyan-300/22" />
@@ -11576,7 +11685,7 @@ const subscriptionPlansBoard = (
                   <p className="text-[10px] font-semibold text-white/58">/ day</p>
                 </div>
               </div>
-              <p className="mt-3 text-[10px] font-semibold leading-4 text-white/64">Unlock today's highest-rated official Atlas Signal after final market validation.</p>
+              <p className="mt-3 text-[10px] font-semibold leading-4 text-white/64">Unlock today&apos;s highest-rated official Atlas Signal after final market validation.</p>
               <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-left">
                 {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
                   <p key={feature} className="grid grid-cols-[12px_1fr] gap-1 text-[9px] font-semibold leading-3 text-white/74">
@@ -11675,6 +11784,8 @@ const subscriptionPlansBoard = (
                 ))}
               </div>
             </section>
+              </>
+            ) : null}
           </div>
         </div>
         </div>
