@@ -962,8 +962,8 @@ export async function GET() {
   const top5LiveProductRows = adaptivePremiumRowsBySport(excludeGameIds(top5LiveRows, topSignalGameIds));
   const top3LiveProductRows = productRowsBySport(top5LiveProductRows, 3);
   const productGameIds = new Set([...topSignalLiveRows, ...top5LiveProductRows].map(rowGameId).filter(Boolean));
-  const signalDisplayRows = signalLiveRows;
   const signalDistributionRows = excludeGameIds(signalLiveRows, productGameIds);
+  const signalDisplayRows = signalDistributionRows;
   const exclusiveLiveProductRows = exclusiveRowsBySport(top3LiveProductRows, signalDistributionRows, top5LiveRows);
   const latestPremiumHistoryInternal = latestRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING");
   const latestPremiumInternal = top5LiveProductRows.length ? top5LiveProductRows : latestPremiumHistoryInternal;

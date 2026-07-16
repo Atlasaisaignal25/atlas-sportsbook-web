@@ -5081,6 +5081,15 @@ function getSignalSourceForSport(sport: SportTab) {
   return [];
 }
 
+function getSignalsDetectedProductExclusions(sport: SportTab, top5: Top5Entry[]) {
+  if (sport !== "SOCCER") return top5;
+
+  return top5
+    .slice()
+    .sort((a, b) => Number(a.rank ?? 999) - Number(b.rank ?? 999))
+    .slice(0, 4);
+}
+
 function getSignalSportKey(sport: SportTab) {
   if (sport === "MLB") return "baseball_mlb";
   if (sport === "NBA") return "basketball_nba";
@@ -5154,13 +5163,13 @@ const groupedSignalLiveGames = useMemo(() => {
 
   return sportsToShow
     .map((sport) => {
-      const top5 = getTop5BySport(
+      const top5 = getSignalsDetectedProductExclusions(sport, getTop5BySport(
         sport,
         activeMlbTop5Data,
         activeNbaTop5Data,
         activeNhlTop5Data,
         activeSoccerTop5Data
-      );
+      ));
 
       const games = getSignalSourceForSport(sport)
         .filter(
@@ -10945,13 +10954,13 @@ const subscriptionPlansBoard = (
             soccer: soccerSignalsLiveData,
           });
 
-          const top5 = getTop5BySport(
+          const top5 = getSignalsDetectedProductExclusions(group.sport, getTop5BySport(
             group.sport,
             activeMlbTop5Data,
             activeNbaTop5Data,
             activeNhlTop5Data,
             activeSoccerTop5Data
-          );
+          ));
 
           if (!livePickData || isTop5LiveGame(game, top5)) {
             return [];
@@ -11807,13 +11816,13 @@ const subscriptionPlansBoard = (
                         soccer: soccerSignalsLiveData,
                       });
 
-                      const top5 = getTop5BySport(
+                      const top5 = getSignalsDetectedProductExclusions(group.sport, getTop5BySport(
                         group.sport,
                         activeMlbTop5Data,
                         activeNbaTop5Data,
                         activeNhlTop5Data,
                         activeSoccerTop5Data
-                      );
+                      ));
 
                       if (!livePickData || isTop5LiveGame(game, top5)) {
                         return [];
