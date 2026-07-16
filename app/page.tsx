@@ -12243,6 +12243,7 @@ const subscriptionPlansBoard = (
               onClick={() => navigateAppState({ section: "signals", view: "live", sport: "TOP" })}
               aria-label="Back to signals"
               className="fixed left-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 h-12 w-12 rounded-full"
+              style={{ transform: "translateY(-5.5vh) scale(1.06)", transformOrigin: "top left" }}
             />
 
             <div
