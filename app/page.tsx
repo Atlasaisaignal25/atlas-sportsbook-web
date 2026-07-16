@@ -3909,6 +3909,431 @@ function AtlasAccessGate({
   );
 }
 
+type MoreIconType =
+  | "profile"
+  | "membership"
+  | "billing"
+  | "history"
+  | "restore"
+  | "referral"
+  | "bell"
+  | "mail"
+  | "signal"
+  | "star"
+  | "news"
+  | "theme"
+  | "palette"
+  | "privacy"
+  | "terms"
+  | "cookie"
+  | "data"
+  | "delete"
+  | "help"
+  | "support"
+  | "faq"
+  | "bug"
+  | "feature"
+  | "rate"
+  | "share"
+  | "version"
+  | "web"
+  | "social"
+  | "license"
+  | "code";
+
+function MoreLineIcon({ type }: { type: MoreIconType }) {
+  if (type === "profile") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M5.2 20a6.8 6.8 0 0 1 13.6 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "membership" || type === "star" || type === "rate") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="m12 3.5 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8L12 3.5Z" stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (type === "billing" || type === "history" || type === "restore") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="M4 7.5h16v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M4 10h16M8 15h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "bell" || type === "signal") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="M7 10.8a5 5 0 0 1 10 0v3.1l1.6 2.4H5.4L7 13.9v-3.1Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="M10 19a2.2 2.2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "mail" || type === "support") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="M4 6.8h16v10.4H4V6.8Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="m5.2 8 6.8 5 6.8-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (type === "theme" || type === "palette") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="7.3" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M12 4.7a7.3 7.3 0 0 0 0 14.6V4.7Z" fill="currentColor" opacity="0.25" />
+      </svg>
+    );
+  }
+
+  if (type === "privacy" || type === "terms" || type === "data" || type === "delete") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="M12 3.8 5.5 6.3v5c0 4 2.5 7.3 6.5 8.9 4-1.6 6.5-4.9 6.5-8.9v-5L12 3.8Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+        <path d="M12 9.2v4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "help" || type === "faq") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M9.8 9.5a2.3 2.3 0 0 1 4.4.9c0 1.6-1.7 2-2.2 3.1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <path d="M12 17h.1" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "share" || type === "social" || type === "referral") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <circle cx="6.5" cy="12" r="2.4" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="17.5" cy="6.5" r="2.4" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="17.5" cy="17.5" r="2.4" stroke="currentColor" strokeWidth="1.7" />
+        <path d="m8.7 11 6.6-3.3M8.7 13l6.6 3.3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "bug" || type === "feature" || type === "code") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="m8.5 8-4 4 4 4M15.5 8l4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="m13.2 6.5-2.4 11" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (type === "web") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M4.6 12h14.8M12 4.3c2 2 3 4.6 3 7.7s-1 5.7-3 7.7c-2-2-3-4.6-3-7.7s1-5.7 3-7.7Z" stroke="currentColor" strokeWidth="1.45" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+      <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MoreSectionCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] shadow-[0_0_24px_rgba(34,211,238,0.045)]">
+      <div className="border-b border-white/8 px-4 py-3">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{title}</p>
+      </div>
+      <div className="divide-y divide-white/8">{children}</div>
+    </section>
+  );
+}
+
+function MoreOptionRow({
+  icon,
+  label,
+  detail,
+  value,
+  danger = false,
+  onClick,
+}: {
+  icon: MoreIconType;
+  label: string;
+  detail?: string;
+  value?: string;
+  danger?: boolean;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-[13px] border ${danger ? "border-red-400/20 bg-red-500/10 text-red-300" : "border-cyan-300/18 bg-cyan-300/[0.07] text-cyan-300"}`}>
+        <MoreLineIcon type={icon} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-[13px] font-black ${danger ? "text-red-200" : "text-white"}`}>{label}</span>
+        {detail ? <span className="mt-0.5 block text-[10.5px] font-semibold leading-4 text-white/42">{detail}</span> : null}
+      </span>
+      {value ? (
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.08em] text-white/50">{value}</span>
+      ) : null}
+      <span className="shrink-0 text-[20px] font-light leading-none text-white/28">›</span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.025]">
+        {content}
+      </button>
+    );
+  }
+
+  return <div className="flex items-center gap-3 px-4 py-3">{content}</div>;
+}
+
+function MoreSwitchRow({ icon, label, detail, enabled = false }: { icon: MoreIconType; label: string; detail?: string; enabled?: boolean }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[13px] border border-cyan-300/18 bg-cyan-300/[0.07] text-cyan-300">
+        <MoreLineIcon type={icon} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-black text-white">{label}</span>
+        {detail ? <span className="mt-0.5 block text-[10.5px] font-semibold leading-4 text-white/42">{detail}</span> : null}
+      </span>
+      <button
+        type="button"
+        aria-pressed={enabled}
+        className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${enabled ? "border-cyan-300/40 bg-cyan-300/22" : "border-white/12 bg-white/[0.06]"}`}
+      >
+        <span className={`absolute top-1 h-4 w-4 rounded-full transition-transform ${enabled ? "left-1 translate-x-5 bg-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.35)]" : "left-1 bg-white/42"}`} />
+      </button>
+    </div>
+  );
+}
+
+function getMoreInitials(email: string | null) {
+  if (!email) return "AT";
+  const name = email.split("@")[0] ?? "";
+  const parts = name.split(/[._-]+/).filter(Boolean);
+  const initials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : name.slice(0, 2);
+  return initials.toUpperCase() || "AT";
+}
+
+function MoreTabFoundation({
+  authSession,
+  authLoaded,
+  userAccess,
+  authBusy,
+  billingBusy,
+  joinAuthMode,
+  setJoinAuthMode,
+  joinEmail,
+  setJoinEmail,
+  joinPassword,
+  setJoinPassword,
+  joinAuthMessage,
+  onSubmitAuth,
+  onLogout,
+  onMembership,
+  onBilling,
+}: {
+  authSession: AuthSessionState;
+  authLoaded: boolean;
+  userAccess: UserAccess;
+  authBusy: boolean;
+  billingBusy: boolean;
+  joinAuthMode: JoinAuthMode;
+  setJoinAuthMode: (mode: JoinAuthMode) => void;
+  joinEmail: string;
+  setJoinEmail: (value: string) => void;
+  joinPassword: string;
+  setJoinPassword: (value: string) => void;
+  joinAuthMessage: SignalsJourneyMessage | null;
+  onSubmitAuth: (event: FormEvent<HTMLFormElement>) => void;
+  onLogout: () => void;
+  onMembership: () => void;
+  onBilling: () => void;
+}) {
+  const planLabel = authLoaded && authSession.authenticated ? userAccess.plan.toUpperCase() : "FREE";
+  const displayName = authSession.email?.split("@")[0]?.replace(/[._-]+/g, " ") ?? "Atlas Member";
+  const formattedName = displayName
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+
+  return (
+    <div className="space-y-3 pb-2">
+      <section className="rounded-[24px] border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),rgba(255,255,255,0.045)_46%,rgba(255,255,255,0.025))] p-4 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
+        <div className="flex items-start gap-3">
+          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] border border-cyan-300/28 bg-cyan-300/[0.10] text-[20px] font-black text-cyan-200 shadow-[0_0_22px_rgba(34,211,238,0.12)]">
+            {authSession.authenticated ? getMoreInitials(authSession.email) : <MoreLineIcon type="profile" />}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Profile</p>
+                <h2 className="mt-1 truncate text-[22px] font-black leading-tight tracking-tight text-white">
+                  {authSession.authenticated ? formattedName : "Guest User"}
+                </h2>
+                <p className="mt-0.5 truncate text-[12px] font-semibold text-white/50">
+                  {authSession.authenticated ? authSession.email : "Sign in to personalize Atlas."}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full border border-cyan-300/22 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.10em] text-cyan-200">
+                {planLabel}
+              </span>
+            </div>
+
+            {authSession.authenticated ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="rounded-[15px] border border-cyan-300/25 bg-cyan-300/[0.08] px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.10em] text-cyan-100"
+                >
+                  View Profile
+                </button>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  disabled={authBusy}
+                  className="rounded-[15px] border border-white/12 bg-white/[0.04] px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.10em] text-white/62 disabled:opacity-60"
+                >
+                  Log Out
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={onSubmitAuth} className="mt-3">
+                <div className="grid grid-cols-2 gap-1 rounded-[15px] border border-white/10 bg-black/24 p-1">
+                  {(["signin", "signup"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setJoinAuthMode(mode)}
+                      className={`rounded-[11px] px-3 py-2 text-[11px] font-black uppercase tracking-[0.10em] transition-all ${
+                        joinAuthMode === mode ? "bg-cyan-300 text-black" : "text-white/55"
+                      }`}
+                    >
+                      {mode === "signin" ? "Sign In" : "Create Account"}
+                    </button>
+                  ))}
+                </div>
+
+                {joinAuthMessage ? (
+                  <div
+                    className={`mt-2 rounded-[14px] border px-3 py-2 text-[11px] leading-4 ${
+                      joinAuthMessage.tone === "error"
+                        ? "border-red-400/25 bg-red-500/10 text-red-100"
+                        : joinAuthMessage.tone === "success"
+                        ? "border-lime-300/25 bg-lime-400/10 text-lime-100"
+                        : "border-cyan-300/25 bg-cyan-400/10 text-cyan-100"
+                    }`}
+                  >
+                    <p className="font-black">{joinAuthMessage.title}</p>
+                    {joinAuthMessage.body ? <p className="mt-0.5 text-white/68">{joinAuthMessage.body}</p> : null}
+                  </div>
+                ) : null}
+
+                <div className="mt-2 grid gap-2">
+                  <input
+                    value={joinEmail}
+                    onChange={(event) => setJoinEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder="Email"
+                    className="h-10 rounded-[14px] border border-white/10 bg-black/35 px-3 text-[13px] text-white outline-none placeholder:text-white/28 focus:border-cyan-300"
+                  />
+                  <input
+                    value={joinPassword}
+                    onChange={(event) => setJoinPassword(event.target.value)}
+                    type="password"
+                    autoComplete={joinAuthMode === "signup" ? "new-password" : "current-password"}
+                    required
+                    minLength={6}
+                    placeholder="Password"
+                    className="h-10 rounded-[14px] border border-white/10 bg-black/35 px-3 text-[13px] text-white outline-none placeholder:text-white/28 focus:border-cyan-300"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={authBusy}
+                  className="mt-2 w-full rounded-[15px] bg-cyan-300 px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {authBusy ? "Working..." : joinAuthMode === "signin" ? "Sign In" : "Create Account"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <MoreSectionCard title="Account">
+        <MoreOptionRow icon="membership" label="Membership" detail="Plans, packs and Atlas access." value={planLabel} onClick={onMembership} />
+        <MoreOptionRow icon="billing" label="Billing" detail="Manage billing when connected." onClick={onBilling} />
+        <MoreOptionRow icon="history" label="Purchase History" detail="Receipts and unlocked products." />
+        <MoreOptionRow icon="restore" label="Restore Purchases" detail="Recover purchases on this device." />
+        <MoreOptionRow icon="referral" label="Referral Program" detail="Invite rewards placeholder." value="Soon" />
+      </MoreSectionCard>
+
+      <MoreSectionCard title="Notifications">
+        <MoreSwitchRow icon="bell" label="Push Notifications" detail="Important Atlas updates." enabled />
+        <MoreSwitchRow icon="mail" label="Email Notifications" detail="Account and product messages." />
+        <MoreSwitchRow icon="signal" label="Signal Alerts" detail="Signals Detected and ranked boards." enabled />
+        <MoreSwitchRow icon="star" label="Top Signal Alerts" detail="Daily Top Signal availability." />
+        <MoreSwitchRow icon="news" label="News" detail="Market and team impact notes." />
+      </MoreSectionCard>
+
+      <MoreSectionCard title="Appearance">
+        <MoreOptionRow icon="theme" label="Theme" detail="System, Dark or Light." value="System" />
+        <MoreOptionRow icon="palette" label="Accent Color" detail="Atlas visual identity." value="Atlas Blue" />
+      </MoreSectionCard>
+
+      <MoreSectionCard title="Privacy">
+        <MoreOptionRow icon="privacy" label="Privacy Policy" />
+        <MoreOptionRow icon="terms" label="Terms of Service" />
+        <MoreOptionRow icon="cookie" label="Cookie Preferences" />
+        <MoreOptionRow icon="data" label="Manage Data" detail="Export and account data tools." />
+        <MoreOptionRow icon="delete" label="Delete Account" detail="Permanent account removal." danger />
+      </MoreSectionCard>
+
+      <MoreSectionCard title="Support">
+        <MoreOptionRow icon="help" label="Help Center" />
+        <MoreOptionRow icon="support" label="Contact Support" />
+        <MoreOptionRow icon="faq" label="FAQ" />
+        <MoreOptionRow icon="bug" label="Report a Bug" />
+        <MoreOptionRow icon="feature" label="Feature Request" />
+        <MoreOptionRow icon="rate" label="Rate Atlas" />
+        <MoreOptionRow icon="share" label="Share Atlas" />
+      </MoreSectionCard>
+
+      <MoreSectionCard title="About">
+        <MoreOptionRow icon="version" label="App Version" value="1.0.0" />
+        <MoreOptionRow icon="code" label="Build" value="Atlas Web" />
+        <MoreOptionRow icon="web" label="Website" detail="Official Atlas web experience." />
+        <MoreOptionRow icon="social" label="Social Media" />
+        <MoreOptionRow icon="license" label="Licenses" />
+        <MoreOptionRow icon="code" label="Open Source" />
+      </MoreSectionCard>
+    </div>
+  );
+}
+
 function HomeContent() {
 
 const [mlbRecord, setMlbRecord] = useState<RecordStats>(emptyRecordStats);
@@ -12012,7 +12437,7 @@ const subscriptionPlansBoard = (
             />
           ) : (
             <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">
-              {appSection === "news" ? "Impact" : appSection === "bankroll" ? "Active" : selectedSport}
+              {appSection === "news" ? "Impact" : appSection === "bankroll" ? "Active" : appSection === "more" ? "Settings" : selectedSport}
             </div>
           )}
         </div>
@@ -12043,7 +12468,7 @@ const subscriptionPlansBoard = (
           </div>
         ) : null}
 
-        {appSection !== "signals" && appSection !== "news" && appSection !== "bankroll" ? (
+        {appSection !== "signals" && appSection !== "news" && appSection !== "bankroll" && appSection !== "more" ? (
         <div className="mt-3 grid grid-cols-6 gap-1">
           {sportsTabs.map((sport) => (
             <button
@@ -13751,6 +14176,25 @@ const subscriptionPlansBoard = (
               </div>
             )}
           </div>
+        ) : appSection === "more" ? (
+          <MoreTabFoundation
+            authSession={authSession}
+            authLoaded={authLoaded}
+            userAccess={userAccess}
+            authBusy={authBusy}
+            billingBusy={billingBusy}
+            joinAuthMode={joinAuthMode}
+            setJoinAuthMode={setJoinAuthMode}
+            joinEmail={joinEmail}
+            setJoinEmail={setJoinEmail}
+            joinPassword={joinPassword}
+            setJoinPassword={setJoinPassword}
+            joinAuthMessage={joinAuthMessage}
+            onSubmitAuth={handleInlineAuthSubmit}
+            onLogout={handleLogout}
+            onMembership={() => navigateAppState({ section: "alerts" })}
+            onBilling={handleManageBilling}
+          />
         ) : (
           <div className="space-y-3">
             <section className="rounded-[24px] border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),rgba(255,255,255,0.04)_48%)] p-4 shadow-[0_0_26px_rgba(34,211,238,0.08)]">
