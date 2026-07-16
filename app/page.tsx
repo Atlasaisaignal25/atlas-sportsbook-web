@@ -11737,6 +11737,13 @@ const subscriptionPlansBoard = (
               aria-label="Back to signals"
               className="fixed left-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 h-12 w-12 rounded-full"
             />
+            <button
+              type="button"
+              onClick={() => router.push("/login?intent=free#create-account")}
+              className="fixed right-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 rounded-full border border-cyan-300/35 bg-[#061423]/86 px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.16)] backdrop-blur-md transition active:scale-[0.97]"
+            >
+              Log in / Sign up
+            </button>
 
             <div
               className="fixed inset-0 z-10 mx-auto w-full max-w-md overflow-y-auto overscroll-contain"
