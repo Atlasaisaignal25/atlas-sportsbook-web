@@ -2570,7 +2570,7 @@ const pricingDetails: Record<PricingDetailCode, PricingDetail> = {
     value: "Unlock today's highest-rated official Atlas Signal after final market validation.",
     cta: "Unlock Top Signal",
     icon: "star",
-    accent: "purple",
+    accent: "gold",
     includes: ["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access for the purchased Signal", "Purchased Signal History", "Closing Status", "Live Updates"],
     howItWorks: [
       "Top Signal is a daily purchase for one selected sport.",
@@ -2850,20 +2850,20 @@ function PricingPacksSection({
                   setSelectedDetail("top_signal");
                 }
               }}
-              className="mt-1.5 cursor-pointer rounded-[13px] border border-purple-300/70 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.20),rgba(168,85,247,0.045)_42%,rgba(5,8,22,0.94))] p-2 shadow-[0_0_18px_rgba(168,85,247,0.14)] focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+              className="mt-1.5 cursor-pointer rounded-[13px] border border-amber-300/75 bg-[radial-gradient(circle_at_left,rgba(251,191,36,0.24),rgba(217,119,6,0.08)_42%,rgba(5,8,22,0.94))] p-2 shadow-[0_0_20px_rgba(245,158,11,0.18)] focus:outline-none focus:ring-2 focus:ring-amber-300/45"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="rounded-full border border-purple-300/45 bg-purple-400/12 px-2 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] text-purple-200">Daily Access</span>
+                <span className="rounded-full border border-amber-300/45 bg-amber-300/12 px-2 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] text-amber-200">Daily Access</span>
                 <span className="text-[6px] font-black uppercase tracking-[0.08em] text-white/42">One-Time Daily Access</span>
               </div>
               <div className="mt-1.5 grid grid-cols-[30px_1fr_auto] items-center gap-1.5">
-                <span className="grid h-8 w-8 place-items-center rounded-full border border-purple-300/45 bg-purple-400/12 text-purple-200 shadow-[0_0_14px_rgba(168,85,247,0.22)]">
+                <span className="grid h-8 w-8 place-items-center rounded-full border border-amber-300/45 bg-amber-300/12 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.24)]">
                   <PricingIcon type="star" className="h-5 w-5" />
                 </span>
                 <div className="min-w-0 text-left">
                   <h3 className="text-[16px] font-black uppercase leading-none text-white">Top Signal</h3>
-                  <p className="text-[7.5px] font-black leading-3 text-purple-200">One Selected Sport · Daily Access</p>
-                  <p className="mt-0.5 inline-flex h-[15px] items-center rounded-[6px] border border-purple-300/45 bg-purple-400/10 px-1.5 text-[5.5px] font-black uppercase tracking-[0.04em] text-purple-100">Atlas Highest-Rated Official Signal</p>
+                  <p className="text-[7.5px] font-black leading-3 text-amber-200">One Selected Sport · Daily Access</p>
+                  <p className="mt-0.5 inline-flex h-[15px] items-center rounded-[6px] border border-amber-300/45 bg-amber-300/10 px-1.5 text-[5.5px] font-black uppercase tracking-[0.04em] text-amber-100">Atlas Highest-Rated Official Signal</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[17px] font-black leading-none text-white">$24.99</p>
@@ -2873,7 +2873,7 @@ function PricingPacksSection({
               <div className="mt-1.5 grid grid-cols-4 gap-x-1 gap-y-0.5 text-left">
                 {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
                   <p key={feature} className="grid grid-cols-[7px_1fr] gap-0.5 text-[5.5px] font-semibold leading-[7px] text-white/74">
-                    <span className="text-purple-300">✓</span>
+                    <span className="text-amber-300">✓</span>
                     <span>{feature}</span>
                   </p>
                 ))}
@@ -2884,11 +2884,11 @@ function PricingPacksSection({
                   event.stopPropagation();
                   onTopSignalAction?.(selectedSport);
                 }}
-                className="mt-1.5 h-7 w-full rounded-[9px] border border-purple-300/55 bg-purple-500/55 text-[7.5px] font-black uppercase tracking-[0.08em] text-white shadow-[0_0_14px_rgba(168,85,247,0.18)]"
+                className="mt-1.5 h-7 w-full rounded-[9px] border border-amber-300/55 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 text-[7.5px] font-black uppercase tracking-[0.08em] text-black shadow-[0_0_16px_rgba(245,158,11,0.22)]"
               >
                 Unlock Top Signal
               </button>
-              <p className="mt-0.5 text-center text-[5.5px] font-semibold leading-[7px] text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
+              <p className="mt-0.5 text-center text-[5.5px] font-semibold leading-[7px] text-amber-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
             </article>
             <div className="text-center text-[5.5px] font-semibold leading-[7px] text-white/42">
               <p className="truncate">Top Signal is a separate daily purchase · Not included in monthly memberships.</p>
@@ -3336,7 +3336,6 @@ export function SignalsHomePage({
   const selectedSportHasPrecisionData = Boolean(selectedSportPrecisionData);
   const signalsDetectedCount =
     selectedSportMode.sportSignalCount;
-  const topPlayReleased = hasRevealAccess(topPlay) && topPlay?.pick ? 1 : 0;
   const activityMetrics: ActivityMetric[] = [
     { label: "Signals Detected", value: signalsDetectedCount, tone: "green" },
     {
@@ -3356,7 +3355,6 @@ export function SignalsHomePage({
       value: sportSignalViews.filter((signal) => signal.status === "Final Review").length,
       tone: "purple",
     },
-    { label: "Top Signal", value: topPlayReleased, tone: "gold" },
   ];
 
   async function reserveNotification(
