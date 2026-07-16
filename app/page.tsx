@@ -2892,17 +2892,17 @@ function PackSportSelector({
   sports: CheckoutSport[];
 }) {
   return (
-    <div className="rounded-[18px] border border-white/10 bg-white/[0.035] p-2.5">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">
+    <div className="rounded-[14px] border border-white/10 bg-white/[0.035] px-2 py-1.5">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-cyan-300">
           Choose sport
         </p>
-        <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/42">
+        <p className="text-[8px] font-bold uppercase tracking-[0.10em] text-white/42">
           Required for pack
         </p>
       </div>
 
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-5 gap-1">
         {sports.map((sport) => {
           const active = value === sport;
 
@@ -2911,7 +2911,7 @@ function PackSportSelector({
               key={`pack-sport-${sport}`}
               type="button"
               onClick={() => onChange(sport)}
-              className={`rounded-[11px] border px-1 py-2 text-[8px] font-black uppercase tracking-[0.06em] transition-all ${
+              className={`rounded-[9px] border px-1 py-1.5 text-[7.5px] font-black uppercase tracking-[0.05em] transition-all ${
                 active
                   ? "border-cyan-300 bg-cyan-400 text-black shadow-[0_0_14px_rgba(34,211,238,0.22)]"
                   : "border-white/10 bg-white/[0.04] text-white/55"
@@ -11216,7 +11216,13 @@ const subscriptionPlansBoard = (
       <p className="truncate">Top Signal is a separate daily purchase · Not included in monthly memberships.</p>
     </div>
 
-    <div className="!mt-0 grid grid-cols-3 gap-1 pb-0.5">
+    <div className="!mt-0.5 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+      <span className="h-px bg-white/12" />
+      <p className="text-[6.5px] font-black uppercase tracking-[0.12em] text-white/68">Monthly Subscriptions</p>
+      <span className="h-px bg-white/12" />
+    </div>
+
+    <div className="!mt-0.5 grid grid-cols-3 gap-1 pb-0.5">
       {homeMembershipPlans.map((plan) => {
         const styles = homeMembershipStyles[plan.accent];
 
