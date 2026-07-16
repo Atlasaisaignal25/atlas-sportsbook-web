@@ -6,12 +6,19 @@ import { resolveMlbSlateWindow, timestampBelongsToMlbSlate } from "@/app/lib/mlb
 
 export const dynamic = "force-dynamic";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DbRow = Record<string, any>;
 
 const ET_TIMEZONE = "America/New_York";
 const ENGINE_RECALC_MINUTES = 60;
 const TOP_SIGNAL_MIN_ODDS = Number(process.env.TOP_SIGNAL_MIN_ODDS ?? process.env.ATLAS_TOP_SIGNAL_MIN_ODDS ?? -160);
 const TOP_SIGNAL_MAX_ODDS = Number(process.env.TOP_SIGNAL_MAX_ODDS ?? process.env.ATLAS_TOP_SIGNAL_MAX_ODDS ?? 120);
+const TOP5_LIVE_SOURCES = [
+  { sport: "MLB", table: "mlb_top5_live" },
+  { sport: "NBA", table: "nba_top5_live" },
+  { sport: "NHL", table: "nhl_top5_live" },
+  { sport: "SOCCER", table: "soccer_top5_live" },
+] as const;
 
 function todayET() {
   return new Date().toLocaleDateString("en-CA", { timeZone: ET_TIMEZONE });
@@ -357,6 +364,27 @@ function rankingRows(current: DbRow[], previous: DbRow[]) {
       startTime: row.start_time,
     };
   });
+}
+
+function normalizeTop5LiveRows(rows: DbRow[], slateDate: string): DbRow[] {
+  const now = new Date().toISOString();
+  return rows
+    .filter((row) => row.date === slateDate)
+    .map((row) => ({
+      ...row,
+      engine: "PREMIUM_TOP5",
+      run_type: "LIVE",
+      run_at: row.updated_at ?? row.created_at ?? now,
+      slate_date: row.date ?? slateDate,
+      sport: row.sport,
+      pick: row.pick ?? row.selection,
+      atlas_probability: num(row.atlas_probability) ?? num(row.confidence),
+      score: num(row.score) ?? num(row.internal_score) ?? num(row.pick_ranking),
+      frozen: false,
+      published: false,
+      _source_table: row._source_table,
+    }))
+    .sort((a: DbRow, b: DbRow) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || Number(a.rank ?? 999) - Number(b.rank ?? 999));
 }
 
 function rankingMovement(current: ReturnType<typeof rankingRows>, previous: DbRow[]) {
@@ -728,6 +756,7 @@ export async function GET() {
     historySignalsQuery,
     historyTop5Query,
     historyTopSignalQuery,
+    ...top5LiveQueries
   ] = await Promise.all([
     supabase.from("signals_detected_history").select("*").eq("slate_date", slateDate).order("rank", { ascending: true }),
     supabase.from("top5_history").select("*").eq("slate_date", slateDate).order("run_at", { ascending: false }).order("rank", { ascending: true }),
@@ -737,9 +766,12 @@ export async function GET() {
     supabase.from("signals_detected_history").select("*").order("slate_date", { ascending: false }).order("rank", { ascending: true }).limit(2000),
     supabase.from("top5_history").select("*").order("slate_date", { ascending: false }).order("run_at", { ascending: false }).order("rank", { ascending: true }).limit(3000),
     supabase.from("top_signal_history").select("*").order("slate_date", { ascending: false }).order("run_at", { ascending: false }).limit(1000),
+    ...TOP5_LIVE_SOURCES.map((source) =>
+      supabase.from(source.table).select("*").eq("date", slateDate).order("rank", { ascending: true })
+    ),
   ]);
 
-  for (const [label, result] of Object.entries({
+  const queryResults: Record<string, { error: { message: string } | null }> = {
     signals_detected_history: signalsQuery,
     top5_history: top5Query,
     top_signal_history: topSignalQuery,
@@ -748,7 +780,12 @@ export async function GET() {
     history_signals_detected_history: historySignalsQuery,
     history_top5_history: historyTop5Query,
     history_top_signal_history: historyTopSignalQuery,
-  })) {
+  };
+  TOP5_LIVE_SOURCES.forEach((source, index) => {
+    queryResults[source.table] = top5LiveQueries[index];
+  });
+
+  for (const [label, result] of Object.entries(queryResults)) {
     if (result.error) errors.push(`${label}: ${result.error.message}`);
   }
 
@@ -756,6 +793,16 @@ export async function GET() {
   const top5History = (top5Query.data ?? []) as DbRow[];
   const exclusiveHistory = top5History.filter((row) => row.engine === "EXCLUSIVE_TOP3");
   const premiumHistory = top5History.filter((row) => row.engine === "PREMIUM_TOP5");
+  const top5LiveRows = normalizeTop5LiveRows(
+    top5LiveQueries.flatMap((query, index) =>
+      ((query.data ?? []) as DbRow[]).map((row) => ({
+        ...row,
+        sport: row.sport ?? TOP5_LIVE_SOURCES[index]?.sport,
+        _source_table: TOP5_LIVE_SOURCES[index]?.table,
+      }))
+    ),
+    slateDate,
+  );
   const allSignalsHistory = (historySignalsQuery.data ?? []) as DbRow[];
   const allTop5History = (historyTop5Query.data ?? []) as DbRow[];
   const allTopSignalHistory = (historyTopSignalQuery.data ?? []) as DbRow[];
@@ -766,8 +813,9 @@ export async function GET() {
   const activeSignals = (activeSignalsQuery.data ?? []) as DbRow[];
   const activePicks = publicPickRows(activePicksQuery.data ?? []);
 
-  const latestPremiumInternal = latestRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING");
-  const premiumPrevious = previousRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
+  const latestPremiumHistoryInternal = latestRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING");
+  const latestPremiumInternal = top5LiveRows.length ? top5LiveRows : latestPremiumHistoryInternal;
+  const premiumPrevious = top5LiveRows.length ? [] : previousRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
   const latestPremiumFrozen = latestRun(premiumHistory, "PREMIUM_TOP5", "OFFICIAL_FREEZE");
   const latestExclusiveInternal = latestRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING");
   const exclusivePrevious = previousRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING", latestExclusiveInternal[0]?.run_at);
@@ -776,7 +824,7 @@ export async function GET() {
   const latestTop3Rows = rankingRows(latestExclusiveInternal, exclusivePrevious);
   const officialTop5Rows = rankingRows(latestPremiumFrozen, []);
   const officialTop3Rows = rankingRows(latestExclusiveFrozen, []);
-  const firstStartTime = firstStart([...signalsHistory, ...top5History, ...activeSignals]);
+  const firstStartTime = firstStart([...signalsHistory, ...top5LiveRows, ...top5History, ...activeSignals]);
   const topSignalLeader = topSignalTimelineRaw.at(-1) ?? null;
   const officialTopSignalRow = topSignalTimelineRaw.filter((row) => Boolean(row.published)).at(-1) ?? null;
   const topSignalPublishedGameIds = new Set(topSignalTimelineRaw.filter((row) => Boolean(row.published)).map((row) => String(row.game_id)));
@@ -1124,12 +1172,12 @@ export async function GET() {
     return counts;
   }, {});
 
-  const sportsAvailable = Array.from(new Set([...signalsHistory, ...top5History, ...topSignalTimelineRaw, ...activePicks].map((row) => row.sport).filter(Boolean)));
+  const sportsAvailable = Array.from(new Set([...signalsHistory, ...top5LiveRows, ...top5History, ...topSignalTimelineRaw, ...activePicks].map((row) => row.sport).filter(Boolean)));
   const summary = {
     slateDate,
     generatedAt: new Date().toISOString(),
     sportsAvailable,
-    gamesInspected: new Set([...signalsHistory, ...top5History, ...activeSignals].map((row) => row.game_id).filter(Boolean)).size,
+    gamesInspected: new Set([...signalsHistory, ...top5LiveRows, ...top5History, ...activeSignals].map((row) => row.game_id).filter(Boolean)).size,
     signalsDetected: signalsHistory.length,
     exclusiveTop3Candidates: latestTop3Rows.length || officialTop3Rows.length,
     premiumTop5Candidates: latestTop5Rows.length || officialTop5Rows.length,
@@ -1183,7 +1231,9 @@ export async function GET() {
   };
   const signalsDetectedSource = sourceMetadata({ engine: "SIGNALS_DETECTED", table: "signals_detected_history", rows: signalsHistory });
   const exclusiveSource = sourceMetadata({ engine: "EXCLUSIVE_TOP3", table: "top5_history", rows: exclusiveHistory });
-  const premiumSource = sourceMetadata({ engine: "PREMIUM_TOP5", table: "top5_history", rows: premiumHistory });
+  const premiumLiveSource = sourceMetadata({ engine: "PREMIUM_TOP5_LIVE", table: "top5_live_sources", rows: top5LiveRows, timestampField: "created_at" });
+  const premiumHistorySource = sourceMetadata({ engine: "PREMIUM_TOP5_HISTORY", table: "top5_history", rows: premiumHistory });
+  const premiumSource = top5LiveRows.length ? premiumLiveSource : premiumHistorySource;
   const topSignalSource = sourceMetadata({ engine: "TOP_SIGNAL", table: "top_signal_history", rows: topSignalTimelineRaw });
   const signalsDetectedProduct = {
     engineRows: signalsWithTop3Rank,
@@ -1199,11 +1249,15 @@ export async function GET() {
     engineRows: latestTop5Rows,
     currentInternalRanking: latestTop5Rows,
     currentRanking: latestTop5Rows,
+    liveRows: rankingRows(top5LiveRows, []),
+    historyRows: rankingRows(latestPremiumHistoryInternal, []),
     officialRows: officialTop5Rows,
     officialFrozenTop5: officialTop5Rows,
     frozenRanking: officialTop5Rows,
     movementHistory: top5Movement,
     source: premiumSource,
+    liveSource: premiumLiveSource,
+    historySource: premiumHistorySource,
     summary: {
       lastRecalculation: currentPremiumLastRun,
       nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
@@ -1212,6 +1266,9 @@ export async function GET() {
       published: officialTop5Rows.some((row) => row.published),
       volatility: marketPulse.top5Volatility,
       rowCount: latestTop5Rows.length || officialTop5Rows.length,
+      liveRowCount: top5LiveRows.length,
+      historyRowCount: latestPremiumHistoryInternal.length,
+      sourceMode: top5LiveRows.length ? "LIVE" : "HISTORY_FALLBACK",
     },
     lastRecalculation: currentPremiumLastRun,
     nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
@@ -1290,6 +1347,14 @@ export async function GET() {
     },
     topSignalTimeline,
     premiumTop5: premiumTop5Product,
+    premiumTop5Live: {
+      rows: rankingRows(top5LiveRows, []),
+      source: premiumLiveSource,
+    },
+    premiumTop5History: {
+      rows: rankingRows(latestPremiumHistoryInternal, []),
+      source: premiumHistorySource,
+    },
     top5: premiumTop5Product,
     top5Movement,
     signalsDetected: signalsDetectedProduct,
@@ -1310,7 +1375,7 @@ export async function GET() {
     activity,
     operationsTimeline,
     marketPulse,
-    dataSources: ["signals_detected_history", "top5_history", "top_signal_history", "atlas_core_mlb_signals", "atlas_core_mlb_picks"],
+    dataSources: ["signals_detected_history", "top5_history", "top_signal_history", "mlb_top5_live", "nba_top5_live", "nhl_top5_live", "soccer_top5_live", "atlas_core_mlb_signals", "atlas_core_mlb_picks"],
     errors,
   });
 }
