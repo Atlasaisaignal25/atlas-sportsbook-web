@@ -11108,37 +11108,8 @@ function HomeDetailBlock({ title, items, tone = "text-cyan-300", negative = fals
   );
 }
 
-const accountInitials = authSession.email
-  ? authSession.email
-      .split("@")[0]
-      .split(/[._\-\s]+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "A"
-  : "A";
-
 const subscriptionPlansBoard = (
-  <>
-  <section className="relative space-y-1.5">
-    <button
-      type="button"
-      onClick={() => setJoinAuthOpen(true)}
-      aria-label={authSession.authenticated ? "Account" : "Sign In"}
-      className="absolute right-0 top-0 z-20 grid h-11 w-11 place-items-center rounded-full border border-cyan-300/40 bg-[#061423]/90 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.14)] backdrop-blur-md transition duration-200 hover:border-cyan-200/60 active:scale-[0.96]"
-    >
-      {authSession.authenticated ? (
-        <span className="text-[12px] font-black uppercase tracking-[0.06em] text-cyan-100">
-          {accountInitials}
-        </span>
-      ) : (
-        <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" aria-hidden="true">
-          <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M5.5 19c.9-4 3-6 6.5-6s5.6 2 6.5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      )}
-    </button>
-
+  <section className="space-y-1.5">
     <div className="text-center">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <span className="h-px bg-cyan-300/22" />
@@ -11395,94 +11366,6 @@ const subscriptionPlansBoard = (
       </>
     )}
   </section>
-  {joinAuthOpen ? (
-    <div className="fixed inset-0 z-[90] mx-auto flex w-full max-w-md items-end justify-center bg-black/52 px-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label="Close account menu"
-        className="absolute inset-0 cursor-default"
-        onClick={() => setJoinAuthOpen(false)}
-      />
-      <section className="relative w-full overflow-hidden rounded-t-[26px] border border-cyan-300/22 bg-[#06101f]/96 p-4 shadow-[0_-18px_44px_rgba(0,0,0,0.45)]">
-        <div className="mx-auto mb-3 h-1 w-11 rounded-full bg-white/22" />
-        <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-cyan-100">
-            {authSession.authenticated ? (
-              <span className="text-[12px] font-black uppercase tracking-[0.06em]">{accountInitials}</span>
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-[21px] w-[21px]" fill="none" aria-hidden="true">
-                <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
-                <path d="M5.5 19c.9-4 3-6 6.5-6s5.6 2 6.5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            )}
-          </span>
-          <div className="min-w-0">
-            <p className="text-[12px] font-black uppercase tracking-[0.14em] text-cyan-300">
-              {authSession.authenticated ? "Account" : "Atlas Account"}
-            </p>
-            <p className="mt-0.5 truncate text-[13px] font-semibold text-white/62">
-              {authSession.authenticated ? authSession.email : "Sign in or create your account."}
-            </p>
-          </div>
-        </div>
-
-        {authSession.authenticated ? (
-          <div className="mt-4 grid gap-2">
-            {[
-              ["My Profile", () => setJoinAuthOpen(false)],
-              ["Membership", () => setJoinAuthOpen(false)],
-              ["Billing", () => { setJoinAuthOpen(false); void handleManageBilling(); }],
-              ["Settings", () => setJoinAuthOpen(false)],
-            ].map(([label, action]) => (
-              <button
-                key={label as string}
-                type="button"
-                onClick={action as () => void}
-                className="flex h-11 items-center justify-between rounded-[15px] border border-white/10 bg-white/[0.045] px-3 text-left text-[13px] font-bold text-white/82"
-              >
-                <span>{label as string}</span>
-                <span className="text-cyan-300">›</span>
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setJoinAuthOpen(false);
-                void handleLogout();
-              }}
-              className="mt-1 h-11 rounded-[15px] border border-red-300/20 bg-red-400/10 px-3 text-left text-[13px] font-black text-red-200"
-            >
-              Log Out
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setJoinAuthOpen(false);
-                router.push("/login?mode=login");
-              }}
-              className="h-11 rounded-[15px] border border-cyan-300/30 bg-cyan-300/10 text-[12px] font-black uppercase tracking-[0.08em] text-cyan-100"
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setJoinAuthOpen(false);
-                router.push("/login?intent=free#create-account");
-              }}
-              className="h-11 rounded-[15px] border border-cyan-300/70 bg-cyan-300 text-[12px] font-black uppercase tracking-[0.08em] text-black shadow-[0_0_16px_rgba(34,211,238,0.16)]"
-            >
-              Create Account
-            </button>
-          </div>
-        )}
-      </section>
-    </div>
-  ) : null}
-  </>
 );
 
   if (showSplash && !useBankrollSplashOverlay) {
@@ -11854,6 +11737,17 @@ const subscriptionPlansBoard = (
               aria-label="Back to signals"
               className="fixed left-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 h-12 w-12 rounded-full"
             />
+            <button
+              type="button"
+              onClick={() => router.push("/login?intent=free#create-account")}
+              aria-label="Log in or sign up"
+              className="fixed right-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 grid h-9 w-9 place-items-center rounded-full border border-cyan-300/35 bg-[#061423]/88 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.16)] backdrop-blur-md transition active:scale-[0.97]"
+            >
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.9" />
+                <path d="M5.5 19c.9-4 3-6 6.5-6s5.6 2 6.5 6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+              </svg>
+            </button>
 
             <div
               className="fixed inset-0 z-10 mx-auto w-full max-w-md overflow-y-auto overscroll-contain"
