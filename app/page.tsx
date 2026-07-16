@@ -3940,7 +3940,8 @@ type MoreIconType =
   | "social"
   | "license"
   | "code"
-  | "settings";
+  | "settings"
+  | "language";
 
 function MoreLineIcon({ type }: { type: MoreIconType }) {
   if (type === "profile") {
@@ -4053,6 +4054,14 @@ function MoreLineIcon({ type }: { type: MoreIconType }) {
     );
   }
 
+  if (type === "language") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="M4 5.5h9.5M8.7 3.8v1.7M6 19.8l4.4-10.2 4.4 10.2M7.2 16.8h6.4M5.7 8.8c1.4 2.7 3.7 4.8 7 6.2M12.7 5.5c-.7 3.2-2.7 5.9-6 8" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
       <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -4106,13 +4115,13 @@ function MoreOptionRow({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.025]">
+      <button type="button" onClick={onClick} className="flex min-h-[58px] w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-white/[0.025]">
         {content}
       </button>
     );
   }
 
-  return <div className="flex items-center gap-3 px-4 py-2.5">{content}</div>;
+  return <div className="flex min-h-[58px] items-center gap-3 px-4 py-2">{content}</div>;
 }
 
 function MoreSwitchRow({ icon, label, detail, enabled = false }: { icon: MoreIconType; label: string; detail?: string; enabled?: boolean }) {
@@ -4169,63 +4178,87 @@ function MoreTabFoundation({
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
   const benefits: Array<{ icon: MoreIconType; label: string }> = [
-    { icon: "signal", label: "Personalized Experience" },
-    { icon: "privacy", label: "Save Your Settings" },
-    { icon: "bell", label: "Custom Alerts" },
-    { icon: "star", label: "Premium Access" },
+    { icon: "signal", label: "Official Signals" },
+    { icon: "privacy", label: "Secure Account" },
+    { icon: "bell", label: "Smart Alerts" },
+    { icon: "star", label: "Premium Features" },
   ];
+  const [moreSheet, setMoreSheet] = useState<null | {
+    title: string;
+    subtitle: string;
+    items?: string[];
+    danger?: boolean;
+  }>(null);
+  const openMoreSheet = (title: string, subtitle: string, items?: string[], danger = false) => {
+    setMoreSheet({ title, subtitle, items, danger });
+  };
+  const handleShareAtlas = () => {
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      void navigator.share({
+        title: "Atlas Signals",
+        text: "Discover Atlas Signals.",
+        url: window.location.origin,
+      }).catch(() => undefined);
+      return;
+    }
+
+    openMoreSheet("Share Atlas", "Sharing tools are prepared for this device.", [
+      "Invite someone to discover Atlas.",
+      "A native share sheet will open on supported devices.",
+    ]);
+  };
 
   return (
     <div className="space-y-4 pb-2">
-      <section className="relative overflow-hidden rounded-[26px] border border-cyan-300/30 bg-[radial-gradient(circle_at_82%_28%,rgba(29,78,216,0.24),transparent_34%),radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),rgba(255,255,255,0.045)_48%,rgba(4,10,24,0.96))] p-3.5 shadow-[0_0_34px_rgba(34,211,238,0.12)]">
-        <div className="pointer-events-none absolute right-4 top-9 text-[130px] font-black leading-none text-cyan-300/[0.035]">
+      <section className="relative overflow-hidden rounded-[24px] border border-cyan-300/28 bg-[radial-gradient(circle_at_82%_24%,rgba(29,78,216,0.19),transparent_32%),radial-gradient(circle_at_top_left,rgba(34,211,238,0.13),rgba(255,255,255,0.04)_48%,rgba(4,10,24,0.96))] p-3 shadow-[0_0_30px_rgba(34,211,238,0.10)]">
+        <div className="pointer-events-none absolute right-4 top-6 text-[112px] font-black leading-none text-cyan-300/[0.022]">
           A
         </div>
 
-        <div className="relative grid grid-cols-[86px_1fr] items-center gap-4">
-          <div className="grid h-[82px] w-[82px] place-items-center rounded-full border border-cyan-300/22 bg-black/20 text-[22px] font-black text-cyan-200 shadow-[inset_0_0_22px_rgba(34,211,238,0.08),0_0_24px_rgba(34,211,238,0.08)]">
+        <div className="relative grid grid-cols-[70px_1fr] items-center gap-3">
+          <div className="grid h-[68px] w-[68px] place-items-center rounded-full border border-cyan-300/22 bg-black/20 text-[19px] font-black text-cyan-200 shadow-[inset_0_0_18px_rgba(34,211,238,0.07),0_0_18px_rgba(34,211,238,0.07)]">
             {authSession.authenticated ? getMoreInitials(authSession.email) : <MoreLineIcon type="profile" />}
           </div>
 
           <div className="min-w-0">
-            <span className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">
+            <span className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/8 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200">
               Profile
             </span>
-            <h2 className="mt-2.5 truncate text-[26px] font-black leading-none tracking-tight text-white">
+            <h2 className="mt-2 truncate text-[23px] font-black leading-none tracking-tight text-white">
               {authSession.authenticated ? formattedName : "Guest User"}
             </h2>
-            <p className="mt-2.5 max-w-[210px] text-[13px] font-semibold leading-5 text-white/58">
+            <p className="mt-1.5 truncate text-[12px] font-semibold text-white/58">
               {authSession.authenticated
                 ? authSession.email
-                : "Sign in to personalize Atlas and unlock all features."}
+                : "Sign in to personalize Atlas."}
             </p>
           </div>
         </div>
 
-        <div className="relative mt-4 grid grid-cols-2 gap-3">
+        <div className="relative mt-3 grid grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={onSignIn}
-            className="h-12 rounded-[17px] border border-cyan-300/26 bg-black/22 px-4 text-[13px] font-black uppercase tracking-[0.22em] text-cyan-200 shadow-[inset_0_0_14px_rgba(34,211,238,0.04)]"
+            className="h-10 rounded-[15px] border border-cyan-300/26 bg-black/22 px-4 text-[12px] font-black uppercase tracking-[0.20em] text-cyan-200 shadow-[inset_0_0_14px_rgba(34,211,238,0.04)]"
           >
             Sign In
           </button>
           <button
             type="button"
             onClick={onCreateAccount}
-            className="h-12 rounded-[17px] bg-cyan-300 px-4 text-[13px] font-black uppercase tracking-[0.12em] text-[#03101d] shadow-[0_0_24px_rgba(34,211,238,0.22)]"
+            className="h-10 rounded-[15px] bg-cyan-300 px-4 text-[12px] font-black uppercase tracking-[0.10em] text-[#03101d] shadow-[0_0_22px_rgba(34,211,238,0.20)]"
           >
             Create Account
           </button>
         </div>
 
-        <div className="relative mt-4 grid grid-cols-4 border-t border-white/10 pt-3">
+        <div className="relative mt-3 grid grid-cols-4 border-t border-white/8 pt-2.5">
           {benefits.map((benefit, index) => (
-            <div key={benefit.label} className={`min-w-0 px-1 text-center ${index > 0 ? "border-l border-white/10" : ""}`}>
-              <span className="mx-auto grid h-7 w-7 place-items-center text-cyan-300">
+            <div key={benefit.label} className={`min-w-0 px-1 text-center ${index > 0 ? "border-l border-white/7" : ""}`}>
+              <span className="mx-auto grid h-6 w-6 place-items-center text-cyan-300">
                 <MoreLineIcon type={benefit.icon} />
               </span>
-              <p className="mt-1.5 text-[10px] font-bold leading-[1.2] text-white/62">
+              <p className="mt-1 text-[9px] font-bold leading-[1.1] text-white/60">
                 {benefit.label}
               </p>
             </div>
@@ -4240,6 +4273,141 @@ function MoreTabFoundation({
         <MoreOptionRow icon="restore" label="Restore Purchases" detail="Recover purchases on this device." />
         <MoreOptionRow icon="referral" label="Referral Program" detail="Invite friends and earn rewards." value="Soon" />
       </MoreSectionCard>
+
+      <div id="more-preferences">
+        <MoreSectionCard title="Preferences">
+          <MoreOptionRow
+            icon="bell"
+            label="Notifications"
+            detail="Manage Signal and account alerts."
+            onClick={() => openMoreSheet("Notifications", "Alert controls are prepared for a future settings phase.", [
+              "Push Notifications",
+              "Signal Alerts",
+              "Top Signal Alerts",
+              "Billing Alerts",
+              "Product Updates",
+            ])}
+          />
+          <MoreOptionRow
+            icon="language"
+            label="Language"
+            detail="English"
+            onClick={() => openMoreSheet("Language", "Language selection is prepared for future localization.", ["English", "Spanish"])}
+          />
+          <MoreOptionRow
+            icon="theme"
+            label="Appearance"
+            detail="System Default"
+            onClick={() => openMoreSheet("Appearance", "Theme controls are prepared for a future release.", ["System", "Dark", "Light"])}
+          />
+        </MoreSectionCard>
+      </div>
+
+      <MoreSectionCard title="Legal & Privacy">
+        <MoreOptionRow
+          icon="terms"
+          label="Terms & Conditions"
+          detail="Legal terms placeholder."
+          onClick={() => openMoreSheet("Terms & Conditions", "A dedicated legal view is prepared. Final legal content has not been connected yet.")}
+        />
+        <MoreOptionRow
+          icon="privacy"
+          label="Privacy Policy"
+          detail="Privacy policy placeholder."
+          onClick={() => openMoreSheet("Privacy Policy", "A dedicated privacy view is prepared. Final policy content has not been connected yet.")}
+        />
+        <MoreOptionRow
+          icon="data"
+          label="Manage Data"
+          detail="Review or export your account data."
+          onClick={() => openMoreSheet("Manage Data", "Account data tools are prepared for a future backend phase.")}
+        />
+        <MoreOptionRow
+          icon="delete"
+          label="Delete Account"
+          detail="Permanently delete your Atlas account."
+          danger
+          onClick={() => openMoreSheet("Delete Account", "Account deletion confirmation is prepared. No deletion is performed in this phase.", undefined, true)}
+        />
+      </MoreSectionCard>
+
+      <MoreSectionCard title="Support">
+        <MoreOptionRow
+          icon="support"
+          label="Contact Us"
+          detail="Get help from the Atlas team."
+          onClick={() => openMoreSheet("Contact Us", "Support contact options are prepared for a future support flow.")}
+        />
+        <MoreOptionRow
+          icon="help"
+          label="Help Center"
+          detail="Answers and product guidance."
+          onClick={() => openMoreSheet("Help Center", "Product guidance is prepared for a future help center.")}
+        />
+        <MoreOptionRow
+          icon="bug"
+          label="Report a Problem"
+          detail="Tell us what is not working."
+          onClick={() => openMoreSheet("Report a Problem", "Problem reporting UI is prepared. No backend submission is connected yet.")}
+        />
+        <MoreOptionRow icon="share" label="Share Atlas" detail="Invite someone to discover Atlas." onClick={handleShareAtlas} />
+      </MoreSectionCard>
+
+      <MoreSectionCard title="About">
+        <MoreOptionRow icon="version" label="App Version" value="0.1.0" />
+        <MoreOptionRow
+          icon="web"
+          label="Website"
+          detail="Atlas web experience."
+          onClick={() => openMoreSheet("Website", "Website link handling is prepared. No external URL was added in this phase.")}
+        />
+        <MoreOptionRow
+          icon="license"
+          label="Licenses"
+          detail="Open source and product notices."
+          onClick={() => openMoreSheet("Licenses", "License information view is prepared for a future release.")}
+        />
+      </MoreSectionCard>
+
+      {moreSheet ? (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/68 px-4 pb-4 backdrop-blur-sm" onClick={() => setMoreSheet(null)}>
+          <div
+            className={`mx-auto w-full max-w-md rounded-[26px] border bg-[#07111f] p-4 shadow-[0_0_34px_rgba(34,211,238,0.16)] ${
+              moreSheet.danger ? "border-red-400/24" : "border-cyan-400/25"
+            }`}
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${moreSheet.danger ? "text-red-300" : "text-cyan-300"}`}>
+                  Prepared
+                </p>
+                <h2 className="mt-2 text-[22px] font-black leading-tight text-white">{moreSheet.title}</h2>
+                <p className="mt-2 text-[13px] font-semibold leading-5 text-white/58">{moreSheet.subtitle}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMoreSheet(null)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-[18px] font-bold text-white/70"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {moreSheet.items?.length ? (
+              <div className="mt-4 grid gap-2">
+                {moreSheet.items.map((item) => (
+                  <div key={item} className="rounded-[14px] border border-white/10 bg-white/[0.045] px-3 py-2 text-[12px] font-bold text-white/68">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -12349,6 +12517,7 @@ const subscriptionPlansBoard = (
             <button
               type="button"
               aria-label="Settings"
+              onClick={() => document.getElementById("more-preferences")?.scrollIntoView({ behavior: "smooth", block: "start" })}
               className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] border border-cyan-300/22 bg-cyan-300/[0.065] text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
             >
               <MoreLineIcon type="settings" />
