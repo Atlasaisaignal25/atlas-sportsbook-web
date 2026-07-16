@@ -477,8 +477,8 @@ export async function POST(req: Request) {
             metadata,
           }
         : undefined,
-      success_url: `${siteUrl}/?board=1&section=signals&view=live&sport=TOP&checkout=success`,
-      cancel_url: `${siteUrl}/?board=1&section=signals&view=live&sport=TOP&checkout=cancel`,
+      success_url: `${siteUrl}/?section=signals&view=live&sport=TOP&checkout=success`,
+      cancel_url: `${siteUrl}/?section=signals&view=live&sport=TOP&checkout=cancel`,
     });
 
     if (!isSubscription && precisionContext) {

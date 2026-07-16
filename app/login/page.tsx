@@ -19,7 +19,7 @@ type LoginPageProps = {
 type CheckoutProduct =
   | "exclusive"
   | "premium"
-  | "elite"
+  | "unlimited"
   | "top_signal_mlb"
   | "top_signal_nba"
   | "top_signal_nhl"
@@ -76,10 +76,10 @@ const checkoutPlans: Record<
     price: "$59.99 / month",
     description: "Recommended. Choose one sport. Includes Ranked Top 3 Signals ordered by Atlas value priority. Does not include Top Signal or Top Play.",
   },
-  elite: {
-    name: "Elite Pack",
+  unlimited: {
+    name: "Atlas Unlimited",
     price: "$99.99 / month",
-    description: "All active sports. Includes Ranked Top 3 Signals for every active sport. Does not include Top Signal or Top Play.",
+    description: "All available sports. Includes official ranked Signals for every available sport. Does not include Top Signal.",
   },
 };
 
@@ -87,7 +87,7 @@ function getCheckoutProduct(value: FormDataEntryValue | string | undefined | nul
   if (
     value === "exclusive" ||
     value === "premium" ||
-    value === "elite" ||
+    value === "unlimited" ||
     value === "top_signal_mlb" ||
     value === "top_signal_nba" ||
     value === "top_signal_nhl" ||
@@ -96,6 +96,10 @@ function getCheckoutProduct(value: FormDataEntryValue | string | undefined | nul
     value === "top_play"
   ) {
     return value;
+  }
+
+  if (value === "elite") {
+    return "unlimited";
   }
 
   return null;
@@ -271,7 +275,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
 
           <Link
-            href="/?board=1&section=scores&view=live"
+            href="/?section=signals&view=live&sport=TOP"
             className="shrink-0 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-[12px] font-black uppercase tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-400/15"
           >
             View Board
@@ -408,7 +412,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
               {!subscriptionMode ? (
                 <Link
-                  href={loginOnlyMode ? "/login?intent=free" : "/?board=1&section=scores&view=live"}
+                  href={loginOnlyMode ? "/login?intent=free" : "/?section=signals&view=live&sport=TOP"}
                   className="mt-3 block w-full rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-center text-sm font-bold text-cyan-100 transition-colors hover:bg-cyan-400/10"
                 >
                   {loginOnlyMode ? "Create FREE account" : "View Board as Guest"}
@@ -478,7 +482,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
               {!subscriptionMode ? (
                 <Link
-                  href={freeMode ? "/login?mode=login" : "/?board=1&section=scores&view=live"}
+                  href={freeMode ? "/login?mode=login" : "/?section=signals&view=live&sport=TOP"}
                   className="mt-3 block w-full rounded-md border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-center text-sm font-bold text-cyan-100 transition-colors hover:bg-cyan-400/10"
                 >
                   {freeMode ? "Login to existing account" : "View Board before creating account"}

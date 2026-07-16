@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     password,
     options: {
       emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(
-        "/?board=1&section=more"
+        "/?section=more"
       )}`,
     },
   });

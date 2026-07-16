@@ -4108,7 +4108,7 @@ useEffect(() => {
     });
   }
 
-  router.replace("/?board=1&section=signals&view=live&sport=TOP");
+  router.replace("/?section=signals&view=live&sport=TOP");
 }, [searchParams, router]);
 
 function applyAuthSessionData(data: AuthSessionResponse) {
@@ -11407,7 +11407,7 @@ const subscriptionPlansBoard = (
         onLogin={() => router.push("/login?mode=login")}
         onViewBoard={() =>
           router.push(
-            `/?board=1&section=signals&sport=TOP&view=live&day=${activeDay}`
+            `/?section=signals&sport=TOP&view=live&day=${activeDay}`
           )
         }
       />
