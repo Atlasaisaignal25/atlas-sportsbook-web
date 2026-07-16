@@ -2496,6 +2496,14 @@ function canViewTop5History(userAccess: UserAccess) {
   );
 }
 
+function canViewMarketImpactAccess(plan: UserPlan) {
+  return plan === "premium" || plan === "elite" || plan === "unlimited" || plan === "admin";
+}
+
+function canViewAtlasIntelligenceAccess(plan: UserPlan) {
+  return plan === "elite" || plan === "unlimited" || plan === "admin";
+}
+
 function isSeasonClosedSport(sport: SportTab) {
   return sport === "NBA" || sport === "NHL";
 }
@@ -5319,10 +5327,27 @@ useEffect(() => {
 }, [searchParams]);
 
 useEffect(() => {
-  if (appSection === "news") {
+  if (appSection === "news" && pulseImpactFilter !== "TEAM") {
     setPulseImpactFilter("TEAM");
   }
 }, [appSection]);
+
+const canViewMarketImpact = canViewMarketImpactAccess(userAccess.plan);
+const canViewAtlasIntelligence = canViewAtlasIntelligenceAccess(userAccess.plan);
+
+useEffect(() => {
+  if (pulseImpactFilter === "MARKET" && !canViewMarketImpact) {
+    setPulseImpactFilter("TEAM");
+  }
+
+  if (pulseImpactFilter === "INTELLIGENCE" && !canViewAtlasIntelligence) {
+    setPulseImpactFilter("TEAM");
+  }
+
+  if (pulseImpactFilter === "ALL" && !canViewMarketImpact && !canViewAtlasIntelligence) {
+    setPulseImpactFilter("TEAM");
+  }
+}, [canViewAtlasIntelligence, canViewMarketImpact, pulseImpactFilter]);
 
 useEffect(() => {
   if (appSection !== "news") return;
@@ -5344,16 +5369,20 @@ useEffect(() => {
       });
       const [teamResponse, marketResponse, intelligenceResponse] = await Promise.all([
         fetch(`/api/impact/team-impact?${params.toString()}`, { signal: controller.signal }),
-        fetch(`/api/impact/market-impact?${params.toString()}`, { signal: controller.signal }),
-        fetch(`/api/impact/atlas-intelligence?${params.toString()}`, { signal: controller.signal }),
+        canViewMarketImpact
+          ? fetch(`/api/impact/market-impact?${params.toString()}`, { signal: controller.signal })
+          : Promise.resolve(null),
+        canViewAtlasIntelligence
+          ? fetch(`/api/impact/atlas-intelligence?${params.toString()}`, { signal: controller.signal })
+          : Promise.resolve(null),
       ]);
       const teamData = (await teamResponse.json()) as { events?: TeamImpactEvent[] };
-      const marketData = (await marketResponse.json()) as { events?: MarketImpactEvent[] };
-      const intelligenceData = (await intelligenceResponse.json()) as { events?: AtlasIntelligenceEvent[] };
+      const marketData = marketResponse ? ((await marketResponse.json()) as { events?: MarketImpactEvent[] }) : { events: [] };
+      const intelligenceData = intelligenceResponse ? ((await intelligenceResponse.json()) as { events?: AtlasIntelligenceEvent[] }) : { events: [] };
 
       setTeamImpactEvents(Array.isArray(teamData.events) ? teamData.events : []);
-      setMarketImpactEvents(Array.isArray(marketData.events) ? marketData.events : []);
-      setAtlasIntelligenceEvents(Array.isArray(intelligenceData.events) ? intelligenceData.events : []);
+      setMarketImpactEvents(canViewMarketImpact && Array.isArray(marketData.events) ? marketData.events : []);
+      setAtlasIntelligenceEvents(canViewAtlasIntelligence && Array.isArray(intelligenceData.events) ? intelligenceData.events : []);
       setPulseLastUpdatedAt(new Date().toISOString());
     } catch (error) {
       if (!controller.signal.aborted) {
@@ -5375,7 +5404,7 @@ useEffect(() => {
     controller.abort();
     window.clearInterval(interval);
   };
-}, [appSection, pulseSportFilter, pulseImpactFilter]);
+}, [appSection, canViewAtlasIntelligence, canViewMarketImpact, pulseSportFilter, pulseImpactFilter]);
 
   useEffect(() => {
   async function loadGames() {
@@ -6475,10 +6504,10 @@ const sectionEyebrow =
     : "Account";
 
 const pulseImpactFilters: Array<{ label: string; value: ImpactFeedFilter }> = [
-  { label: "ALL", value: "ALL" },
+  ...(canViewMarketImpact || canViewAtlasIntelligence ? [{ label: "ALL", value: "ALL" as const }] : []),
   { label: "TEAM", value: "TEAM" },
-  { label: "MARKET", value: "MARKET" },
-  { label: "INTELLIGENCE", value: "INTELLIGENCE" },
+  ...(canViewMarketImpact ? [{ label: "MARKET", value: "MARKET" as const }] : []),
+  ...(canViewAtlasIntelligence ? [{ label: "INTELLIGENCE", value: "INTELLIGENCE" as const }] : []),
 ];
 const pulseImpactTabItems = pulseImpactFilters.map((filter) => ({ id: filter.value, label: filter.label }));
 
@@ -6562,7 +6591,7 @@ function consolidateMarketImpactEvents(items: MarketImpactEvent[]): Consolidated
 }
 
 const consolidatedMarketImpactEvents = consolidateMarketImpactEvents(
-  marketImpactEvents
+  (canViewMarketImpact ? marketImpactEvents : [])
     .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
     .filter(() => pulseImpactFilter !== "TEAM" && pulseImpactFilter !== "INTELLIGENCE")
     .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "MARKET" || item.confidence === pulseImpactFilter)
@@ -6582,7 +6611,7 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
     sport: item.sport,
     id: `team-${item.eventId}`,
   })),
-  ...consolidatedMarketImpactEvents
+  ...(canViewMarketImpact ? consolidatedMarketImpactEvents : [])
     .map((item) => ({
       kind: "market" as const,
       item,
@@ -6591,7 +6620,7 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
       sport: item.sport,
       id: `market-${item.eventId}`,
     })),
-  ...atlasIntelligenceEvents
+  ...(canViewAtlasIntelligence ? atlasIntelligenceEvents : [])
     .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
     .filter(() => pulseImpactFilter !== "TEAM" && pulseImpactFilter !== "MARKET")
     .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "INTELLIGENCE" || item.confidence === pulseImpactFilter)
@@ -6606,12 +6635,22 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
 ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
 const impactTeamCount = teamImpactEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
-const impactMarketCount = consolidatedMarketImpactEvents.length;
-const impactIntelligenceCount = atlasIntelligenceEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
+const impactMarketCount = canViewMarketImpact ? consolidatedMarketImpactEvents.length : 0;
+const impactIntelligenceCount = canViewAtlasIntelligence ? atlasIntelligenceEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length : 0;
 const impactLastUpdateLabel = pulseLastUpdatedAt ? formatTeamImpactTimestamp(pulseLastUpdatedAt) : "Live";
 const impactLastUpdateShortLabel = pulseLastUpdatedAt
   ? formatTeamImpactTimestamp(pulseLastUpdatedAt)
   : "Live";
+const impactSummaryCards = [
+  { label: "Team Impact", value: impactTeamCount, trend: impactTeamCount > 0 ? "New" : "", color: "text-sky-300", icon: "team" as const },
+  ...(canViewMarketImpact
+    ? [{ label: "Market Impact", value: impactMarketCount, trend: impactMarketCount > 0 ? "New" : "", color: "text-orange-300", icon: "market" as const }]
+    : []),
+  ...(canViewAtlasIntelligence
+    ? [{ label: "Atlas Intelligence", value: impactIntelligenceCount, trend: impactIntelligenceCount > 0 ? "New" : "", color: "text-violet-300", icon: "intelligence" as const }]
+    : []),
+  { label: "Last Update", value: impactLastUpdateShortLabel, trend: pulseLastUpdatedAt ? "Live" : "", color: "text-cyan-200", icon: "clock" as const },
+];
 
 function getPulseImpactClasses(impact: PulseImpact) {
   return {
@@ -12657,13 +12696,11 @@ const subscriptionPlansBoard = (
                 </span>
               </div>
 
-              <div className="mt-2 grid grid-cols-4 overflow-hidden rounded-[15px] border border-white/10 bg-black/18 shadow-[inset_0_1px_12px_rgba(255,255,255,0.02)]">
-                {[
-                  { label: "Team Impact", value: impactTeamCount, trend: impactTeamCount > 0 ? "New" : "", color: "text-sky-300", icon: "team" as const },
-                  { label: "Market Impact", value: impactMarketCount, trend: impactMarketCount > 0 ? "New" : "", color: "text-orange-300", icon: "market" as const },
-                  { label: "Atlas Intelligence", value: impactIntelligenceCount, trend: impactIntelligenceCount > 0 ? "New" : "", color: "text-violet-300", icon: "intelligence" as const },
-                  { label: "Last Update", value: impactLastUpdateShortLabel, trend: pulseLastUpdatedAt ? "Live" : "", color: "text-cyan-200", icon: "clock" as const },
-                ].map((item, index) => (
+              <div
+                className="mt-2 grid overflow-hidden rounded-[15px] border border-white/10 bg-black/18 shadow-[inset_0_1px_12px_rgba(255,255,255,0.02)]"
+                style={{ gridTemplateColumns: `repeat(${impactSummaryCards.length}, minmax(0, 1fr))` }}
+              >
+                {impactSummaryCards.map((item, index) => (
                   <div
                     key={item.label}
                     className={`min-w-0 px-1.5 py-1.5 ${index === 0 ? "" : "border-l border-white/10"}`}

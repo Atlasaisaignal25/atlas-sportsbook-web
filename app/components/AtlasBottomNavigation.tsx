@@ -63,7 +63,7 @@ export function AtlasBottomNavigation({
 }) {
   const items: Array<{ section: AtlasBottomNavSection; label: string }> = [
     { section: "bankroll", label: "Bankroll" },
-    { section: "news", label: "Impact" },
+    { section: "news", label: "Market" },
     { section: "signals", label: "Home" },
     { section: "alerts", label: "My Atlas" },
     { section: "more", label: "More" },
