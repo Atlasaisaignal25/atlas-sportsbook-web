@@ -2609,10 +2609,9 @@ const subscriptionPackPlans: PackPlan[] = [
     icon: "◎",
     tone: "blue",
     badge: "Recommended",
-    description: "Unlock Atlas official intelligence for one selected sport.",
+    description: "Official ranked intelligence for one selected sport.",
     included: [
       "One Selected Sport",
-      "Official Top Signal",
       "Official Ranked Signals",
       "Atlas AI Rankings",
       "Market Impact Access",
@@ -2629,10 +2628,9 @@ const subscriptionPackPlans: PackPlan[] = [
     price: "$99.99",
     icon: "◆",
     tone: "purple",
-    description: "Complete access across every available Atlas sport.",
+    description: "Official ranked intelligence across every available Atlas sport.",
     included: [
       "Every Available Sport",
-      "Official Top Signal for Every Available Sport",
       "Official Ranked Signals for Every Available Sport",
       "Atlas AI Rankings",
       "Market Impact Access",
@@ -10798,10 +10796,10 @@ const homeMembershipPlans = [
     title: "Premium",
     price: "$59.99",
     subtitle: "One Selected Sport",
-    featureTitle: "Top Signal +",
-    featureSubtitle: "Official Ranked Signals",
-    value: "Unlock Atlas official intelligence for one selected sport.",
-    features: ["One Selected Sport", "Official Top Signal", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
+    featureTitle: "Official Ranked",
+    featureSubtitle: "Signals + AI Rankings",
+    value: "Official ranked intelligence for one selected sport.",
+    features: ["One Selected Sport", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
     cta: "Get Premium",
     accent: "gold" as const,
     badge: "Most Popular",
@@ -10812,9 +10810,9 @@ const homeMembershipPlans = [
     price: "$99.99",
     subtitle: "All Available Sports",
     featureTitle: "All Sports",
-    featureSubtitle: "Top Signals + Ranked Signals",
-    value: "Complete access across every available Atlas sport.",
-    features: ["Every Available Sport", "Official Top Signal for Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
+    featureSubtitle: "Official Ranked Signals",
+    value: "Official ranked intelligence across every available Atlas sport.",
+    features: ["Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
     cta: "Get Unlimited",
     accent: "purple" as const,
   },
@@ -10930,7 +10928,7 @@ const subscriptionPlansBoard = (
         {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
           <p key={feature} className="grid grid-cols-[7px_1fr] gap-0.5 text-[5.5px] font-semibold leading-[7px] text-white/76">
             <span className="text-purple-300">✓</span>
-            <span className="truncate">{feature}</span>
+            <span>{feature}</span>
           </p>
         ))}
       </div>
@@ -10944,6 +10942,10 @@ const subscriptionPlansBoard = (
       </button>
       <p className="mt-0.5 text-center text-[5.5px] font-semibold leading-[7px] text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
     </article>
+    <div className="text-center text-[6px] font-semibold leading-[8px] text-white/42">
+      <p>Top Signal is a separate daily purchase.</p>
+      <p>Not included in monthly memberships.</p>
+    </div>
 
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
       <span className="h-px bg-white/12" />
@@ -10958,58 +10960,58 @@ const subscriptionPlansBoard = (
         return (
           <article
             key={`home-membership-${plan.plan}`}
-            className={`relative flex h-[214px] min-w-0 flex-col rounded-[11px] border px-1.5 pb-1 pt-1.5 text-left ${styles.shell}`}
+            className={`relative flex h-[268px] min-w-0 flex-col rounded-[11px] border px-2 pb-2 pt-2.5 text-left ${styles.shell}`}
           >
             {plan.badge ? (
-              <span className="absolute left-1/2 top-0.5 max-w-[88%] -translate-x-1/2 truncate rounded-full bg-amber-300 px-1.5 py-0.5 text-[5.5px] font-black uppercase tracking-[0.03em] text-black">
+              <span className="absolute left-1/2 top-0.5 flex h-[14px] max-w-[88%] -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-amber-300 px-1.5 text-[5.5px] font-black uppercase tracking-[0.03em] text-black">
                 {plan.badge}
               </span>
             ) : null}
 
             <div className="flex justify-center">
-              <span className={`grid h-6 w-6 place-items-center rounded-full border shadow-[0_0_9px_currentColor] ${styles.icon}`}>
+              <span className={`grid h-7 w-7 place-items-center rounded-full border shadow-[0_0_9px_currentColor] ${styles.icon}`}>
                 <HomeMembershipIcon
                   type={plan.plan === "premium" ? "crown" : plan.plan === "unlimited" ? "diamond" : "star"}
-                  className="h-3.5 w-3.5"
+                  className="h-4 w-4"
                 />
               </span>
             </div>
 
-              <p className={`mt-0.5 text-center text-[10px] font-black uppercase tracking-[0.01em] ${styles.text}`}>
+              <p className={`mt-1 text-center text-[11px] font-black uppercase tracking-[0.01em] ${styles.text}`}>
                 {plan.title}
               </p>
-            <p className="text-center text-[6px] font-bold leading-[7px] text-white/78">
+            <p className="text-center text-[6.5px] font-bold leading-[8px] text-white/78">
               {plan.subtitle}
             </p>
 
-            <div className={`mt-0.5 flex h-[23px] items-center justify-center rounded-[7px] border px-1 text-center ${styles.pill}`}>
-              <p className={`line-clamp-2 text-[5.4px] font-black uppercase leading-[6.5px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
+            <div className={`mt-1 flex h-[34px] items-center justify-center rounded-[7px] border px-1.5 text-center ${styles.pill}`}>
+              <p className={`text-[6px] font-black uppercase leading-[8px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
             </div>
 
-            <p className="mt-0.5 line-clamp-2 text-center text-[5.8px] font-semibold leading-[7px] text-white/58">
+            <p className="mt-1 min-h-[24px] text-center text-[6.2px] font-semibold leading-[8px] text-white/58">
               {plan.value}
             </p>
 
-            <div className="mt-0.5 grid grid-cols-1 gap-0">
+            <div className="mt-1 grid grid-cols-1 gap-1">
               {plan.features.map((feature) => (
-                <p key={feature} className="grid grid-cols-[7px_1fr] gap-0.5 text-[5px] font-semibold leading-[6.2px] text-white/76">
+                <p key={feature} className="grid grid-cols-[8px_1fr] gap-1 text-[5.8px] font-semibold leading-[7.5px] text-white/76">
                   <span className={`${styles.check} leading-tight`}>✓</span>
-                  <span className="truncate">{feature}</span>
+                  <span>{feature}</span>
                 </p>
               ))}
             </div>
 
-            <div className="mt-auto pt-0.5">
+            <div className="mt-auto pt-1">
               <div className="text-center">
-                <span className="text-[11px] font-black leading-none text-white">{plan.price}</span>
-                <span className="ml-0.5 text-[5px] font-bold text-white/52">/ month</span>
+                <span className="text-[13px] font-black leading-none text-white">{plan.price}</span>
+                <span className="ml-0.5 text-[5.5px] font-bold text-white/52">/ month</span>
               </div>
 
               <button
                 type="button"
                 onClick={() => handleSubscribe(plan.plan, selectedPackSport)}
                 disabled={checkoutPlan !== null}
-                className={`mt-0.5 h-[18px] w-full rounded-[6px] border px-1 text-[5px] font-black uppercase tracking-[0.01em] disabled:opacity-60 ${styles.button}`}
+                className={`mt-1 h-6 w-full rounded-[6px] border px-1 text-[5.6px] font-black uppercase tracking-[0.01em] disabled:opacity-60 ${styles.button}`}
               >
                 {plan.cta}
               </button>
@@ -11036,7 +11038,7 @@ const subscriptionPlansBoard = (
         {[
           ["Selected Sports", "1", "1", "All", "1"],
           ["Official Ranked Signals", "Up to 3", "Yes", "All Sports", "No"],
-          ["Official Top Signal", "No", "Yes", "Every Sport", "1 Daily"],
+          ["Top Signal Daily Access", "Separate", "Separate", "Separate", "1 Daily"],
           ["Market Impact", "Yes", "Yes", "Yes", "No"],
           ["Atlas Bankroll", "Yes", "Yes", "Yes", "Purchased Signal Only"],
           ["Signal History", "Yes", "Yes", "Yes", "Purchased Signals"],
@@ -11281,10 +11283,10 @@ const subscriptionPlansBoard = (
         title: "PREMIUM",
         price: "$59.99",
         subtitle: "One Selected Sport",
-        featureTitle: "Top Signal +",
-        featureSubtitle: "Official Ranked Signals",
-        value: "Unlock Atlas official intelligence for one selected sport.",
-        features: ["One Selected Sport", "Official Top Signal", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
+        featureTitle: "Official Ranked",
+        featureSubtitle: "Signals + AI Rankings",
+        value: "Official ranked intelligence for one selected sport.",
+        features: ["One Selected Sport", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
         cta: "Get Premium",
         accent: "gold" as const,
         badge: "Most Popular",
@@ -11295,9 +11297,9 @@ const subscriptionPlansBoard = (
         price: "$99.99",
         subtitle: "All Available Sports",
         featureTitle: "All Sports",
-        featureSubtitle: "Top Signals + Ranked Signals",
-        value: "Complete access to the Atlas Intelligence ecosystem across every available sport.",
-        features: ["Every Available Sport", "Official Top Signal for Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
+        featureSubtitle: "Official Ranked Signals",
+        value: "Official ranked intelligence across every available Atlas sport.",
+        features: ["Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
         cta: "Get Unlimited",
         accent: "purple" as const,
       },
@@ -11331,7 +11333,7 @@ const subscriptionPlansBoard = (
     const comparisonRows = [
       ["Selected Sports", "1", "1", "All", "1"],
       ["Official Ranked Signals", "Up to 3", "Yes", "All Sports", "No"],
-      ["Official Top Signal", "No", "Yes", "Every Sport", "1 Daily"],
+      ["Top Signal Daily Access", "Separate", "Separate", "Separate", "1 Daily"],
       ["Market Impact", "Yes", "Yes", "Yes", "No"],
       ["Atlas Bankroll", "Yes", "Yes", "Yes", "Purchased Signal Only"],
       ["Signal History", "Yes", "Yes", "Yes", "Purchased Signals"],
