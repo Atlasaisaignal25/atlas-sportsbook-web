@@ -1207,7 +1207,7 @@ function FrameTopActions({
         </label>
         <button
           type="button"
-          onClick={() => onNavigate?.("more")}
+          onClick={() => onNavigate?.("alerts")}
           className="inline-flex h-[34px] items-center gap-1.5 rounded-[10px] border border-amber-400/75 bg-black/36 px-2.5 text-[11px] font-black uppercase tracking-[0.08em] text-white shadow-[0_0_12px_rgba(217,145,18,0.08)] backdrop-blur-md"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
