@@ -3939,7 +3939,8 @@ type MoreIconType =
   | "web"
   | "social"
   | "license"
-  | "code";
+  | "code"
+  | "settings";
 
 function MoreLineIcon({ type }: { type: MoreIconType }) {
   if (type === "profile") {
@@ -4043,6 +4044,15 @@ function MoreLineIcon({ type }: { type: MoreIconType }) {
     );
   }
 
+  if (type === "settings") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+        <path d="M12 8.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M12 3.5v2.1M12 18.4v2.1M5.99 5.99l1.49 1.49M16.52 16.52l1.49 1.49M3.5 12h2.1M18.4 12h2.1M5.99 18.01l1.49-1.49M16.52 7.48l1.49-1.49" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
       <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -4050,12 +4060,14 @@ function MoreLineIcon({ type }: { type: MoreIconType }) {
   );
 }
 
-function MoreSectionCard({ title, children }: { title: string; children: ReactNode }) {
+function MoreSectionCard({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] shadow-[0_0_24px_rgba(34,211,238,0.045)]">
-      <div className="border-b border-white/8 px-4 py-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{title}</p>
-      </div>
+    <section className="overflow-hidden rounded-[24px] border border-cyan-300/14 bg-[linear-gradient(145deg,rgba(255,255,255,0.052),rgba(255,255,255,0.022))] shadow-[0_0_26px_rgba(34,211,238,0.045)]">
+      {title ? (
+        <div className="border-b border-white/8 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{title}</p>
+        </div>
+      ) : null}
       <div className="divide-y divide-white/8">{children}</div>
     </section>
   );
@@ -4094,13 +4106,13 @@ function MoreOptionRow({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.025]">
+      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.025]">
         {content}
       </button>
     );
   }
 
-  return <div className="flex items-center gap-3 px-4 py-3">{content}</div>;
+  return <div className="flex items-center gap-3 px-4 py-2.5">{content}</div>;
 }
 
 function MoreSwitchRow({ icon, label, detail, enabled = false }: { icon: MoreIconType; label: string; detail?: string; enabled?: boolean }) {
@@ -4136,34 +4148,16 @@ function MoreTabFoundation({
   authSession,
   authLoaded,
   userAccess,
-  authBusy,
-  billingBusy,
-  joinAuthMode,
-  setJoinAuthMode,
-  joinEmail,
-  setJoinEmail,
-  joinPassword,
-  setJoinPassword,
-  joinAuthMessage,
-  onSubmitAuth,
-  onLogout,
+  onSignIn,
+  onCreateAccount,
   onMembership,
   onBilling,
 }: {
   authSession: AuthSessionState;
   authLoaded: boolean;
   userAccess: UserAccess;
-  authBusy: boolean;
-  billingBusy: boolean;
-  joinAuthMode: JoinAuthMode;
-  setJoinAuthMode: (mode: JoinAuthMode) => void;
-  joinEmail: string;
-  setJoinEmail: (value: string) => void;
-  joinPassword: string;
-  setJoinPassword: (value: string) => void;
-  joinAuthMessage: SignalsJourneyMessage | null;
-  onSubmitAuth: (event: FormEvent<HTMLFormElement>) => void;
-  onLogout: () => void;
+  onSignIn: () => void;
+  onCreateAccount: () => void;
   onMembership: () => void;
   onBilling: () => void;
 }) {
@@ -4174,161 +4168,77 @@ function MoreTabFoundation({
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
+  const benefits: Array<{ icon: MoreIconType; label: string }> = [
+    { icon: "signal", label: "Personalized Experience" },
+    { icon: "privacy", label: "Save Your Settings" },
+    { icon: "bell", label: "Custom Alerts" },
+    { icon: "star", label: "Premium Access" },
+  ];
 
   return (
-    <div className="space-y-3 pb-2">
-      <section className="rounded-[24px] border border-cyan-300/20 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),rgba(255,255,255,0.045)_46%,rgba(255,255,255,0.025))] p-4 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
-        <div className="flex items-start gap-3">
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[22px] border border-cyan-300/28 bg-cyan-300/[0.10] text-[20px] font-black text-cyan-200 shadow-[0_0_22px_rgba(34,211,238,0.12)]">
+    <div className="space-y-4 pb-2">
+      <section className="relative overflow-hidden rounded-[26px] border border-cyan-300/30 bg-[radial-gradient(circle_at_82%_28%,rgba(29,78,216,0.24),transparent_34%),radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),rgba(255,255,255,0.045)_48%,rgba(4,10,24,0.96))] p-3.5 shadow-[0_0_34px_rgba(34,211,238,0.12)]">
+        <div className="pointer-events-none absolute right-4 top-9 text-[130px] font-black leading-none text-cyan-300/[0.035]">
+          A
+        </div>
+
+        <div className="relative grid grid-cols-[86px_1fr] items-center gap-4">
+          <div className="grid h-[82px] w-[82px] place-items-center rounded-full border border-cyan-300/22 bg-black/20 text-[22px] font-black text-cyan-200 shadow-[inset_0_0_22px_rgba(34,211,238,0.08),0_0_24px_rgba(34,211,238,0.08)]">
             {authSession.authenticated ? getMoreInitials(authSession.email) : <MoreLineIcon type="profile" />}
           </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Profile</p>
-                <h2 className="mt-1 truncate text-[22px] font-black leading-tight tracking-tight text-white">
-                  {authSession.authenticated ? formattedName : "Guest User"}
-                </h2>
-                <p className="mt-0.5 truncate text-[12px] font-semibold text-white/50">
-                  {authSession.authenticated ? authSession.email : "Sign in to personalize Atlas."}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full border border-cyan-300/22 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.10em] text-cyan-200">
-                {planLabel}
-              </span>
-            </div>
-
-            {authSession.authenticated ? (
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  className="rounded-[15px] border border-cyan-300/25 bg-cyan-300/[0.08] px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.10em] text-cyan-100"
-                >
-                  View Profile
-                </button>
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  disabled={authBusy}
-                  className="rounded-[15px] border border-white/12 bg-white/[0.04] px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.10em] text-white/62 disabled:opacity-60"
-                >
-                  Log Out
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={onSubmitAuth} className="mt-3">
-                <div className="grid grid-cols-2 gap-1 rounded-[15px] border border-white/10 bg-black/24 p-1">
-                  {(["signin", "signup"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setJoinAuthMode(mode)}
-                      className={`rounded-[11px] px-3 py-2 text-[11px] font-black uppercase tracking-[0.10em] transition-all ${
-                        joinAuthMode === mode ? "bg-cyan-300 text-black" : "text-white/55"
-                      }`}
-                    >
-                      {mode === "signin" ? "Sign In" : "Create Account"}
-                    </button>
-                  ))}
-                </div>
-
-                {joinAuthMessage ? (
-                  <div
-                    className={`mt-2 rounded-[14px] border px-3 py-2 text-[11px] leading-4 ${
-                      joinAuthMessage.tone === "error"
-                        ? "border-red-400/25 bg-red-500/10 text-red-100"
-                        : joinAuthMessage.tone === "success"
-                        ? "border-lime-300/25 bg-lime-400/10 text-lime-100"
-                        : "border-cyan-300/25 bg-cyan-400/10 text-cyan-100"
-                    }`}
-                  >
-                    <p className="font-black">{joinAuthMessage.title}</p>
-                    {joinAuthMessage.body ? <p className="mt-0.5 text-white/68">{joinAuthMessage.body}</p> : null}
-                  </div>
-                ) : null}
-
-                <div className="mt-2 grid gap-2">
-                  <input
-                    value={joinEmail}
-                    onChange={(event) => setJoinEmail(event.target.value)}
-                    type="email"
-                    autoComplete="email"
-                    required
-                    placeholder="Email"
-                    className="h-10 rounded-[14px] border border-white/10 bg-black/35 px-3 text-[13px] text-white outline-none placeholder:text-white/28 focus:border-cyan-300"
-                  />
-                  <input
-                    value={joinPassword}
-                    onChange={(event) => setJoinPassword(event.target.value)}
-                    type="password"
-                    autoComplete={joinAuthMode === "signup" ? "new-password" : "current-password"}
-                    required
-                    minLength={6}
-                    placeholder="Password"
-                    className="h-10 rounded-[14px] border border-white/10 bg-black/35 px-3 text-[13px] text-white outline-none placeholder:text-white/28 focus:border-cyan-300"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={authBusy}
-                  className="mt-2 w-full rounded-[15px] bg-cyan-300 px-4 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {authBusy ? "Working..." : joinAuthMode === "signin" ? "Sign In" : "Create Account"}
-                </button>
-              </form>
-            )}
+          <div className="min-w-0">
+            <span className="inline-flex rounded-full border border-cyan-300/18 bg-cyan-300/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">
+              Profile
+            </span>
+            <h2 className="mt-2.5 truncate text-[26px] font-black leading-none tracking-tight text-white">
+              {authSession.authenticated ? formattedName : "Guest User"}
+            </h2>
+            <p className="mt-2.5 max-w-[210px] text-[13px] font-semibold leading-5 text-white/58">
+              {authSession.authenticated
+                ? authSession.email
+                : "Sign in to personalize Atlas and unlock all features."}
+            </p>
           </div>
+        </div>
+
+        <div className="relative mt-4 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onSignIn}
+            className="h-12 rounded-[17px] border border-cyan-300/26 bg-black/22 px-4 text-[13px] font-black uppercase tracking-[0.22em] text-cyan-200 shadow-[inset_0_0_14px_rgba(34,211,238,0.04)]"
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={onCreateAccount}
+            className="h-12 rounded-[17px] bg-cyan-300 px-4 text-[13px] font-black uppercase tracking-[0.12em] text-[#03101d] shadow-[0_0_24px_rgba(34,211,238,0.22)]"
+          >
+            Create Account
+          </button>
+        </div>
+
+        <div className="relative mt-4 grid grid-cols-4 border-t border-white/10 pt-3">
+          {benefits.map((benefit, index) => (
+            <div key={benefit.label} className={`min-w-0 px-1 text-center ${index > 0 ? "border-l border-white/10" : ""}`}>
+              <span className="mx-auto grid h-7 w-7 place-items-center text-cyan-300">
+                <MoreLineIcon type={benefit.icon} />
+              </span>
+              <p className="mt-1.5 text-[10px] font-bold leading-[1.2] text-white/62">
+                {benefit.label}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <MoreSectionCard title="Account">
+      <MoreSectionCard>
         <MoreOptionRow icon="membership" label="Membership" detail="Plans, packs and Atlas access." value={planLabel} onClick={onMembership} />
         <MoreOptionRow icon="billing" label="Billing" detail="Manage billing when connected." onClick={onBilling} />
         <MoreOptionRow icon="history" label="Purchase History" detail="Receipts and unlocked products." />
         <MoreOptionRow icon="restore" label="Restore Purchases" detail="Recover purchases on this device." />
-        <MoreOptionRow icon="referral" label="Referral Program" detail="Invite rewards placeholder." value="Soon" />
-      </MoreSectionCard>
-
-      <MoreSectionCard title="Notifications">
-        <MoreSwitchRow icon="bell" label="Push Notifications" detail="Important Atlas updates." enabled />
-        <MoreSwitchRow icon="mail" label="Email Notifications" detail="Account and product messages." />
-        <MoreSwitchRow icon="signal" label="Signal Alerts" detail="Signals Detected and ranked boards." enabled />
-        <MoreSwitchRow icon="star" label="Top Signal Alerts" detail="Daily Top Signal availability." />
-        <MoreSwitchRow icon="news" label="News" detail="Market and team impact notes." />
-      </MoreSectionCard>
-
-      <MoreSectionCard title="Appearance">
-        <MoreOptionRow icon="theme" label="Theme" detail="System, Dark or Light." value="System" />
-        <MoreOptionRow icon="palette" label="Accent Color" detail="Atlas visual identity." value="Atlas Blue" />
-      </MoreSectionCard>
-
-      <MoreSectionCard title="Privacy">
-        <MoreOptionRow icon="privacy" label="Privacy Policy" />
-        <MoreOptionRow icon="terms" label="Terms of Service" />
-        <MoreOptionRow icon="cookie" label="Cookie Preferences" />
-        <MoreOptionRow icon="data" label="Manage Data" detail="Export and account data tools." />
-        <MoreOptionRow icon="delete" label="Delete Account" detail="Permanent account removal." danger />
-      </MoreSectionCard>
-
-      <MoreSectionCard title="Support">
-        <MoreOptionRow icon="help" label="Help Center" />
-        <MoreOptionRow icon="support" label="Contact Support" />
-        <MoreOptionRow icon="faq" label="FAQ" />
-        <MoreOptionRow icon="bug" label="Report a Bug" />
-        <MoreOptionRow icon="feature" label="Feature Request" />
-        <MoreOptionRow icon="rate" label="Rate Atlas" />
-        <MoreOptionRow icon="share" label="Share Atlas" />
-      </MoreSectionCard>
-
-      <MoreSectionCard title="About">
-        <MoreOptionRow icon="version" label="App Version" value="1.0.0" />
-        <MoreOptionRow icon="code" label="Build" value="Atlas Web" />
-        <MoreOptionRow icon="web" label="Website" detail="Official Atlas web experience." />
-        <MoreOptionRow icon="social" label="Social Media" />
-        <MoreOptionRow icon="license" label="Licenses" />
-        <MoreOptionRow icon="code" label="Open Source" />
+        <MoreOptionRow icon="referral" label="Referral Program" detail="Invite friends and earn rewards." value="Soon" />
       </MoreSectionCard>
     </div>
   );
@@ -12435,9 +12345,17 @@ const subscriptionPlansBoard = (
               value={activeDay}
               onChange={(day) => navigateAppState({ day })}
             />
+          ) : appSection === "more" ? (
+            <button
+              type="button"
+              aria-label="Settings"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] border border-cyan-300/22 bg-cyan-300/[0.065] text-cyan-300 shadow-[0_0_20px_rgba(34,211,238,0.08)]"
+            >
+              <MoreLineIcon type="settings" />
+            </button>
           ) : (
             <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">
-              {appSection === "news" ? "Impact" : appSection === "bankroll" ? "Active" : appSection === "more" ? "Settings" : selectedSport}
+              {appSection === "news" ? "Impact" : appSection === "bankroll" ? "Active" : selectedSport}
             </div>
           )}
         </div>
@@ -14181,17 +14099,8 @@ const subscriptionPlansBoard = (
             authSession={authSession}
             authLoaded={authLoaded}
             userAccess={userAccess}
-            authBusy={authBusy}
-            billingBusy={billingBusy}
-            joinAuthMode={joinAuthMode}
-            setJoinAuthMode={setJoinAuthMode}
-            joinEmail={joinEmail}
-            setJoinEmail={setJoinEmail}
-            joinPassword={joinPassword}
-            setJoinPassword={setJoinPassword}
-            joinAuthMessage={joinAuthMessage}
-            onSubmitAuth={handleInlineAuthSubmit}
-            onLogout={handleLogout}
+            onSignIn={() => router.push("/login?mode=login")}
+            onCreateAccount={() => router.push("/login?intent=free")}
             onMembership={() => navigateAppState({ section: "alerts" })}
             onBilling={handleManageBilling}
           />
