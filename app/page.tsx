@@ -4759,19 +4759,6 @@ useEffect(() => {
       getSoccerPublicSignals(signalDate),
       getSoccerTop5Live(signalDate),
     ]);
-    const soccerProductGameIds = new Set(
-      (soccerTop5 || [])
-        .slice()
-        .sort((a: any, b: any) => Number(a.rank ?? 999) - Number(b.rank ?? 999))
-        .slice(0, 4)
-        .map((g: any) => String(g.game_id ?? g.gameId ?? ""))
-        .filter(Boolean),
-    );
-    const soccerSignalsDetected = (soccerPublic || []).filter((g: any) => {
-      const gameId = String(g.game_id ?? g.gameId ?? "");
-      return !gameId || !soccerProductGameIds.has(gameId);
-    });
-
     setMlbSignalsData({
       games: (mlbPublic || []).map((g: any) => ({
         gameId: g.game_id,
@@ -4902,7 +4889,7 @@ useEffect(() => {
     });
 
     setSoccerSignalsLiveData({
-      games: soccerSignalsDetected.map((g: any) => ({
+      games: (soccerPublic || []).map((g: any) => ({
         gameId: g.game_id,
         awayTeam: g.away_team,
         homeTeam: g.home_team,
