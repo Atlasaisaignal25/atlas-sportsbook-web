@@ -3854,7 +3854,10 @@ function AtlasAccessGate({
     <main className="min-h-screen bg-[#020716] text-white">
       <div className="mx-auto min-h-screen w-full max-w-md bg-[#020716]">
         <div className="relative mx-auto aspect-[853/1844] min-h-screen w-full max-w-[430px] overflow-hidden">
-          <div className="absolute inset-0">
+          <div
+            className="absolute inset-0"
+            style={{ transform: "translateY(-12vh) scale(1.04)", transformOrigin: "top center" }}
+          >
             <img
               src="/access-board.png"
               alt="Atlas Signals member access"
