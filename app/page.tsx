@@ -4413,7 +4413,7 @@ useEffect(() => {
 
 async function handleManageBilling() {
   if (!authSession.authenticated) {
-    setAppSection("more");
+    setAppSection("alerts");
     setJoinAuthMode("signin");
     setJoinAuthMessage({
       tone: "info",
@@ -11407,7 +11407,7 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if (appSection === "alerts" || (appSection === "signals" && viewMode === "live" && !shouldShowSubscriptionPlans)) {
+  if (appSection === "signals" && viewMode === "live" && !shouldShowSubscriptionPlans) {
     const signalHomeRows = groupedSignalLiveGames
       .flatMap((group) =>
         group.games.flatMap((game) => {
@@ -11542,7 +11542,7 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if (appSection === "more") {
+  if ((appSection as string) === "alerts") {
     const joinPlans = [
       {
         plan: "exclusive" as const,
@@ -11737,17 +11737,6 @@ const subscriptionPlansBoard = (
               aria-label="Back to signals"
               className="fixed left-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 h-12 w-12 rounded-full"
             />
-            <button
-              type="button"
-              onClick={() => router.push("/login?intent=free#create-account")}
-              aria-label="Log in or sign up"
-              className="fixed right-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 grid h-9 w-9 place-items-center rounded-full border border-cyan-300/35 bg-[#061423]/88 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.16)] backdrop-blur-md transition active:scale-[0.97]"
-            >
-              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
-                <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.9" />
-                <path d="M5.5 19c.9-4 3-6 6.5-6s5.6 2 6.5 6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
-              </svg>
-            </button>
 
             <div
               className="fixed inset-0 z-10 mx-auto w-full max-w-md overflow-y-auto overscroll-contain"
@@ -11960,7 +11949,7 @@ const subscriptionPlansBoard = (
         </div>
         </div>
         <AtlasBottomNavigation
-          activeSection="more"
+          activeSection="alerts"
           placement="fixed"
           zIndexClass="z-50"
           onNavigate={(section) => {
@@ -13768,13 +13757,13 @@ const subscriptionPlansBoard = (
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                    Join Atlas
+                    Account Access
                   </p>
                   <h2 className="mt-1.5 text-[24px] font-black tracking-tight text-white">
                     Sign in / Sign up
                   </h2>
                   <p className="mt-1 text-[12px] leading-5 text-white/58">
-                    Create your account here, then choose your Atlas Signals pack below.
+                    Sign in or create your Atlas account.
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.10em] text-cyan-200">
@@ -13820,7 +13809,7 @@ const subscriptionPlansBoard = (
                         hasPaidSubscription
                           ? handleManageBilling
                           : () => {
-                              setAppSection("more");
+                              setAppSection("alerts");
                               setJoinAuthMessage({
                                 tone: "info",
                                 title: "Choose your pack below.",
@@ -13897,6 +13886,7 @@ const subscriptionPlansBoard = (
               )}
             </section>
 
+            <div className="hidden">
             <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
               <div className="flex items-end justify-between gap-3">
                 <div>
@@ -14092,6 +14082,7 @@ const subscriptionPlansBoard = (
                   )
                 )}
               </div>
+            </div>
             </div>
           </div>
         )}
