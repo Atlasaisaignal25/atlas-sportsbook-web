@@ -11740,9 +11740,13 @@ const subscriptionPlansBoard = (
             <button
               type="button"
               onClick={() => router.push("/login?intent=free#create-account")}
-              className="fixed right-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 rounded-full border border-cyan-300/35 bg-[#061423]/86 px-3.5 py-2 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.16)] backdrop-blur-md transition active:scale-[0.97]"
+              aria-label="Log in or sign up"
+              className="fixed right-[max(14px,calc(50%_-_210px))] top-[2.1%] z-30 grid h-10 w-10 place-items-center rounded-full border border-cyan-300/35 bg-[#061423]/88 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.16)] backdrop-blur-md transition active:scale-[0.97]"
             >
-              Log in / Sign up
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
+                <path d="M10 7V5.8c0-.9.7-1.6 1.6-1.6h6.1c.9 0 1.6.7 1.6 1.6v12.4c0 .9-.7 1.6-1.6 1.6h-6.1c-.9 0-1.6-.7-1.6-1.6V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M3.8 12h10.4m-3.4-3.6 3.6 3.6-3.6 3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
 
             <div
