@@ -5334,20 +5334,18 @@ useEffect(() => {
 
 const canViewMarketImpact = canViewMarketImpactAccess(userAccess.plan);
 const canViewAtlasIntelligence = canViewAtlasIntelligenceAccess(userAccess.plan);
-
-useEffect(() => {
-  if (pulseImpactFilter === "MARKET" && !canViewMarketImpact) {
-    setPulseImpactFilter("TEAM");
-  }
-
-  if (pulseImpactFilter === "INTELLIGENCE" && !canViewAtlasIntelligence) {
-    setPulseImpactFilter("TEAM");
-  }
-
-  if (pulseImpactFilter === "ALL" && !canViewMarketImpact && !canViewAtlasIntelligence) {
-    setPulseImpactFilter("TEAM");
-  }
-}, [canViewAtlasIntelligence, canViewMarketImpact, pulseImpactFilter]);
+const restrictedImpactAccessNotice =
+  pulseImpactFilter === "MARKET" && !canViewMarketImpact
+    ? {
+        title: "Premium Pack Required",
+        description: "Upgrade to Premium Pack to unlock Team + Market Impact.",
+      }
+    : pulseImpactFilter === "INTELLIGENCE" && !canViewAtlasIntelligence
+      ? {
+          title: "Unlimited Pack Required",
+          description: "Upgrade to Unlimited Pack to unlock Team + Market + Atlas Intelligence.",
+        }
+      : null;
 
 useEffect(() => {
   if (appSection !== "news") return;
@@ -5369,20 +5367,16 @@ useEffect(() => {
       });
       const [teamResponse, marketResponse, intelligenceResponse] = await Promise.all([
         fetch(`/api/impact/team-impact?${params.toString()}`, { signal: controller.signal }),
-        canViewMarketImpact
-          ? fetch(`/api/impact/market-impact?${params.toString()}`, { signal: controller.signal })
-          : Promise.resolve(null),
-        canViewAtlasIntelligence
-          ? fetch(`/api/impact/atlas-intelligence?${params.toString()}`, { signal: controller.signal })
-          : Promise.resolve(null),
+        fetch(`/api/impact/market-impact?${params.toString()}`, { signal: controller.signal }),
+        fetch(`/api/impact/atlas-intelligence?${params.toString()}`, { signal: controller.signal }),
       ]);
       const teamData = (await teamResponse.json()) as { events?: TeamImpactEvent[] };
-      const marketData = marketResponse ? ((await marketResponse.json()) as { events?: MarketImpactEvent[] }) : { events: [] };
-      const intelligenceData = intelligenceResponse ? ((await intelligenceResponse.json()) as { events?: AtlasIntelligenceEvent[] }) : { events: [] };
+      const marketData = (await marketResponse.json()) as { events?: MarketImpactEvent[] };
+      const intelligenceData = (await intelligenceResponse.json()) as { events?: AtlasIntelligenceEvent[] };
 
       setTeamImpactEvents(Array.isArray(teamData.events) ? teamData.events : []);
-      setMarketImpactEvents(canViewMarketImpact && Array.isArray(marketData.events) ? marketData.events : []);
-      setAtlasIntelligenceEvents(canViewAtlasIntelligence && Array.isArray(intelligenceData.events) ? intelligenceData.events : []);
+      setMarketImpactEvents(Array.isArray(marketData.events) ? marketData.events : []);
+      setAtlasIntelligenceEvents(Array.isArray(intelligenceData.events) ? intelligenceData.events : []);
       setPulseLastUpdatedAt(new Date().toISOString());
     } catch (error) {
       if (!controller.signal.aborted) {
@@ -5404,7 +5398,7 @@ useEffect(() => {
     controller.abort();
     window.clearInterval(interval);
   };
-}, [appSection, canViewAtlasIntelligence, canViewMarketImpact, pulseSportFilter, pulseImpactFilter]);
+}, [appSection, pulseSportFilter, pulseImpactFilter]);
 
   useEffect(() => {
   async function loadGames() {
@@ -6504,10 +6498,10 @@ const sectionEyebrow =
     : "Account";
 
 const pulseImpactFilters: Array<{ label: string; value: ImpactFeedFilter }> = [
-  ...(canViewMarketImpact || canViewAtlasIntelligence ? [{ label: "ALL", value: "ALL" as const }] : []),
+  { label: "ALL", value: "ALL" },
   { label: "TEAM", value: "TEAM" },
-  ...(canViewMarketImpact ? [{ label: "MARKET", value: "MARKET" as const }] : []),
-  ...(canViewAtlasIntelligence ? [{ label: "INTELLIGENCE", value: "INTELLIGENCE" as const }] : []),
+  { label: "MARKET", value: "MARKET" },
+  { label: "INTELLIGENCE", value: "INTELLIGENCE" },
 ];
 const pulseImpactTabItems = pulseImpactFilters.map((filter) => ({ id: filter.value, label: filter.label }));
 
@@ -6591,7 +6585,7 @@ function consolidateMarketImpactEvents(items: MarketImpactEvent[]): Consolidated
 }
 
 const consolidatedMarketImpactEvents = consolidateMarketImpactEvents(
-  (canViewMarketImpact ? marketImpactEvents : [])
+  marketImpactEvents
     .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
     .filter(() => pulseImpactFilter !== "TEAM" && pulseImpactFilter !== "INTELLIGENCE")
     .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "MARKET" || item.confidence === pulseImpactFilter)
@@ -6611,7 +6605,7 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
     sport: item.sport,
     id: `team-${item.eventId}`,
   })),
-  ...(canViewMarketImpact ? consolidatedMarketImpactEvents : [])
+  ...consolidatedMarketImpactEvents
     .map((item) => ({
       kind: "market" as const,
       item,
@@ -6620,7 +6614,7 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
       sport: item.sport,
       id: `market-${item.eventId}`,
     })),
-  ...(canViewAtlasIntelligence ? atlasIntelligenceEvents : [])
+  ...atlasIntelligenceEvents
     .filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter)
     .filter(() => pulseImpactFilter !== "TEAM" && pulseImpactFilter !== "MARKET")
     .filter((item) => pulseImpactFilter === "ALL" || pulseImpactFilter === "INTELLIGENCE" || item.confidence === pulseImpactFilter)
@@ -6635,20 +6629,16 @@ const currentUnifiedImpactItems: UnifiedImpactFeedItem[] = [
 ].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
 const impactTeamCount = teamImpactEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
-const impactMarketCount = canViewMarketImpact ? consolidatedMarketImpactEvents.length : 0;
-const impactIntelligenceCount = canViewAtlasIntelligence ? atlasIntelligenceEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length : 0;
+const impactMarketCount = consolidatedMarketImpactEvents.length;
+const impactIntelligenceCount = atlasIntelligenceEvents.filter((item) => pulseSportFilter === "ALL" || item.sport === pulseSportFilter).length;
 const impactLastUpdateLabel = pulseLastUpdatedAt ? formatTeamImpactTimestamp(pulseLastUpdatedAt) : "Live";
 const impactLastUpdateShortLabel = pulseLastUpdatedAt
   ? formatTeamImpactTimestamp(pulseLastUpdatedAt)
   : "Live";
 const impactSummaryCards = [
   { label: "Team Impact", value: impactTeamCount, trend: impactTeamCount > 0 ? "New" : "", color: "text-sky-300", icon: "team" as const },
-  ...(canViewMarketImpact
-    ? [{ label: "Market Impact", value: impactMarketCount, trend: impactMarketCount > 0 ? "New" : "", color: "text-orange-300", icon: "market" as const }]
-    : []),
-  ...(canViewAtlasIntelligence
-    ? [{ label: "Atlas Intelligence", value: impactIntelligenceCount, trend: impactIntelligenceCount > 0 ? "New" : "", color: "text-violet-300", icon: "intelligence" as const }]
-    : []),
+  { label: "Market Impact", value: impactMarketCount, trend: impactMarketCount > 0 ? "New" : "", color: "text-orange-300", icon: "market" as const },
+  { label: "Atlas Intelligence", value: impactIntelligenceCount, trend: impactIntelligenceCount > 0 ? "New" : "", color: "text-violet-300", icon: "intelligence" as const },
   { label: "Last Update", value: impactLastUpdateShortLabel, trend: pulseLastUpdatedAt ? "Live" : "", color: "text-cyan-200", icon: "clock" as const },
 ];
 
@@ -12696,10 +12686,7 @@ const subscriptionPlansBoard = (
                 </span>
               </div>
 
-              <div
-                className="mt-2 grid overflow-hidden rounded-[15px] border border-white/10 bg-black/18 shadow-[inset_0_1px_12px_rgba(255,255,255,0.02)]"
-                style={{ gridTemplateColumns: `repeat(${impactSummaryCards.length}, minmax(0, 1fr))` }}
-              >
+              <div className="mt-2 grid grid-cols-4 overflow-hidden rounded-[15px] border border-white/10 bg-black/18 shadow-[inset_0_1px_12px_rgba(255,255,255,0.02)]">
                 {impactSummaryCards.map((item, index) => (
                   <div
                     key={item.label}
@@ -12743,7 +12730,23 @@ const subscriptionPlansBoard = (
               </div>
             </section>
 
-            {pulseLoading ? (
+            {restrictedImpactAccessNotice ? (
+              <section className="rounded-[22px] border border-cyan-300/14 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_38%),linear-gradient(180deg,rgba(4,12,25,0.98),rgba(2,7,17,0.98))] p-5 text-center shadow-[0_0_22px_rgba(34,211,238,0.07)]">
+                <p className="text-[15px] font-black uppercase tracking-[0.08em] text-cyan-200">
+                  {restrictedImpactAccessNotice.title}
+                </p>
+                <p className="mx-auto mt-2 max-w-[300px] text-[12px] font-semibold leading-5 text-white/58">
+                  {restrictedImpactAccessNotice.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleSubscribe(pulseImpactFilter === "MARKET" ? "premium" : "unlimited")}
+                  className="mt-4 rounded-full border border-cyan-300/30 bg-cyan-300/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.12)]"
+                >
+                  Upgrade Membership
+                </button>
+              </section>
+            ) : pulseLoading ? (
               <section className="space-y-2">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <div
