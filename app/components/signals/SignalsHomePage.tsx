@@ -2890,18 +2890,17 @@ function PricingPacksSection({
               </button>
               <p className="mt-0.5 text-center text-[5.5px] font-semibold leading-[7px] text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
             </article>
-            <div className="text-center text-[6px] font-semibold leading-[8px] text-white/42">
-              <p>Top Signal is a separate daily purchase.</p>
-              <p>Not included in monthly memberships.</p>
+            <div className="text-center text-[5.5px] font-semibold leading-[7px] text-white/42">
+              <p className="truncate">Top Signal is a separate daily purchase · Not included in monthly memberships.</p>
             </div>
 
-            <div className="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            <div className="mt-0.5 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
               <span className="h-px bg-white/12" />
-              <p className="text-[7.5px] font-black uppercase tracking-[0.14em] text-white/70">Monthly Subscriptions</p>
+              <p className="text-[6.5px] font-black uppercase tracking-[0.12em] text-white/68">Monthly Subscriptions</p>
               <span className="h-px bg-white/12" />
             </div>
 
-            <div className="mt-1 grid grid-cols-3 gap-1 pb-0.5">
+            <div className="mt-0.5 grid grid-cols-3 gap-1 pb-0.5">
               {pricingPlans.map((plan) => {
                 const styles = pricingAccentStyles[plan.accent];
                 const sportForPlan = plan.code === "unlimited" ? undefined : selectedSport;
