@@ -2750,287 +2750,75 @@ function PricingPacksSection({
   onTopSignalAction?: (sport: SportCode) => void;
   onTopPlayAction?: () => void;
 }) {
-  const sportsToShow = activeSports.length > 0 ? activeSports : (["MLB"] as SportCode[]);
-  const [expanded, setExpanded] = useState(false);
-  const [selectedDetail, setSelectedDetail] = useState<PricingDetailCode | null>(null);
-
-  useEffect(() => {
-    try {
-      setExpanded(localStorage.getItem("atlas_membership_open") === "1");
-    } catch {
-      setExpanded(false);
-    }
-  }, []);
-
-  function toggleExpanded() {
-    setExpanded((current) => {
-      const next = !current;
-
-      try {
-        localStorage.setItem("atlas_membership_open", next ? "1" : "0");
-      } catch {
-        // The membership section still works if local storage is unavailable.
-      }
-
-      return next;
-    });
-  }
+  const sportNameByCode: Record<SportCode, string> = {
+    MLB: "Baseball",
+    NBA: "Basketball",
+    NHL: "Hockey",
+    NFL: "Football",
+    SOCCER: "Soccer",
+  };
+  const sportName = sportNameByCode[selectedSport] ?? "Atlas";
+  const confidence = 87;
 
   return (
-    <section className="overflow-hidden rounded-[18px] border border-cyan-300/24 bg-[#050816]/88 shadow-[0_0_24px_rgba(34,211,238,0.08)]">
-      <button
-        type="button"
-        onClick={toggleExpanded}
-        aria-expanded={expanded}
-        className="relative flex min-h-[66px] w-full items-center gap-3 overflow-hidden px-3 py-2 text-left"
-      >
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] border border-cyan-300/45 bg-cyan-300/10 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]">
-          <PricingIcon type="star" className="h-5 w-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-black tracking-tight text-white">
-            Atlas Membership
-          </span>
-          <span className="mt-0.5 block text-[11px] font-semibold text-cyan-200/76">
-            Choose your plan
-          </span>
-        </span>
-        <span className="relative z-10 rounded-full border border-cyan-300/24 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-200">
-          {expanded ? "Hide Plans ↑" : "View Plans ↓"}
-        </span>
-        <svg
-          viewBox="0 0 64 64"
-          className="pointer-events-none absolute -right-4 -top-4 h-20 w-20 rotate-[-12deg] text-amber-300/10"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M10 45h44l-4 10H14l-4-10Zm4-26 11 10 7-17 7 17 11-10 4 22H10l4-22Z" />
-        </svg>
-      </button>
+    <section className="relative overflow-hidden rounded-[18px] border border-amber-300/70 bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.18),transparent_34%),linear-gradient(180deg,rgba(7,10,24,0.98),rgba(2,6,18,0.98))] p-3 shadow-[0_0_28px_rgba(245,158,11,0.18)]">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(251,191,36,0.08),transparent_28%,transparent_72%,rgba(251,191,36,0.07))]" />
+      <div className="relative grid grid-cols-[58px_minmax(0,1fr)_92px] items-center gap-2.5">
+        <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-amber-300/60 bg-amber-300/10 text-amber-200 shadow-[0_0_22px_rgba(245,158,11,0.22)]">
+          <TrophyIcon className="h-11 w-11" />
+        </div>
 
-      <div
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${
-          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="border-t border-white/10 p-1">
-            {selectedDetail ? (
-              <PricingDetailView
-                detail={pricingDetails[selectedDetail]}
-                onBack={() => setSelectedDetail(null)}
-                onCheckout={() => {
-                  if (selectedDetail === "top_signal") {
-                    onTopSignalAction?.(selectedSport);
-                    return;
-                  }
-
-                  onPlanSubscribe?.(selectedDetail, selectedDetail === "unlimited" ? undefined : selectedSport);
-                }}
-              />
-            ) : (
-              <>
-            <div className="text-center">
-              <p className="text-[21px] font-black uppercase tracking-[-0.035em] text-white">
-                Choose Your Plan
-              </p>
-              <p className="text-[8px] font-semibold text-white/58">
-                Choose the Atlas intelligence level that matches your strategy.
-              </p>
-            </div>
-
-            <article
-              role="button"
-              tabIndex={0}
-              aria-label="Open Top Signal plan details"
-              onClick={() => setSelectedDetail("top_signal")}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  setSelectedDetail("top_signal");
-                }
-              }}
-              className="mt-1.5 cursor-pointer rounded-[13px] border border-amber-300/75 bg-[radial-gradient(circle_at_left,rgba(251,191,36,0.24),rgba(217,119,6,0.08)_42%,rgba(5,8,22,0.94))] p-2 shadow-[0_0_20px_rgba(245,158,11,0.18)] focus:outline-none focus:ring-2 focus:ring-amber-300/45"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="rounded-full border border-amber-300/45 bg-amber-300/12 px-2 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] text-amber-200">Daily Access</span>
-                <span className="text-[6px] font-black uppercase tracking-[0.08em] text-white/42">One-Time Daily Access</span>
-              </div>
-              <div className="mt-1.5 grid grid-cols-[30px_1fr_auto] items-center gap-1.5">
-                <span className="grid h-8 w-8 place-items-center rounded-full border border-amber-300/45 bg-amber-300/12 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.24)]">
-                  <PricingIcon type="star" className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 text-left">
-                  <h3 className="text-[16px] font-black uppercase leading-none text-white">Top Signal</h3>
-                  <p className="text-[7.5px] font-black leading-3 text-amber-200">One Selected Sport · Daily Access</p>
-                  <p className="mt-0.5 inline-flex h-[15px] items-center rounded-[6px] border border-amber-300/45 bg-amber-300/10 px-1.5 text-[5.5px] font-black uppercase tracking-[0.04em] text-amber-100">Atlas Highest-Rated Official Signal</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[17px] font-black leading-none text-white">$24.99</p>
-                  <p className="text-[7px] font-semibold text-white/58">/ day</p>
-                </div>
-              </div>
-              <div className="mt-1.5 grid grid-cols-4 gap-x-1 gap-y-0.5 text-left">
-                {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
-                  <p key={feature} className="grid grid-cols-[7px_1fr] gap-0.5 text-[5.5px] font-semibold leading-[7px] text-white/74">
-                    <span className="text-amber-300">✓</span>
-                    <span>{feature}</span>
-                  </p>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onTopSignalAction?.(selectedSport);
-                }}
-                className="mt-1.5 h-7 w-full rounded-[9px] border border-amber-300/55 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 text-[7.5px] font-black uppercase tracking-[0.08em] text-black shadow-[0_0_16px_rgba(245,158,11,0.22)]"
+        <div className="min-w-0">
+          <h2 className="truncate text-[15px] font-black uppercase tracking-[0.03em] text-white">
+            {sportName} Top Signal
+          </h2>
+          <div className="mt-1 h-px w-full bg-gradient-to-r from-amber-300/35 via-white/10 to-transparent" />
+          <p className="mt-1 text-[11px] font-semibold leading-tight text-white/82">
+            Best {sportName} Opportunity
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            {["High Edge", "Strong Value", "Low Risk"].map((label) => (
+              <span
+                key={label}
+                className="rounded-[7px] border border-amber-300/45 bg-amber-300/8 px-2 py-1 text-[8px] font-black text-amber-200"
               >
-                Unlock Top Signal
-              </button>
-              <p className="mt-0.5 text-center text-[5.5px] font-semibold leading-[7px] text-amber-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
-            </article>
-            <div className="text-center text-[5.5px] font-semibold leading-[7px] text-white/42">
-              <p className="truncate">Top Signal is a separate daily purchase · Not included in monthly memberships.</p>
-            </div>
-
-            <div className="mt-0.5 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
-              <span className="h-px bg-white/12" />
-              <p className="text-[6.5px] font-black uppercase tracking-[0.12em] text-white/68">Monthly Subscriptions</p>
-              <span className="h-px bg-white/12" />
-            </div>
-
-            <div className="mt-0.5 grid grid-cols-3 gap-1 pb-0.5">
-              {pricingPlans.map((plan) => {
-                const styles = pricingAccentStyles[plan.accent];
-                const sportForPlan = plan.code === "unlimited" ? undefined : selectedSport;
-
-                return (
-                  <article
-                    key={plan.code}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Open ${plan.title} plan details`}
-                    onClick={() => setSelectedDetail(plan.code)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setSelectedDetail(plan.code);
-                      }
-                    }}
-                    className={`relative flex h-[284px] min-w-0 cursor-pointer flex-col rounded-[11px] border px-2 pb-2 pt-2.5 focus:outline-none focus:ring-2 focus:ring-white/30 ${styles.shell}`}
-                  >
-                    {plan.badge ? (
-                      <span className="absolute left-1/2 top-0.5 flex h-[14px] max-w-[88%] -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-amber-300 px-1.5 text-[5.5px] font-black uppercase tracking-[0.03em] text-black">
-                        {plan.badge}
-                      </span>
-                    ) : null}
-
-                    <div className="flex justify-center">
-                      <span className={`grid h-7 w-7 place-items-center rounded-full border shadow-[0_0_9px_currentColor] ${styles.icon}`}>
-                        <PricingIcon
-                          type={plan.code === "premium" ? "crown" : plan.code === "unlimited" ? "diamond" : "star"}
-                          className="h-4 w-4"
-                        />
-                      </span>
-                    </div>
-
-                    <p className={`mt-1 text-center text-[11px] font-black uppercase tracking-[0.01em] ${styles.text}`}>
-                      {plan.title}
-                    </p>
-                    <p className="text-center text-[6.5px] font-bold leading-[8px] text-white/78">
-                      {plan.subtitle}
-                    </p>
-
-                    <div className={`mt-1 flex h-[34px] items-center justify-center rounded-[7px] border px-1.5 text-center ${styles.pill}`}>
-                      <p className={`text-[6px] font-black uppercase leading-[8px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
-                    </div>
-
-                    <p className="mt-1 min-h-[24px] text-center text-[6.2px] font-semibold leading-[8px] text-white/58">{plan.value}</p>
-
-                    <div className="mt-1 grid grid-cols-1 gap-1">
-                      {plan.features.map((feature) => (
-                        <p key={feature} className="grid grid-cols-[8px_1fr] gap-1 text-[5.8px] font-semibold leading-[7.5px] text-white/76">
-                          <span className={`${styles.check} leading-tight`}>✓</span>
-                          <span>{feature}</span>
-                        </p>
-                      ))}
-                    </div>
-
-                    <div className="mt-auto pt-1">
-                      <div className="text-center">
-                        <span className="text-[13px] font-black leading-none text-white">{plan.price}</span>
-                        <span className="ml-0.5 text-[5.5px] font-bold text-white/52">/ month</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onPlanSubscribe?.(plan.code, sportForPlan);
-                        }}
-                        className={`mt-1 h-6 w-full rounded-[6px] border px-1 text-[5.6px] font-black uppercase tracking-[0.01em] ${styles.button}`}
-                      >
-                        {plan.cta}
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-
-            {sportsToShow.length > 1 ? (
-              <div className="mt-1.5 flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {sportsToShow.map((sport) => (
-                  <button
-                    key={`pricing-sport-${sport}`}
-                    type="button"
-                    onClick={() => onSelectedSportChange?.(sport)}
-                    aria-pressed={selectedSport === sport}
-                    className={`shrink-0 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] ${
-                      selectedSport === sport
-                        ? "border-cyan-300 bg-cyan-300 text-black"
-                        : "border-white/10 bg-white/[0.04] text-white/55"
-                    }`}
-                  >
-                    {sport}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {false ? <div className="mt-1.5 rounded-[14px] border border-white/10 bg-black/20 p-1.5">
-              <div className="mb-1.5 flex items-center justify-center gap-1.5">
-                <span className="h-px flex-1 bg-white/10" />
-                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/86">Premium Add-ons</p>
-                <span className="text-[6.5px] font-black uppercase tracking-[0.06em] text-white/40">Not included</span>
-                <span className="h-px flex-1 bg-white/10" />
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onTopSignalAction?.(selectedSport)}
-                  className="min-h-[112px] rounded-[14px] border border-purple-300/35 bg-purple-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(192,132,252,0.10)]"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-purple-300/40 bg-purple-300/10 text-purple-200">
-                      <PricingIcon type="star" className="h-5 w-5" />
-                    </span>
-                    <div className="text-left">
-                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
-                      <p className="text-[15px] font-black text-white">$24.99 <span className="text-[8px] text-white/50">/ day</span></p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The #1 strongest signal of the day for a specific sport.</p>
-                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-purple-300/45 px-2 py-1 text-[8px] font-black uppercase text-purple-200">Unlock</span>
-                </button>
-              </div>
-            </div> : null}
-              </>
-            )}
+                {label}
+              </span>
+            ))}
           </div>
         </div>
+
+        <div className="border-l border-white/12 pl-2 text-center">
+          <p className="text-[8px] font-black uppercase tracking-[0.08em] text-amber-200">
+            One Time Access
+          </p>
+          <p className="mt-1 text-[23px] font-black leading-none tracking-tight text-white">
+            $24.99
+          </p>
+          <button
+            type="button"
+            onClick={() => onTopSignalAction?.(selectedSport)}
+            className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1 rounded-[9px] border border-amber-200/60 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 px-2 text-[9px] font-black text-black shadow-[0_0_18px_rgba(245,158,11,0.26)] transition duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.3">
+              <rect x="5" y="10" width="14" height="10" rx="2" />
+              <path d="M8 10V7a4 4 0 0 1 8 0v3" strokeLinecap="round" />
+            </svg>
+            Unlock
+          </button>
+        </div>
+      </div>
+
+      <div className="relative mt-3 flex items-center gap-3">
+        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-700/55 shadow-inner shadow-black/50">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 shadow-[0_0_14px_rgba(245,158,11,0.42)]"
+            style={{ width: `${confidence}%` }}
+          />
+        </div>
+        <span className="min-w-[42px] text-right text-[22px] font-black leading-none text-amber-300">
+          {confidence}%
+        </span>
       </div>
     </section>
   );
