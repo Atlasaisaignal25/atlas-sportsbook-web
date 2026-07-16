@@ -2375,6 +2375,7 @@ function SignalExplorerSheet({
 }
 
 type PricingPlanCode = "exclusive" | "premium" | "unlimited";
+type PricingDetailCode = PricingPlanCode | "top_signal";
 
 type PricingPlan = {
   code: PricingPlanCode;
@@ -2388,6 +2389,26 @@ type PricingPlan = {
   cta: string;
   accent: "cyan" | "gold" | "purple";
   badge?: string;
+};
+
+type PricingDetail = {
+  code: PricingDetailCode;
+  title: string;
+  subtitle: string;
+  price: string;
+  period: string;
+  badge: string;
+  value: string;
+  cta: string;
+  icon: "star" | "crown" | "diamond";
+  accent: "cyan" | "gold" | "purple";
+  includes: string[];
+  howItWorks: string[];
+  sports: string[];
+  tools: string[];
+  notIncluded: string[];
+  comparison: string[];
+  faqs: Array<{ question: string; answer: string }>;
 };
 
 const pricingPlans: PricingPlan[] = [
@@ -2457,6 +2478,117 @@ const pricingAccentStyles = {
   },
 };
 
+const pricingDetails: Record<PricingDetailCode, PricingDetail> = {
+  exclusive: {
+    code: "exclusive",
+    title: "Exclusive",
+    subtitle: "One Selected Sport",
+    price: "$34.99",
+    period: "/ month",
+    badge: "Up to 3 Official Ranked Signals",
+    value: "Focused ranked intelligence for one selected sport.",
+    cta: "Get Exclusive",
+    icon: "star",
+    accent: "cyan",
+    includes: ["One Selected Sport", "Up to 3 Official Ranked Signals", "Official Signal Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
+    howItWorks: [
+      "Atlas analyzes the available Signals for your selected sport.",
+      "You receive up to three Official Ranked Signals when they meet the Atlas standard.",
+      "If only one or two qualify, Atlas shows only those Signals instead of filling the list with lower-quality picks.",
+    ],
+    sports: ["One selected sport"],
+    tools: ["Market Impact", "Atlas Bankroll", "Signal History", "Closing Status", "Live Updates"],
+    notIncluded: ["Top Signal is not included.", "Top Signal is a separate daily purchase."],
+    comparison: ["Best for focused access to one sport.", "Includes ranked Signals, not daily Top Signal."],
+    faqs: [
+      { question: "What happens if fewer Signals are available?", answer: "Atlas only shows Signals that pass its standard. It does not add lower-quality placeholders." },
+      { question: "Does this include Top Signal?", answer: "No. Top Signal is sold separately as daily access." },
+      { question: "Can I change my selected sport?", answer: "Sport changes depend on the account and billing rules currently active for Atlas memberships." },
+    ],
+  },
+  premium: {
+    code: "premium",
+    title: "Premium",
+    subtitle: "One Selected Sport",
+    price: "$59.99",
+    period: "/ month",
+    badge: "Official Ranked Signals",
+    value: "Unlock Atlas official ranked intelligence for one selected sport.",
+    cta: "Get Premium",
+    icon: "crown",
+    accent: "gold",
+    includes: ["One Selected Sport", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
+    howItWorks: [
+      "Atlas adapts the available Signals according to sport, event volume, quality and official distribution.",
+      "The service does not promise a fixed count when the real slate changes by sport or day.",
+      "Atlas prioritizes quality and keeps the ranked collection aligned with the system output.",
+    ],
+    sports: ["One selected sport"],
+    tools: ["Atlas AI Rankings", "Market Impact", "Atlas Bankroll", "Signal History", "Closing Status", "Live Updates"],
+    notIncluded: ["Top Signal is not included.", "Top Signal is a separate daily purchase."],
+    comparison: ["Best for one-sport ranked intelligence plus Atlas AI Rankings.", "Monthly access. Top Signal remains separate."],
+    faqs: [
+      { question: "When are Signals published?", answer: "Signals appear when Atlas completes the required analysis and validation for the selected sport." },
+      { question: "Does this include Top Signal?", answer: "No. Top Signal is a separate daily product." },
+      { question: "How does Atlas Bankroll access work?", answer: "Bankroll tools are available as educational tracking and planning tools inside Atlas." },
+    ],
+  },
+  unlimited: {
+    code: "unlimited",
+    title: "Atlas Unlimited",
+    subtitle: "All Available Sports",
+    price: "$99.99",
+    period: "/ month",
+    badge: "All Sports — Official Ranked Signals",
+    value: "Complete access to Atlas official ranked intelligence across every available sport.",
+    cta: "Get Unlimited",
+    icon: "diamond",
+    accent: "purple",
+    includes: ["Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
+    howItWorks: [
+      "Atlas provides the official ranked collections available across all active sports.",
+      "Signal volume can vary by sport and slate.",
+      "Atlas prioritizes quality and never fills collections artificially.",
+    ],
+    sports: ["Every available Atlas sport", "Automatic access to new sports when they become available"],
+    tools: ["Atlas AI Rankings", "Market Impact", "Atlas Bankroll", "Signal History", "Closing Status", "Live Updates"],
+    notIncluded: ["Top Signal is not included.", "Top Signal is a separate daily purchase by sport."],
+    comparison: ["Best for users who want ranked Signals across the whole Atlas sports ecosystem.", "Monthly access. Daily Top Signal remains separate."],
+    faqs: [
+      { question: "Does this include every sport?", answer: "It includes every available sport supported by Atlas for monthly ranked Signals." },
+      { question: "Does this include Top Signal?", answer: "No. Top Signal remains a separate daily purchase by sport." },
+      { question: "What happens on smaller slates?", answer: "Atlas shows the official collections that meet the required quality threshold." },
+    ],
+  },
+  top_signal: {
+    code: "top_signal",
+    title: "Top Signal",
+    subtitle: "One Selected Sport · Daily Access",
+    price: "$24.99",
+    period: "/ day",
+    badge: "Atlas Highest-Rated Official Signal",
+    value: "Unlock today's highest-rated official Atlas Signal after final market validation.",
+    cta: "Unlock Top Signal",
+    icon: "star",
+    accent: "purple",
+    includes: ["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access for the purchased Signal", "Purchased Signal History", "Closing Status", "Live Updates"],
+    howItWorks: [
+      "Top Signal is a daily purchase for one selected sport.",
+      "Atlas publishes the official Top Signal for the day after final validation.",
+      "Purchased Top Signals can be followed inside Atlas Bankroll and remain available in purchased Signal history.",
+    ],
+    sports: ["One selected sport", "Daily access only"],
+    tools: ["Official Atlas Analysis", "Closing Status", "Live Updates", "Purchased Signal History", "Bankroll tracking for the purchased Signal"],
+    notIncluded: ["No Market Impact access.", "No Official Ranked Signals from monthly memberships.", "Not a monthly subscription."],
+    comparison: ["Best for daily access to one highest-rated Signal.", "Separate from Exclusive, Premium and Atlas Unlimited."],
+    faqs: [
+      { question: "Is this monthly or daily?", answer: "Top Signal is a separate daily purchase." },
+      { question: "Is it included in monthly memberships?", answer: "No. It is not included in Exclusive, Premium or Atlas Unlimited." },
+      { question: "What Bankroll access is included?", answer: "Bankroll tracking is enabled only for purchased Top Signals." },
+    ],
+  },
+};
+
 function PricingIcon({ type, className = "" }: { type: "star" | "crown" | "diamond"; className?: string }) {
   if (type === "crown") {
     return (
@@ -2487,6 +2619,122 @@ function PricingIcon({ type, className = "" }: { type: "star" | "crown" | "diamo
   );
 }
 
+function PricingDetailView({
+  detail,
+  onBack,
+  onCheckout,
+}: {
+  detail: PricingDetail;
+  onBack: () => void;
+  onCheckout: () => void;
+}) {
+  const styles = pricingAccentStyles[detail.accent];
+
+  return (
+    <section className={`relative rounded-[18px] border p-3 pb-20 ${styles.shell}`}>
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-3 inline-flex h-8 items-center rounded-full border border-white/12 bg-white/[0.04] px-3 text-[10px] font-black uppercase tracking-[0.08em] text-white/70 focus:outline-none focus:ring-2 focus:ring-cyan-300/45"
+      >
+        Back
+      </button>
+
+      <header className="grid grid-cols-[46px_1fr] gap-3">
+        <span className={`grid h-11 w-11 place-items-center rounded-[15px] border shadow-[0_0_16px_currentColor] ${styles.icon}`}>
+          <PricingIcon type={detail.icon} className="h-6 w-6" />
+        </span>
+        <div className="min-w-0">
+          <p className={`text-[22px] font-black uppercase leading-none ${styles.text}`}>{detail.title}</p>
+          <p className="mt-1 text-[11px] font-bold text-white/72">{detail.subtitle}</p>
+          <p className={`mt-2 inline-flex rounded-[8px] border px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] ${styles.pill}`}>
+            {detail.badge}
+          </p>
+        </div>
+      </header>
+
+      <div className="mt-4 rounded-[15px] border border-white/10 bg-black/22 p-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/42">Price</p>
+            <p className="mt-1 text-[25px] font-black leading-none text-white">{detail.price}</p>
+            <p className="mt-1 text-[11px] font-bold text-white/50">{detail.period}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCheckout}
+            className={`h-11 shrink-0 rounded-[12px] border px-4 text-[10px] font-black uppercase tracking-[0.06em] focus:outline-none focus:ring-2 focus:ring-white/35 ${styles.button}`}
+          >
+            {detail.cta} — {detail.price} {detail.period}
+          </button>
+        </div>
+        <p className="mt-3 text-[11px] font-semibold leading-4 text-white/66">{detail.value}</p>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <DetailBlock title="What Includes" items={detail.includes} tone={styles.check} />
+        <DetailBlock title="How It Works" items={detail.howItWorks} />
+        <DetailBlock title="Sports Included" items={detail.sports} />
+        <DetailBlock title="Available Tools" items={detail.tools} />
+        <DetailBlock title="What Is Not Included" items={detail.notIncluded} negative />
+        <DetailBlock title="Quick Comparison" items={detail.comparison} />
+
+        <section className="rounded-[14px] border border-white/10 bg-white/[0.035] p-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/82">FAQ</p>
+          <div className="mt-2 space-y-1.5">
+            {detail.faqs.map((faq) => (
+              <details key={faq.question} className="rounded-[10px] border border-white/8 bg-black/18 px-3 py-2">
+                <summary className="cursor-pointer text-[10px] font-black text-white/82">{faq.question}</summary>
+                <p className="mt-2 text-[10px] font-semibold leading-4 text-white/56">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <button
+          type="button"
+          onClick={onCheckout}
+          className={`h-11 w-full rounded-[13px] border px-3 text-[11px] font-black uppercase tracking-[0.08em] focus:outline-none focus:ring-2 focus:ring-white/35 ${styles.button}`}
+        >
+          {detail.cta} — {detail.price} {detail.period}
+        </button>
+      </div>
+
+      <div className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10px)] z-30 mx-auto max-w-[420px] rounded-[16px] border border-white/12 bg-[#050816]/96 p-2 shadow-[0_0_24px_rgba(34,211,238,0.18)] backdrop-blur">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+          <div>
+            <p className="text-[14px] font-black leading-none text-white">{detail.price}</p>
+            <p className="mt-0.5 text-[9px] font-bold text-white/45">{detail.period}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCheckout}
+            className={`h-10 rounded-[12px] border px-4 text-[10px] font-black uppercase tracking-[0.06em] focus:outline-none focus:ring-2 focus:ring-white/35 ${styles.button}`}
+          >
+            {detail.cta}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DetailBlock({ title, items, tone = "text-cyan-300", negative = false }: { title: string; items: string[]; tone?: string; negative?: boolean }) {
+  return (
+    <section className="rounded-[14px] border border-white/10 bg-white/[0.035] p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-white/82">{title}</p>
+      <div className="mt-2 space-y-1.5">
+        {items.map((item) => (
+          <p key={item} className="grid grid-cols-[14px_1fr] gap-2 text-[10.5px] font-semibold leading-4 text-white/66">
+            <span className={negative ? "text-rose-300" : tone}>{negative ? "×" : "✓"}</span>
+            <span>{item}</span>
+          </p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function PricingPacksSection({
   activeSports,
   selectedSport,
@@ -2504,6 +2752,7 @@ function PricingPacksSection({
 }) {
   const sportsToShow = activeSports.length > 0 ? activeSports : (["MLB"] as SportCode[]);
   const [expanded, setExpanded] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<PricingDetailCode | null>(null);
 
   useEffect(() => {
     try {
@@ -2566,6 +2815,21 @@ function PricingPacksSection({
       >
         <div className="min-h-0 overflow-hidden">
           <div className="border-t border-white/10 p-1">
+            {selectedDetail ? (
+              <PricingDetailView
+                detail={pricingDetails[selectedDetail]}
+                onBack={() => setSelectedDetail(null)}
+                onCheckout={() => {
+                  if (selectedDetail === "top_signal") {
+                    onTopSignalAction?.(selectedSport);
+                    return;
+                  }
+
+                  onPlanSubscribe?.(selectedDetail, selectedDetail === "unlimited" ? undefined : selectedSport);
+                }}
+              />
+            ) : (
+              <>
             <div className="text-center">
               <p className="text-[21px] font-black uppercase tracking-[-0.035em] text-white">
                 Choose Your Plan
@@ -2575,7 +2839,19 @@ function PricingPacksSection({
               </p>
             </div>
 
-            <article className="mt-1.5 rounded-[13px] border border-purple-300/70 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.20),rgba(168,85,247,0.045)_42%,rgba(5,8,22,0.94))] p-2 shadow-[0_0_18px_rgba(168,85,247,0.14)]">
+            <article
+              role="button"
+              tabIndex={0}
+              aria-label="Open Top Signal plan details"
+              onClick={() => setSelectedDetail("top_signal")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedDetail("top_signal");
+                }
+              }}
+              className="mt-1.5 cursor-pointer rounded-[13px] border border-purple-300/70 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.20),rgba(168,85,247,0.045)_42%,rgba(5,8,22,0.94))] p-2 shadow-[0_0_18px_rgba(168,85,247,0.14)] focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+            >
               <div className="flex items-center justify-between gap-2">
                 <span className="rounded-full border border-purple-300/45 bg-purple-400/12 px-2 py-0.5 text-[6.5px] font-black uppercase tracking-[0.08em] text-purple-200">Daily Access</span>
                 <span className="text-[6px] font-black uppercase tracking-[0.08em] text-white/42">One-Time Daily Access</span>
@@ -2604,7 +2880,10 @@ function PricingPacksSection({
               </div>
               <button
                 type="button"
-                onClick={() => onTopSignalAction?.(selectedSport)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onTopSignalAction?.(selectedSport);
+                }}
                 className="mt-1.5 h-7 w-full rounded-[9px] border border-purple-300/55 bg-purple-500/55 text-[7.5px] font-black uppercase tracking-[0.08em] text-white shadow-[0_0_14px_rgba(168,85,247,0.18)]"
               >
                 Unlock Top Signal
@@ -2630,7 +2909,17 @@ function PricingPacksSection({
                 return (
                   <article
                     key={plan.code}
-                    className={`relative flex h-[268px] min-w-0 flex-col rounded-[11px] border px-2 pb-2 pt-2.5 ${styles.shell}`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open ${plan.title} plan details`}
+                    onClick={() => setSelectedDetail(plan.code)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedDetail(plan.code);
+                      }
+                    }}
+                    className={`relative flex h-[284px] min-w-0 cursor-pointer flex-col rounded-[11px] border px-2 pb-2 pt-2.5 focus:outline-none focus:ring-2 focus:ring-white/30 ${styles.shell}`}
                   >
                     {plan.badge ? (
                       <span className="absolute left-1/2 top-0.5 flex h-[14px] max-w-[88%] -translate-x-1/2 items-center whitespace-nowrap rounded-full bg-amber-300 px-1.5 text-[5.5px] font-black uppercase tracking-[0.03em] text-black">
@@ -2677,7 +2966,10 @@ function PricingPacksSection({
 
                       <button
                         type="button"
-                        onClick={() => onPlanSubscribe?.(plan.code, sportForPlan)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onPlanSubscribe?.(plan.code, sportForPlan);
+                        }}
                         className={`mt-1 h-6 w-full rounded-[6px] border px-1 text-[5.6px] font-black uppercase tracking-[0.01em] ${styles.button}`}
                       >
                         {plan.cta}
@@ -2736,6 +3028,8 @@ function PricingPacksSection({
                 </button>
               </div>
             </div> : null}
+              </>
+            )}
           </div>
         </div>
       </div>
