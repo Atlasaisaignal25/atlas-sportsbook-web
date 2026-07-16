@@ -2738,6 +2738,7 @@ function DetailBlock({ title, items, tone = "text-cyan-300", negative = false }:
 function PricingPacksSection({
   activeSports,
   selectedSport,
+  topSignals,
   onSelectedSportChange,
   onPlanSubscribe,
   onTopSignalAction,
@@ -2745,6 +2746,7 @@ function PricingPacksSection({
 }: {
   activeSports: SportCode[];
   selectedSport: SportCode;
+  topSignals?: Partial<Record<SportCode, SignalsHomePrecisionResponse | null>>;
   onSelectedSportChange?: (sport: SportCode) => void;
   onPlanSubscribe?: (plan: PricingPlanCode, sport?: SportCode) => void;
   onTopSignalAction?: (sport: SportCode) => void;
@@ -2757,48 +2759,66 @@ function PricingPacksSection({
     NFL: "Football",
     SOCCER: "Soccer",
   };
-  const sportName = sportNameByCode[selectedSport] ?? "Atlas";
-  const confidence = 87;
+  const availableSports = sports.filter((sport) =>
+    isActiveSportSignalView(buildSportSignalViewModel(sport, topSignals?.[sport])),
+  );
+  const sportsToShow = availableSports.length > 0
+    ? availableSports
+    : activeSports.length > 0
+      ? activeSports
+      : [selectedSport];
+  const firstTimedSport = [...sportsToShow].sort((first, second) => {
+    const firstTime = topSignals?.[first]?.pick?.startTime ? Date.parse(topSignals[first]?.pick?.startTime ?? "") : Number.POSITIVE_INFINITY;
+    const secondTime = topSignals?.[second]?.pick?.startTime ? Date.parse(topSignals[second]?.pick?.startTime ?? "") : Number.POSITIVE_INFINITY;
+    return firstTime - secondTime;
+  })[0] ?? selectedSport;
+  const firstSignal = topSignals?.[firstTimedSport] ?? null;
+  const minutesToKickoff = firstSignal?.minutesToKickoff ?? null;
+  const minutesToRelease = firstSignal?.minutesToRelease ?? null;
+  const timeValue = minutesToKickoff ?? minutesToRelease;
+  const timerLabel = formatCountdown(timeValue) || "Available";
+  const timerProgress = typeof firstSignal?.progressPercent === "number"
+    ? Math.max(6, Math.min(100, firstSignal.progressPercent))
+    : typeof timeValue === "number"
+      ? Math.max(8, Math.min(100, 100 - (Math.max(timeValue, 0) / 360) * 100))
+      : 100;
 
   return (
-    <section className="relative overflow-hidden rounded-[18px] border border-amber-300/70 bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.18),transparent_34%),linear-gradient(180deg,rgba(7,10,24,0.98),rgba(2,6,18,0.98))] p-3 shadow-[0_0_28px_rgba(245,158,11,0.18)]">
+    <section className="relative overflow-hidden rounded-[16px] border border-amber-300/70 bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.18),transparent_34%),linear-gradient(180deg,rgba(7,10,24,0.98),rgba(2,6,18,0.98))] p-2.5 shadow-[0_0_24px_rgba(245,158,11,0.16)]">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(251,191,36,0.08),transparent_28%,transparent_72%,rgba(251,191,36,0.07))]" />
-      <div className="relative grid grid-cols-[58px_minmax(0,1fr)_92px] items-center gap-2.5">
-        <div className="grid h-[58px] w-[58px] place-items-center rounded-full border border-amber-300/60 bg-amber-300/10 text-amber-200 shadow-[0_0_22px_rgba(245,158,11,0.22)]">
-          <TrophyIcon className="h-11 w-11" />
+      <div className="relative grid grid-cols-[46px_minmax(0,1fr)_78px] items-center gap-2">
+        <div className="grid h-[46px] w-[46px] place-items-center rounded-full border border-amber-300/60 bg-amber-300/10 text-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.2)]">
+          <TrophyIcon className="h-9 w-9" />
         </div>
 
         <div className="min-w-0">
-          <h2 className="truncate text-[15px] font-black uppercase tracking-[0.03em] text-white">
-            {sportName} Top Signal
+          <h2 className="truncate text-[14px] font-black uppercase tracking-[0.06em] text-white">
+            Top Signal
           </h2>
-          <div className="mt-1 h-px w-full bg-gradient-to-r from-amber-300/35 via-white/10 to-transparent" />
-          <p className="mt-1 text-[11px] font-semibold leading-tight text-white/82">
-            Best {sportName} Opportunity
+          <div className="mt-0.5 h-px w-full bg-gradient-to-r from-amber-300/35 via-white/10 to-transparent" />
+          <p className="mt-0.5 text-[10px] font-semibold leading-tight text-white/82">
+            Best Opportunity by Sport
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-1">
-            {["High Edge", "Strong Value", "Low Risk"].map((label) => (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {sportsToShow.map((sport) => (
               <span
-                key={label}
-                className="rounded-[7px] border border-amber-300/45 bg-amber-300/8 px-2 py-1 text-[8px] font-black text-amber-200"
+                key={`top-signal-home-sport-${sport}`}
+                className="rounded-[7px] border border-amber-300/45 bg-amber-300/8 px-1.5 py-0.5 text-[7px] font-black uppercase text-amber-200"
               >
-                {label}
+                {sportNameByCode[sport] ?? sport}
               </span>
             ))}
           </div>
         </div>
 
         <div className="border-l border-white/12 pl-2 text-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.08em] text-amber-200">
+          <p className="text-[7px] font-black uppercase leading-tight tracking-[0.08em] text-amber-200">
             One Time Access
-          </p>
-          <p className="mt-1 text-[23px] font-black leading-none tracking-tight text-white">
-            $24.99
           </p>
           <button
             type="button"
             onClick={() => onTopSignalAction?.(selectedSport)}
-            className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1 rounded-[9px] border border-amber-200/60 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 px-2 text-[9px] font-black text-black shadow-[0_0_18px_rgba(245,158,11,0.26)] transition duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="mt-1.5 inline-flex h-8 w-full items-center justify-center gap-1 rounded-[9px] border border-amber-200/60 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 px-2 text-[9px] font-black text-black shadow-[0_0_18px_rgba(245,158,11,0.26)] transition duration-200 hover:scale-[1.02] active:scale-[0.98]"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.3">
               <rect x="5" y="10" width="14" height="10" rx="2" />
@@ -2809,15 +2829,15 @@ function PricingPacksSection({
         </div>
       </div>
 
-      <div className="relative mt-3 flex items-center gap-3">
-        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-700/55 shadow-inner shadow-black/50">
+      <div className="relative mt-2.5 flex items-center gap-2">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-700/55 shadow-inner shadow-black/50">
           <div
             className="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 shadow-[0_0_14px_rgba(245,158,11,0.42)]"
-            style={{ width: `${confidence}%` }}
+            style={{ width: `${timerProgress}%` }}
           />
         </div>
-        <span className="min-w-[42px] text-right text-[22px] font-black leading-none text-amber-300">
-          {confidence}%
+        <span className="min-w-[48px] text-right text-[12px] font-black leading-none text-amber-300">
+          {timerLabel}
         </span>
       </div>
     </section>
@@ -3290,6 +3310,7 @@ export function SignalsHomePage({
                     <PricingPacksSection
                       activeSports={activeSubscriptionSports}
                       selectedSport={selectedSubscriptionSport}
+                      topSignals={topSignals}
                       onSelectedSportChange={onSelectedSubscriptionSportChange}
                       onPlanSubscribe={onPlanSubscribe}
                       onTopSignalAction={(sport) => {
