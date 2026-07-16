@@ -435,6 +435,32 @@ function topSignalRowsFromTop5(rows: DbRow[]) {
   return Array.from(bySport.values()).sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")));
 }
 
+function rowGameId(row: DbRow | null | undefined) {
+  const id = row?.game_id ?? row?.gameId;
+  return id === null || id === undefined ? "" : String(id);
+}
+
+function excludeGameIds(rows: DbRow[], excludedIds: Set<string>) {
+  return rows.filter((row) => {
+    const id = rowGameId(row);
+    return !id || !excludedIds.has(id);
+  });
+}
+
+function productRowsBySport(rows: DbRow[], maxPerSport: number) {
+  const counts = new Map<string, number>();
+  return rows
+    .slice()
+    .sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || Number(a.rank ?? 999) - Number(b.rank ?? 999))
+    .filter((row) => {
+      const sport = String(row.sport ?? "ALL");
+      const count = counts.get(sport) ?? 0;
+      if (count >= maxPerSport) return false;
+      counts.set(sport, count + 1);
+      return true;
+    });
+}
+
 function rankingMovement(current: ReturnType<typeof rankingRows>, previous: DbRow[]) {
   const currentIds = new Set(current.map((row) => String(row.gameId)));
   const moved = current.map((row) => ({
@@ -888,20 +914,25 @@ export async function GET() {
   const activeSignals = (activeSignalsQuery.data ?? []) as DbRow[];
   const activePicks = publicPickRows(activePicksQuery.data ?? []);
 
+  const topSignalLiveRows = topSignalRowsFromTop5(top5LiveRows);
+  const topSignalGameIds = new Set(topSignalLiveRows.map(rowGameId).filter(Boolean));
+  const top5LiveProductRows = productRowsBySport(excludeGameIds(top5LiveRows, topSignalGameIds), 5);
+  const top3LiveProductRows = productRowsBySport(top5LiveProductRows, 3);
+  const productGameIds = new Set([...topSignalLiveRows, ...top5LiveProductRows].map(rowGameId).filter(Boolean));
+  const signalDisplayRows = excludeGameIds(signalLiveRows, productGameIds);
   const latestPremiumHistoryInternal = latestRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING");
-  const latestPremiumInternal = top5LiveRows.length ? top5LiveRows : latestPremiumHistoryInternal;
+  const latestPremiumInternal = top5LiveProductRows.length ? top5LiveProductRows : latestPremiumHistoryInternal;
   const premiumPrevious = top5LiveRows.length ? [] : previousRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
   const latestPremiumFrozen = latestRun(premiumHistory, "PREMIUM_TOP5", "OFFICIAL_FREEZE");
   const latestExclusiveHistoryInternal = latestRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING");
-  const latestExclusiveInternal = top5LiveRows.length ? top5LiveRows.filter((row) => Number(row.rank ?? 999) <= 3) : latestExclusiveHistoryInternal;
+  const latestExclusiveInternal = top3LiveProductRows.length ? top3LiveProductRows : latestExclusiveHistoryInternal;
   const exclusivePrevious = top5LiveRows.length ? [] : previousRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING", latestExclusiveInternal[0]?.run_at);
   const latestExclusiveFrozen = latestRun(exclusiveHistory, "EXCLUSIVE_TOP3", "OFFICIAL_FREEZE");
   const latestTop5Rows = rankingRows(latestPremiumInternal, premiumPrevious);
   const latestTop3Rows = rankingRows(latestExclusiveInternal, exclusivePrevious);
   const officialTop5Rows = rankingRows(latestPremiumFrozen, []);
   const officialTop3Rows = rankingRows(latestExclusiveFrozen, []);
-  const firstStartTime = firstStart([...signalLiveRows, ...signalsHistory, ...top5LiveRows, ...top5History, ...activeSignals]);
-  const topSignalLiveRows = topSignalRowsFromTop5(top5LiveRows);
+  const firstStartTime = firstStart([...signalDisplayRows, ...signalsHistory, ...top5LiveRows, ...top5History, ...activeSignals]);
   const topSignalLeader = topSignalLiveRows[0] ?? topSignalTimelineRaw.at(-1) ?? null;
   const officialTopSignalRow = topSignalTimelineRaw.filter((row) => Boolean(row.published)).at(-1) ?? null;
   const topSignalPublishedGameIds = new Set(topSignalTimelineRaw.filter((row) => Boolean(row.published)).map((row) => String(row.game_id)));
@@ -1065,7 +1096,7 @@ export async function GET() {
       })
       .sort((a, b) => (a.currentRank ?? 999) - (b.currentRank ?? 999));
 
-  const signalsWithTop3Rank = signalLiveRows.map((row) => {
+  const signalsWithTop3Rank = signalDisplayRows.map((row) => {
     const top3 = latestTop3Rows.find((item) => item.gameId === row.game_id) ?? officialTop3Rows.find((item) => item.gameId === row.game_id);
     const active = activeSignals.some((item: DbRow) => item.game_id === row.game_id && item.stage === "SIGNALS_DETECTED");
     const superseded = activeSignals.some((item: DbRow) => item.game_id === row.game_id && item.stage === "SUPERSEDED");
@@ -1096,7 +1127,7 @@ export async function GET() {
   });
 
   const activity = [
-    ...signalLiveRows.map((row) => ({
+    ...signalDisplayRows.map((row) => ({
       timestamp: row.run_at,
       engine: "Signals Detected",
       event: "Signals Detected live",
@@ -1232,18 +1263,18 @@ export async function GET() {
 
   const currentPremiumLastRun = latestPremiumInternal[0]?.run_at ?? null;
   const currentExclusiveLastRun = latestExclusiveInternal[0]?.run_at ?? null;
-  const signalsLastRun = signalLiveRows.map((row) => row.run_at).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+  const signalsLastRun = signalDisplayRows.map((row) => row.run_at).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
   const validationLastRun = activePicks.map((row) => row.final_validated_at ?? row.updated_at).filter(Boolean).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
   const staleSourceCount = [...activeSignals, ...activePicks].filter((row) => String(row.status ?? row.stage ?? "").toUpperCase() === "STALE_SOURCE").length;
   const blockedPublications = [...activeSignals, ...activePicks].filter((row) => row.publication_blocked).length;
 
   const healthRows = [
-    { engine: "Signals Detected Engine", lastRun: signalsLastRun, nextRun: "Tomorrow 7:00 AM ET", rowsProcessed: signalLiveRows.length, errors, lastDuration: null },
+    { engine: "Signals Detected Engine", lastRun: signalsLastRun, nextRun: "Tomorrow 7:00 AM ET", rowsProcessed: signalDisplayRows.length, errors, lastDuration: null },
     { engine: "Top 3 Exclusive Engine", lastRun: currentExclusiveLastRun, nextRun: dateTimeET(addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop3Rows.length || officialTop3Rows.length, errors: [], lastDuration: null },
     { engine: "Top 5 Premium Engine", lastRun: currentPremiumLastRun, nextRun: dateTimeET(addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop5Rows.length || officialTop5Rows.length, errors: [], lastDuration: null },
     { engine: "Top Signal Engine", lastRun: topSignalLeader?.run_at ?? null, nextRun: dateTimeET(addMinutes(topSignalLeader?.run_at, ENGINE_RECALC_MINUTES)), rowsProcessed: topSignalLeader ? 1 : 0, errors: [], lastDuration: null },
     { engine: "Validation Engine", lastRun: validationLastRun, nextRun: "30 min before event", rowsProcessed: activePicks.filter((row) => row.final_validated_at).length, errors: [], lastDuration: null },
-    { engine: "Daily Pipeline", lastRun: [signalsLastRun, currentPremiumLastRun, currentExclusiveLastRun, topSignalLeader?.run_at].filter(Boolean).sort().at(-1) ?? null, nextRun: "Hourly", rowsProcessed: signalLiveRows.length + latestTop5Rows.length + latestTop3Rows.length + (topSignalLeader ? 1 : 0), errors, lastDuration: null },
+    { engine: "Daily Pipeline", lastRun: [signalsLastRun, currentPremiumLastRun, currentExclusiveLastRun, topSignalLeader?.run_at].filter(Boolean).sort().at(-1) ?? null, nextRun: "Hourly", rowsProcessed: signalDisplayRows.length + latestTop5Rows.length + latestTop3Rows.length + (topSignalLeader ? 1 : 0), errors, lastDuration: null },
     { engine: "Postgame Grading", lastRun: null, nextRun: "Postgame", rowsProcessed: 0, errors: [], lastDuration: null },
   ].map((row) => ({
     ...row,
@@ -1258,7 +1289,7 @@ export async function GET() {
   }));
 
   const operationsTimeline = [
-    { stage: "Signals Detected Live", scheduledTime: "Live", lastExecution: signalsLastRun, nextExecution: "Per source update", rowsProcessed: signalLiveRows.length, result: signalLiveRows.length ? "Live signals" : "No rows" },
+    { stage: "Signals Detected Live", scheduledTime: "Live", lastExecution: signalsLastRun, nextExecution: "Per source update", rowsProcessed: signalDisplayRows.length, result: signalDisplayRows.length ? "Live signals" : "No rows" },
     { stage: "Exclusive Top 3 Recalculation", scheduledTime: "Hourly", lastExecution: currentExclusiveLastRun, nextExecution: dateTimeET(addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop3Rows.length, result: latestTop3Rows.length ? "Internal ranking" : "No ranking" },
     { stage: "Premium Top 5 Recalculation", scheduledTime: "Hourly", lastExecution: currentPremiumLastRun, nextExecution: dateTimeET(addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES)), rowsProcessed: latestTop5Rows.length, result: latestTop5Rows.length ? "Internal ranking" : "No ranking" },
     { stage: "Top Signal Recalculation", scheduledTime: "Hourly", lastExecution: topSignalLeader?.run_at ?? null, nextExecution: dateTimeET(addMinutes(topSignalLeader?.run_at, ENGINE_RECALC_MINUTES)), rowsProcessed: topSignalLeader ? 1 : 0, result: topSignalLeader?.status ?? "No candidate" },
@@ -1281,13 +1312,13 @@ export async function GET() {
     return counts;
   }, {});
 
-  const sportsAvailable = Array.from(new Set([...signalLiveRows, ...signalsHistory, ...top5LiveRows, ...top5History, ...topSignalTimelineRaw, ...activePicks].map((row) => row.sport).filter(Boolean)));
+  const sportsAvailable = Array.from(new Set([...signalDisplayRows, ...signalsHistory, ...top5LiveRows, ...top5History, ...topSignalTimelineRaw, ...activePicks].map((row) => row.sport).filter(Boolean)));
   const summary = {
     slateDate,
     generatedAt: new Date().toISOString(),
     sportsAvailable,
-    gamesInspected: new Set([...signalsHistory, ...top5LiveRows, ...top5History, ...activeSignals].map((row) => row.game_id).filter(Boolean)).size,
-    signalsDetected: signalLiveRows.length,
+    gamesInspected: new Set([...signalDisplayRows, ...top5LiveRows, ...top5History, ...activeSignals].map((row) => row.game_id).filter(Boolean)).size,
+    signalsDetected: signalDisplayRows.length,
     exclusiveTop3Candidates: latestTop3Rows.length || officialTop3Rows.length,
     premiumTop5Candidates: latestTop5Rows.length || officialTop5Rows.length,
     topSignalCurrentLeader: topSignal?.currentLeader ?? "NO_QUALIFIED_SIGNAL",
@@ -1338,11 +1369,11 @@ export async function GET() {
       },
     },
   };
-  const signalsDetectedSource = sourceMetadata({ engine: "SIGNALS_DETECTED_LIVE", table: "public_signal_live_sources", rows: signalLiveRows, timestampField: "created_at" });
+  const signalsDetectedSource = sourceMetadata({ engine: "SIGNALS_DETECTED_LIVE", table: "public_signal_live_sources", rows: signalDisplayRows, timestampField: "created_at" });
   const exclusiveLiveSource = sourceMetadata({ engine: "EXCLUSIVE_TOP3_LIVE", table: "top5_live_sources", rows: latestExclusiveInternal, timestampField: "created_at" });
   const exclusiveHistorySource = sourceMetadata({ engine: "EXCLUSIVE_TOP3_HISTORY", table: "top5_history", rows: exclusiveHistory });
   const exclusiveSource = top5LiveRows.length ? exclusiveLiveSource : exclusiveHistorySource;
-  const premiumLiveSource = sourceMetadata({ engine: "PREMIUM_TOP5_LIVE", table: "top5_live_sources", rows: top5LiveRows, timestampField: "created_at" });
+  const premiumLiveSource = sourceMetadata({ engine: "PREMIUM_TOP5_LIVE", table: "top5_live_sources", rows: top5LiveProductRows, timestampField: "created_at" });
   const premiumHistorySource = sourceMetadata({ engine: "PREMIUM_TOP5_HISTORY", table: "top5_history", rows: premiumHistory });
   const premiumSource = top5LiveRows.length ? premiumLiveSource : premiumHistorySource;
   const topSignalLiveSource = sourceMetadata({ engine: "TOP_SIGNAL_LIVE", table: "top5_live_sources", rows: topSignalLiveRows, timestampField: "created_at" });
@@ -1362,7 +1393,7 @@ export async function GET() {
     engineRows: latestTop5Rows,
     currentInternalRanking: latestTop5Rows,
     currentRanking: latestTop5Rows,
-    liveRows: rankingRows(top5LiveRows, []),
+    liveRows: rankingRows(top5LiveProductRows, []),
     historyRows: rankingRows(latestPremiumHistoryInternal, []),
     officialRows: officialTop5Rows,
     officialFrozenTop5: officialTop5Rows,
@@ -1379,9 +1410,9 @@ export async function GET() {
       published: officialTop5Rows.some((row) => row.published),
       volatility: marketPulse.top5Volatility,
       rowCount: latestTop5Rows.length || officialTop5Rows.length,
-      liveRowCount: top5LiveRows.length,
+      liveRowCount: top5LiveProductRows.length,
       historyRowCount: latestPremiumHistoryInternal.length,
-      sourceMode: top5LiveRows.length ? "LIVE" : "HISTORY_FALLBACK",
+      sourceMode: top5LiveProductRows.length ? "LIVE" : "HISTORY_FALLBACK",
     },
     lastRecalculation: currentPremiumLastRun,
     nextRecalculation: addMinutes(currentPremiumLastRun, ENGINE_RECALC_MINUTES),
@@ -1408,9 +1439,9 @@ export async function GET() {
       published: officialTop3Rows.some((row) => row.published),
       sourcePool: "SIGNALS_DETECTED",
       rowCount: latestTop3Rows.length || officialTop3Rows.length,
-      liveRowCount: top5LiveRows.length ? latestTop3Rows.length : 0,
+      liveRowCount: top3LiveProductRows.length,
       historyRowCount: latestExclusiveHistoryInternal.length,
-      sourceMode: top5LiveRows.length ? "LIVE" : "HISTORY_FALLBACK",
+      sourceMode: top3LiveProductRows.length ? "LIVE" : "HISTORY_FALLBACK",
     },
     lastRecalculation: currentExclusiveLastRun,
     nextRecalculation: addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES),
@@ -1452,7 +1483,7 @@ export async function GET() {
       signalsDetected: signalsWithTop3Rank,
       productStatus: {
         publication: {
-          signalsPublished: signalLiveRows.length > 0,
+          signalsPublished: signalDisplayRows.length > 0,
           topSignalPublished: Boolean(officialTopSignal),
           top5Published: officialTop5Rows.some((row) => row.published),
           exclusivePublished: officialTop3Rows.some((row) => row.published),
@@ -1469,7 +1500,7 @@ export async function GET() {
     topSignalTimeline,
     premiumTop5: premiumTop5Product,
     premiumTop5Live: {
-      rows: rankingRows(top5LiveRows, []),
+      rows: rankingRows(top5LiveProductRows, []),
       source: premiumLiveSource,
     },
     premiumTop5History: {
