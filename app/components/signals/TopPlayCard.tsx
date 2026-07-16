@@ -66,23 +66,23 @@ export function TopPlayCard({
         }
       }}
       aria-label="Open Top Signal details"
-      className={`h-[112px] cursor-pointer rounded-[20px] border bg-[radial-gradient(circle_at_48px_50%,rgba(250,204,21,0.20),rgba(250,204,21,0.05)_36%,rgba(5,8,22,0.94)_72%)] p-2 shadow-[0_0_22px_rgba(234,179,8,0.12)] transition-all duration-200 active:scale-[0.995] ${
+      className={`h-[112px] cursor-pointer rounded-[20px] border bg-[radial-gradient(circle_at_48px_50%,rgba(251,191,36,0.28),rgba(217,119,6,0.08)_42%,rgba(5,8,22,0.95)_76%)] p-2 shadow-[0_0_26px_rgba(245,158,11,0.18)] transition-all duration-200 active:scale-[0.995] ${
         activeCommerce
-          ? "border-yellow-300 shadow-[0_0_30px_rgba(250,204,21,0.22)]"
+          ? "border-amber-300 shadow-[0_0_34px_rgba(245,158,11,0.30)]"
           : closed
-            ? "border-white/14 opacity-90"
-            : "border-yellow-400/80"
+            ? "border-amber-200/22 opacity-90"
+            : "border-amber-400/85"
       }`}
     >
       <div className="grid h-full grid-cols-[54px_minmax(0,1fr)_102px] items-center gap-2.5">
-        <div className="grid h-[54px] w-[54px] place-items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 shadow-[0_0_26px_rgba(250,204,21,0.24)]">
+        <div className="grid h-[54px] w-[54px] place-items-center rounded-full border border-amber-300/42 bg-amber-300/14 shadow-[0_0_30px_rgba(245,158,11,0.30)]">
           <TrophyIcon />
         </div>
 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-[18px] font-black uppercase tracking-[-0.03em] text-white">Top Signal</h3>
-            <span className="rounded-full bg-cyan-400/14 px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] text-cyan-300">
+            <span className="rounded-full border border-amber-300/25 bg-amber-300/12 px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] text-amber-200">
               All Sports
             </span>
           </div>
@@ -97,16 +97,16 @@ export function TopPlayCard({
           <div className="mt-2.5 flex items-center gap-2">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/40">
               <div
-                className="atlas-progress-stripes h-full rounded-full bg-yellow-300"
+                className="atlas-progress-stripes h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.35)]"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <span className="w-9 text-right text-[13px] font-black text-yellow-300">{progress}%</span>
+            <span className="w-9 text-right text-[13px] font-black text-amber-300">{progress}%</span>
           </div>
         </div>
 
-        <div className="h-full border-l border-white/10 pl-3">
-          <p className="truncate text-[11px] font-black text-yellow-300">{data.status}</p>
+        <div className="h-full border-l border-amber-200/14 pl-3">
+          <p className="truncate text-[11px] font-black text-amber-300">{data.status}</p>
           <p className="mt-2 text-[10px] leading-3 text-white/58">{data.helperText}</p>
           <button
             type="button"
@@ -118,12 +118,12 @@ export function TopPlayCard({
             aria-label={data.actionLabel}
             className={`mt-2.5 inline-flex h-[28px] w-full items-center justify-center gap-1 rounded-full border px-2 text-[9px] font-black transition-all ${
               data.actionTone === "unlock"
-                ? "animate-pulse border-yellow-300/40 bg-yellow-300 text-black shadow-[0_0_14px_rgba(250,204,21,0.28)]"
+                ? "animate-pulse border-amber-200/50 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 text-black shadow-[0_0_16px_rgba(245,158,11,0.34)]"
                 : data.actionTone === "view"
-                  ? "border-cyan-300/35 bg-cyan-300 text-black"
-                  : data.actionTone === "closed"
-                    ? "cursor-not-allowed border-white/10 bg-white/[0.035] text-white/42"
-                    : "border-white/14 bg-white/[0.04] text-white/82"
+                  ? "border-amber-200/50 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 text-black shadow-[0_0_16px_rgba(245,158,11,0.28)]"
+                : data.actionTone === "closed"
+                    ? "cursor-not-allowed border-amber-200/10 bg-amber-200/[0.035] text-white/42"
+                    : "border-amber-200/18 bg-amber-300/[0.07] text-amber-100"
             }`}
           >
             {data.actionTone === "notify" ? <BellIcon /> : null}
