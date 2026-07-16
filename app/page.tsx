@@ -8184,6 +8184,16 @@ function BankrollSummaryCard({ config, metrics }: { config: BankrollConfig | nul
 }
 
 function AtlasPlanUpgradePlaceholder() {
+  const bankrollBenefits = [
+    "Guided bankroll management built around discipline and planning.",
+    "Recommended unit sizing based on the bankroll profile.",
+    "A daily Atlas Plan connected to the user's active package.",
+    "Weekly cycle structure to reinforce consistency.",
+    "Performance visibility for ROI, profit/loss and exposure.",
+    "Educational insights focused on responsible administration.",
+    "Atlas Tracking tools to follow selected Atlas signals separately.",
+  ];
+
   return (
     <BankrollShell className="overflow-hidden px-3 py-3">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_38%)]" />
@@ -8197,11 +8207,11 @@ function AtlasPlanUpgradePlaceholder() {
             <p className="mt-0.5 text-[10px] font-semibold leading-4 text-white/45">Atlas Bankroll teaches responsible planning through a guided weekly framework.</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {["Bankroll Management", "Discipline", "Consistency", "Planning", "Responsible Administration"].map((item) => (
-            <div key={item} className="rounded-[11px] border border-cyan-300/12 bg-cyan-300/[0.035] px-2 py-1.5">
-              <p className="text-[9px] font-black text-cyan-100/76">{item}</p>
-            </div>
+        <div className="rounded-[16px] border border-cyan-300/12 bg-cyan-300/[0.035] px-3 py-2 text-left">
+          {bankrollBenefits.map((item) => (
+            <p key={item} className="py-1 text-[11px] font-semibold leading-4 text-white/62">
+              - {item}
+            </p>
           ))}
         </div>
         <button type="button" className="h-10 rounded-[13px] border border-cyan-300/30 bg-cyan-300 text-[10px] font-black uppercase tracking-[0.12em] text-black shadow-[0_0_18px_rgba(34,211,238,0.18)]">
