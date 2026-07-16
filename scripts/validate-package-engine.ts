@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import {
   buildFinancialPlan,
   buildPlans,
+  getPlanCandidatesForMembership,
+  getTrackingCandidatesForMembership,
   normalizeBankrollConfig,
   syncPlans,
+  type AtlasPackageSources,
   type BankrollConfig,
   type MembershipContext,
 } from "../app/lib/bankroll";
@@ -81,4 +84,94 @@ assert.equal(normalizedConfig.atlasPlanCollection?.plans.length, 0);
 const liveSynced = syncPlans(normalizedConfig.atlasPlanCollection, unlimitedMembership, metrics, now, validationAtlasSources);
 assert.equal(liveSynced.plans.length, 4);
 
+const soccerAdaptiveSources = soccerSources(6, 5);
+const soccerFreeTracking = getTrackingCandidatesForMembership(
+  { package: "free", selectedSport: null, availableSports: ["SOCCER"] },
+  now,
+  soccerAdaptiveSources,
+);
+assert.equal(soccerFreeTracking.length, 2);
+assert.deepEqual(soccerFreeTracking.map((pick) => pick.selection), ["Soccer Signal 5", "Soccer Signal 6"]);
+assert.equal(soccerFreeTracking.every((pick) => pick.source === "signals"), true);
+
+const soccerExclusiveTracking = getTrackingCandidatesForMembership(
+  { package: "exclusive", selectedSport: null, availableSports: ["SOCCER"] },
+  now,
+  soccerAdaptiveSources,
+);
+assert.equal(soccerExclusiveTracking.length, 2);
+assert.deepEqual(soccerExclusiveTracking.map((pick) => pick.selection), ["Soccer Signal 5", "Soccer Signal 6"]);
+assert.equal(soccerExclusiveTracking.every((pick) => pick.source === "top3"), true);
+
+const soccerPremiumCandidates = getPlanCandidatesForMembership(
+  { package: "premium", selectedSport: "SOCCER", availableSports: ["SOCCER"] },
+  now,
+  soccerAdaptiveSources,
+);
+assert.equal(soccerPremiumCandidates.length, 3);
+assert.deepEqual(soccerPremiumCandidates.map((pick) => pick.selection), ["Soccer Signal 2", "Soccer Signal 3", "Soccer Signal 4"]);
+assert.equal(soccerPremiumCandidates.every((pick) => pick.source === "top5"), true);
+
+const soccerUnlimitedCandidates = getPlanCandidatesForMembership(
+  { package: "unlimited", selectedSport: null, availableSports: ["SOCCER"] },
+  now,
+  soccerAdaptiveSources,
+);
+assert.equal(soccerUnlimitedCandidates.length, 3);
+assert.deepEqual(soccerUnlimitedCandidates.map((pick) => pick.selection), ["Soccer Signal 2", "Soccer Signal 3", "Soccer Signal 4"]);
+
+const compactSoccerSources = soccerSources(4, 4);
+assert.equal(getTrackingCandidatesForMembership({ package: "free", selectedSport: null, availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 0);
+assert.equal(getTrackingCandidatesForMembership({ package: "exclusive", selectedSport: null, availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 0);
+assert.equal(getPlanCandidatesForMembership({ package: "premium", selectedSport: "SOCCER", availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 3);
+
 console.log("Package engine validation OK");
+
+function soccerSources(signalCount: number, top5Count: number): AtlasPackageSources {
+  const signals = Array.from({ length: signalCount }, (_, index) => source(
+    `soccer-game-${index + 1}`,
+    "SOCCER",
+    `Soccer Signal ${index + 1}`,
+    "Moneyline",
+    -110 - index,
+    index + 1,
+  ));
+  const top5 = Array.from({ length: top5Count }, (_, index) => source(
+    `soccer-game-${index + 1}`,
+    "SOCCER",
+    `Soccer Signal ${index + 1}`,
+    "Moneyline",
+    -110 - index,
+    index + 1,
+  ));
+
+  return {
+    signals,
+    top3: top5.filter((pick) => (pick.rank ?? 999) <= 3),
+    top5,
+  };
+}
+
+function source(
+  id: string,
+  sport: "MLB" | "NBA" | "NFL" | "NHL" | "SOCCER",
+  selection: string,
+  market: string,
+  odds: number,
+  rank: number,
+) {
+  return {
+    id,
+    sport,
+    league: sport,
+    eventId: id,
+    homeTeam: `${sport} Home`,
+    awayTeam: `${sport} Away`,
+    selection,
+    market,
+    odds,
+    status: "pending" as const,
+    rank,
+    startTime: now,
+  };
+}

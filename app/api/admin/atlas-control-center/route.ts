@@ -461,6 +461,49 @@ function productRowsBySport(rows: DbRow[], maxPerSport: number) {
     });
 }
 
+function adaptivePremiumRowsBySport(rows: DbRow[]) {
+  const counts = new Map<string, number>();
+  return rows
+    .slice()
+    .sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || Number(a.rank ?? 999) - Number(b.rank ?? 999))
+    .filter((row) => {
+      const sport = String(row.sport ?? "ALL");
+      const max = sport === "SOCCER" ? 3 : 5;
+      const count = counts.get(sport) ?? 0;
+      if (count >= max) return false;
+      counts.set(sport, count + 1);
+      return true;
+    });
+}
+
+function exclusiveRowsBySport(top3Rows: DbRow[], signalRows: DbRow[], top5Rows: DbRow[]): DbRow[] {
+  const soccerRankByGameId = new Map(
+    top5Rows
+      .filter((row) => String(row.sport ?? "") === "SOCCER")
+      .map((row) => [rowGameId(row), Number(row.rank ?? 999)]),
+  );
+  const soccerRows: DbRow[] = signalRows
+    .filter((row) => String(row.sport ?? "") === "SOCCER")
+    .slice()
+    .sort((a, b) => {
+      const aRank = soccerRankByGameId.get(rowGameId(a)) ?? Number.POSITIVE_INFINITY;
+      const bRank = soccerRankByGameId.get(rowGameId(b)) ?? Number.POSITIVE_INFINITY;
+      return aRank - bRank || new Date(a.start_time ?? 0).getTime() - new Date(b.start_time ?? 0).getTime();
+    })
+    .slice(0, 3)
+    .map((row, index) => ({
+      ...row,
+      engine: "EXCLUSIVE_TOP3",
+      rank: index + 1,
+      currentRank: index + 1,
+    } as DbRow));
+
+  return [
+    ...top3Rows.filter((row) => String(row.sport ?? "") !== "SOCCER"),
+    ...soccerRows,
+  ].sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || Number(a.rank ?? 999) - Number(b.rank ?? 999));
+}
+
 function rankingMovement(current: ReturnType<typeof rankingRows>, previous: DbRow[]) {
   const currentIds = new Set(current.map((row) => String(row.gameId)));
   const moved = current.map((row) => ({
@@ -916,16 +959,17 @@ export async function GET() {
 
   const topSignalLiveRows = topSignalRowsFromTop5(top5LiveRows);
   const topSignalGameIds = new Set(topSignalLiveRows.map(rowGameId).filter(Boolean));
-  const top5LiveProductRows = productRowsBySport(excludeGameIds(top5LiveRows, topSignalGameIds), 5);
+  const top5LiveProductRows = adaptivePremiumRowsBySport(excludeGameIds(top5LiveRows, topSignalGameIds));
   const top3LiveProductRows = productRowsBySport(top5LiveProductRows, 3);
   const productGameIds = new Set([...topSignalLiveRows, ...top5LiveProductRows].map(rowGameId).filter(Boolean));
   const signalDisplayRows = excludeGameIds(signalLiveRows, productGameIds);
+  const exclusiveLiveProductRows = exclusiveRowsBySport(top3LiveProductRows, signalDisplayRows, top5LiveRows);
   const latestPremiumHistoryInternal = latestRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING");
   const latestPremiumInternal = top5LiveProductRows.length ? top5LiveProductRows : latestPremiumHistoryInternal;
   const premiumPrevious = top5LiveRows.length ? [] : previousRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
   const latestPremiumFrozen = latestRun(premiumHistory, "PREMIUM_TOP5", "OFFICIAL_FREEZE");
   const latestExclusiveHistoryInternal = latestRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING");
-  const latestExclusiveInternal = top3LiveProductRows.length ? top3LiveProductRows : latestExclusiveHistoryInternal;
+  const latestExclusiveInternal = exclusiveLiveProductRows.length ? exclusiveLiveProductRows : latestExclusiveHistoryInternal;
   const exclusivePrevious = top5LiveRows.length ? [] : previousRun(exclusiveHistory, "EXCLUSIVE_TOP3", "INTERNAL_RANKING", latestExclusiveInternal[0]?.run_at);
   const latestExclusiveFrozen = latestRun(exclusiveHistory, "EXCLUSIVE_TOP3", "OFFICIAL_FREEZE");
   const latestTop5Rows = rankingRows(latestPremiumInternal, premiumPrevious);
@@ -1439,9 +1483,9 @@ export async function GET() {
       published: officialTop3Rows.some((row) => row.published),
       sourcePool: "SIGNALS_DETECTED",
       rowCount: latestTop3Rows.length || officialTop3Rows.length,
-      liveRowCount: top3LiveProductRows.length,
+      liveRowCount: exclusiveLiveProductRows.length,
       historyRowCount: latestExclusiveHistoryInternal.length,
-      sourceMode: top3LiveProductRows.length ? "LIVE" : "HISTORY_FALLBACK",
+      sourceMode: exclusiveLiveProductRows.length ? "LIVE" : "HISTORY_FALLBACK",
     },
     lastRecalculation: currentExclusiveLastRun,
     nextRecalculation: addMinutes(currentExclusiveLastRun, ENGINE_RECALC_MINUTES),
