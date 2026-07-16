@@ -864,7 +864,7 @@ function buildTopPlayViewModel(data?: SignalsHomePrecisionResponse | null): TopP
       helperText: "Unlocked for today",
       actionLabel: "View Pick",
       actionTone: "view",
-      pickLabel: data?.pick?.pickLabel ?? "Top Play unlocked",
+      pickLabel: data?.pick?.pickLabel ?? "Top Signal unlocked",
       pickMeta: formatPickMeta(data),
     };
   }
@@ -873,7 +873,7 @@ function buildTopPlayViewModel(data?: SignalsHomePrecisionResponse | null): TopP
     return {
       status: "No Play",
       progressPercent: 100,
-      helperText: "No Top Play Today",
+      helperText: "No Top Signal Today",
       actionLabel: "No Play",
       actionTone: "closed",
     };
@@ -883,7 +883,7 @@ function buildTopPlayViewModel(data?: SignalsHomePrecisionResponse | null): TopP
     return {
       status: "Closed",
       progressPercent: 100,
-      helperText: "Today's Top Play Closed",
+      helperText: "Today's Top Signal Closed",
       actionLabel: "Closed",
       actionTone: "closed",
     };
@@ -1280,7 +1280,7 @@ function FrameTopPlayCard({
       </div>
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate text-[17px] font-black uppercase tracking-[-0.02em] text-white">TOP PLAY</p>
+          <p className="truncate text-[17px] font-black uppercase tracking-[-0.02em] text-white">TOP SIGNAL</p>
           <span className="rounded-full bg-cyan-400/13 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-300">
             ALL SPORTS
           </span>

@@ -363,7 +363,7 @@ function TopPlayMockCard() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-[17px] font-black leading-none tracking-wide">TOP PLAY</h2>
+            <h2 className="text-[17px] font-black leading-none tracking-wide">TOP SIGNAL</h2>
             <span className="rounded-full bg-cyan-500/14 px-2 py-1 text-[10px] font-black tracking-wide text-cyan-300">
               ALL SPORTS
             </span>
@@ -505,7 +505,7 @@ function TodayActivityPanel() {
     { label: "In Review", value: "5", color: "#35b7ff", icon: "search" },
     { label: "Strong\nCandidates", value: "0", color: "#c058ff", icon: "trend" },
     { label: "Final Review", value: "0", color: "#ff6fd8", icon: "target" },
-    { label: "Top Play", value: "0", color: "#ffc400", icon: "trophy" },
+    { label: "Top Signal", value: "0", color: "#ffc400", icon: "trophy" },
   ];
 
   return (
@@ -530,7 +530,7 @@ function SignalsMockContent() {
   return (
     <div className="pointer-events-auto absolute inset-x-0 bottom-[112px] top-[33.1%] z-20 overflow-y-auto px-3 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="space-y-2">
-        <h2 className="pb-1.5 pt-2 text-[15px] font-black tracking-[0.16em] text-cyan-300">TOP PLAY</h2>
+        <h2 className="pb-1.5 pt-2 text-[15px] font-black tracking-[0.16em] text-cyan-300">TOP SIGNAL</h2>
         <TopPlayMockCard />
 
         <h2 className="pt-0.5 text-[15px] font-black tracking-[0.16em] text-cyan-300">TOP SIGNALS</h2>

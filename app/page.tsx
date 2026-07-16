@@ -2589,14 +2589,17 @@ const subscriptionPackPlans: PackPlan[] = [
     price: "$34.99",
     icon: "★",
     tone: "bronze",
-    description: "Top 3 ranked Signals Detected across all available sports.",
+    description: "Focused ranked intelligence for one selected sport.",
     included: [
-      "All Available Sports",
-      "Top 3 Signals Detected",
-      "Ranked Signals",
-      "Live Status Updates",
+      "One Selected Sport",
+      "Up to 3 Official Ranked Signals",
+      "Official Signal Rankings",
+      "Market Impact Access",
+      "Atlas Bankroll Access",
+      "Signal History",
+      "Closing Status",
+      "Live Updates",
     ],
-    locked: ["Top Signal sold separately"],
     cta: "Choose Exclusive",
   },
   {
@@ -2606,14 +2609,18 @@ const subscriptionPackPlans: PackPlan[] = [
     icon: "◎",
     tone: "blue",
     badge: "Recommended",
-    description: "Up to 5 official ranked Atlas Signals for one selected sport.",
+    description: "Unlock Atlas official intelligence for one selected sport.",
     included: [
-      "Choose Your Sport",
-      "Up to 5 Official Signals",
-      "Ranked Signals",
-      "Live Status Updates",
+      "One Selected Sport",
+      "Official Top Signal",
+      "Official Ranked Signals",
+      "Atlas AI Rankings",
+      "Market Impact Access",
+      "Atlas Bankroll Access",
+      "Signal History",
+      "Closing Status",
+      "Live Updates",
     ],
-    locked: ["Top Signal sold separately"],
     cta: "Choose Premium",
   },
   {
@@ -2622,14 +2629,19 @@ const subscriptionPackPlans: PackPlan[] = [
     price: "$99.99",
     icon: "◆",
     tone: "purple",
-    description: "Up to 5 official ranked Atlas Signals for every available sport.",
+    description: "Complete access across every available Atlas sport.",
     included: [
-      "All Available Sports",
-      "Up to 5 Per Sport",
-      "Ranked Signals",
-      "Auto-Includes New Sports",
+      "Every Available Sport",
+      "Official Top Signal for Every Available Sport",
+      "Official Ranked Signals for Every Available Sport",
+      "Atlas AI Rankings",
+      "Market Impact Access",
+      "Atlas Bankroll Access",
+      "Signal History",
+      "Closing Status",
+      "Live Updates",
+      "Automatic Access to New Sports",
     ],
-    locked: ["Top Signal sold separately"],
     cta: "Choose Unlimited",
   },
 ];
@@ -2837,20 +2849,20 @@ function CompactTopPlayCard({
           </div>
           <div className="mt-1 flex items-end gap-2">
             <h3 className="text-[18px] font-black uppercase tracking-[0.14em] text-white">
-              Top Play
+              Top Signal
             </h3>
             <p className="pb-0.5 text-[12px] font-semibold text-white/55">
               $149.99 / day
             </p>
           </div>
           <p className="mt-1 text-[10px] leading-4 text-white/62">
-            The strongest Atlas pick of the day across every available sport.
+            The highest-rated official Atlas Signal available today.
           </p>
         </div>
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-[8.5px] leading-3 text-white/70">
-        {["#1 daily pick", "Highest confidence", "Expert analysis"].map((item) => (
+        {["Daily Signal", "Final validation", "Official analysis"].map((item) => (
           <div key={item} className="flex items-center gap-1">
             <span className="flex h-3 w-3 shrink-0 items-center justify-center rounded-full border border-cyan-300/70 text-[7px] text-cyan-300">
               ✓
@@ -2866,7 +2878,7 @@ function CompactTopPlayCard({
         disabled={disabled}
         className="mt-3 flex w-full items-center justify-center rounded-[13px] bg-gradient-to-r from-cyan-400 to-cyan-300 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.16em] text-black shadow-[0_0_18px_rgba(34,211,238,0.24)] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Get Top Play
+        Get Top Signal
       </button>
     </article>
   );
@@ -2941,7 +2953,7 @@ function StripeTrustBar() {
         </div>
       </div>
       <p className="mt-2 text-center text-[9px] font-semibold text-cyan-300/75">
-        Trusted by serious bettors. Built for winners.
+        Built for disciplined Signal tracking.
       </p>
     </div>
   );
@@ -2963,19 +2975,19 @@ const dailyProductCards: DailyProductCard[] = [
   {
     product: "top_play",
     badge: "Best of all sports",
-    name: "TOP PLAY",
-    title: "Best pick across all sports",
+    name: "TOP SIGNAL",
+    title: "Highest-rated official Signal",
     price: "$149.99",
     period: "day",
     tone: "cyan",
     features: [
-      "The #1 pick of the day across all sports",
-      "Highest confidence rating",
-      "Expert analysis & reasoning",
-      "Daily pick delivered",
-      "Maximize your edge",
+      "One official Top Signal",
+      "Final market validation",
+      "Official Atlas analysis",
+      "Daily access",
+      "Signal tracking enabled",
     ],
-    cta: "Get Top Play",
+    cta: "Get Top Signal",
   },
   {
     product: "top_signal_mlb",
@@ -3172,7 +3184,7 @@ function getPrecisionActionLabel(
   if (data.noPlayReason || data.status === "no_play") return "No Play Today";
   if (data.canRevealPick && data.pick) return "Unlocked";
   if (data.availableForPurchase) {
-    return product === "top_play" ? "Unlock Top Play" : "Unlock Top Signal";
+    return "Unlock Top Signal";
   }
   if (data.status === "locked") return "Locked";
 
@@ -3293,7 +3305,7 @@ function PrecisionTopPlayOpportunity({
         <div className="grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-full bg-yellow-400/10 shadow-[0_0_26px_rgba(250,204,21,0.26)]">
           <img
             src="/sport-marks/top-play.png"
-            alt="Top Play"
+            alt="Top Signal"
             className="h-full w-full object-cover"
           />
         </div>
@@ -3301,14 +3313,14 @@ function PrecisionTopPlayOpportunity({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-[18px] font-black uppercase tracking-tight text-white">
-              Top Play
+              Top Signal
             </h3>
             <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.10em] text-cyan-300">
               All Sports
             </span>
           </div>
           <p className="mt-1 truncate text-[12px] leading-4 text-white/62">
-            Atlas is comparing every sport.
+            Atlas is validating official Signals.
           </p>
 
           <div className="mt-3 flex items-center gap-2">
@@ -3432,7 +3444,7 @@ function SignalsActivitySummary({
           ["⌕", underReview, "Under Review", "text-cyan-300"],
           ["↗", strongCandidates, "Strong Candidates", "text-cyan-300"],
           ["◎", finalReview, "Final Review", "text-fuchsia-300"],
-          ["🏆", topPlay ? 1 : 0, "Top Play", "text-yellow-300"],
+          ["🏆", topPlay ? 1 : 0, "Top Signal", "text-yellow-300"],
         ].map(([icon, value, label, color]) => (
           <div key={String(label)} className="px-1">
             <p className={`text-[17px] ${color}`}>{icon}</p>
@@ -4294,7 +4306,7 @@ async function handleTopPlayCommerceAction(): Promise<PrecisionUnlockResult> {
   }
 
   if (data?.status === "no_play") {
-    return { status: "error", message: "No Top Play Today." };
+    return { status: "error", message: "No Top Signal Today." };
   }
 
   const closed =
@@ -4304,7 +4316,7 @@ async function handleTopPlayCommerceAction(): Promise<PrecisionUnlockResult> {
       data.minutesToKickoff <= 0);
 
   if (closed) {
-    return { status: "error", message: "Today's Top Play is closed." };
+    return { status: "error", message: "Today's Top Signal is closed." };
   }
 
   const canUnlock =
@@ -4318,7 +4330,7 @@ async function handleTopPlayCommerceAction(): Promise<PrecisionUnlockResult> {
   }
 
   if (data?.status && data.status !== "available_now") {
-    return { status: "error", message: "Top Play is not available yet." };
+    return { status: "error", message: "Top Signal is not available yet." };
   }
 
   return { status: "error", message: "Product is not available." };
@@ -10773,10 +10785,11 @@ const homeMembershipPlans = [
     plan: "exclusive" as const,
     title: "Exclusive",
     price: "$34.99",
-    subtitle: "All Available Sports",
-    featureTitle: "Ranked Top 3",
-    featureSubtitle: "Signals Detected",
-    features: ["All Available Sports", "Top 3 Signals Detected", "Ranked Signals", "Live Status Updates", "Signal History"],
+    subtitle: "One Selected Sport",
+    featureTitle: "Up to 3",
+    featureSubtitle: "Official Ranked Signals",
+    value: "Focused ranked intelligence for one selected sport.",
+    features: ["One Selected Sport", "Up to 3 Official Ranked Signals", "Official Signal Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
     cta: "Get Exclusive",
     accent: "cyan" as const,
   },
@@ -10784,10 +10797,11 @@ const homeMembershipPlans = [
     plan: "premium" as const,
     title: "Premium",
     price: "$59.99",
-    subtitle: "Choose Your Sport",
-    featureTitle: "Up to 5 Official",
-    featureSubtitle: "Ranked Signals",
-    features: ["Choose 1 Sport", "Up to 5 Official Signals", "Ranked Signals", "Live Status Updates", "Signal History"],
+    subtitle: "One Selected Sport",
+    featureTitle: "Top Signal +",
+    featureSubtitle: "Official Ranked Signals",
+    value: "Unlock Atlas official intelligence for one selected sport.",
+    features: ["One Selected Sport", "Official Top Signal", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
     cta: "Get Premium",
     accent: "gold" as const,
     badge: "Most Popular",
@@ -10797,9 +10811,10 @@ const homeMembershipPlans = [
     title: "Atlas Unlimited",
     price: "$99.99",
     subtitle: "All Available Sports",
-    featureTitle: "Up to 5 Official",
-    featureSubtitle: "For Every Sport",
-    features: ["All Available Sports", "Up to 5 Per Sport", "Ranked Signals", "Auto-Includes New Sports", "Signal History"],
+    featureTitle: "All Sports",
+    featureSubtitle: "Top Signals + Ranked Signals",
+    value: "Complete access across every available Atlas sport.",
+    features: ["Every Available Sport", "Official Top Signal for Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
     cta: "Get Unlimited",
     accent: "purple" as const,
   },
@@ -10873,7 +10888,7 @@ const subscriptionPlansBoard = (
         <span className="h-px bg-cyan-300/22" />
       </div>
       <p className="mt-1.5 text-[10.5px] font-semibold text-white/50">
-        Pick the plan that matches your game.
+        Choose the Atlas intelligence level that matches your strategy.
       </p>
     </div>
 
@@ -10929,6 +10944,10 @@ const subscriptionPlansBoard = (
               <p className="text-[9px] font-black leading-tight text-white">{plan.featureTitle}</p>
               <p className={`mt-0.5 text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
             </div>
+
+            <p className="mt-1.5 text-center text-[7.5px] font-semibold leading-tight text-white/58">
+              {plan.value}
+            </p>
 
             <div className="mt-2 grid grid-cols-1 gap-0.5">
               {plan.features.map((feature) => (
@@ -11141,35 +11160,38 @@ const subscriptionPlansBoard = (
     const joinPlans = [
       {
         plan: "exclusive" as const,
-        title: "Exclusive",
+        title: "EXCLUSIVE",
         price: "$34.99",
-        subtitle: "Choose Your Sport",
-        featureTitle: "Not Ranked Top 3",
-        featureSubtitle: "One Sport Focus",
-        features: ["Choose 1 Sport", "Top 3 Signals", "Not Ranked", "Signal History", "Closing Status"],
+        subtitle: "One Selected Sport",
+        featureTitle: "Up to 3",
+        featureSubtitle: "Official Ranked Signals",
+        value: "Focused ranked intelligence for one selected sport.",
+        features: ["One Selected Sport", "Up to 3 Official Ranked Signals", "Official Signal Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
         cta: "Get Exclusive",
         accent: "cyan" as const,
       },
       {
         plan: "premium" as const,
-        title: "Premium",
+        title: "PREMIUM",
         price: "$59.99",
-        subtitle: "Choose Your Sport",
-        featureTitle: "Ranked Top 3",
-        featureSubtitle: "Best to Worst",
-        features: ["Choose 1 Sport", "Ranked Top 3", "Best to Worst", "Atlas AI Ranking", "Signal History", "Closing Status"],
+        subtitle: "One Selected Sport",
+        featureTitle: "Top Signal +",
+        featureSubtitle: "Official Ranked Signals",
+        value: "Unlock Atlas official intelligence for one selected sport.",
+        features: ["One Selected Sport", "Official Top Signal", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates"],
         cta: "Get Premium",
         accent: "gold" as const,
         badge: "Most Popular",
       },
       {
         plan: "unlimited" as const,
-        title: "Atlas Unlimited",
+        title: "ATLAS UNLIMITED",
         price: "$99.99",
         subtitle: "All Available Sports",
-        featureTitle: "Up to 5 Official",
-        featureSubtitle: "For Every Sport",
-        features: ["All Available Sports", "Up to 5 Per Sport", "Ranked Signals", "Auto-Includes New Sports", "Signal History", "Closing Status"],
+        featureTitle: "All Sports",
+        featureSubtitle: "Top Signals + Ranked Signals",
+        value: "Complete access to the Atlas Intelligence ecosystem across every available sport.",
+        features: ["Every Available Sport", "Official Top Signal for Every Available Sport", "Official Ranked Signals for Every Available Sport", "Atlas AI Rankings", "Market Impact Access", "Atlas Bankroll Access", "Signal History", "Closing Status", "Live Updates", "Automatic Access to New Sports"],
         cta: "Get Unlimited",
         accent: "purple" as const,
       },
@@ -11201,13 +11223,14 @@ const subscriptionPlansBoard = (
       },
     };
     const comparisonRows = [
-      ["Choose 1 Sport", "✓", "✓", "✓"],
-      ["Top 3 Signals", "✓", "✓", "✓"],
-      ["Ranked (Best to Worst)", "×", "✓", "✓"],
-      ["All Active Sports", "×", "×", "✓"],
-      ["Auto-Includes New Sports", "×", "×", "✓"],
-      ["Signal History", "✓", "✓", "✓"],
-      ["Closing Status", "✓", "✓", "✓"],
+      ["Selected Sports", "1", "1", "All", "1"],
+      ["Official Ranked Signals", "Up to 3", "Yes", "All Sports", "No"],
+      ["Official Top Signal", "No", "Yes", "Every Sport", "1 Daily"],
+      ["Market Impact", "Yes", "Yes", "Yes", "No"],
+      ["Atlas Bankroll", "Yes", "Yes", "Yes", "Purchased Signal Only"],
+      ["Signal History", "Yes", "Yes", "Yes", "Purchased Signals"],
+      ["Live Updates", "Yes", "Yes", "Yes", "Yes"],
+      ["Billing Type", "Monthly", "Monthly", "Monthly", "One-Time Daily"],
     ];
     function JoinIcon({ type, className = "" }: { type: "star" | "crown" | "diamond"; className?: string }) {
       if (type === "crown") {
@@ -11458,10 +11481,11 @@ const subscriptionPlansBoard = (
             <section className="text-center">
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
                 <span className="h-px bg-cyan-300/22" />
-                <h2 className="text-[15px] font-black uppercase tracking-[0.24em] text-cyan-300">Choose Your Plan</h2>
+                <h2 className="text-[22px] font-black uppercase tracking-[0.08em] text-white">Choose Your Plan</h2>
                 <span className="h-px bg-cyan-300/22" />
               </div>
-              <p className="mt-2 text-[11px] font-semibold text-white/50">Pick the plan that matches your game.</p>
+              <p className="mt-2 text-[11px] font-semibold text-white/58">Choose the Atlas intelligence level that matches your strategy.</p>
+              <p className="mt-1 text-[10px] font-semibold text-cyan-100/50">Track Signals, access official rankings and manage your activity with Atlas tools.</p>
 
               <div className="mt-3 grid grid-cols-3 gap-1.5">
                 {joinPlans.map((plan) => {
@@ -11499,6 +11523,10 @@ const subscriptionPlansBoard = (
                         <p className={`mt-0.5 text-[8px] font-black leading-tight ${styles.text}`}>{plan.featureSubtitle}</p>
                       </div>
 
+                      <p className="mt-1.5 text-center text-[7.5px] font-semibold leading-tight text-white/58">
+                        {plan.value}
+                      </p>
+
                       <div className="mt-2 grid grid-cols-1 gap-0.5">
                         {plan.features.map((feature) => (
                           <p key={feature} className="grid grid-cols-[9px_1fr] gap-1 text-[7.5px] font-semibold leading-tight text-white/76">
@@ -11529,79 +11557,56 @@ const subscriptionPlansBoard = (
               </div>
             </section>
 
-            <section className="rounded-[14px] border border-white/10 bg-black/20 p-1.5">
-              <div className="mb-1.5 flex items-center justify-center gap-1.5">
-                <span className="h-px flex-1 bg-white/10" />
-                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/86">Premium Add-ons</p>
-                <span className="text-[6.5px] font-black uppercase tracking-[0.06em] text-white/40">Not included</span>
-                <span className="h-px flex-1 bg-white/10" />
+            <section className="rounded-[18px] border border-purple-300/45 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.18),rgba(168,85,247,0.04)_42%,rgba(5,8,22,0.92))] p-3 shadow-[0_0_24px_rgba(168,85,247,0.14)]">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="rounded-full border border-purple-300/45 bg-purple-400/12 px-3 py-1 text-[8px] font-black uppercase tracking-[0.12em] text-purple-200">Daily Access</span>
+                <span className="text-right text-[8px] font-black uppercase tracking-[0.10em] text-white/42">One-Time Daily Access</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!authSession.authenticated) {
-                      setJoinAuthMode("signup");
-                      setJoinAuthOpen(true);
-                      setJoinAuthMessage({
-                        tone: "info",
-                        title: "Create your account first.",
-                        body: "Sign up here, then unlock Top Signal inside Atlas Signals.",
-                      });
-                      return;
-                    }
-
-                    void handleSubscribe(topSignalProductForSport(selectedPackSport), selectedPackSport);
-                  }}
-                  disabled={checkoutPlan !== null}
-                  className="min-h-[112px] rounded-[14px] border border-purple-300/35 bg-purple-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(192,132,252,0.10)] disabled:opacity-60"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-purple-300/40 bg-purple-300/10 text-purple-200">
-                      <JoinIcon type="star" className="h-5 w-5" />
-                    </span>
-                    <div className="text-left">
-                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-purple-300">Top Signal</p>
-                      <p className="text-[15px] font-black text-white">$24.99 <span className="text-[8px] text-white/50">/ day</span></p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The #1 strongest signal of the day for a specific sport.</p>
-                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-purple-300/45 px-2 py-1 text-[8px] font-black uppercase text-purple-200">Unlock</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!authSession.authenticated) {
-                      setJoinAuthMode("signup");
-                      setJoinAuthOpen(true);
-                      setJoinAuthMessage({
-                        tone: "info",
-                        title: "Create your account first.",
-                        body: "Sign up here, then unlock Top Play inside Atlas Signals.",
-                      });
-                      return;
-                    }
-
-                    void handleSubscribe("top_play");
-                  }}
-                  disabled={checkoutPlan !== null}
-                  className="min-h-[112px] rounded-[14px] border border-amber-300/35 bg-amber-400/[0.055] p-2 text-center shadow-[0_0_14px_rgba(251,191,36,0.10)] disabled:opacity-60"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-amber-300/40 bg-amber-300/10 text-amber-200">
-                      <JoinIcon type="crown" className="h-5 w-5" />
-                    </span>
-                    <div className="text-left">
-                      <p className="text-[9.5px] font-black uppercase tracking-[0.06em] text-amber-300">Top Play</p>
-                      <p className="text-[15px] font-black text-white">$149.99</p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[8px] font-semibold leading-tight text-white/68">The highest-conviction play selected by Atlas Signals.</p>
-                  <span className="mt-2 inline-flex w-full justify-center rounded-[9px] border border-amber-300/45 px-2 py-1 text-[8px] font-black uppercase text-amber-200">Unlock</span>
-                </button>
+              <div className="grid grid-cols-[54px_1fr_auto] items-center gap-3">
+                <span className="grid h-[54px] w-[54px] place-items-center rounded-full border border-purple-300/45 bg-purple-400/12 text-purple-200 shadow-[0_0_22px_rgba(168,85,247,0.22)]">
+                  <JoinIcon type="star" className="h-8 w-8" />
+                </span>
+                <div className="min-w-0 text-left">
+                  <h3 className="text-[22px] font-black uppercase leading-none text-white">Top Signal</h3>
+                  <p className="mt-1 text-[11px] font-black text-purple-200">One Selected Sport · Daily Access</p>
+                  <p className="mt-1 inline-flex rounded-[9px] border border-purple-300/45 bg-purple-400/10 px-2 py-1 text-[8px] font-black uppercase tracking-[0.08em] text-purple-100">Atlas Highest-Rated Official Signal</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[24px] font-black text-white">$24.99</p>
+                  <p className="text-[10px] font-semibold text-white/58">/ day</p>
+                </div>
               </div>
+              <p className="mt-3 text-[10px] font-semibold leading-4 text-white/64">Unlock today's highest-rated official Atlas Signal after final market validation.</p>
+              <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-left">
+                {["One Official Top Signal", "One Selected Sport", "Final Market Validation", "Official Atlas Analysis", "Atlas Bankroll Access", "Purchased Signal History", "Closing Status", "Live Updates"].map((feature) => (
+                  <p key={feature} className="grid grid-cols-[12px_1fr] gap-1 text-[9px] font-semibold leading-3 text-white/74">
+                    <span className="text-purple-300">✓</span>
+                    <span>{feature}</span>
+                  </p>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!authSession.authenticated) {
+                    setJoinAuthMode("signup");
+                    setJoinAuthOpen(true);
+                    setJoinAuthMessage({
+                      tone: "info",
+                      title: "Create your account first.",
+                      body: "Sign up here, then unlock Top Signal inside Atlas Signals.",
+                    });
+                    return;
+                  }
+
+                  void handleSubscribe(topSignalProductForSport(selectedPackSport), selectedPackSport);
+                }}
+                disabled={checkoutPlan !== null}
+                className="mt-3 h-11 w-full rounded-[13px] border border-purple-300/55 bg-purple-500/55 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-[0_0_20px_rgba(168,85,247,0.20)] disabled:opacity-60"
+              >
+                Unlock Top Signal
+              </button>
+              <p className="mt-2 text-center text-[9px] font-semibold leading-3 text-purple-100/62">Bankroll tracking is enabled for your purchased Top Signals.</p>
             </section>
 
             <section>
@@ -11610,22 +11615,24 @@ const subscriptionPlansBoard = (
                 <h2 className="text-[15px] font-black uppercase tracking-[0.24em] text-cyan-300">Compare Plans</h2>
                 <span className="h-px bg-cyan-300/20" />
               </div>
-              <div className="mt-3 overflow-hidden rounded-[16px] border border-white/12 bg-cyan-300/[0.035] text-[10px]">
-                <div className="grid grid-cols-[1.35fr_1fr_1fr_1fr] border-b border-white/10 text-center font-black uppercase tracking-[0.08em]">
+              <div className="mt-3 overflow-hidden rounded-[16px] border border-white/12 bg-cyan-300/[0.035] text-[9px]">
+                <div className="grid grid-cols-[1.28fr_0.82fr_0.82fr_0.92fr_0.95fr] border-b border-white/10 text-center font-black uppercase tracking-[0.04em]">
                   <div className="px-2 py-3 text-left text-cyan-300">Features</div>
                   <div className="px-2 py-3 text-cyan-300">Exclusive</div>
                   <div className="relative px-2 py-3 text-amber-300">
                     <span className="absolute left-1/2 top-[-9px] -translate-x-1/2 rounded-full bg-amber-300 px-2 py-0.5 text-[6px] text-black">Most Popular</span>
                     Premium
                   </div>
-                  <div className="px-2 py-3 text-purple-300">Elite</div>
+                  <div className="px-2 py-3 text-purple-300">Unlimited</div>
+                  <div className="px-2 py-3 text-violet-300">Top Signal</div>
                 </div>
-                {comparisonRows.map(([feature, exclusive, premium, elite]) => (
-                  <div key={feature} className="grid grid-cols-[1.35fr_1fr_1fr_1fr] border-b border-white/8 last:border-b-0">
-                    <div className="px-2 py-2.5 font-semibold text-white/72">{feature}</div>
-                    <div className={`px-2 py-2.5 text-center text-[16px] font-black ${exclusive === "✓" ? "text-cyan-300" : "text-white/34"}`}>{exclusive}</div>
-                    <div className={`px-2 py-2.5 text-center text-[16px] font-black ${premium === "✓" ? "text-amber-300" : "text-white/34"}`}>{premium}</div>
-                    <div className={`px-2 py-2.5 text-center text-[16px] font-black ${elite === "✓" ? "text-purple-300" : "text-white/34"}`}>{elite}</div>
+                {comparisonRows.map(([feature, exclusive, premium, unlimited, topSignal]) => (
+                  <div key={feature} className="grid grid-cols-[1.28fr_0.82fr_0.82fr_0.92fr_0.95fr] border-b border-white/8 last:border-b-0">
+                    <div className="px-1.5 py-2.5 font-semibold text-white/72">{feature}</div>
+                    <div className="px-1 py-2.5 text-center font-black text-cyan-300">{exclusive}</div>
+                    <div className="px-1 py-2.5 text-center font-black text-amber-300">{premium}</div>
+                    <div className="px-1 py-2.5 text-center font-black text-purple-300">{unlimited}</div>
+                    <div className="px-1 py-2.5 text-center font-black text-violet-300">{topSignal}</div>
                   </div>
                 ))}
               </div>
@@ -11642,8 +11649,8 @@ const subscriptionPlansBoard = (
                   },
                   {
                     icon: "trophy" as const,
-                    title: "Winning Edge",
-                    body: "AI-powered analysis for sharp results",
+                    title: "Atlas Intelligence",
+                    body: "AI-powered analysis for Signal clarity",
                     tone: "border-amber-300/28 bg-amber-300/10 text-amber-300",
                   },
                   {
@@ -11821,7 +11828,7 @@ const subscriptionPlansBoard = (
                   </h2>
 
                   <p className="mt-2 text-sm leading-6 text-white/70">
-                    Atlas is still monitoring the active sports board. Top Signal and Top Play continue to update above through the Precision Engine.
+                    Atlas is still monitoring the active sports board. Top Signal continues to update through the Precision Engine.
                   </p>
                 </div>
               ) : isUnavailableSport(selectedSport) ? (
@@ -12042,8 +12049,7 @@ const subscriptionPlansBoard = (
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-white/70">
-                Packs do not include Top Signal or Top Play. Unlock a daily Top Signal
-                by sport, or get the strongest Atlas pick of the day with Top Play.
+                Unlock a daily Top Signal by sport when you want one-time access to Atlas highest-rated official Signal.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -12052,9 +12058,6 @@ const subscriptionPlansBoard = (
                 </span>
                 <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
                   Top Signal $24.99
-                </span>
-                <span className="rounded-full bg-white/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-white/75">
-                  Top Play $149.99
                 </span>
               </div>
 
@@ -12068,11 +12071,11 @@ const subscriptionPlansBoard = (
 
               <button
                 type="button"
-                onClick={() => handleSubscribe("top_play")}
+                onClick={() => handleSubscribe(topSignalProductForSport(selectedSport === "TOP" ? selectedPackSport : selectedSport), selectedSport === "TOP" ? selectedPackSport : selectedSport)}
                 disabled={checkoutPlan !== null}
                 className="mt-5 w-full rounded-[18px] bg-cyan-500 px-4 py-3 text-sm font-bold text-black transition-all disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Unlock Top Play ($149.99)
+                Unlock Top Signal ($24.99)
               </button>
             </div>
           )
@@ -13619,7 +13622,7 @@ const subscriptionPlansBoard = (
                   </h2>
                 </div>
                 <p className="text-right text-[9px] font-bold leading-3 text-white/42">
-                  Top Signal and Top Play stay separate.
+                  Top Signal daily access stays separate.
                 </p>
               </div>
 

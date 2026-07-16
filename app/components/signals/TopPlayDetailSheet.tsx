@@ -114,32 +114,32 @@ export function TopPlayDetailSheet({
 
   if (!rendered) return null;
 
-  let title = "Top Play";
+  let title = "Top Signal";
   let subtitle = "Atlas is analyzing every sport.";
   let message = "Atlas is still comparing the strongest opportunities across all sports.";
   let cta = "Notify Me";
   let ctaDisabled = false;
 
   if (noPlay) {
-    title = "No Top Play Today";
+    title = "No Top Signal Today";
     subtitle = "Atlas Precision Engine";
     message = "Atlas did not find a strong enough opportunity across all sports today.";
     cta = "Close";
   } else if (closed) {
-    title = "Today's Top Play Closed";
+    title = "Today's Top Signal Closed";
     subtitle = canReveal ? "Unlocked" : "Market window closed";
-    message = "This Top Play is no longer available for purchase.";
+    message = "This Top Signal is no longer available for purchase.";
     cta = canReveal ? "View Pick" : "Close";
   } else if (canReveal) {
-    title = "Top Play";
+    title = "Top Signal";
     subtitle = "Unlocked";
     message = "Today's strongest opportunity is unlocked for this account.";
     cta = "View Pick";
   } else if (available) {
-    title = "Top Play Available";
+    title = "Top Signal Available";
     subtitle = "The strongest opportunity across all sports is ready.";
-    message = "Unlock today's Top Play to view the full pick.";
-    cta = "Unlock Top Play — $149.99";
+    message = "Unlock today's Top Signal to view the full pick.";
+    cta = "Unlock Top Signal — $149.99";
   }
 
   const notifyReserved = notifyState === "reserved" || notifyState === "prepared";
@@ -233,7 +233,7 @@ export function TopPlayDetailSheet({
         <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 pb-4 pt-4">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-yellow-300">
-              Atlas Top Play
+              Atlas Top Signal
             </p>
             <h2
               id="top-play-detail-title"
@@ -249,7 +249,7 @@ export function TopPlayDetailSheet({
             type="button"
             onClick={onClose}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.05] text-xl font-light text-white/75 transition hover:border-yellow-300/40 hover:text-yellow-200"
-            aria-label="Close Top Play details"
+            aria-label="Close Top Signal details"
           >
             ×
           </button>
@@ -320,7 +320,7 @@ export function TopPlayDetailSheet({
               </p>
               <p className="mt-1 text-[30px] font-black text-white">$149.99</p>
               <p className="mt-1 text-[12px] font-semibold text-white/50">
-                One daily Top Play purchase.
+                One daily Top Signal purchase.
               </p>
             </div>
           ) : null}

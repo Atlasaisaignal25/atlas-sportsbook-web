@@ -79,12 +79,12 @@ export function PrecisionRevealSheet({
   const [refreshAttempted, setRefreshAttempted] = useState(false);
   const [refreshSettled, setRefreshSettled] = useState(false);
   const dragStartY = useRef<number | null>(null);
-  const isTopPlay = productType === "top_play";
+  const isTopSignal = productType === "top_play";
   const canReveal = Boolean(data?.admin || (data?.purchased && data?.canRevealPick));
   const hasPick = Boolean(data?.pick);
-  const tone = isTopPlay ? "gold" : "cyan";
-  const title = isTopPlay ? "Top Play" : "Top Signal";
-  const sportLabel = isTopPlay ? cleanText(data?.sport, "All Sports").toUpperCase() : sport ?? cleanText(data?.sport).toUpperCase();
+  const tone = isTopSignal ? "gold" : "cyan";
+  const title = isTopSignal ? "Top Signal" : "Top Signal";
+  const sportLabel = isTopSignal ? cleanText(data?.sport, "All Sports").toUpperCase() : sport ?? cleanText(data?.sport).toUpperCase();
 
   useEffect(() => {
     if (open) {

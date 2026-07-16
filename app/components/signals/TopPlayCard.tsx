@@ -65,7 +65,7 @@ export function TopPlayCard({
           onOpen?.();
         }
       }}
-      aria-label="Open Top Play details"
+      aria-label="Open Top Signal details"
       className={`h-[112px] cursor-pointer rounded-[20px] border bg-[radial-gradient(circle_at_48px_50%,rgba(250,204,21,0.20),rgba(250,204,21,0.05)_36%,rgba(5,8,22,0.94)_72%)] p-2 shadow-[0_0_22px_rgba(234,179,8,0.12)] transition-all duration-200 active:scale-[0.995] ${
         activeCommerce
           ? "border-yellow-300 shadow-[0_0_30px_rgba(250,204,21,0.22)]"
@@ -81,7 +81,7 @@ export function TopPlayCard({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-[18px] font-black uppercase tracking-[-0.03em] text-white">Top Play</h3>
+            <h3 className="text-[18px] font-black uppercase tracking-[-0.03em] text-white">Top Signal</h3>
             <span className="rounded-full bg-cyan-400/14 px-2 py-1 text-[8px] font-black uppercase tracking-[0.06em] text-cyan-300">
               All Sports
             </span>

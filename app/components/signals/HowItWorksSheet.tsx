@@ -138,10 +138,10 @@ export function HowItWorksSheet({
             <p>It is NOT included in Exclusive, Premium or Elite.</p>
           </SectionBlock>
 
-          <SectionBlock title="Top Play">
-            <p>Top Play is the single strongest opportunity across every sport available that day.</p>
-            <p>Only one Top Play can exist.</p>
-            <p>If Atlas does not find enough value, no Top Play is released.</p>
+          <SectionBlock title="Top Signal">
+            <p>Top Signal is the single strongest opportunity across every sport available that day.</p>
+            <p>Only one Top Signal can exist.</p>
+            <p>If Atlas does not find enough value, no Top Signal is released.</p>
           </SectionBlock>
 
           <SectionBlock title="Subscriptions">
@@ -149,7 +149,7 @@ export function HowItWorksSheet({
               <p><span className="font-bold text-white">Exclusive</span> — Top 5</p>
               <p><span className="font-bold text-white">Premium</span> — Top 3 + History + Stats</p>
               <p><span className="font-bold text-white">Elite</span> — Premium access across every available sport.</p>
-              <p>Top Signal and Top Play are always sold separately.</p>
+              <p>Top Signal and Top Signal are always sold separately.</p>
             </div>
           </SectionBlock>
 
