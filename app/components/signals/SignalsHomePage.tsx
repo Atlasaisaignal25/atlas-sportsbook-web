@@ -2759,14 +2759,20 @@ function PricingPacksSection({
     NFL: "Football",
     SOCCER: "Soccer",
   };
-  const availableSports = sports.filter((sport) =>
-    isActiveSportSignalView(buildSportSignalViewModel(sport, topSignals?.[sport])),
-  );
+  const availableSports = sports.filter((sport) => {
+    const signal = topSignals?.[sport];
+    const status = normalizeStatus(signal?.status);
+
+    return Boolean(
+      signal?.pick &&
+        status !== "no_play" &&
+        status !== "off_season" &&
+        status !== "unavailable"
+    );
+  });
   const sportsToShow = availableSports.length > 0
     ? availableSports
-    : activeSports.length > 0
-      ? activeSports
-      : [selectedSport];
+    : [];
   const firstTimedSport = [...sportsToShow].sort((first, second) => {
     const firstTime = topSignals?.[first]?.pick?.startTime ? Date.parse(topSignals[first]?.pick?.startTime ?? "") : Number.POSITIVE_INFINITY;
     const secondTime = topSignals?.[second]?.pick?.startTime ? Date.parse(topSignals[second]?.pick?.startTime ?? "") : Number.POSITIVE_INFINITY;
@@ -2776,12 +2782,12 @@ function PricingPacksSection({
   const minutesToKickoff = firstSignal?.minutesToKickoff ?? null;
   const minutesToRelease = firstSignal?.minutesToRelease ?? null;
   const timeValue = minutesToKickoff ?? minutesToRelease;
-  const timerLabel = formatCountdown(timeValue) || "Available";
   const timerProgress = typeof firstSignal?.progressPercent === "number"
     ? Math.max(6, Math.min(100, firstSignal.progressPercent))
     : typeof timeValue === "number"
       ? Math.max(8, Math.min(100, 100 - (Math.max(timeValue, 0) / 360) * 100))
       : 100;
+  const timerPercentLabel = `${Math.round(timerProgress)}%`;
 
   return (
     <section className="relative overflow-hidden rounded-[16px] border border-amber-300/70 bg-[radial-gradient(circle_at_12%_20%,rgba(251,191,36,0.18),transparent_34%),linear-gradient(180deg,rgba(7,10,24,0.98),rgba(2,6,18,0.98))] p-2.5 shadow-[0_0_24px_rgba(245,158,11,0.16)]">
@@ -2792,7 +2798,7 @@ function PricingPacksSection({
         </div>
 
         <div className="min-w-0">
-          <h2 className="truncate text-[14px] font-black uppercase tracking-[0.06em] text-white">
+          <h2 className="truncate bg-gradient-to-r from-amber-100 via-yellow-300 to-amber-500 bg-clip-text text-[17px] font-black uppercase tracking-[0.08em] text-transparent drop-shadow-[0_0_10px_rgba(245,158,11,0.28)]">
             Top Signal
           </h2>
           <div className="mt-0.5 h-px w-full bg-gradient-to-r from-amber-300/35 via-white/10 to-transparent" />
@@ -2800,14 +2806,18 @@ function PricingPacksSection({
             Best Opportunity by Sport
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
-            {sportsToShow.map((sport) => (
+            {sportsToShow.length ? sportsToShow.map((sport) => (
               <span
                 key={`top-signal-home-sport-${sport}`}
                 className="rounded-[7px] border border-amber-300/45 bg-amber-300/8 px-1.5 py-0.5 text-[7px] font-black uppercase text-amber-200"
               >
                 {sportNameByCode[sport] ?? sport}
               </span>
-            ))}
+            )) : (
+              <span className="rounded-[7px] border border-amber-300/25 bg-amber-300/6 px-1.5 py-0.5 text-[7px] font-black uppercase text-amber-100/60">
+                No Sport Available
+              </span>
+            )}
           </div>
         </div>
 
@@ -2817,7 +2827,7 @@ function PricingPacksSection({
           </p>
           <button
             type="button"
-            onClick={() => onTopSignalAction?.(selectedSport)}
+            onClick={() => onTopSignalAction?.(firstTimedSport)}
             className="mt-1.5 inline-flex h-8 w-full items-center justify-center gap-1 rounded-[9px] border border-amber-200/60 bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-200 px-2 text-[9px] font-black text-black shadow-[0_0_18px_rgba(245,158,11,0.26)] transition duration-200 hover:scale-[1.02] active:scale-[0.98]"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.3">
@@ -2837,7 +2847,7 @@ function PricingPacksSection({
           />
         </div>
         <span className="min-w-[48px] text-right text-[12px] font-black leading-none text-amber-300">
-          {timerLabel}
+          {timerPercentLabel}
         </span>
       </div>
     </section>
