@@ -1782,7 +1782,7 @@ function ControlTopSignalCurrentLeader({ data, title = "Top Signal Current Leade
   if (!data) {
     return (
       <ControlSection title={title}>
-        <p className="py-5 text-center text-sm font-bold text-white/45">NO_QUALIFIED_SIGNAL</p>
+        <p className="py-5 text-center text-sm font-bold text-white/45">No Top Signal Available.</p>
       </ControlSection>
     );
   }
@@ -2241,6 +2241,31 @@ function premiumProduct(data: AtlasControlCenterData | null) {
   return data?.premiumTop5 ?? data?.top5 ?? {};
 }
 
+function topSignalFromLeader(base: Record<string, unknown> | null | undefined, leader: Record<string, unknown> | null | undefined) {
+  if (!leader) return base;
+  return {
+    ...base,
+    currentLeader: leader.selection ?? leader.currentLeader ?? base?.currentLeader,
+    sport: leader.sport ?? base?.sport,
+    event: leader.event ?? base?.event,
+    awayTeam: leader.awayTeam ?? base?.awayTeam,
+    homeTeam: leader.homeTeam ?? base?.homeTeam,
+    market: leader.market ?? base?.market,
+    selection: leader.selection ?? base?.selection,
+    odds: leader.odds ?? base?.odds,
+    atlasProbability: leader.atlasProbability ?? leader.probability ?? base?.atlasProbability,
+    edge: leader.edge ?? base?.edge,
+    engineScore: leader.score ?? base?.engineScore,
+    candidateStatus: leader.status ?? leader.trend ?? base?.candidateStatus,
+    leaderSince: leader.firstLedAt ?? base?.leaderSince,
+    leaderTime: leader.leaderDuration ?? base?.leaderTime,
+    nextFinalReview: base?.nextFinalReview,
+    estimatedPublicationWindow: base?.estimatedPublicationWindow,
+    leader: leader,
+    lastRun: leader.lastLedAt ?? base?.lastRun,
+  };
+}
+
 function sourceLabel(source: any) {
   if (!source) return "N/A";
   return `${source.engine ?? "N/A"} · ${source.table ?? "N/A"} · ${source.rowCount ?? 0} rows`;
@@ -2555,9 +2580,10 @@ export function filterAtlasControlCenterData(data: AtlasControlCenterData | null
   const secondPlaceCandidate = rowMatchesControlSport(data.topSignal?.secondPlaceCandidate, sport)
     ? data.topSignal?.secondPlaceCandidate
     : null;
+  const selectedTopSignal = topSignalMatches ? data.topSignal : topSignalFromLeader(data.topSignal, leadersToday[0]);
   const topSignal = topSignalMatches || leadersToday.length || secondPlaceCandidate || eligibleCandidates.length
     ? {
-        ...data.topSignal,
+        ...selectedTopSignal,
         leadersToday,
         eligibleCandidates,
         secondPlaceCandidate,
@@ -2740,6 +2766,26 @@ export function AtlasControlCenterOverview({
 }) {
   const summary = data?.summary;
   const sportOptions = getAtlasControlSports(data);
+  const overviewTopSignalId = String(data?.topSignal?.gameId ?? data?.topSignal?.leader?.gameId ?? "");
+  const overviewSeenIds = new Set<string>(overviewTopSignalId ? [overviewTopSignalId] : []);
+  const overviewTop3Rows = (data?.exclusiveTop3?.currentInternalRanking ?? []).slice(0, 3).filter((row: Record<string, unknown>) => {
+    const id = String(row.gameId ?? row.game_id ?? "");
+    if (!id || overviewSeenIds.has(id)) return false;
+    overviewSeenIds.add(id);
+    return true;
+  });
+  const overviewTop5Rows = (premiumProduct(data)?.engineRows ?? premiumProduct(data)?.currentInternalRanking ?? []).slice(0, 5).filter((row: Record<string, unknown>) => {
+    const id = String(row.gameId ?? row.game_id ?? "");
+    if (!id || overviewSeenIds.has(id)) return false;
+    overviewSeenIds.add(id);
+    return true;
+  });
+  const overviewSignalsRows = signalProductRows(data?.signalsDetected, "engineRows").filter((row: Record<string, unknown>) => {
+    const id = String(row.gameId ?? row.game_id ?? "");
+    if (!id || overviewSeenIds.has(id)) return false;
+    overviewSeenIds.add(id);
+    return true;
+  });
   return (
     <section className="grid gap-2.5">
       {showChrome ? (
@@ -2790,20 +2836,20 @@ export function AtlasControlCenterOverview({
           </AdminShellCard>
           <ControlSignalPreview
             title="Premium Top 5"
-            rows={(premiumProduct(data)?.engineRows ?? premiumProduct(data)?.currentInternalRanking ?? []).slice(0, 5)}
-            empty="No Premium Top 5 ranking yet."
+            rows={overviewTop5Rows}
+            empty="No Top 5 Available."
             action={onOpenTop5 ? <button type="button" onClick={onOpenTop5}>Open Top 5 →</button> : null}
           />
           <ControlSignalPreview
             title="Exclusive Top 3"
-            rows={(data.exclusiveTop3?.currentInternalRanking ?? []).slice(0, 3)}
-            empty="No Exclusive Top 3 ranking yet."
+            rows={overviewTop3Rows}
+            empty="No Top 3 Available."
             action={onOpenTop3 ? <button type="button" onClick={onOpenTop3}>Open Exclusive Top 3 →</button> : null}
           />
           <ControlSignalPreview
             title="Signals Detected"
-            rows={signalProductRows(data.signalsDetected, "engineRows").slice(0, 5)}
-            empty="No frozen Signals Detected rows yet."
+            rows={overviewSignalsRows}
+            empty="No Signals Detected Today."
             action={onOpenSignals ? <button type="button" onClick={onOpenSignals}>View All Signals →</button> : null}
           />
         </>
@@ -2976,7 +3022,7 @@ export function AtlasControlCenterPanel({
             mode === "live" ? (
               <>
               <ControlSection title="Current Internal Ranking" action={`Next ${formatAdminTime(premiumProduct(filteredData)?.nextRecalculation)}`}>
-                <ControlRankingList rows={premiumProduct(filteredData)?.engineRows ?? premiumProduct(filteredData)?.currentInternalRanking ?? []} empty="No current Premium Top 5 ranking." />
+                <ControlRankingList rows={premiumProduct(filteredData)?.engineRows ?? premiumProduct(filteredData)?.currentInternalRanking ?? []} empty="No Top 5 Available." />
               </ControlSection>
               <ControlSection title="Top 5 Movement History">
                 <ControlActivityList rows={(filteredData.top5Movement ?? []).map((row) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
@@ -2993,7 +3039,7 @@ export function AtlasControlCenterPanel({
             mode === "live" ? (
               <>
               <ControlSection title="Exclusive Top 3 Internal Ranking" action={filteredData.exclusiveTop3?.frozen ? "Frozen" : "Live"}>
-                <ControlRankingList rows={filteredData.exclusiveTop3?.currentInternalRanking ?? []} empty="No Exclusive Top 3 ranking yet." />
+                <ControlRankingList rows={filteredData.exclusiveTop3?.currentInternalRanking ?? []} empty="No Top 3 Available." />
               </ControlSection>
               <ControlSection title="Exclusive Top 3 Movement">
                 <ControlActivityList rows={(filteredData.exclusiveTop3?.movementHistory ?? []).map((row: any) => ({ timestamp: row.timestamp, engine: row.movementType ?? row.trend, event: row.event, affectedSignal: row.signal ?? "", description: `${row.previousRank ? `#${row.previousRank}` : "—"} → ${row.newRank ? `#${row.newRank}` : "OUT"} · Prob ${controlDeltaPct(row.probabilityDelta)} · Score ${controlSigned(row.scoreDelta)}`, severity: "INFO" }))} />
@@ -3011,7 +3057,7 @@ export function AtlasControlCenterPanel({
               <ControlSignalPreview
                 title="Signals Detected"
                 rows={signalProductRows(filteredData.signalsDetected, "engineRows")}
-                empty="No Signals Detected rows yet."
+                empty="No Signals Detected Today."
               />
             ) : (
               <ControlSection title="Frozen Signals Detected">
