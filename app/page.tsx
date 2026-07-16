@@ -12572,14 +12572,19 @@ const subscriptionPlansBoard = (
                   </article>
                 ))}
                 </div>
-                <div className="mt-6">
+                <div className="mt-3">
                   <PackSportSelector
                     value={selectedPackSport}
                     onChange={setSelectedPackSport}
                     sports={activeSubscriptionSports}
                   />
                 </div>
-                <div className="mt-3 flex gap-4 overflow-x-auto pb-2">
+                <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+                  <span className="h-px bg-white/12" />
+                  <p className="text-[6.5px] font-black uppercase tracking-[0.12em] text-white/68">Monthly Subscriptions</p>
+                  <span className="h-px bg-white/12" />
+                </div>
+                <div className="mt-2 flex gap-4 overflow-x-auto pb-2">
                   {subscriptionPackPlans.map((pack) => (
                     <PackCard
                       key={pack.plan}
