@@ -11741,11 +11741,11 @@ const subscriptionPlansBoard = (
               type="button"
               onClick={() => router.push("/login?intent=free#create-account")}
               aria-label="Log in or sign up"
-              className="fixed right-[max(14px,calc(50%_-_210px))] top-[2.1%] z-30 grid h-10 w-10 place-items-center rounded-full border border-cyan-300/35 bg-[#061423]/88 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.16)] backdrop-blur-md transition active:scale-[0.97]"
+              className="fixed right-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 grid h-9 w-9 place-items-center rounded-full border border-cyan-300/35 bg-[#061423]/88 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.16)] backdrop-blur-md transition active:scale-[0.97]"
             >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-                <path d="M10 7V5.8c0-.9.7-1.6 1.6-1.6h6.1c.9 0 1.6.7 1.6 1.6v12.4c0 .9-.7 1.6-1.6 1.6h-6.1c-.9 0-1.6-.7-1.6-1.6V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                <path d="M3.8 12h10.4m-3.4-3.6 3.6 3.6-3.6 3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.9" />
+                <path d="M5.5 19c.9-4 3-6 6.5-6s5.6 2 6.5 6" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
               </svg>
             </button>
 
