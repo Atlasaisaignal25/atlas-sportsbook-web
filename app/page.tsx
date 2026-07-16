@@ -10958,7 +10958,7 @@ const subscriptionPlansBoard = (
         return (
           <article
             key={`home-membership-${plan.plan}`}
-            className={`relative flex h-[188px] min-w-0 flex-col rounded-[10px] border px-1.5 pb-1 pt-1.5 text-left ${styles.shell}`}
+            className={`relative flex h-[214px] min-w-0 flex-col rounded-[11px] border px-1.5 pb-1 pt-1.5 text-left ${styles.shell}`}
           >
             {plan.badge ? (
               <span className="absolute left-1/2 top-0.5 max-w-[88%] -translate-x-1/2 truncate rounded-full bg-amber-300 px-1.5 py-0.5 text-[5.5px] font-black uppercase tracking-[0.03em] text-black">
@@ -10975,24 +10975,24 @@ const subscriptionPlansBoard = (
               </span>
             </div>
 
-            <p className={`mt-0.5 text-center text-[9px] font-black uppercase tracking-[0.01em] ${styles.text}`}>
-              {plan.title}
-            </p>
-            <p className="text-center text-[5.5px] font-bold leading-[6.5px] text-white/78">
+              <p className={`mt-0.5 text-center text-[10px] font-black uppercase tracking-[0.01em] ${styles.text}`}>
+                {plan.title}
+              </p>
+            <p className="text-center text-[6px] font-bold leading-[7px] text-white/78">
               {plan.subtitle}
             </p>
 
-            <div className={`mt-0.5 flex h-[19px] items-center justify-center rounded-[6px] border px-1 text-center ${styles.pill}`}>
-              <p className={`line-clamp-2 text-[4.8px] font-black uppercase leading-[6px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
+            <div className={`mt-0.5 flex h-[23px] items-center justify-center rounded-[7px] border px-1 text-center ${styles.pill}`}>
+              <p className={`line-clamp-2 text-[5.4px] font-black uppercase leading-[6.5px] ${styles.text}`}>{plan.featureTitle} {plan.featureSubtitle}</p>
             </div>
 
-            <p className="hidden">
+            <p className="mt-0.5 line-clamp-2 text-center text-[5.8px] font-semibold leading-[7px] text-white/58">
               {plan.value}
             </p>
 
             <div className="mt-0.5 grid grid-cols-1 gap-0">
               {plan.features.map((feature) => (
-                <p key={feature} className="grid grid-cols-[6px_1fr] gap-0.5 text-[4.7px] font-semibold leading-[5.8px] text-white/76">
+                <p key={feature} className="grid grid-cols-[7px_1fr] gap-0.5 text-[5px] font-semibold leading-[6.2px] text-white/76">
                   <span className={`${styles.check} leading-tight`}>✓</span>
                   <span className="truncate">{feature}</span>
                 </p>
@@ -11001,15 +11001,15 @@ const subscriptionPlansBoard = (
 
             <div className="mt-auto pt-0.5">
               <div className="text-center">
-                <span className="text-[10px] font-black leading-none text-white">{plan.price}</span>
-                <span className="ml-0.5 text-[4.8px] font-bold text-white/52">/ month</span>
+                <span className="text-[11px] font-black leading-none text-white">{plan.price}</span>
+                <span className="ml-0.5 text-[5px] font-bold text-white/52">/ month</span>
               </div>
 
               <button
                 type="button"
                 onClick={() => handleSubscribe(plan.plan, selectedPackSport)}
                 disabled={checkoutPlan !== null}
-                className={`mt-0.5 h-[18px] w-full rounded-[6px] border px-1 text-[4.8px] font-black uppercase tracking-[0.01em] disabled:opacity-60 ${styles.button}`}
+                className={`mt-0.5 h-[18px] w-full rounded-[6px] border px-1 text-[5px] font-black uppercase tracking-[0.01em] disabled:opacity-60 ${styles.button}`}
               >
                 {plan.cta}
               </button>
