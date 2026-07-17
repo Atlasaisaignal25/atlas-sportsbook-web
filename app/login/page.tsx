@@ -175,7 +175,7 @@ async function signIn(formData: FormData) {
     );
   }
 
-  redirect(product ? getCheckoutRedirect(product, sport) : next === "plans" ? "/?plans=1" : "/?board=1&section=alerts");
+  redirect(product ? getCheckoutRedirect(product, sport) : next === "plans" ? "/?plans=1" : "/");
 }
 
 async function signUp(formData: FormData) {
@@ -192,7 +192,7 @@ async function signUp(formData: FormData) {
     requestHeaders.get("origin") ??
     process.env.NEXT_PUBLIC_SITE_URL ??
     "http://localhost:3000";
-  const nextPath = product ? getCheckoutRedirect(product, sport) : next === "plans" ? "/?plans=1" : "/?board=1&section=alerts";
+  const nextPath = product ? getCheckoutRedirect(product, sport) : next === "plans" ? "/?plans=1" : "/";
 
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.auth.signUp({
