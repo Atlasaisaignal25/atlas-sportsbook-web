@@ -10,6 +10,7 @@ import {
   type AtlasSport,
   type CommercialPlan,
 } from "@/app/lib/product-access";
+import { canViewMyAtlasProduct } from "@/app/lib/my-atlas-access";
 
 type SubscriptionPlan = CommercialPlan;
 
@@ -43,16 +44,18 @@ export async function GET() {
   const isAdmin = Boolean(adminEmail && userEmail && adminEmail === userEmail);
 
   if (isAdmin) {
+    const entitlement = getEntitlement({ admin: true });
     return NextResponse.json({
       authenticated: Boolean(user),
       email: user?.email ?? null,
       plan: "admin",
-      sports: getEntitlement({ admin: true }).sports,
+      sports: entitlement.sports,
       unlocks: {
         topPlay: true,
         topSignals: [...atlasSupportedSports],
       },
-      entitlement: getEntitlement({ admin: true }),
+      entitlement,
+      myAtlasAccess: buildMyAtlasAccessPolicy("admin", entitlement.sports),
     });
   }
 
@@ -109,20 +112,35 @@ export async function GET() {
     }
   }
 
+  const entitlement = getEntitlement({
+    planCode: plan,
+    selectedSport: subscriptionSport,
+    topSignalSports: unlocks.topSignals,
+  });
+
   return NextResponse.json({
     authenticated: Boolean(user),
     email: user?.email ?? null,
     plan,
-    sports: getEntitlement({
-      planCode: plan,
-      selectedSport: subscriptionSport,
-      topSignalSports: unlocks.topSignals,
-    }).sports,
+    sports: entitlement.sports,
     unlocks,
-    entitlement: getEntitlement({
-      planCode: plan,
-      selectedSport: subscriptionSport,
-      topSignalSports: unlocks.topSignals,
-    }),
+    entitlement,
+    myAtlasAccess: buildMyAtlasAccessPolicy(plan, entitlement.sports),
   });
+}
+
+function buildMyAtlasAccessPolicy(plan: SubscriptionPlan, sports: readonly AtlasSport[]) {
+  return Object.fromEntries(
+    atlasSupportedSports.map((sport) => [
+      sport,
+      {
+        signalsDetected: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "signals_detected" }),
+        exclusiveTop3: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "exclusive_top3" }),
+        premiumTop3: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "premium_top3" }),
+        topSignal: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "top_signal" }),
+        analytics: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "analytics" }),
+        history: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "history" }),
+      },
+    ]),
+  );
 }

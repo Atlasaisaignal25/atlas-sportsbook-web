@@ -1,5 +1,5 @@
-export const atlasOperationalSports = ["MLB"] as const;
 export const atlasSupportedSports = ["MLB", "NBA", "NFL", "NHL", "SOCCER"] as const;
+export const atlasOperationalSports = atlasSupportedSports;
 
 export type AtlasSport = (typeof atlasSupportedSports)[number];
 export type CommercialPlan = "free" | "exclusive" | "premium" | "unlimited" | "admin";
@@ -148,7 +148,7 @@ export function getEntitlement(params: {
       canViewAllSports: false,
       canViewTopSignal: topSignalSports.length > 0,
       canViewSignalStatuses: true,
-      sports: atlasOperationalSports.includes(selectedSport as any) ? [selectedSport] : [],
+      sports: atlasOperationalSports.includes(selectedSport) ? [selectedSport] : [],
       topSignalSports,
     };
   }
@@ -156,14 +156,14 @@ export function getEntitlement(params: {
   if (plan === "exclusive") {
     return {
       plan,
-      selectedSport: null,
+      selectedSport,
       canViewSignalsDetected: true,
       canViewExclusiveTop3: true,
       canViewOfficialTop5: false,
-      canViewAllSports: true,
+      canViewAllSports: false,
       canViewTopSignal: topSignalSports.length > 0,
       canViewSignalStatuses: true,
-      sports: [...atlasOperationalSports],
+      sports: atlasOperationalSports.includes(selectedSport) ? [selectedSport] : [],
       topSignalSports,
     };
   }

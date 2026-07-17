@@ -91,6 +91,7 @@ import {
   type OfficialSelectedSport,
 } from "@/app/components/signals/OfficialSportSelectorRow";
 import AdminDashboard, { AtlasControlCenterTabBar } from "@/app/admin/AdminDashboard";
+import { canViewMyAtlasProduct, describeMyAtlasLockedAccess } from "@/app/lib/my-atlas-access";
 
 
 
@@ -171,7 +172,7 @@ type MyAtlasBoardRow = {
   status?: string | null;
   rank?: number | null;
   startTime?: string | null;
-  source: "Top Signal" | "Top 5" | "Top 3";
+  source: "Top Signal" | "Premium" | "Exclusive" | "Signals Detected";
 };
 
 type LiveScore = {
@@ -3978,12 +3979,14 @@ function MyAtlasRankingSection({
   subtitle,
   rows,
   empty,
+  lockedMessage,
   accent = "cyan",
 }: {
   title: string;
   subtitle: string;
   rows: MyAtlasBoardRow[];
   empty: string;
+  lockedMessage?: string | null;
   accent?: "cyan" | "gold" | "purple";
 }) {
   const accentClass =
@@ -4008,7 +4011,12 @@ function MyAtlasRankingSection({
         </div>
       </div>
 
-      {rows.length ? (
+      {lockedMessage ? (
+        <div className="px-4 py-7 text-center">
+          <p className="text-[13px] font-black text-white">Access Locked</p>
+          <p className="mt-1 text-[12px] font-semibold leading-5 text-white/48">{lockedMessage}</p>
+        </div>
+      ) : rows.length ? (
         <div className="relative z-10 bg-[rgba(3,8,20,0.42)]">
           {rows.map((row, index) => (
             <MyAtlasRankingRow key={row.id} row={row} isLast={index === rows.length - 1} />
@@ -4026,18 +4034,35 @@ function MyAtlasRankingSection({
 
 function MyAtlasBoard({
   topSignalRows,
-  top5Rows,
+  premiumRows,
   top3Rows,
+  signalRows,
   planLabel,
+  selectedSport,
+  onSelectSport,
+  selectedSportLabel,
+  lockedMessage,
+  access,
   onNavigate,
 }: {
   topSignalRows: MyAtlasBoardRow[];
-  top5Rows: MyAtlasBoardRow[];
+  premiumRows: MyAtlasBoardRow[];
   top3Rows: MyAtlasBoardRow[];
+  signalRows: MyAtlasBoardRow[];
   planLabel: string;
+  selectedSport: OfficialSelectedSport;
+  onSelectSport: (sport: OfficialSelectedSport) => void;
+  selectedSportLabel: string;
+  lockedMessage: string | null;
+  access: {
+    signalsDetected: boolean;
+    exclusiveTop3: boolean;
+    premiumTop3: boolean;
+    topSignal: boolean;
+  };
   onNavigate: (section: AppSection) => void;
 }) {
-  const totalSignals = topSignalRows.length + top5Rows.length + top3Rows.length;
+  const totalSignals = topSignalRows.length + premiumRows.length + top3Rows.length + signalRows.length;
   const isAdminPlan = planLabel === "ADMIN";
   const planCycleLabel = isAdminPlan ? "Internal Access" : planLabel === "FREE" ? "Daily Access" : "Monthly Access";
   const planTimeLabel = isAdminPlan ? "No Expiration" : "Available in Billing";
@@ -4077,31 +4102,56 @@ function MyAtlasBoard({
                 <p className="mt-1 text-[11px] font-black leading-tight text-white">{planStartedLabel}</p>
               </div>
               <div className="rounded-[16px] border border-white/10 bg-black/22 p-2.5">
-                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Signals</p>
-                <p className="mt-1 text-[14px] font-black leading-tight text-cyan-200">{totalSignals}</p>
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Sport</p>
+                <p className="mt-1 truncate text-[14px] font-black leading-tight text-cyan-200">{selectedSportLabel}</p>
               </div>
             </div>
           </section>
 
+          <OfficialSportSelectorRow
+            selectedSport={selectedSport}
+            onSelectSport={onSelectSport}
+            framed={false}
+            className="rounded-[18px] border border-white/10 bg-[#06101d]/78 p-2 shadow-[0_0_20px_rgba(34,211,238,0.06)]"
+          />
+
+          {lockedMessage ? (
+            <section className="rounded-[18px] border border-amber-300/20 bg-amber-300/[0.06] px-4 py-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-200">Plan Access</p>
+              <p className="mt-1 text-[12px] font-semibold leading-5 text-white/58">{lockedMessage}</p>
+            </section>
+          ) : null}
+
+          <MyAtlasRankingSection
+            title="Signals Detected"
+            subtitle="Free official detected signals for the selected sport."
+            rows={access.signalsDetected ? signalRows : []}
+            empty="No Signals Detected Today."
+            lockedMessage={access.signalsDetected ? null : lockedMessage}
+            accent="cyan"
+          />
           <MyAtlasRankingSection
             title="Top Signal"
             subtitle="Highest-rated official Atlas signal."
-            rows={topSignalRows}
+            rows={access.topSignal ? topSignalRows : []}
             empty="No Top Signal Available."
+            lockedMessage={access.topSignal ? null : lockedMessage}
             accent="gold"
           />
           <MyAtlasRankingSection
-            title="Premium Top 5"
-            subtitle="Ranked board for Premium and Unlimited access."
-            rows={top5Rows}
-            empty="No Top 5 Available."
+            title="Premium Top 3"
+            subtitle="Dynamic ranking positions reserved for Premium and Unlimited."
+            rows={access.premiumTop3 ? premiumRows : []}
+            empty="No Premium Signals Available."
+            lockedMessage={access.premiumTop3 ? null : lockedMessage}
             accent="purple"
           />
           <MyAtlasRankingSection
             title="Exclusive Top 3"
             subtitle="Top ranked Signals Detected board."
-            rows={top3Rows}
+            rows={access.exclusiveTop3 ? top3Rows : []}
             empty="No Top 3 Available."
+            lockedMessage={access.exclusiveTop3 ? null : lockedMessage}
             accent="cyan"
           />
         </section>
@@ -4658,6 +4708,7 @@ const [top5RecordStats, setTop5RecordStats] = useState<RecordStats>(emptyRecordS
   const useBankrollSplashOverlay = initialAppSection === "bankroll";
 
   const [selectedSport, setSelectedSport] = useState<SportTab>("TOP");
+  const [selectedMyAtlasSport, setSelectedMyAtlasSport] = useState<OfficialSelectedSport>("all");
   const [games, setGames] = useState<OddsGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [liveOddsGames, setLiveOddsGames] = useState<OddsGame[]>([]);
@@ -6969,7 +7020,11 @@ const visibleSubscriptionPickCount = subscriptionSportGroups.reduce(
 );
 
 const myAtlasBoardSports = useMemo(() => {
-  const availableSports = (["MLB", "NBA", "NHL", "SOCCER"] as CheckoutSport[]).filter((sport) =>
+  const selectedBoardSport =
+    selectedMyAtlasSport === "all"
+      ? null
+      : officialSelectedSportToSportCode[selectedMyAtlasSport] as CheckoutSport;
+  const availableSports = checkoutSports.filter((sport) =>
     getTop5BySport(
       sport,
       activeMlbTop5Data,
@@ -6979,31 +7034,52 @@ const myAtlasBoardSports = useMemo(() => {
     ).length > 0
   );
 
-  if (userAccess.plan === "admin" || userAccess.plan === "unlimited" || userAccess.plan === "elite") {
-    return availableSports;
+  const sportsForSelection = selectedBoardSport
+    ? [selectedBoardSport]
+    : availableSports;
+
+  if (userAccess.plan === "admin" || userAccess.plan === "unlimited" || userAccess.plan === "elite" || userAccess.plan === "free") {
+    return sportsForSelection;
   }
 
-  const userSports = userAccess.sports.filter((sport): sport is CheckoutSport =>
-    checkoutSports.includes(sport as CheckoutSport)
-  );
-
-  if (userSports.length > 0) {
-    return userSports.filter((sport) => availableSports.includes(sport));
-  }
-
-  if (availableSports.includes(selectedPackSport)) {
-    return [selectedPackSport];
-  }
-
-  return availableSports.slice(0, 1);
+  return sportsForSelection.filter((sport) => userAccess.sports.includes(sport));
 }, [
   activeMlbTop5Data,
   activeNbaTop5Data,
   activeNhlTop5Data,
   activeSoccerTop5Data,
-  selectedPackSport,
+  selectedMyAtlasSport,
   userAccess,
 ]);
+
+const selectedMyAtlasSportCode =
+  selectedMyAtlasSport === "all"
+    ? null
+    : officialSelectedSportToSportCode[selectedMyAtlasSport] as CheckoutSport;
+const selectedMyAtlasSportLabel = selectedMyAtlasSportCode ?? "All";
+const selectedMyAtlasAccessSport = selectedMyAtlasSportCode ?? myAtlasBoardSports[0] ?? selectedPackSport;
+const myAtlasLockedMessage =
+  selectedMyAtlasSportCode &&
+  userAccess.plan !== "admin" &&
+  userAccess.plan !== "unlimited" &&
+  userAccess.plan !== "elite" &&
+  !userAccess.sports.includes(selectedMyAtlasSportCode)
+    ? describeMyAtlasLockedAccess(userAccess.plan, selectedMyAtlasSportCode)
+    : null;
+const myAtlasAccess = {
+  signalsDetected: selectedMyAtlasSport === "all"
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "signals_detected" }))
+    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "signals_detected" }),
+  exclusiveTop3: selectedMyAtlasSport === "all"
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "exclusive_top3" }))
+    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "exclusive_top3" }),
+  premiumTop3: selectedMyAtlasSport === "all"
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "premium_top3" }))
+    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "premium_top3" }),
+  topSignal: selectedMyAtlasSport === "all"
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "top_signal" }))
+    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "top_signal" }),
+};
 
 function mapMyAtlasBoardRow(pick: Top5Entry, sport: CheckoutSport, source: MyAtlasBoardRow["source"], index: number): MyAtlasBoardRow {
   return {
@@ -7020,11 +7096,63 @@ function mapMyAtlasBoardRow(pick: Top5Entry, sport: CheckoutSport, source: MyAtl
   };
 }
 
-const myAtlasTopSignalRows = useMemo(() => {
-  if (userAccess.plan !== "admin" && userAccess.unlocks.topSignals.length === 0) return [];
+const myAtlasSignalRows = useMemo(() => {
+  return myAtlasBoardSports.flatMap((sport) => {
+    if (!canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "signals_detected" })) {
+      return [];
+    }
 
+    const top5 = getSignalsDetectedProductExclusions(sport, getTop5BySport(
+      sport,
+      activeMlbTop5Data,
+      activeNbaTop5Data,
+      activeNhlTop5Data,
+      activeSoccerTop5Data
+    ));
+
+    return getSignalSourceForSport(sport)
+      .filter(
+        (signal) =>
+          signal.awayTeam &&
+          signal.homeTeam &&
+          signal.pick &&
+          !top5.some((pick) =>
+            isSameMatch(
+              {
+                away_team: signal.awayTeam ?? "",
+                home_team: signal.homeTeam ?? "",
+                commence_time: signal.startTime ?? `${activeDay}T12:00:00-04:00`,
+              } as LiveScore,
+              pick
+            )
+          )
+      )
+      .map((signal, index) => ({
+        id: `Signals Detected-${sport}-${String(signal.gameId ?? index)}`,
+        sport,
+        awayTeam: signal.awayTeam ?? "",
+        homeTeam: signal.homeTeam ?? "",
+        pick: signal.pick ?? "",
+        odds: signal.odds ?? null,
+        status: signal.status ?? "PENDING",
+        rank: index + 1,
+        startTime: signal.startTime ?? null,
+        source: "Signals Detected" as const,
+      }));
+  });
+}, [
+  activeDay,
+  activeMlbTop5Data,
+  activeNbaTop5Data,
+  activeNhlTop5Data,
+  activeSoccerTop5Data,
+  myAtlasBoardSports,
+  userAccess,
+]);
+
+const myAtlasTopSignalRows = useMemo(() => {
   return myAtlasBoardSports
-    .filter((sport) => userAccess.plan === "admin" || userAccess.unlocks.topSignals.includes(sport))
+    .filter((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "top_signal" }))
     .flatMap((sport) => {
       const board = sortPicksByAtlasValue(
         getTop5BySport(
@@ -7048,39 +7176,9 @@ const myAtlasTopSignalRows = useMemo(() => {
 ]);
 
 const myAtlasTop5Rows = useMemo(() => {
-  if (!(userAccess.plan === "admin" || userAccess.plan === "premium" || userAccess.plan === "unlimited" || userAccess.plan === "elite")) {
-    return [];
-  }
-
   return myAtlasBoardSports.flatMap((sport) =>
-    sortPicksByAtlasValue(
-      getTop5BySport(
-        sport,
-        activeMlbTop5Data,
-        activeNbaTop5Data,
-        activeNhlTop5Data,
-        activeSoccerTop5Data
-      )
-    )
-      .filter((pick) => pick.isTopSignal !== true && pick.rank !== 1)
-      .slice(0, 5)
-      .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Top 5", index))
-  );
-}, [
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
-  myAtlasBoardSports,
-  userAccess.plan,
-]);
-
-const myAtlasTop3Rows = useMemo(() => {
-  if (!(userAccess.plan === "admin" || userAccess.plan === "exclusive" || userAccess.plan === "premium" || userAccess.plan === "unlimited" || userAccess.plan === "elite")) {
-    return [];
-  }
-
-  return myAtlasBoardSports.flatMap((sport) =>
+    canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "premium_top3" })
+      ?
     sortPicksByAtlasValue(
       getTop5BySport(
         sport,
@@ -7092,7 +7190,35 @@ const myAtlasTop3Rows = useMemo(() => {
     )
       .filter((pick) => pick.isTopSignal !== true && pick.rank !== 1)
       .slice(0, 3)
-      .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Top 3", index))
+      .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Premium", index))
+      : []
+  );
+}, [
+  activeMlbTop5Data,
+  activeNbaTop5Data,
+  activeNhlTop5Data,
+  activeSoccerTop5Data,
+  myAtlasBoardSports,
+  userAccess.plan,
+]);
+
+const myAtlasTop3Rows = useMemo(() => {
+  return myAtlasBoardSports.flatMap((sport) =>
+    canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "exclusive_top3" })
+      ?
+    sortPicksByAtlasValue(
+      getTop5BySport(
+        sport,
+        activeMlbTop5Data,
+        activeNbaTop5Data,
+        activeNhlTop5Data,
+        activeSoccerTop5Data
+      )
+    )
+      .filter((pick) => pick.isTopSignal !== true && pick.rank !== 1)
+      .slice(0, 3)
+      .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Exclusive", index))
+      : []
   );
 }, [
   activeMlbTop5Data,
@@ -12413,13 +12539,19 @@ const subscriptionPlansBoard = (
     return <AdminDashboard adminEmail={authSession.email ?? "admin"} onBack={() => setAdminDashboardOpen(false)} />;
   }
 
-  if ((appSection as string) === "alerts" && (userAccess.plan === "admin" || hasPaidSubscription)) {
+  if ((appSection as string) === "alerts") {
     return (
       <MyAtlasBoard
         topSignalRows={myAtlasTopSignalRows}
-        top5Rows={myAtlasTop5Rows}
+        premiumRows={myAtlasTop5Rows}
         top3Rows={myAtlasTop3Rows}
+        signalRows={myAtlasSignalRows}
         planLabel={userAccess.plan.toUpperCase()}
+        selectedSport={selectedMyAtlasSport}
+        onSelectSport={setSelectedMyAtlasSport}
+        selectedSportLabel={selectedMyAtlasSportLabel}
+        lockedMessage={myAtlasLockedMessage}
+        access={myAtlasAccess}
         onNavigate={(section) => {
           if (section === "signals") {
             navigateAppState({ section, view: "live" });
