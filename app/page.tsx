@@ -7115,6 +7115,11 @@ const hasPaidSubscription =
   authSession.authenticated &&
   userAccess.plan !== "free" &&
   userAccess.plan !== "admin";
+const homeMembershipLabel = authSession.authenticated
+  ? userAccess.plan === "admin"
+    ? "ADMIN"
+    : userAccess.plan.toUpperCase()
+  : "Join";
 
 const shouldShowSubscriptionPlans =
   viewMode === "odds" &&
@@ -12368,6 +12373,7 @@ const subscriptionPlansBoard = (
         onPlanSubscribe={(plan, sport) => {
           void handleSubscribe(plan, sport);
         }}
+        membershipLabel={homeMembershipLabel}
         onLiveRowOpen={(row) => {
           const liveGame = groupedFilteredLiveGames
             .flatMap((group) => group.games.map((game) => ({ game, sport: group.sport })))

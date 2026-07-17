@@ -182,6 +182,7 @@ type SignalsHomePageProps = {
   selectedSubscriptionSport?: SportCode;
   onSelectedSubscriptionSportChange?: (sport: SportCode) => void;
   onPlanSubscribe?: (plan: "exclusive" | "premium" | "unlimited", sport?: SportCode) => void;
+  membershipLabel?: string;
   onRetry?: () => void;
   journeyMessage?: JourneyMessage | null;
   onDismissJourneyMessage?: () => void;
@@ -1176,11 +1177,13 @@ function FrameTopActions({
   onNavigate,
   activeDate,
   onDateChange,
+  membershipLabel = "Join",
 }: {
   onHowItWorks: () => void;
   onNavigate?: (section: SignalsHomeNavSection) => void;
   activeDate: string;
   onDateChange?: (date: string) => void;
+  membershipLabel?: string;
 }) {
   const month = formatCalendarMonth(activeDate);
   const day = formatCalendarDay(activeDate);
@@ -1214,7 +1217,7 @@ function FrameTopActions({
             <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="2" />
             <path d="M4.5 21a7.5 7.5 0 0 1 15 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
-          Join
+          {membershipLabel}
         </button>
       </div>
       <button
@@ -3084,6 +3087,7 @@ export function SignalsHomePage({
   selectedSubscriptionSport = activeSubscriptionSports[0] ?? "MLB",
   onSelectedSubscriptionSportChange,
   onPlanSubscribe,
+  membershipLabel = "Join",
   onRetry,
   journeyMessage,
   onDismissJourneyMessage,
@@ -3261,6 +3265,7 @@ export function SignalsHomePage({
               onDateChange={onDateChange}
               onHowItWorks={() => openHowItWorks()}
               onNavigate={onNavigate}
+              membershipLabel={membershipLabel}
             />
 
             <FrameSportSelectorRow selectedSport={selectedSport} onSelectSport={setSelectedSport} />
