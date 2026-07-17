@@ -8,6 +8,26 @@ export type AtlasDistributionProduct =
   | "premium"
   | "unlimited";
 
+/**
+ * Universal Product Distribution Engine contract.
+ *
+ * Detection engines own only the initial ranked input.
+ * This module owns only product distribution. It never recalculates confidence,
+ * never changes base ranking inputs, and never writes to storage.
+ *
+ * Product source rules:
+ * - FREE: frozen Signals Detected, sourced only from Master Signal Pool ranks 4+.
+ * - EXCLUSIVE: frozen Top 3, sourced only from frozen Signals Detected.
+ * - DYNAMIC CANDIDATE POOL: sourced only from Initial Reserved Pool + Signals Detected.
+ * - TOP SIGNAL: position 1 of the future Dynamic Ranking.
+ * - PREMIUM: positions 2, 3 and 4 of the future Dynamic Ranking.
+ * - UNLIMITED: complete future Dynamic Ranking.
+ *
+ * Dynamic Validation Engine integration point:
+ * it may read dynamicCandidatePool only. It must never read or mutate
+ * Signals Detected, Exclusive, or Detection Engine output directly.
+ */
+
 export type DistributionItemBase = {
   sport?: string | null;
   game_id?: string | number | null;
@@ -29,37 +49,37 @@ export type DistributionItemBase = {
 };
 
 export type DistributedProductRow<T extends DistributionItemBase> = T & {
-  initialRank: number;
-  dynamicRank: number;
-  distributionProduct: AtlasDistributionProduct;
-  distributionBucket: AtlasDistributionProduct;
-  sourceRank: number | null;
+  readonly initialRank: number;
+  readonly dynamicRank: number;
+  readonly distributionProduct: AtlasDistributionProduct;
+  readonly distributionBucket: AtlasDistributionProduct;
+  readonly sourceRank: number | null;
 };
 
 export type SportProductDistribution<T extends DistributionItemBase> = {
-  sport: string;
-  masterSignalPool: Array<DistributedProductRow<T>>;
-  initialReservedPool: Array<DistributedProductRow<T>>;
-  signalsDetected: Array<DistributedProductRow<T>>;
-  exclusiveTop3: Array<DistributedProductRow<T>>;
-  dynamicCandidatePool: Array<DistributedProductRow<T>>;
-  dynamicRanking: Array<DistributedProductRow<T>>;
-  topSignal: DistributedProductRow<T> | null;
-  premium: Array<DistributedProductRow<T>>;
-  unlimited: Array<DistributedProductRow<T>>;
+  readonly sport: string;
+  readonly masterSignalPool: ReadonlyArray<DistributedProductRow<T>>;
+  readonly initialReservedPool: ReadonlyArray<DistributedProductRow<T>>;
+  readonly signalsDetected: ReadonlyArray<DistributedProductRow<T>>;
+  readonly exclusiveTop3: ReadonlyArray<DistributedProductRow<T>>;
+  readonly dynamicCandidatePool: ReadonlyArray<DistributedProductRow<T>>;
+  readonly dynamicRanking: ReadonlyArray<DistributedProductRow<T>>;
+  readonly topSignal: DistributedProductRow<T> | null;
+  readonly premium: ReadonlyArray<DistributedProductRow<T>>;
+  readonly unlimited: ReadonlyArray<DistributedProductRow<T>>;
 };
 
 export type UniversalProductDistribution<T extends DistributionItemBase> = {
-  sports: Array<SportProductDistribution<T>>;
-  masterSignalPool: Array<DistributedProductRow<T>>;
-  initialReservedPool: Array<DistributedProductRow<T>>;
-  signalsDetected: Array<DistributedProductRow<T>>;
-  exclusiveTop3: Array<DistributedProductRow<T>>;
-  dynamicCandidatePool: Array<DistributedProductRow<T>>;
-  dynamicRanking: Array<DistributedProductRow<T>>;
-  topSignal: Array<DistributedProductRow<T>>;
-  premium: Array<DistributedProductRow<T>>;
-  unlimited: Array<DistributedProductRow<T>>;
+  readonly sports: ReadonlyArray<SportProductDistribution<T>>;
+  readonly masterSignalPool: ReadonlyArray<DistributedProductRow<T>>;
+  readonly initialReservedPool: ReadonlyArray<DistributedProductRow<T>>;
+  readonly signalsDetected: ReadonlyArray<DistributedProductRow<T>>;
+  readonly exclusiveTop3: ReadonlyArray<DistributedProductRow<T>>;
+  readonly dynamicCandidatePool: ReadonlyArray<DistributedProductRow<T>>;
+  readonly dynamicRanking: ReadonlyArray<DistributedProductRow<T>>;
+  readonly topSignal: ReadonlyArray<DistributedProductRow<T>>;
+  readonly premium: ReadonlyArray<DistributedProductRow<T>>;
+  readonly unlimited: ReadonlyArray<DistributedProductRow<T>>;
 };
 
 function numberValue(value: unknown) {
@@ -159,63 +179,66 @@ function markRow<T extends DistributionItemBase>(
   };
 }
 
+function freezeRows<T extends DistributionItemBase>(
+  rows: Array<DistributedProductRow<T>>,
+): ReadonlyArray<DistributedProductRow<T>> {
+  return Object.freeze(rows.map((row) => Object.freeze(row)));
+}
+
 function buildSportDistribution<T extends DistributionItemBase>(
   sport: string,
   rows: T[],
 ): SportProductDistribution<T> {
-  const masterSignalPool = sortMasterRows(dedupeRows(rows)).map((row, index) =>
+  const masterSignalPool = freezeRows(sortMasterRows(dedupeRows(rows)).map((row, index) =>
     markRow(row, index + 1, index + 1, "master_signal_pool"),
-  );
-  const initialReservedPool = masterSignalPool.slice(0, 3).map((row) => ({
+  ));
+  const initialReservedPool = freezeRows(masterSignalPool.slice(0, 3).map((row) => ({
     ...row,
     distributionProduct: "initial_reserved_pool" as const,
     distributionBucket: "initial_reserved_pool" as const,
-  }));
-  const signalsDetected = masterSignalPool.slice(3).map((row) => ({
+  })));
+  const signalsDetected = freezeRows(masterSignalPool.slice(3).map((row) => ({
     ...row,
     distributionProduct: "signals_detected" as const,
     distributionBucket: "signals_detected" as const,
-  }));
-  const exclusiveTop3 = signalsDetected.slice(0, 3).map((row, index) => ({
+  })));
+  const exclusiveTop3 = freezeRows(signalsDetected.slice(0, 3).map((row, index) => ({
     ...row,
     rank: index + 1,
     currentRank: index + 1,
     distributionProduct: "exclusive_top3" as const,
     distributionBucket: "exclusive_top3" as const,
-  }));
+  })));
   // Dynamic Validation Engine will attach here in the next phase.
   // It must read only this pool and must not mutate Signals Detected or Exclusive.
-  const dynamicCandidatePool = sortMasterRows([...initialReservedPool, ...signalsDetected]).map((row, index) => ({
+  const dynamicCandidatePool = freezeRows(sortMasterRows([...initialReservedPool, ...signalsDetected]).map((row, index) => ({
     ...row,
     dynamicRank: index + 1,
     distributionProduct: "dynamic_candidate_pool" as const,
     distributionBucket: "dynamic_candidate_pool" as const,
-  }));
+  })));
 
   const dynamicRanking = dynamicCandidatePool;
   const topSignal = dynamicRanking[0]
-    ? {
-        ...dynamicRanking[0],
+    ? Object.freeze(Object.assign({}, dynamicRanking[0], {
         rank: 1,
         currentRank: 1,
         distributionProduct: "top_signal" as const,
         distributionBucket: "top_signal" as const,
-      }
+      }))
     : null;
-  const premium = dynamicRanking.slice(1, 4).map((row, index) => ({
-    ...row,
+  const premium = freezeRows(dynamicRanking.slice(1, 4).map((row, index) => Object.assign({}, row, {
     rank: index + 1,
     currentRank: index + 1,
     distributionProduct: "premium" as const,
     distributionBucket: "premium" as const,
-  }));
-  const unlimited = dynamicRanking.map((row) => ({
-    ...row,
+  })));
+  const unlimited = freezeRows(dynamicRanking.map((row) => Object.assign({}, row, {
     distributionProduct: "unlimited" as const,
     distributionBucket: "unlimited" as const,
-  }));
+  })));
 
-  return {
+  return Object.freeze({
     sport,
     masterSignalPool,
     initialReservedPool,
@@ -226,7 +249,7 @@ function buildSportDistribution<T extends DistributionItemBase>(
     topSignal,
     premium,
     unlimited,
-  };
+  });
 }
 
 export function buildUniversalProductDistribution<T extends DistributionItemBase>(
@@ -238,20 +261,20 @@ export function buildUniversalProductDistribution<T extends DistributionItemBase
     bySport.set(sport, [...(bySport.get(sport) ?? []), row]);
   }
 
-  const sports = Array.from(bySport.entries())
+  const sports = Object.freeze(Array.from(bySport.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([sport, sportRows]) => buildSportDistribution(sport, sportRows));
+    .map(([sport, sportRows]) => buildSportDistribution(sport, sportRows)));
 
-  return {
+  return Object.freeze({
     sports,
-    masterSignalPool: sports.flatMap((sport) => sport.masterSignalPool),
-    initialReservedPool: sports.flatMap((sport) => sport.initialReservedPool),
-    signalsDetected: sports.flatMap((sport) => sport.signalsDetected),
-    exclusiveTop3: sports.flatMap((sport) => sport.exclusiveTop3),
-    dynamicCandidatePool: sports.flatMap((sport) => sport.dynamicCandidatePool),
-    dynamicRanking: sports.flatMap((sport) => sport.dynamicRanking),
-    topSignal: sports.flatMap((sport) => (sport.topSignal ? [sport.topSignal] : [])),
-    premium: sports.flatMap((sport) => sport.premium),
-    unlimited: sports.flatMap((sport) => sport.unlimited),
-  };
+    masterSignalPool: freezeRows(sports.flatMap((sport) => sport.masterSignalPool)),
+    initialReservedPool: freezeRows(sports.flatMap((sport) => sport.initialReservedPool)),
+    signalsDetected: freezeRows(sports.flatMap((sport) => sport.signalsDetected)),
+    exclusiveTop3: freezeRows(sports.flatMap((sport) => sport.exclusiveTop3)),
+    dynamicCandidatePool: freezeRows(sports.flatMap((sport) => sport.dynamicCandidatePool)),
+    dynamicRanking: freezeRows(sports.flatMap((sport) => sport.dynamicRanking)),
+    topSignal: freezeRows(sports.flatMap((sport) => (sport.topSignal ? [sport.topSignal] : []))),
+    premium: freezeRows(sports.flatMap((sport) => sport.premium)),
+    unlimited: freezeRows(sports.flatMap((sport) => sport.unlimited)),
+  });
 }

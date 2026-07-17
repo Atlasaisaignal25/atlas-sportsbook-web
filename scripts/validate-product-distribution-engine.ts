@@ -59,4 +59,24 @@ assert.equal(distribution.premium.some((row) => topSignalIds.has(row.game_id)), 
 const masterIds = new Set(distribution.masterSignalPool.map((row) => `${row.sport}:${row.game_id}`));
 assert.equal(masterIds.size, distribution.masterSignalPool.length);
 
+const mlbSignalIds = new Set(mlb.signalsDetected.map((row) => row.game_id));
+const mlbReservedIds = new Set(mlb.initialReservedPool.map((row) => row.game_id));
+const mlbDynamicIds = new Set(mlb.dynamicCandidatePool.map((row) => row.game_id));
+assert.equal(mlb.exclusiveTop3.every((row) => mlbSignalIds.has(row.game_id)), true);
+assert.equal(
+  mlb.dynamicCandidatePool.every((row) => mlbReservedIds.has(row.game_id) || mlbSignalIds.has(row.game_id)),
+  true,
+);
+assert.equal(mlbDynamicIds.size, mlb.dynamicCandidatePool.length);
+
+assert.equal(Object.isFrozen(distribution), true);
+assert.equal(Object.isFrozen(distribution.signalsDetected), true);
+assert.equal(Object.isFrozen(distribution.exclusiveTop3), true);
+assert.equal(Object.isFrozen(distribution.dynamicCandidatePool), true);
+assert.equal(Object.isFrozen(mlb), true);
+assert.equal(Object.isFrozen(mlb.signalsDetected), true);
+assert.equal(Object.isFrozen(mlb.exclusiveTop3), true);
+assert.equal(Object.isFrozen(mlb.dynamicCandidatePool), true);
+assert.equal(Object.isFrozen(mlb.signalsDetected[0]), true);
+
 console.log("Product Distribution Engine validation passed.");
