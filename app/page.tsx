@@ -610,6 +610,65 @@ function getSportDistribution(
   return distribution.sports.find((item) => item.sport === sport) ?? null;
 }
 
+function buildOfficialTopSignalProduct(
+  sport: CheckoutSport,
+  row: DistributedProductRow<AtlasProductDistributionRow> | null | undefined,
+  userAccess: UserAccess,
+): PrecisionPublicResponse | null {
+  if (!row) return null;
+
+  const startTime = row.startTime ?? row.start_time ?? null;
+  const startMs = startTime ? new Date(startTime).getTime() : Number.NaN;
+  const minutesToKickoff = Number.isFinite(startMs)
+    ? Math.ceil((startMs - Date.now()) / 60000)
+    : null;
+  const releaseAt =
+    Number.isFinite(startMs) ? new Date(startMs - 60 * 60000).toISOString() : null;
+  const locked = minutesToKickoff !== null && minutesToKickoff <= 0;
+  const canReveal =
+    userAccess.plan === "admin" || userAccess.unlocks.topSignals.includes(sport);
+  const progressPercent =
+    minutesToKickoff === null
+      ? 100
+      : Math.max(8, Math.min(100, Math.round(100 - (Math.max(minutesToKickoff, 0) / 360) * 100)));
+
+  return {
+    ok: true,
+    productType: "top_signal",
+    sport: sport.toLowerCase() as Lowercase<CheckoutSport>,
+    date: getRelativeDayKey(0),
+    status: locked ? "locked" : "available_now",
+    releaseAt,
+    lockedAt: startTime,
+    progressPercent,
+    minutesToRelease: 0,
+    minutesToKickoff,
+    canPurchase: !locked && !canReveal,
+    canRevealPick: canReveal,
+    purchased: userAccess.unlocks.topSignals.includes(sport),
+    admin: userAccess.plan === "admin",
+    availableForPurchase: !locked && !canReveal,
+    noPlayReason: null,
+    preview: {
+      title: `${sport} Top Signal`,
+      subtitle: "Official Atlas Top Signal",
+      message: locked ? "Market locked" : "Ready to unlock",
+    },
+    pick: {
+      gameId:
+        row.gameId || row.game_id || row.id
+          ? String(row.gameId ?? row.game_id ?? row.id)
+          : null,
+      startTime,
+      pickLabel: row.pick,
+      market: row.market ?? null,
+      selection: row.pick,
+      line: numberLineOrNull(row.line ?? null),
+      odds: Number.isFinite(Number(row.odds)) ? Number(row.odds) : null,
+    },
+  };
+}
+
 function buildBankrollAtlasSources(params: {
   mlbSignals: SignalGame[];
   nbaSignals: SignalGame[];
@@ -4862,9 +4921,6 @@ const [selectedSignalInsight, setSelectedSignalInsight] = useState<SignalInsight
 const [signalListExpanded, setSignalListExpanded] = useState(false);
 const [activeDay, setActiveDay] = useState(() => getRelativeDayKey(0));
 const [precisionTopPlay, setPrecisionTopPlay] = useState<PrecisionPublicResponse | null>(null);
-const [precisionTopSignals, setPrecisionTopSignals] = useState<
-  Partial<Record<CheckoutSport, PrecisionPublicResponse>>
->({});
 const [precisionLoading, setPrecisionLoading] = useState(false);
 const [precisionError, setPrecisionError] = useState<string | null>(null);
 const [precisionRefreshKey, setPrecisionRefreshKey] = useState(0);
@@ -4912,39 +4968,17 @@ useEffect(() => {
       setPrecisionError(null);
 
       const dateQuery = activeDay ? `?date=${activeDay}` : "";
-      const [topPlayResponse, ...topSignalResponses] = await Promise.all([
-        fetch(`/api/precision/top-play${dateQuery}`, { cache: "no-store" }).then((res) =>
-          res.ok ? res.json() : null
-        ),
-        ...checkoutSports.map((sport) =>
-          fetch(`/api/precision/top-signal/${sport.toLowerCase()}${dateQuery}`, {
-            cache: "no-store",
-          }).then((res) => (res.ok ? res.json() : null))
-        ),
-      ]);
+      const topPlayResponse = await fetch(`/api/precision/top-play${dateQuery}`, {
+        cache: "no-store",
+      }).then((res) => (res.ok ? res.json() : null));
 
       if (cancelled) return;
 
       setPrecisionTopPlay(topPlayResponse?.ok ? topPlayResponse : null);
-      setPrecisionTopSignals(
-        checkoutSports.reduce<Partial<Record<CheckoutSport, PrecisionPublicResponse>>>(
-          (acc, sport, index) => {
-            const response = topSignalResponses[index];
-
-            if (response?.ok) {
-              acc[sport] = response;
-            }
-
-            return acc;
-          },
-          {}
-        )
-      );
     } catch {
       if (!cancelled) {
         setPrecisionError("Unable to load market data.");
         setPrecisionTopPlay(null);
-        setPrecisionTopSignals({});
       }
     } finally {
       if (!cancelled) {
@@ -5226,7 +5260,7 @@ async function handleTopPlayCommerceAction(): Promise<PrecisionUnlockResult> {
 }
 
 async function handleTopSignalCommerceAction(sport: CheckoutSport): Promise<PrecisionUnlockResult> {
-  const data = precisionTopSignals[sport];
+  const data = officialTopSignalProducts[sport];
   const product = topSignalProductForSport(sport);
 
   if (data?.admin || (data?.purchased && data?.canRevealPick)) {
@@ -5500,6 +5534,19 @@ const officialProductDistribution = useMemo(
     soccerTop5: soccerTop5LiveData.top5,
   }),
   [mlbSignalsData, mlbTop5Data, nbaSignalsData, nbaTop5Data, nhlSignalsData, nhlTop5Data, soccerSignalsLiveData, soccerTop5LiveData],
+);
+const officialTopSignalProducts = useMemo(
+  () =>
+    checkoutSports.reduce<Partial<Record<CheckoutSport, PrecisionPublicResponse>>>(
+      (acc, sport) => {
+        const topSignal = getSportDistribution(officialProductDistribution, sport)?.topSignal ?? null;
+        const product = buildOfficialTopSignalProduct(sport, topSignal, userAccess);
+        if (product) acc[sport] = product;
+        return acc;
+      },
+      {},
+    ),
+  [officialProductDistribution, userAccess],
 );
 const bankrollAtlasSources = useMemo(
   () => distributionToAtlasPackageSources(officialProductDistribution),
@@ -12292,7 +12339,7 @@ const subscriptionPlansBoard = (
     return (
       <SignalsHomePage
         topPlay={precisionTopPlay}
-        topSignals={precisionTopSignals}
+        topSignals={officialTopSignalProducts}
         signalRows={signalHomeRows}
         liveRows={signalsLiveRows}
         liveLoading={liveLoading}
@@ -13092,7 +13139,7 @@ const subscriptionPlansBoard = (
               selectedSport={selectedSport}
               selectedSignalSport={selectedPrecisionSignalSport}
               topPlay={precisionTopPlay}
-              topSignals={precisionTopSignals}
+              topSignals={officialTopSignalProducts}
               loading={precisionLoading}
               signalGroupCount={groupedSignalLiveGames.length}
               onSelectSignalSport={setSelectedPackSport}
@@ -13211,7 +13258,7 @@ const subscriptionPlansBoard = (
 
             <SignalsActivitySummary
               signalGroupCount={groupedSignalLiveGames.length}
-              topSignals={precisionTopSignals}
+              topSignals={officialTopSignalProducts}
               topPlay={precisionTopPlay}
             />
           </>

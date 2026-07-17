@@ -266,15 +266,6 @@ function getDateBoardLabel(dateKey: string) {
   return dateKey < today ? "Results" : "Schedule";
 }
 
-const selectedSportTopSignalEndpoints: Record<SelectedSport, string | null> = {
-  all: null,
-  baseball: "/api/precision/top-signal/mlb",
-  basketball: "/api/precision/top-signal/nba",
-  football: "/api/precision/top-signal/nfl",
-  ice_hockey: "/api/precision/top-signal/nhl",
-  soccer: "/api/precision/top-signal/soccer",
-};
-
 function getLogoKey(value: string) {
   return String(value ?? "")
     .normalize("NFD")
@@ -3119,7 +3110,6 @@ export function SignalsHomePage({
       sport: selectedSport,
       sportLabel: selectedSportLabels[selectedSport],
       sportSignalCount: filteredSignalRows.length,
-      sportTopSignalEndpoint: selectedSportTopSignalEndpoints[selectedSport],
       filteredSignalRows,
       allSignalRows,
       upcomingSignalRows,
