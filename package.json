@@ -39,6 +39,7 @@
     "validate:comparison-engine": "npx --yes tsx scripts/validate-comparison-engine.ts",
     "validate:manual-summary-engine": "npx --yes tsx scripts/validate-manual-summary-engine.ts",
     "validate:snapshot-engine": "npx --yes tsx scripts/validate-snapshot-engine.ts",
+    "validate:product-distribution-engine": "npx --yes tsx scripts/validate-product-distribution-engine.ts",
     "validate:mlb-projection-research": "npx --yes tsx scripts/validate-mlb-projection-research.ts",
     "validate:mlb-decision-research": "npx --yes tsx scripts/validate-mlb-decision-research.ts"
   },

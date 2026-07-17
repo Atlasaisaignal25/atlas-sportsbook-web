@@ -3,6 +3,7 @@ import { getAdminSession } from "@/app/lib/adminAuth";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
 import { getAtlasCoreMlbConfig } from "@/app/lib/mlb-engine/atlas-core/atlas-core-config";
 import { resolveMlbSlateWindow, timestampBelongsToMlbSlate } from "@/app/lib/mlb-engine/slate-date";
+import { buildUniversalProductDistribution } from "@/app/lib/product-distribution";
 
 export const dynamic = "force-dynamic";
 
@@ -423,85 +424,6 @@ function normalizeSignalLiveRows(rows: DbRow[], slateDate: string): DbRow[] {
       };
     })
     .sort((a: DbRow, b: DbRow) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || new Date(a.start_time ?? 0).getTime() - new Date(b.start_time ?? 0).getTime());
-}
-
-function topSignalRowsFromTop5(rows: DbRow[]) {
-  const bySport = new Map<string, DbRow>();
-  for (const row of rows.slice().sort((a, b) => Number(a.rank ?? 999) - Number(b.rank ?? 999))) {
-    const sport = String(row.sport ?? "");
-    if (!sport || bySport.has(sport)) continue;
-    bySport.set(sport, { ...row, currentRank: 1, status: row.status ?? "PENDING" });
-  }
-  return Array.from(bySport.values()).sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")));
-}
-
-function rowGameId(row: DbRow | null | undefined) {
-  const id = row?.game_id ?? row?.gameId;
-  return id === null || id === undefined ? "" : String(id);
-}
-
-function excludeGameIds(rows: DbRow[], excludedIds: Set<string>) {
-  return rows.filter((row) => {
-    const id = rowGameId(row);
-    return !id || !excludedIds.has(id);
-  });
-}
-
-function productRowsBySport(rows: DbRow[], maxPerSport: number) {
-  const counts = new Map<string, number>();
-  return rows
-    .slice()
-    .sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || Number(a.rank ?? 999) - Number(b.rank ?? 999))
-    .filter((row) => {
-      const sport = String(row.sport ?? "ALL");
-      const count = counts.get(sport) ?? 0;
-      if (count >= maxPerSport) return false;
-      counts.set(sport, count + 1);
-      return true;
-    });
-}
-
-function adaptivePremiumRowsBySport(rows: DbRow[]) {
-  const counts = new Map<string, number>();
-  return rows
-    .slice()
-    .sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || Number(a.rank ?? 999) - Number(b.rank ?? 999))
-    .filter((row) => {
-      const sport = String(row.sport ?? "ALL");
-      const max = sport === "SOCCER" ? 3 : 5;
-      const count = counts.get(sport) ?? 0;
-      if (count >= max) return false;
-      counts.set(sport, count + 1);
-      return true;
-    });
-}
-
-function exclusiveRowsBySport(top3Rows: DbRow[], signalRows: DbRow[], top5Rows: DbRow[]): DbRow[] {
-  const soccerRankByGameId = new Map(
-    top5Rows
-      .filter((row) => String(row.sport ?? "") === "SOCCER")
-      .map((row) => [rowGameId(row), Number(row.rank ?? 999)]),
-  );
-  const soccerRows: DbRow[] = signalRows
-    .filter((row) => String(row.sport ?? "") === "SOCCER")
-    .slice()
-    .sort((a, b) => {
-      const aRank = soccerRankByGameId.get(rowGameId(a)) ?? Number.POSITIVE_INFINITY;
-      const bRank = soccerRankByGameId.get(rowGameId(b)) ?? Number.POSITIVE_INFINITY;
-      return aRank - bRank || new Date(a.start_time ?? 0).getTime() - new Date(b.start_time ?? 0).getTime();
-    })
-    .slice(0, 3)
-    .map((row, index) => ({
-      ...row,
-      engine: "EXCLUSIVE_TOP3",
-      rank: index + 1,
-      currentRank: index + 1,
-    } as DbRow));
-
-  return [
-    ...top3Rows.filter((row) => String(row.sport ?? "") !== "SOCCER"),
-    ...soccerRows,
-  ].sort((a, b) => String(a.sport ?? "").localeCompare(String(b.sport ?? "")) || Number(a.rank ?? 999) - Number(b.rank ?? 999));
 }
 
 function rankingMovement(current: ReturnType<typeof rankingRows>, previous: DbRow[]) {
@@ -957,14 +879,26 @@ export async function GET() {
   const activeSignals = (activeSignalsQuery.data ?? []) as DbRow[];
   const activePicks = publicPickRows(activePicksQuery.data ?? []);
 
-  const topSignalLiveRows = topSignalRowsFromTop5(top5LiveRows);
-  const topSignalGameIds = new Set(topSignalLiveRows.map(rowGameId).filter(Boolean));
-  const top5LiveProductRows = adaptivePremiumRowsBySport(excludeGameIds(top5LiveRows, topSignalGameIds));
-  const top3LiveProductRows = productRowsBySport(top5LiveProductRows, 3);
-  const productGameIds = new Set([...topSignalLiveRows, ...top5LiveProductRows].map(rowGameId).filter(Boolean));
-  const signalDistributionRows = excludeGameIds(signalLiveRows, productGameIds);
-  const signalDisplayRows = signalDistributionRows;
-  const exclusiveLiveProductRows = exclusiveRowsBySport(top3LiveProductRows, signalDistributionRows, top5LiveRows);
+  const productDistribution = buildUniversalProductDistribution<DbRow>([...top5LiveRows, ...signalLiveRows]);
+  const topSignalLiveRows = productDistribution.topSignal.map((row) => ({
+    ...row,
+    engine: "TOP_SIGNAL",
+    rank: 1,
+    currentRank: 1,
+    status: row.status ?? "PENDING",
+  })) as DbRow[];
+  const top5LiveProductRows = productDistribution.premium.map((row) => ({
+    ...row,
+    engine: "PREMIUM_TOP5",
+  })) as DbRow[];
+  const signalDisplayRows = productDistribution.signalsDetected.map((row) => ({
+    ...row,
+    engine: "SIGNALS_DETECTED",
+  })) as DbRow[];
+  const exclusiveLiveProductRows = productDistribution.exclusiveTop3.map((row) => ({
+    ...row,
+    engine: "EXCLUSIVE_TOP3",
+  })) as DbRow[];
   const latestPremiumHistoryInternal = latestRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING");
   const latestPremiumInternal = top5LiveProductRows.length ? top5LiveProductRows : latestPremiumHistoryInternal;
   const premiumPrevious = top5LiveRows.length ? [] : previousRun(premiumHistory, "PREMIUM_TOP5", "INTERNAL_RANKING", latestPremiumInternal[0]?.run_at);
