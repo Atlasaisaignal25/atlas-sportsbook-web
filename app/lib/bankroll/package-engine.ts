@@ -1,5 +1,6 @@
 import { calculateRiskAmount, isValidAtlasPlan, updateAtlasPlan } from "./atlas-plan";
 import { evaluateCollectionReplacements, lockStartedPlans } from "./replacement-engine";
+import { normalizeProductStatus } from "../product-normalization";
 import type {
   AtlasPlan,
   AtlasPlanCandidate,
@@ -344,11 +345,23 @@ function toCandidate(pick: AtlasPackageSourcePick, source: AtlasPlanSource): Pac
     selection: pick.selection,
     market: pick.market,
     odds: pick.odds,
-    status: pick.status,
+    status: normalizePackageStatus(pick.status),
     rank: pick.rank ?? 1,
     source,
     startTime: pick.startTime,
   };
+}
+
+function normalizePackageStatus(status: AtlasPlanStatus): AtlasPlanStatus {
+  const productStatus = normalizeProductStatus(status);
+
+  if (productStatus === "LIVE") return "started";
+  if (productStatus === "WON") return "won";
+  if (productStatus === "LOSS") return "lost";
+  if (productStatus === "PUSH") return "push";
+  if (productStatus === "CANCELLED") return "cancelled";
+
+  return "pending";
 }
 
 function toAtlasPlanCandidate(candidate: PackagePlanCandidate, planPackage: AtlasPlanPackage, now: string): AtlasPlanCandidate {

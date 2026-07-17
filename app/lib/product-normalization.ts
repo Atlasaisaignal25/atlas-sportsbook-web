@@ -1,3 +1,12 @@
+/**
+ * Official public product contract for Atlas.
+ *
+ * Sport engines can keep their own internal statuses, fields, scores, and
+ * ranking models, but public product surfaces must consume AtlasProductSignal.
+ * Internal lifecycle labels such as INTERNAL_CANDIDATE, CORE_PICK, RAW_SIGNAL,
+ * ENGINE_READY, VALIDATED, or CONFIRMED are intentionally collapsed before data
+ * reaches Home, My Atlas, Atlas Tracking, Membership, or public product feeds.
+ */
 export type AtlasPublicProductStatus =
   | "PENDING"
   | "LIVE"
@@ -5,8 +14,7 @@ export type AtlasPublicProductStatus =
   | "WON"
   | "LOSS"
   | "PUSH"
-  | "CANCELLED"
-  | "CONFIRMED";
+  | "CANCELLED";
 
 export type AtlasProductSignal = {
   signalId: string;
@@ -37,7 +45,8 @@ export function normalizeProductStatus(status: unknown): AtlasPublicProductStatu
     normalized === "RAW_SIGNAL" ||
     normalized === "ENGINE_READY" ||
     normalized === "CORE_PICK" ||
-    normalized === "VALIDATED"
+    normalized === "VALIDATED" ||
+    normalized === "CONFIRMED"
   ) {
     return "PENDING";
   }
@@ -45,7 +54,6 @@ export function normalizeProductStatus(status: unknown): AtlasPublicProductStatu
   if (normalized === "WIN" || normalized === "WON") return "WON";
   if (normalized === "LOST" || normalized === "LOSS") return "LOSS";
   if (normalized === "CANCELED" || normalized === "CANCELLED" || normalized === "REMOVED") return "CANCELLED";
-  if (normalized === "CONFIRMED") return "CONFIRMED";
   if (normalized === "LIVE") return "LIVE";
   if (normalized === "FINAL") return "FINAL";
   if (normalized === "PUSH") return "PUSH";

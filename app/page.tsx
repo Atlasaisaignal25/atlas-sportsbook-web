@@ -567,6 +567,78 @@ function normalizeAtlasSourceStartTime(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function numberLineOrNull(value: number | string | null): number | null {
+  if (value === null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizedSignalToSignalGame(signal: ReturnType<typeof normalizeAtlasProductSignal>, raw: Record<string, unknown>): SignalGame {
+  return {
+    gameId: signal.eventId ?? signal.signalId,
+    awayTeam: signal.awayTeam,
+    homeTeam: signal.homeTeam,
+    pick: signal.selection,
+    market: signal.market,
+    line: numberLineOrNull(signal.line),
+    odds: signal.odds,
+    status: signal.status,
+    isTopSignal: signal.isTopSignal,
+    topRank: signal.rank,
+    analysisSummary: String(raw.analysisSummary ?? raw.analysis_summary ?? ""),
+    confidenceLabel: (raw.confidenceLabel ?? raw.confidence_label ?? null) as string | null,
+    edgeLabel: (raw.edgeLabel ?? raw.edge_label ?? null) as string | null,
+    riskNote: (raw.riskNote ?? raw.risk_note ?? null) as string | null,
+    modelFactors: Array.isArray(raw.modelFactors)
+      ? raw.modelFactors as string[]
+      : Array.isArray(raw.model_factors)
+        ? raw.model_factors as string[]
+        : null,
+    startTime: signal.timestamp,
+  };
+}
+
+function normalizedSignalToTop5Entry(signal: ReturnType<typeof normalizeAtlasProductSignal>, raw: Record<string, unknown>): Top5Entry & {
+  edge?: unknown;
+  analysisSummary?: unknown;
+  confidenceLabel?: unknown;
+  edgeLabel?: unknown;
+  riskNote?: unknown;
+  modelFactors?: unknown;
+} {
+  return {
+    gameId: signal.eventId,
+    awayTeam: signal.awayTeam,
+    homeTeam: signal.homeTeam,
+    pick: signal.selection,
+    market: signal.market,
+    line: signal.line,
+    odds: signal.odds,
+    status: signal.status,
+    rank: signal.rank ?? undefined,
+    isTopSignal: signal.isTopSignal,
+    confidence: signal.confidence,
+    internalScore: signal.internalScore,
+    edge: raw.edge,
+    analysisSummary: raw.analysisSummary ?? raw.analysis_summary,
+    confidenceLabel: raw.confidenceLabel ?? raw.confidence_label,
+    edgeLabel: raw.edgeLabel ?? raw.edge_label,
+    riskNote: raw.riskNote ?? raw.risk_note,
+    modelFactors: raw.modelFactors ?? raw.model_factors,
+    startTime: signal.timestamp,
+  };
+}
+
+function normalizePublicSignalGame(raw: Record<string, unknown>, sport: AtlasPlanSport, index: number): SignalGame {
+  const signal = normalizeAtlasProductSignal(raw, { sport, product: "signals", index });
+  return normalizedSignalToSignalGame(signal, raw);
+}
+
+function normalizePublicTop5Entry(raw: Record<string, unknown>, sport: AtlasPlanSport, index: number): Top5Entry {
+  const signal = normalizeAtlasProductSignal(raw, { sport, product: "top5", index });
+  return normalizedSignalToTop5Entry(signal, raw);
+}
+
 function getAtlasSourceSports(picks: AtlasPackageSourcePick[]) {
   return Array.from(new Set(picks.map((pick) => pick.sport))).sort((a, b) => a.localeCompare(b));
 }
@@ -5549,183 +5621,35 @@ useEffect(() => {
       getSoccerTop5Live(signalDate),
     ]);
     setMlbSignalsData({
-      games: (mlbPublic || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        analysisSummary: g.analysis_summary,
-        confidenceLabel: g.confidence_label,
-        edgeLabel: g.edge_label,
-        riskNote: g.risk_note,
-        modelFactors: g.model_factors,
-        startTime: g.start_time,
-      })),
+      games: (mlbPublic || []).map((g: Record<string, unknown>, index: number) => normalizePublicSignalGame(g, "MLB", index)),
     });
 
     setMlbTop5Data({
-  top5: (mlbTop5 || []).map((g: any, index: number) => {
-    const signal = normalizeAtlasProductSignal(g, { sport: "MLB", product: "top5", index });
-
-    return {
-      gameId: signal.eventId,
-      awayTeam: signal.awayTeam,
-      homeTeam: signal.homeTeam,
-      pick: signal.selection,
-      market: signal.market,
-      line: signal.line,
-      odds: signal.odds,
-      status: signal.status,
-      rank: signal.rank ?? undefined,
-      isTopSignal: signal.isTopSignal,
-      confidence: signal.confidence,
-      internalScore: signal.internalScore,
-      edge: g.edge,
-      analysisSummary: g.analysisSummary ?? g.analysis_summary,
-      confidenceLabel: g.confidenceLabel ?? g.confidence_label,
-      edgeLabel: g.edgeLabel ?? g.edge_label,
-      riskNote: g.riskNote ?? g.risk_note,
-      modelFactors: g.modelFactors ?? g.model_factors,
-      startTime: signal.timestamp,
-    };
-  }),
-});
+      top5: (mlbTop5 || []).map((g: Record<string, unknown>, index: number) => normalizePublicTop5Entry(g, "MLB", index)),
+    });
 
     setNbaSignalsData({
-      games: (nbaPublic || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        analysisSummary: g.analysis_summary,
-        confidenceLabel: g.confidence_label,
-        edgeLabel: g.edge_label,
-        riskNote: g.risk_note,
-        modelFactors: g.model_factors,
-        startTime: g.start_time,
-      })),
+      games: (nbaPublic || []).map((g: Record<string, unknown>, index: number) => normalizePublicSignalGame(g, "NBA", index)),
     });
 
     setNbaTop5Data({
-      top5: (nbaTop5 || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        rank: g.rank,
-        isTopSignal: g.is_top_signal,
-        confidence: g.confidence,
-        internalScore: g.internal_score,
-        edge: g.edge,
-        analysisSummary: g.analysis_summary,
-        confidenceLabel: g.confidence_label,
-        edgeLabel: g.edge_label,
-        riskNote: g.risk_note,
-        modelFactors: g.model_factors,
-        startTime: g.start_time,
-      })),
+      top5: (nbaTop5 || []).map((g: Record<string, unknown>, index: number) => normalizePublicTop5Entry(g, "NBA", index)),
     });
 
     setNhlSignalsData({
-      games: (nhlPublic || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        analysisSummary: g.analysis_summary,
-        confidenceLabel: g.confidence_label,
-        edgeLabel: g.edge_label,
-        riskNote: g.risk_note,
-        modelFactors: g.model_factors,
-        startTime: g.start_time,
-      })),
+      games: (nhlPublic || []).map((g: Record<string, unknown>, index: number) => normalizePublicSignalGame(g, "NHL", index)),
     });
 
     setNhlTop5Data({
-      top5: (nhlTop5 || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        rank: g.rank,
-        isTopSignal: g.is_top_signal,
-        confidence: g.confidence,
-        internalScore: g.internal_score,
-        edge: g.edge,
-        analysisSummary: g.analysis_summary,
-        confidenceLabel: g.confidence_label,
-        edgeLabel: g.edge_label,
-        riskNote: g.risk_note,
-        modelFactors: g.model_factors,
-        startTime: g.start_time,
-      })),
+      top5: (nhlTop5 || []).map((g: Record<string, unknown>, index: number) => normalizePublicTop5Entry(g, "NHL", index)),
     });
 
     setSoccerSignalsLiveData({
-      games: (soccerPublic || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        analysisSummary: g.analysis_summary,
-        confidenceLabel: g.confidence_label,
-        edgeLabel: g.edge_label,
-        riskNote: g.risk_note,
-        modelFactors: g.model_factors,
-        startTime: g.start_time,
-      })),
+      games: (soccerPublic || []).map((g: Record<string, unknown>, index: number) => normalizePublicSignalGame(g, "SOCCER", index)),
     });
 
     setSoccerTop5LiveData({
-      top5: (soccerTop5 || []).map((g: any, index: number) => {
-        const signal = normalizeAtlasProductSignal(g, { sport: "SOCCER", product: "top5", index });
-
-        return {
-          gameId: signal.eventId,
-          awayTeam: signal.awayTeam,
-          homeTeam: signal.homeTeam,
-          pick: signal.selection,
-          market: signal.market,
-          line: signal.line,
-          odds: signal.odds,
-          status: signal.status,
-          rank: signal.rank ?? undefined,
-          isTopSignal: signal.isTopSignal,
-          confidence: signal.confidence,
-          internalScore: signal.internalScore,
-          edge: g.edge,
-          analysisSummary: g.analysis_summary,
-          confidenceLabel: g.confidence_label,
-          edgeLabel: g.edge_label,
-          riskNote: g.risk_note,
-          modelFactors: g.model_factors,
-          startTime: signal.timestamp,
-        };
-      }),
+      top5: (soccerTop5 || []).map((g: Record<string, unknown>, index: number) => normalizePublicTop5Entry(g, "SOCCER", index)),
     });
   }
 
