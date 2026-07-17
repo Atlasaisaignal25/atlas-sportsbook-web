@@ -95,7 +95,7 @@ export function normalizeAtlasProductSignal(
     status: normalizeProductStatus(raw.status),
     product: fallback.product,
     timestamp: timestamp === null || timestamp === undefined ? null : String(timestamp),
-    isTopSignal: Boolean(raw.isTopSignal ?? raw.is_top_signal),
+    isTopSignal: Boolean(raw.isTopSignal ?? raw.is_top_signal) || rank === 1,
     internalScore: (raw.internalScore ?? raw.internal_score ?? raw.pick_ranking ?? null) as number | string | null,
   };
 }

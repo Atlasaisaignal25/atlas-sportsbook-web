@@ -2402,9 +2402,12 @@ function sortPicksByAtlasValue<T extends Top5Entry>(picks: T[]) {
   });
 }
 
+function isTopSignalPick(pick: Top5Entry) {
+  return pick.isTopSignal === true || Number(pick.rank) === 1;
+}
+
 function getSubscriptionEligiblePicks(picks: Top5Entry[]) {
-  const withoutTopSignal = picks.filter((pick) => pick.isTopSignal !== true && pick.rank !== 1);
-  return withoutTopSignal.length >= 3 ? withoutTopSignal : picks.filter((pick) => pick.isTopSignal !== true);
+  return picks.filter((pick) => !isTopSignalPick(pick));
 }
 
 function labelSubscriptionPicks(picks: Top5Entry[], ranked: boolean) {
@@ -5780,7 +5783,7 @@ const activeSubscriptionSports = useMemo(() => {
       activeNbaTop5Data,
       activeNhlTop5Data,
       activeSoccerTop5Data
-    ).some((pick) => pick.isTopSignal !== true && pick.rank !== 1);
+    ).some((pick) => !isTopSignalPick(pick));
   });
 
   return available.length > 0 ? available : (["MLB"] as CheckoutSport[]);
@@ -7072,12 +7075,7 @@ const myAtlasTop5Rows = useMemo(() => {
         activeSoccerTop5Data
       )
     )
-      .filter((pick, _index, picks) => {
-        const withoutTopSignal = picks.filter((item) => item.isTopSignal !== true && item.rank !== 1);
-        return withoutTopSignal.length >= 3
-          ? pick.isTopSignal !== true && pick.rank !== 1
-          : pick.isTopSignal !== true;
-      })
+      .filter((pick) => !isTopSignalPick(pick))
       .slice(0, 3)
       .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Premium", index))
       : []
@@ -7104,12 +7102,7 @@ const myAtlasTop3Rows = useMemo(() => {
         activeSoccerTop5Data
       )
     )
-      .filter((pick, _index, picks) => {
-        const withoutTopSignal = picks.filter((item) => item.isTopSignal !== true && item.rank !== 1);
-        return withoutTopSignal.length >= 3
-          ? pick.isTopSignal !== true && pick.rank !== 1
-          : pick.isTopSignal !== true;
-      })
+      .filter((pick) => !isTopSignalPick(pick))
       .slice(0, 3)
       .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Exclusive", index))
       : []
