@@ -90,7 +90,7 @@ import {
   officialSportCodeToSelectedSport,
   type OfficialSelectedSport,
 } from "@/app/components/signals/OfficialSportSelectorRow";
-import { AtlasControlCenterTabBar } from "@/app/admin/AdminDashboard";
+import AdminDashboard, { AtlasControlCenterTabBar } from "@/app/admin/AdminDashboard";
 
 
 
@@ -12046,6 +12046,10 @@ const subscriptionPlansBoard = (
         }}
       />
     );
+  }
+
+  if ((appSection as string) === "alerts" && userAccess.plan === "admin") {
+    return <AdminDashboard adminEmail={authSession.email ?? "admin"} />;
   }
 
   if ((appSection as string) === "alerts" && hasPaidSubscription) {
