@@ -4037,30 +4037,52 @@ function MyAtlasBoard({
   planLabel: string;
   onNavigate: (section: AppSection) => void;
 }) {
+  const totalSignals = topSignalRows.length + top5Rows.length + top3Rows.length;
+  const isAdminPlan = planLabel === "ADMIN";
+  const planCycleLabel = isAdminPlan ? "Internal Access" : planLabel === "FREE" ? "Daily Access" : "Monthly Access";
+  const planTimeLabel = isAdminPlan ? "No Expiration" : "Available in Billing";
+  const planStartedLabel = isAdminPlan ? "Admin Account" : "Billing Record";
+
   return (
     <main className="min-h-screen bg-[#020715] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#020715]">
-        <header className="border-b border-white/8 px-4 pb-3 pt-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-3">
-                <img
-                  src="/icon.png"
-                  alt="Atlas Signals"
-                  className="h-8 w-8 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
-                />
-                <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400/90">My Atlas</p>
-              </div>
-              <h1 className="mt-1 text-[38px] font-bold leading-none tracking-tight text-white">My Atlas</h1>
-              <p className="mt-1 text-[12px] font-semibold text-white/48">Official boards from today's Atlas Signals.</p>
-            </div>
-            <span className="rounded-full border border-cyan-300/28 bg-cyan-300/[0.08] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">
-              {planLabel}
-            </span>
-          </div>
+        <header className="px-4 pb-2 pt-5">
+          <h1 className="text-[38px] font-black uppercase leading-none tracking-tight text-white">
+            MY <span className="text-cyan-300">ATLAS</span>
+          </h1>
+          <p className="mt-1 text-[12px] font-semibold text-white/48">Official boards from today&apos;s Atlas Signals.</p>
         </header>
 
         <section className="flex-1 space-y-3 overflow-y-auto px-3 py-3 pb-[112px]">
+          <section className="relative overflow-hidden rounded-[22px] border border-cyan-300/18 bg-[#06101d]/78 p-3.5 shadow-[0_0_24px_rgba(34,211,238,0.07)]">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.13),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.10),transparent_40%)]" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Active Plan</p>
+                <h2 className="mt-1 text-[24px] font-black uppercase leading-none tracking-[0.04em] text-white">{planLabel}</h2>
+                <p className="mt-1 text-[11px] font-bold text-white/52">{planCycleLabel}</p>
+              </div>
+              <span className="inline-flex rounded-full border border-cyan-300/36 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">
+                Active
+              </span>
+            </div>
+
+            <div className="relative mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-[16px] border border-white/10 bg-black/22 p-2.5">
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Time Left</p>
+                <p className="mt-1 text-[11px] font-black leading-tight text-white">{planTimeLabel}</p>
+              </div>
+              <div className="rounded-[16px] border border-white/10 bg-black/22 p-2.5">
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Started</p>
+                <p className="mt-1 text-[11px] font-black leading-tight text-white">{planStartedLabel}</p>
+              </div>
+              <div className="rounded-[16px] border border-white/10 bg-black/22 p-2.5">
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-white/36">Signals</p>
+                <p className="mt-1 text-[14px] font-black leading-tight text-cyan-200">{totalSignals}</p>
+              </div>
+            </div>
+          </section>
+
           <MyAtlasRankingSection
             title="Top Signal"
             subtitle="Highest-rated official Atlas signal."
