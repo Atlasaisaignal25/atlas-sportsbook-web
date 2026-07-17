@@ -12237,8 +12237,14 @@ const subscriptionPlansBoard = (
                 className="h-full w-full object-cover object-top"
                 style={{ transform: "translateY(-5.5vh) scale(1.06)", transformOrigin: "top center" }}
               />
-              <div className="pointer-events-none absolute left-0 top-0 z-[1] h-[13vh] w-[86px] bg-[#020715] shadow-[20px_0_28px_#020715]" />
             </div>
+            <button
+              type="button"
+              onClick={() => navigateAppState({ section: "signals", view: "live", sport: "TOP" })}
+              aria-label="Back to signals"
+              className="fixed left-[max(14px,calc(50%_-_210px))] top-[5.2%] z-30 h-12 w-12 rounded-full"
+              style={{ transform: "translateY(-5.5vh) scale(1.06)", transformOrigin: "top left" }}
+            />
 
             <div
               className="fixed inset-0 z-10 mx-auto w-full max-w-md overflow-y-auto overscroll-contain"
