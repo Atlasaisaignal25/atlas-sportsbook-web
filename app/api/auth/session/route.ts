@@ -55,7 +55,7 @@ export async function GET() {
         topSignals: [...atlasSupportedSports],
       },
       entitlement,
-      myAtlasAccess: buildMyAtlasAccessPolicy("admin", entitlement.sports),
+      myAtlasAccess: buildMyAtlasAccessPolicy("admin", entitlement.sports, [...atlasSupportedSports]),
     });
   }
 
@@ -125,11 +125,11 @@ export async function GET() {
     sports: entitlement.sports,
     unlocks,
     entitlement,
-    myAtlasAccess: buildMyAtlasAccessPolicy(plan, entitlement.sports),
+    myAtlasAccess: buildMyAtlasAccessPolicy(plan, entitlement.sports, unlocks.topSignals),
   });
 }
 
-function buildMyAtlasAccessPolicy(plan: SubscriptionPlan, sports: readonly AtlasSport[]) {
+function buildMyAtlasAccessPolicy(plan: SubscriptionPlan, sports: readonly AtlasSport[], topSignalSports: readonly string[]) {
   return Object.fromEntries(
     atlasSupportedSports.map((sport) => [
       sport,
@@ -137,7 +137,7 @@ function buildMyAtlasAccessPolicy(plan: SubscriptionPlan, sports: readonly Atlas
         signalsDetected: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "signals_detected" }),
         exclusiveTop3: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "exclusive_top3" }),
         premiumTop3: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "premium_top3" }),
-        topSignal: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "top_signal" }),
+        topSignal: canViewMyAtlasProduct({ plan, sport, userSports: sports, topSignalSports, product: "top_signal" }),
         analytics: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "analytics" }),
         history: canViewMyAtlasProduct({ plan, sport, userSports: sports, product: "history" }),
       },

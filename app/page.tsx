@@ -4042,6 +4042,7 @@ function MyAtlasBoard({
   onSelectSport,
   selectedSportLabel,
   lockedMessage,
+  topSignalLockedMessage,
   access,
   onNavigate,
 }: {
@@ -4054,6 +4055,7 @@ function MyAtlasBoard({
   onSelectSport: (sport: OfficialSelectedSport) => void;
   selectedSportLabel: string;
   lockedMessage: string | null;
+  topSignalLockedMessage: string | null;
   access: {
     signalsDetected: boolean;
     exclusiveTop3: boolean;
@@ -4135,7 +4137,7 @@ function MyAtlasBoard({
             subtitle="Highest-rated official Atlas signal."
             rows={access.topSignal ? topSignalRows : []}
             empty="No Top Signal Available."
-            lockedMessage={access.topSignal ? null : lockedMessage}
+            lockedMessage={access.topSignal ? null : topSignalLockedMessage}
             accent="gold"
           />
           <MyAtlasRankingSection
@@ -7058,6 +7060,14 @@ const selectedMyAtlasSportCode =
     : officialSelectedSportToSportCode[selectedMyAtlasSport] as CheckoutSport;
 const selectedMyAtlasSportLabel = selectedMyAtlasSportCode ?? "All";
 const selectedMyAtlasAccessSport = selectedMyAtlasSportCode ?? myAtlasBoardSports[0] ?? selectedPackSport;
+const canViewMyAtlas = (sport: CheckoutSport, product: Parameters<typeof canViewMyAtlasProduct>[0]["product"]) =>
+  canViewMyAtlasProduct({
+    plan: userAccess.plan,
+    sport,
+    userSports: userAccess.sports,
+    topSignalSports: userAccess.unlocks.topSignals,
+    product,
+  });
 const myAtlasLockedMessage =
   selectedMyAtlasSportCode &&
   userAccess.plan !== "admin" &&
@@ -7068,18 +7078,22 @@ const myAtlasLockedMessage =
     : null;
 const myAtlasAccess = {
   signalsDetected: selectedMyAtlasSport === "all"
-    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "signals_detected" }))
-    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "signals_detected" }),
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlas(sport, "signals_detected"))
+    : canViewMyAtlas(selectedMyAtlasAccessSport, "signals_detected"),
   exclusiveTop3: selectedMyAtlasSport === "all"
-    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "exclusive_top3" }))
-    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "exclusive_top3" }),
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlas(sport, "exclusive_top3"))
+    : canViewMyAtlas(selectedMyAtlasAccessSport, "exclusive_top3"),
   premiumTop3: selectedMyAtlasSport === "all"
-    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "premium_top3" }))
-    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "premium_top3" }),
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlas(sport, "premium_top3"))
+    : canViewMyAtlas(selectedMyAtlasAccessSport, "premium_top3"),
   topSignal: selectedMyAtlasSport === "all"
-    ? myAtlasBoardSports.some((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "top_signal" }))
-    : canViewMyAtlasProduct({ plan: userAccess.plan, sport: selectedMyAtlasAccessSport, userSports: userAccess.sports, product: "top_signal" }),
+    ? myAtlasBoardSports.some((sport) => canViewMyAtlas(sport, "top_signal"))
+    : canViewMyAtlas(selectedMyAtlasAccessSport, "top_signal"),
 };
+const topSignalLockedMessage =
+  myAtlasAccess.topSignal
+    ? null
+    : "Top Signal is a separate daily purchase. Unlock this sport's Top Signal to view it in My Atlas.";
 
 function mapMyAtlasBoardRow(pick: Top5Entry, sport: CheckoutSport, source: MyAtlasBoardRow["source"], index: number): MyAtlasBoardRow {
   return {
@@ -7098,7 +7112,7 @@ function mapMyAtlasBoardRow(pick: Top5Entry, sport: CheckoutSport, source: MyAtl
 
 const myAtlasSignalRows = useMemo(() => {
   return myAtlasBoardSports.flatMap((sport) => {
-    if (!canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "signals_detected" })) {
+    if (!canViewMyAtlas(sport, "signals_detected")) {
       return [];
     }
 
@@ -7152,7 +7166,7 @@ const myAtlasSignalRows = useMemo(() => {
 
 const myAtlasTopSignalRows = useMemo(() => {
   return myAtlasBoardSports
-    .filter((sport) => canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "top_signal" }))
+    .filter((sport) => canViewMyAtlas(sport, "top_signal"))
     .flatMap((sport) => {
       const board = sortPicksByAtlasValue(
         getTop5BySport(
@@ -7177,7 +7191,7 @@ const myAtlasTopSignalRows = useMemo(() => {
 
 const myAtlasTop5Rows = useMemo(() => {
   return myAtlasBoardSports.flatMap((sport) =>
-    canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "premium_top3" })
+    canViewMyAtlas(sport, "premium_top3")
       ?
     sortPicksByAtlasValue(
       getTop5BySport(
@@ -7204,7 +7218,7 @@ const myAtlasTop5Rows = useMemo(() => {
 
 const myAtlasTop3Rows = useMemo(() => {
   return myAtlasBoardSports.flatMap((sport) =>
-    canViewMyAtlasProduct({ plan: userAccess.plan, sport, userSports: userAccess.sports, product: "exclusive_top3" })
+    canViewMyAtlas(sport, "exclusive_top3")
       ?
     sortPicksByAtlasValue(
       getTop5BySport(
@@ -12551,6 +12565,7 @@ const subscriptionPlansBoard = (
         onSelectSport={setSelectedMyAtlasSport}
         selectedSportLabel={selectedMyAtlasSportLabel}
         lockedMessage={myAtlasLockedMessage}
+        topSignalLockedMessage={topSignalLockedMessage}
         access={myAtlasAccess}
         onNavigate={(section) => {
           if (section === "signals") {

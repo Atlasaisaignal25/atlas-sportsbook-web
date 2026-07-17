@@ -12,6 +12,7 @@ export type MyAtlasAccessInput = {
   plan: MyAtlasAccessPlan;
   sport: string;
   userSports: readonly string[];
+  topSignalSports?: readonly string[];
   product: MyAtlasAccessProduct;
 };
 
@@ -26,6 +27,11 @@ function hasSport(userSports: readonly string[], sport: string) {
 
 export function canViewMyAtlasProduct(input: MyAtlasAccessInput) {
   if (input.plan === "admin") return true;
+
+  if (input.product === "top_signal") {
+    return hasSport(input.topSignalSports ?? [], input.sport);
+  }
+
   if (input.plan === "unlimited" || input.plan === "elite") return true;
 
   if (input.plan === "free") {
@@ -37,10 +43,7 @@ export function canViewMyAtlasProduct(input: MyAtlasAccessInput) {
   }
 
   if (input.plan === "premium") {
-    return (
-      (input.product === "top_signal" || input.product === "premium_top3") &&
-      hasSport(input.userSports, input.sport)
-    );
+    return input.product === "premium_top3" && hasSport(input.userSports, input.sport);
   }
 
   return false;
@@ -56,7 +59,7 @@ export function describeMyAtlasLockedAccess(plan: MyAtlasAccessPlan, sportLabel:
   }
 
   if (plan === "premium") {
-    return `Your Premium membership only unlocks Top Signal and Premium Top 3 for your selected sport.`;
+    return `Your Premium membership unlocks Premium Top 3 for your selected sport. Top Signal is a separate daily purchase.`;
   }
 
   return `This ${sportLabel} board is not available for the current membership.`;
