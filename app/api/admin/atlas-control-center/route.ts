@@ -410,7 +410,8 @@ function normalizeSignalLiveRows(rows: DbRow[], slateDate: string): DbRow[] {
         run_type: "LIVE",
         run_at: row.updated_at ?? row.created_at ?? now,
         slate_date: row.date ?? slateDate,
-        rank: Number(row.rank ?? index + 1),
+        rank: undefined,
+        signalRank: Number(row.rank ?? index + 1),
         sport: row.sport,
         pick: row.pick ?? metadata.detectedPick ?? row.selection,
         market: row.market ?? metadata.detectedMarket,
@@ -791,6 +792,12 @@ export async function GET() {
         ...PUBLIC_SIGNAL_LIVE_SOURCES.filter((source) => source.sport !== "MLB"),
       ]
     : PUBLIC_SIGNAL_LIVE_SOURCES;
+  const top5LiveSources = isAtlasCoreMlbEnabled()
+    ? [
+        { sport: "MLB", table: "atlas_core_mlb_picks", sportFilter: true, engineProduct: "PREMIUM_TOP5" },
+        ...TOP5_LIVE_SOURCES.filter((source) => source.sport !== "MLB"),
+      ]
+    : TOP5_LIVE_SOURCES;
 
   const [
     signalsQuery,
@@ -811,9 +818,12 @@ export async function GET() {
     supabase.from("signals_detected_history").select("*").order("slate_date", { ascending: false }).order("rank", { ascending: true }).limit(2000),
     supabase.from("top5_history").select("*").order("slate_date", { ascending: false }).order("run_at", { ascending: false }).order("rank", { ascending: true }).limit(3000),
     supabase.from("top_signal_history").select("*").order("slate_date", { ascending: false }).order("run_at", { ascending: false }).limit(1000),
-    ...TOP5_LIVE_SOURCES.map((source) =>
-      supabase.from(source.table).select("*").eq("date", slateDate).order("rank", { ascending: true })
-    ),
+    ...top5LiveSources.map((source) => {
+      let query = supabase.from(source.table).select("*").eq("date", slateDate);
+      if ("sportFilter" in source && source.sportFilter) query = query.eq("sport", source.sport);
+      if ("engineProduct" in source && source.engineProduct) query = query.eq("engine_product", source.engineProduct);
+      return query.order("rank", { ascending: true });
+    }),
     ...publicSignalSources.map((source) => {
       let query = supabase.from(source.table).select("*").eq("date", slateDate);
       if (source.sportFilter) query = query.eq("sport", source.sport);
@@ -821,8 +831,8 @@ export async function GET() {
       return query.order("start_time", { ascending: true });
     }),
   ]);
-  const top5LiveQueries = liveQueries.slice(0, TOP5_LIVE_SOURCES.length);
-  const signalLiveQueries = liveQueries.slice(TOP5_LIVE_SOURCES.length);
+  const top5LiveQueries = liveQueries.slice(0, top5LiveSources.length);
+  const signalLiveQueries = liveQueries.slice(top5LiveSources.length);
 
   const queryResults: Record<string, { error: { message: string } | null }> = {
     signals_detected_history: signalsQuery,
@@ -834,7 +844,7 @@ export async function GET() {
     history_top5_history: historyTop5Query,
     history_top_signal_history: historyTopSignalQuery,
   };
-  TOP5_LIVE_SOURCES.forEach((source, index) => {
+  top5LiveSources.forEach((source, index) => {
     queryResults[source.table] = top5LiveQueries[index];
   });
   publicSignalSources.forEach((source, index) => {
@@ -853,8 +863,8 @@ export async function GET() {
     top5LiveQueries.flatMap((query, index) =>
       ((query.data ?? []) as DbRow[]).map((row) => ({
         ...row,
-        sport: row.sport ?? TOP5_LIVE_SOURCES[index]?.sport,
-        _source_table: TOP5_LIVE_SOURCES[index]?.table,
+        sport: row.sport ?? top5LiveSources[index]?.sport,
+        _source_table: top5LiveSources[index]?.table,
       }))
     ),
     slateDate,
