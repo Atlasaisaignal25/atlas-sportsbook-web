@@ -4069,29 +4069,35 @@ function MyAtlasBoard({
   const planCycleLabel = isAdminPlan ? "Internal Access" : planLabel === "FREE" ? "Daily Access" : "Monthly Access";
   const planTimeLabel = isAdminPlan ? "No Expiration" : "Available in Billing";
   const planStartedLabel = isAdminPlan ? "Admin Account" : "Billing Record";
+  const planPillClass =
+    planLabel === "PREMIUM"
+      ? "border-amber-300/42 bg-amber-300/10 text-amber-200 shadow-[0_0_18px_rgba(251,191,36,0.10)]"
+      : planLabel === "UNLIMITED" || planLabel === "ELITE"
+      ? "border-purple-300/42 bg-purple-300/10 text-purple-200 shadow-[0_0_18px_rgba(168,85,247,0.10)]"
+      : planLabel === "EXCLUSIVE"
+      ? "border-cyan-300/42 bg-cyan-300/10 text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,0.10)]"
+      : "border-cyan-300/36 bg-cyan-300/10 text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,0.08)]";
 
   return (
     <main className="min-h-screen bg-[#020715] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#020715]">
-        <header className="px-4 pb-2 pt-5">
-          <h1 className="text-[38px] font-black uppercase leading-none tracking-tight text-white">
-            MY <span className="text-cyan-300">ATLAS</span>
-          </h1>
-          <p className="mt-1 text-[12px] font-semibold text-white/48">Official boards from today&apos;s Atlas Signals.</p>
-        </header>
-
-        <section className="flex-1 space-y-3 overflow-y-auto px-3 py-3 pb-[112px]">
+        <section className="flex-1 space-y-3 overflow-y-auto px-3 pt-3 pb-[112px]">
           <section className="relative overflow-hidden rounded-[22px] border border-cyan-300/18 bg-[#06101d]/78 p-3.5 shadow-[0_0_24px_rgba(34,211,238,0.07)]">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.13),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.10),transparent_40%)]" />
             <div className="relative flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Active Plan</p>
-                <h2 className="mt-1 text-[24px] font-black uppercase leading-none tracking-[0.04em] text-white">{planLabel}</h2>
-                <p className="mt-1 text-[11px] font-bold text-white/52">{planCycleLabel}</p>
+              <div className="min-w-0">
+                <h1 className="text-[29px] font-black uppercase leading-none tracking-tight text-white">
+                  MY <span className="text-cyan-300 drop-shadow-[0_0_12px_rgba(34,211,238,0.28)]">ATLAS</span>
+                </h1>
+                <p className="mt-1 text-[11px] font-semibold leading-4 text-white/48">Official boards from today&apos;s Atlas Signals.</p>
               </div>
-              <span className="inline-flex rounded-full border border-cyan-300/36 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">
-                Active
-              </span>
+              <div className="shrink-0 text-right">
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Active Plan</p>
+                <span className={`mt-1.5 inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${planPillClass}`}>
+                  {planLabel}
+                </span>
+                <p className="mt-1 text-[10px] font-bold text-white/48">{planCycleLabel}</p>
+              </div>
             </div>
 
             <div className="relative mt-3 grid grid-cols-3 gap-2">
