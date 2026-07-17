@@ -1,5 +1,36 @@
 import { supabase } from "./client";
 
+type MlbLiveSignalRow = {
+  id?: string;
+  sport?: string;
+  game_id?: string;
+  date?: string;
+  away_team?: string;
+  home_team?: string;
+  pick?: string | null;
+  market?: string | null;
+  line?: string | number | null;
+  odds?: string | number | null;
+  status?: string | null;
+  analysis_summary?: string | null;
+  confidence_label?: string | null;
+  edge_label?: string | null;
+  risk_note?: string | null;
+  model_factors?: unknown;
+  start_time?: string | null;
+  commence_time?: string | null;
+  metadata?: Record<string, unknown> | null;
+  rank?: number | null;
+  is_top_signal?: boolean | null;
+  confidence?: number | null;
+  internal_score?: number | null;
+  pick_ranking?: number | null;
+  edge?: number | null;
+  conviction_grade?: string | null;
+  consensus_grade?: string | null;
+  validation_reasons?: unknown;
+};
+
 function appendLineToPick(pick: string, line: unknown, style: "spread" | "total") {
   if (line === null || line === undefined) return pick;
 
@@ -24,6 +55,43 @@ function isAtlasCoreMlbEnabled() {
   return process.env.NEXT_PUBLIC_ATLAS_CORE_MLB_ENABLED === "true";
 }
 
+function normalizeSignalKeyPart(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function dedupeDisplaySignals<T extends {
+  sport?: unknown;
+  away_team?: unknown;
+  home_team?: unknown;
+  start_time?: unknown;
+  pick?: unknown;
+  market?: unknown;
+  metadata?: unknown;
+}>(rows: T[]) {
+  const seen = new Set<string>();
+
+  return rows.filter((row) => {
+    const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
+    const key = [
+      normalizeSignalKeyPart(row.sport ?? "MLB"),
+      normalizeSignalKeyPart(row.away_team),
+      normalizeSignalKeyPart(row.home_team),
+      normalizeSignalKeyPart(row.start_time),
+      normalizeSignalKeyPart(row.pick ?? metadata.detectedPick),
+      normalizeSignalKeyPart(row.market ?? metadata.detectedMarket),
+    ].join("|");
+
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export async function getMlbPublicSignals(date = todayMiamiDate()) {
   if (isAtlasCoreMlbEnabled()) {
     const { data, error } = await supabase
@@ -39,7 +107,7 @@ export async function getMlbPublicSignals(date = todayMiamiDate()) {
       return [];
     }
 
-    return (data ?? []).map((row: any) => {
+    return dedupeDisplaySignals((data ?? []) as MlbLiveSignalRow[]).map((row) => {
       const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata : {};
 
       return {
@@ -95,7 +163,7 @@ export async function getMlbTop5Live(date = todayMiamiDate()) {
       return [];
     }
 
-    return (data ?? []).map((row: any) => ({
+    return ((data ?? []) as MlbLiveSignalRow[]).map((row) => ({
       gameId: row.game_id,
       awayTeam: row.away_team,
       homeTeam: row.home_team,
@@ -131,7 +199,7 @@ export async function getMlbTop5Live(date = todayMiamiDate()) {
     return [];
   }
 
-  return (data ?? []).map((row: any) => {
+  return ((data ?? []) as MlbLiveSignalRow[]).map((row) => {
     const market = String(row.market ?? "").toLowerCase();
     const pick = String(row.pick ?? "");
     const line = row.line;

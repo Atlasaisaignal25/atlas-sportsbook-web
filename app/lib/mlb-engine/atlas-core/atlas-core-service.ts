@@ -303,6 +303,37 @@ function selectMorningOpportunities(edges: MarketEdgeRow[]) {
   });
 }
 
+function signalDisplayIdentity(edge: MarketEdgeRow, oddsByTeams: Map<string, OddsRow>) {
+  return [
+    "MLB",
+    normalizeName(edge.away_team_name),
+    normalizeName(edge.home_team_name),
+    gameStart(edge, oddsByTeams) ?? "",
+    normalizeName(pickLabel(edge)),
+    pickMarket(edge.market),
+  ].join("|");
+}
+
+function dedupeMorningOpportunities(edges: MarketEdgeRow[], oddsByTeams: Map<string, OddsRow>) {
+  const byDisplayIdentity = new Map<string, MarketEdgeRow>();
+
+  for (const edge of edges) {
+    const key = signalDisplayIdentity(edge, oddsByTeams);
+    const existing = byDisplayIdentity.get(key);
+
+    if (!existing) {
+      byDisplayIdentity.set(key, edge);
+      continue;
+    }
+
+    const edgeRank = (atlasProbability(edge) ?? -1) * 100 + (numberValue(edge.edge) ?? -1);
+    const existingRank = (atlasProbability(existing) ?? -1) * 100 + (numberValue(existing.edge) ?? -1);
+    if (edgeRank > existingRank) byDisplayIdentity.set(key, edge);
+  }
+
+  return Array.from(byDisplayIdentity.values());
+}
+
 function morningOpportunityRejectionReasons(edge: MarketEdgeRow) {
   const config = getAtlasCoreMlbConfig();
   const reasons: string[] = [];
@@ -506,12 +537,13 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
   const scanAt = new Date().toISOString();
   const highestProbabilityMarkets = selectHighestProbabilityMarketByGame(edges);
   const opportunityCandidates = selectMorningOpportunities(edges);
-  const opportunities = opportunityCandidates.filter((edge) => {
+  const qualifiedOpportunities = opportunityCandidates.filter((edge) => {
     const startTime = gameStart(edge, oddsByTeams);
     return Boolean(projectionByGame.get(edge.official_game_id)) && Boolean(decisionByGame.get(edge.official_game_id)) && timestampBelongsToMlbSlate(startTime, slateDate);
   });
+  const opportunities = dedupeMorningOpportunities(qualifiedOpportunities, oddsByTeams);
   const rejectedByReason = highestProbabilityMarkets.reduce((acc: Record<string, number>, edge) => {
-    if (opportunities.some((item) => item.official_game_id === edge.official_game_id)) return acc;
+    if (qualifiedOpportunities.some((item) => item.official_game_id === edge.official_game_id)) return acc;
     const startTime = gameStart(edge, oddsByTeams);
     const reasons = [
       ...morningOpportunityRejectionReasons(edge),
@@ -529,6 +561,7 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
     scannedMarkets: edges.length,
     highestProbabilityMarkets: highestProbabilityMarkets.length,
     opportunities: opportunities.length,
+    duplicateOpportunitiesRemoved: Math.max(0, qualifiedOpportunities.length - opportunities.length),
     rejected: Math.max(0, highestProbabilityMarkets.length - opportunities.length),
     rejectedByReason,
   });

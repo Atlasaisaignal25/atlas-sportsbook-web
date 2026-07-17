@@ -2223,6 +2223,7 @@ function SelectedSportEmptyState({
 function SignalExplorerSheet({
   open,
   rows,
+  sportLabel = "All sports",
   loading,
   errorMessage,
   onRetry,
@@ -2231,6 +2232,7 @@ function SignalExplorerSheet({
 }: {
   open: boolean;
   rows: SignalDetectedRow[];
+  sportLabel?: string;
   loading: boolean;
   errorMessage?: string | null;
   onRetry?: () => void;
@@ -2258,7 +2260,7 @@ function SignalExplorerSheet({
             <p className="text-[12px] font-black uppercase tracking-[0.18em] text-cyan-300">
               Signal Detected
             </p>
-            <p className="mt-1 text-sm text-white/58">All sports • {orderedRows.length} signals</p>
+            <p className="mt-1 text-sm text-white/58">{sportLabel} • {orderedRows.length} signals</p>
           </div>
           <button
             type="button"
@@ -3471,7 +3473,8 @@ export function SignalsHomePage({
 
       <SignalExplorerSheet
         open={signalExplorerOpen}
-        rows={signalRows}
+        rows={selectedSport === "all" ? signalRows : selectedSportMode.allSignalRows}
+        sportLabel={selectedSport === "all" ? "All sports" : selectedSportMode.sportLabel}
         loading={loading}
         errorMessage={errorMessage}
         onRetry={onRetry}
