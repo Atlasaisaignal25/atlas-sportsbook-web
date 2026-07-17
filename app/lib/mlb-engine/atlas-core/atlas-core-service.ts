@@ -309,8 +309,6 @@ function signalDisplayIdentity(edge: MarketEdgeRow, oddsByTeams: Map<string, Odd
     normalizeName(edge.away_team_name),
     normalizeName(edge.home_team_name),
     gameStart(edge, oddsByTeams) ?? "",
-    normalizeName(pickLabel(edge)),
-    pickMarket(edge.market),
   ].join("|");
 }
 

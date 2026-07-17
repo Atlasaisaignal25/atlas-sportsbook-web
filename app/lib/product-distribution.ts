@@ -72,8 +72,22 @@ function rowSport(row: DistributionItemBase) {
 }
 
 function rowId(row: DistributionItemBase) {
+  const away = row.away_team ?? row.awayTeam;
+  const home = row.home_team ?? row.homeTeam;
+  const start = row.start_time ?? row.startTime;
+  if (away && home && start) {
+    return [
+      rowSport(row),
+      away,
+      home,
+      start,
+    ]
+      .map((part) => String(part).toLowerCase().trim())
+      .join("|");
+  }
+
   const id = row.game_id ?? row.gameId ?? row.id;
-  if (id !== null && id !== undefined && String(id).trim()) return String(id);
+  if (id !== null && id !== undefined && String(id).trim()) return `${rowSport(row)}|${String(id)}`;
 
   return [
     rowSport(row),

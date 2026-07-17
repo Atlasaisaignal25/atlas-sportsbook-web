@@ -76,14 +76,11 @@ function dedupeDisplaySignals<T extends {
   const seen = new Set<string>();
 
   return rows.filter((row) => {
-    const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
     const key = [
       normalizeSignalKeyPart(row.sport ?? "MLB"),
       normalizeSignalKeyPart(row.away_team),
       normalizeSignalKeyPart(row.home_team),
       normalizeSignalKeyPart(row.start_time),
-      normalizeSignalKeyPart(row.pick ?? metadata.detectedPick),
-      normalizeSignalKeyPart(row.market ?? metadata.detectedMarket),
     ].join("|");
 
     if (seen.has(key)) return false;
