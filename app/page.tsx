@@ -12048,7 +12048,195 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if ((appSection as string) === "alerts") {
+  if ((appSection as string) === "alerts" && hasPaidSubscription) {
+    const activePlanTheme =
+      userAccess.plan === "exclusive"
+        ? {
+            label: "EXCLUSIVE",
+            title: "Exclusive Access",
+            subtitle: "One selected sport with up to 3 official ranked signals.",
+            accent: "cyan",
+            border: "border-cyan-300/40",
+            glow: "shadow-[0_0_28px_rgba(34,211,238,0.12)]",
+            panel: "bg-cyan-300/[0.055]",
+            text: "text-cyan-300",
+            icon: "star" as const,
+          }
+        : userAccess.plan === "premium"
+          ? {
+              label: "PREMIUM",
+              title: "Premium Access",
+              subtitle: "Official ranked intelligence for one selected sport.",
+              accent: "gold",
+              border: "border-amber-300/45",
+              glow: "shadow-[0_0_30px_rgba(251,191,36,0.14)]",
+              panel: "bg-amber-300/[0.055]",
+              text: "text-amber-300",
+              icon: "crown" as const,
+            }
+          : {
+              label: "UNLIMITED",
+              title: "Atlas Unlimited",
+              subtitle: "Official ranked intelligence across every available Atlas sport.",
+              accent: "purple",
+              border: "border-purple-300/45",
+              glow: "shadow-[0_0_30px_rgba(168,85,247,0.14)]",
+              panel: "bg-purple-300/[0.055]",
+              text: "text-purple-300",
+              icon: "diamond" as const,
+            };
+    const activePlanSports = hasAllSportsAccessPlan(userAccess.plan)
+      ? "All available sports"
+      : userAccess.sports.length > 0
+        ? userAccess.sports.join(", ")
+        : selectedPackSport;
+    const activePlanFeatures =
+      userAccess.plan === "exclusive"
+        ? ["Top 3 Ranked Signals", "Signal History", "Closing Status", "Atlas Bankroll", "Live Updates"]
+        : userAccess.plan === "premium"
+          ? ["Official Ranked Signals", "Atlas AI Rankings", "Market Impact", "Atlas Bankroll", "Signal History"]
+          : ["All Sports", "Official Ranked Signals", "Atlas AI Rankings", "Market Impact", "Atlas Bankroll", "Signal History"];
+
+    return (
+      <main className="min-h-screen bg-[#020715] text-white">
+        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#020715]">
+          <header className="border-b border-white/8 px-4 pb-3 pt-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/icon.png"
+                    alt="Atlas Signals"
+                    className="h-8 w-8 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.35)]"
+                  />
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-cyan-400/90">My Atlas</p>
+                </div>
+                <h1 className="mt-1 text-[40px] font-bold leading-none tracking-tight text-white">My Atlas</h1>
+              </div>
+              <span className={`rounded-full border ${activePlanTheme.border} ${activePlanTheme.panel} px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${activePlanTheme.text}`}>
+                {activePlanTheme.label}
+              </span>
+            </div>
+          </header>
+
+          <section className="flex-1 space-y-3 overflow-y-auto px-4 py-3 pb-[112px]">
+            <section className={`relative overflow-hidden rounded-[26px] border ${activePlanTheme.border} ${activePlanTheme.panel} p-4 ${activePlanTheme.glow}`}>
+              <div className="pointer-events-none absolute -right-4 top-3 text-[120px] font-black leading-none text-white/[0.025]">
+                A
+              </div>
+              <div className="relative grid grid-cols-[62px_1fr] gap-3">
+                <span className={`grid h-[62px] w-[62px] place-items-center rounded-full border ${activePlanTheme.border} bg-black/25 ${activePlanTheme.text} shadow-[0_0_18px_currentColor]`}>
+                  <HomeMembershipIcon type={activePlanTheme.icon} className="h-8 w-8" />
+                </span>
+                <div className="min-w-0">
+                  <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${activePlanTheme.text}`}>Active Membership</p>
+                  <h2 className="mt-1 text-[24px] font-black leading-tight text-white">{activePlanTheme.title}</h2>
+                  <p className="mt-1 text-[12px] font-semibold leading-5 text-white/58">{activePlanTheme.subtitle}</p>
+                </div>
+              </div>
+              <div className="relative mt-4 grid grid-cols-2 gap-2">
+                <div className="rounded-[18px] border border-white/10 bg-black/20 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/38">Sports</p>
+                  <p className="mt-1 text-[13px] font-black text-white">{activePlanSports}</p>
+                </div>
+                <div className="rounded-[18px] border border-white/10 bg-black/20 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/38">Status</p>
+                  <p className={`mt-1 text-[13px] font-black ${activePlanTheme.text}`}>Active</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">Included Access</p>
+              <div className="mt-3 space-y-2">
+                {activePlanFeatures.map((feature) => (
+                  <div key={feature} className="flex items-center gap-3 rounded-[16px] border border-white/8 bg-black/20 px-3 py-2.5">
+                    <span className={`grid h-8 w-8 place-items-center rounded-[12px] border ${activePlanTheme.border} ${activePlanTheme.panel} ${activePlanTheme.text}`}>✓</span>
+                    <span className="text-[12px] font-black text-white">{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/45">Manage Membership</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleManageBilling}
+                  disabled={billingBusy}
+                  className="rounded-[16px] border border-cyan-300/25 bg-cyan-300/[0.08] px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-cyan-200 disabled:opacity-60"
+                >
+                  Billing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateAppState({ section: "signals", view: "odds", sport: selectedPackSport })}
+                  className="rounded-[16px] border border-white/12 bg-black/22 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white/78"
+                >
+                  Update Plan
+                </button>
+                <button
+                  type="button"
+                  onClick={handleManageBilling}
+                  disabled={billingBusy}
+                  className="rounded-[16px] border border-red-300/20 bg-red-500/[0.08] px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-200 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateAppState({ section: "signals", view: "live", sport: "TOP" })}
+                  className="rounded-[16px] border border-white/12 bg-black/22 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white/78"
+                >
+                  Result History
+                </button>
+              </div>
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/45">Recent Results</p>
+              <div className="mt-3 space-y-2">
+                {[...visibleTopSignalHistory.slice(0, 2), ...top5History.slice(0, 3)]
+                  .slice(0, 5)
+                  .map((item, idx) => (
+                    <div key={`my-atlas-plan-history-${idx}`} className="flex items-center justify-between gap-3 rounded-[16px] bg-black/24 px-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-[12px] font-black text-white">{item.away_team} vs {item.home_team}</p>
+                        <p className="mt-0.5 truncate text-[10px] font-semibold text-white/42">{item.pick}</p>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.06] px-2 py-1 text-[9px] font-black uppercase text-white/50">
+                        {item.result ?? "Pending"}
+                      </span>
+                    </div>
+                  ))}
+                {visibleTopSignalHistory.length === 0 && top5History.length === 0 ? (
+                  <div className="rounded-[16px] bg-black/20 px-3 py-3 text-[12px] font-semibold text-white/45">
+                    Result history will appear here after your membership signals close.
+                  </div>
+                ) : null}
+              </div>
+            </section>
+          </section>
+
+          <AtlasBottomNavigation
+            activeSection="alerts"
+            placement="fixed"
+            zIndexClass="z-50"
+            onNavigate={(section) => {
+              if (section === "signals") {
+                navigateAppState({ section, view: "live" });
+                return;
+              }
+              navigateAppState({ section });
+            }}
+          />
+        </div>
+      </main>
+    );
+  }
+
+  if ((appSection as string) === "alerts" && userAccess.plan !== "admin") {
     const joinPlans = [
       {
         plan: "exclusive" as const,
