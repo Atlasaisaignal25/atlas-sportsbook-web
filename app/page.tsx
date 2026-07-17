@@ -4426,6 +4426,7 @@ const [top5RecordStats, setTop5RecordStats] = useState<RecordStats>(emptyRecordS
   const router = useRouter();
   const searchParams = useSearchParams();
   const guestBoardMode = searchParams.get("board") === "1";
+  const joinEntryMode = searchParams.get("join") === "1";
   const initialSectionParam = searchParams.get("section");
   const initialAppSection: AppSection =
     initialSectionParam === "signals" ||
@@ -11899,7 +11900,7 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if (!authSession.authenticated && !guestBoardMode && !(showSplash && useBankrollSplashOverlay)) {
+  if (!authSession.authenticated && !guestBoardMode && joinEntryMode && !(showSplash && useBankrollSplashOverlay)) {
     return (
       <AtlasAccessGate
         onFree={() => router.push("/login?intent=free#create-account")}
@@ -12048,7 +12049,7 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if ((appSection as string) === "alerts") {
+  if (searchParams.get("plans") === "1" || joinEntryMode) {
     const joinPlans = [
       {
         plan: "exclusive" as const,
@@ -12523,7 +12524,7 @@ const subscriptionPlansBoard = (
             </button>
           ) : (
             <div className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">
-              {appSection === "news" ? "Impact" : appSection === "bankroll" ? "Active" : selectedSport}
+              {appSection === "news" ? "Impact" : appSection === "bankroll" ? "Active" : appSection === "alerts" ? userAccess.plan : selectedSport}
             </div>
           )}
         </div>
@@ -12554,7 +12555,7 @@ const subscriptionPlansBoard = (
           </div>
         ) : null}
 
-        {appSection !== "signals" && appSection !== "news" && appSection !== "bankroll" && appSection !== "more" ? (
+        {appSection !== "signals" && appSection !== "news" && appSection !== "bankroll" && appSection !== "alerts" && appSection !== "more" ? (
         <div className="mt-3 grid grid-cols-6 gap-1">
           {sportsTabs.map((sport) => (
             <button
@@ -14177,90 +14178,219 @@ const subscriptionPlansBoard = (
           </div>
         ) : appSection === "alerts" ? (
           <div className="space-y-3">
-            <section className="rounded-[24px] border border-cyan-400/20 bg-cyan-400/[0.07] p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-300">
-                    Alerts Center
+            <section className="relative overflow-hidden rounded-[24px] border border-cyan-300/24 bg-[radial-gradient(circle_at_82%_18%,rgba(34,211,238,0.16),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] p-4 shadow-[0_0_28px_rgba(34,211,238,0.08)]">
+              <div className="pointer-events-none absolute -right-5 top-4 text-[118px] font-black leading-none text-cyan-300/[0.025]">
+                A
+              </div>
+              <div className="relative flex items-center gap-3">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-cyan-300/24 bg-black/22 text-[15px] font-black text-cyan-200 shadow-[inset_0_0_18px_rgba(34,211,238,0.06)]">
+                  {authSession.authenticated ? getMoreInitials(authSession.email) : <MoreLineIcon type="profile" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.20em] text-cyan-300">
+                    Personal Control Center
                   </p>
-                  <h2 className="mt-2 text-[22px] font-black tracking-tight text-white">
-                    Today&apos;s signal feed
+                  <h2 className="mt-1 truncate text-[22px] font-black leading-none text-white">
+                    {authSession.authenticated
+                      ? authSession.email?.split("@")[0]?.replace(/[._-]+/g, " ") ?? "Atlas Member"
+                      : "Guest User"}
                   </h2>
-                  <p className="mt-2 text-[13px] leading-5 text-white/62">
-                    Alerts are generated from current games, premium picks, validation status and records.
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/42">
+                    {authSession.authenticated ? `${userAccess.plan} · Active` : "Sign in required"}
                   </p>
                 </div>
-
-                <span className="rounded-full bg-cyan-400 px-3 py-1.5 text-[11px] font-black text-black">
-                  {atlasAlerts.length}
-                </span>
+                <button
+                  type="button"
+                  onClick={authSession.authenticated ? handleManageBilling : () => router.push("/login?mode=login")}
+                  className="relative shrink-0 rounded-full border border-cyan-300/24 bg-cyan-300/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-cyan-200"
+                >
+                  Manage
+                </button>
               </div>
             </section>
 
-            {atlasAlerts.length === 0 ? (
-              <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-[16px] font-bold text-white">
-                  No alerts yet
+            {!authSession.authenticated ? (
+              <section className="rounded-[24px] border border-cyan-300/18 bg-white/[0.04] p-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                  My Atlas
                 </p>
-                <p className="mt-2 text-[13px] leading-5 text-white/55">
-                  Atlas will surface alerts when games start, premium boards are available, signals validate, or records update.
+                <h3 className="mt-2 text-[20px] font-black text-white">
+                  Create your personal Atlas account
+                </h3>
+                <p className="mt-2 text-[12px] leading-5 text-white/58">
+                  My Atlas unlocks your profile, purchases, memberships, saved settings and account controls.
                 </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {atlasAlerts.map((alert) => (
+                <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
-                    key={alert.id}
                     type="button"
-                    onClick={alert.action}
-                    className="block w-full rounded-[22px] border border-white/10 bg-white/[0.04] p-4 text-left transition-all active:scale-[0.995]"
+                    onClick={() => router.push("/login?mode=login")}
+                    className="rounded-[15px] border border-cyan-300/24 bg-black/20 px-3 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-cyan-200"
                   >
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-                          alert.tone === "green"
-                            ? "bg-green-300"
-                            : alert.tone === "red"
-                            ? "bg-red-300"
-                            : alert.tone === "yellow"
-                            ? "bg-yellow-300"
-                            : alert.tone === "cyan"
-                            ? "bg-cyan-300"
-                            : "bg-white/50"
-                        }`}
-                      />
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${
-                              alert.tone === "green"
-                                ? "bg-green-500/15 text-green-300"
-                                : alert.tone === "red"
-                                ? "bg-red-500/15 text-red-300"
-                                : alert.tone === "yellow"
-                                ? "bg-yellow-500/15 text-yellow-300"
-                                : alert.tone === "cyan"
-                                ? "bg-cyan-400/10 text-cyan-300"
-                                : "bg-white/10 text-white/55"
-                            }`}
-                          >
-                            {alert.label}
-                          </span>
-                        </div>
-
-                        <p className="mt-3 truncate text-[15px] font-black text-white">
-                          {alert.title}
-                        </p>
-                        <p className="mt-1 text-[12px] leading-5 text-white/55">
-                          {alert.body}
-                        </p>
-                      </div>
-                    </div>
+                    Sign In
                   </button>
-                ))}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => router.push("/login?intent=free")}
+                    className="rounded-[15px] bg-cyan-300 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-black"
+                  >
+                    Create Account
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
+            {authSession.authenticated && userAccess.plan === "admin" ? (
+              <section className="rounded-[24px] border border-cyan-300/20 bg-white/[0.04] p-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                  Admin Dashboard
+                </p>
+                <h3 className="mt-2 text-[20px] font-black text-white">
+                  Full Atlas control access
+                </h3>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {[
+                    ["Overview", "Live system summary", () => undefined],
+                    ["Signals Detected", "Public signal board", () => navigateAppState({ section: "signals", view: "live", sport: "TOP" })],
+                    ["Top Signal", "Daily highest-rated signal", () => navigateAppState({ section: "signals", view: "live", sport: "TOP" })],
+                    ["Top 3", "Exclusive ranked signals", () => navigateAppState({ section: "signals", view: "odds", sport: selectedPackSport })],
+                    ["Top 5", "Premium ranked board", () => navigateAppState({ section: "signals", view: "odds", sport: selectedPackSport })],
+                    ["Control Center", "Admin operations", () => router.push("/admin")],
+                    ["Ranking Engine", "Rank and validate", () => router.push("/admin")],
+                    ["Publishing", "Snapshots and history", () => router.push("/admin")],
+                  ].map(([title, detail, action]) => (
+                    <button
+                      key={title as string}
+                      type="button"
+                      onClick={action as () => void}
+                      className="rounded-[18px] border border-white/10 bg-black/22 p-3 text-left"
+                    >
+                      <p className="text-[12px] font-black text-white">{title as string}</p>
+                      <p className="mt-1 text-[10px] font-semibold leading-4 text-white/42">{detail as string}</p>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {authSession.authenticated && userAccess.plan !== "admin" ? (
+              <>
+                {userAccess.plan === "free" ? (
+                  <section className="rounded-[24px] border border-cyan-300/18 bg-white/[0.04] p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                      Membership Center
+                    </p>
+                    <h3 className="mt-2 text-[20px] font-black text-white">
+                      Build your Atlas access
+                    </h3>
+                    <p className="mt-2 text-[12px] leading-5 text-white/58">
+                      FREE accounts keep the public experience clean. Upgrade to add ranked signals, Market Impact and Atlas Bankroll tools.
+                    </p>
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      {(["exclusive", "premium", "unlimited"] as const).map((plan) => (
+                        <button
+                          key={`my-atlas-plan-${plan}`}
+                          type="button"
+                          onClick={() => handleJoinPlanChoose(plan)}
+                          className="rounded-[16px] border border-cyan-300/18 bg-black/22 px-2 py-3 text-center"
+                        >
+                          <p className="text-[10px] font-black uppercase tracking-[0.08em] text-white">{plan}</p>
+                          <p className="mt-1 text-[9px] font-semibold text-cyan-200/70">Upgrade</p>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                {userAccess.plan === "exclusive" ? (
+                  <section className="rounded-[24px] border border-cyan-300/18 bg-white/[0.04] p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                      Exclusive Dashboard
+                    </p>
+                    <h3 className="mt-2 text-[20px] font-black text-white">
+                      Top 3 Ranked Signals
+                    </h3>
+                    <div className="mt-4 space-y-2">
+                      {["Top 3 Ranked Signals", "Signal History", "Closing Status", "Atlas Bankroll", "Manage My Account"].map((item) => (
+                        <div key={item} className="flex items-center gap-3 rounded-[16px] border border-white/8 bg-black/20 px-3 py-2.5">
+                          <span className="grid h-8 w-8 place-items-center rounded-[12px] border border-cyan-300/18 bg-cyan-300/8 text-cyan-300">
+                            <MoreLineIcon type={item.includes("Bankroll") ? "billing" : "signal"} />
+                          </span>
+                          <span className="text-[12px] font-black text-white">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                {userAccess.plan === "premium" || userAccess.plan === "elite" || userAccess.plan === "unlimited" ? (
+                  <section className="rounded-[24px] border border-cyan-300/18 bg-white/[0.04] p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                      {userAccess.plan === "unlimited" || userAccess.plan === "elite" ? "Unlimited Dashboard" : "Premium Dashboard"}
+                    </p>
+                    <h3 className="mt-2 text-[20px] font-black text-white">
+                      Official Ranked Signals
+                    </h3>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      {[
+                        userAccess.plan === "unlimited" || userAccess.plan === "elite" ? "All Sports" : `${selectedPackSport} Sport`,
+                        "Official Ranked Signals",
+                        "Market Impact",
+                        "Atlas Bankroll",
+                        "Signal History",
+                        "Manage My Account",
+                      ].map((item) => (
+                        <div key={item} className="rounded-[16px] border border-white/8 bg-black/20 p-3">
+                          <p className="text-[12px] font-black text-white">{item}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                {userAccess.unlocks.topPlay || userAccess.unlocks.topSignals.length > 0 ? (
+                  <section className="rounded-[24px] border border-amber-300/24 bg-amber-300/[0.06] p-4">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-300">
+                      Today's Top Signal
+                    </p>
+                    <h3 className="mt-2 text-[20px] font-black text-white">
+                      Purchased daily module
+                    </h3>
+                    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                      {["Top Signal", "Bankroll Tracking", "Purchase History"].map((item) => (
+                        <div key={item} className="rounded-[15px] border border-amber-300/18 bg-black/22 px-2 py-3">
+                          <p className="text-[10px] font-black leading-4 text-white">{item}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </>
+            ) : null}
+
+            {authSession.authenticated ? (
+              <section className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/45">
+                      Manage My Account
+                    </p>
+                    <h3 className="mt-2 text-[18px] font-black text-white">
+                      Membership, billing and purchases
+                    </h3>
+                    <p className="mt-1 text-[12px] leading-5 text-white/52">
+                      Change plans, update billing, buy Top Signal, restore purchases and review payment history from My Atlas.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={hasPaidSubscription ? handleManageBilling : () => navigateAppState({ section: "signals", view: "odds", sport: selectedPackSport })}
+                    className="shrink-0 rounded-full border border-cyan-300/24 bg-cyan-300/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-cyan-200"
+                  >
+                    {hasPaidSubscription ? "Billing" : "Plans"}
+                  </button>
+                </div>
+              </section>
+            ) : null}
           </div>
         ) : appSection === "more" ? (
           <MoreTabFoundation
