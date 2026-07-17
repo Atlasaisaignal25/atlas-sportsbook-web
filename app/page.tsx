@@ -2332,7 +2332,8 @@ function sortPicksByAtlasValue<T extends Top5Entry>(picks: T[]) {
 }
 
 function getSubscriptionEligiblePicks(picks: Top5Entry[]) {
-  return picks.filter((pick) => pick.isTopSignal !== true && pick.rank !== 1);
+  const withoutTopSignal = picks.filter((pick) => pick.isTopSignal !== true && pick.rank !== 1);
+  return withoutTopSignal.length >= 3 ? withoutTopSignal : picks.filter((pick) => pick.isTopSignal !== true);
 }
 
 function labelSubscriptionPicks(picks: Top5Entry[], ranked: boolean) {
@@ -7140,7 +7141,12 @@ const myAtlasTop5Rows = useMemo(() => {
         activeSoccerTop5Data
       )
     )
-      .filter((pick) => pick.isTopSignal !== true && pick.rank !== 1)
+      .filter((pick, _index, picks) => {
+        const withoutTopSignal = picks.filter((item) => item.isTopSignal !== true && item.rank !== 1);
+        return withoutTopSignal.length >= 3
+          ? pick.isTopSignal !== true && pick.rank !== 1
+          : pick.isTopSignal !== true;
+      })
       .slice(0, 3)
       .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Premium", index))
       : []
@@ -7167,7 +7173,12 @@ const myAtlasTop3Rows = useMemo(() => {
         activeSoccerTop5Data
       )
     )
-      .filter((pick) => pick.isTopSignal !== true && pick.rank !== 1)
+      .filter((pick, _index, picks) => {
+        const withoutTopSignal = picks.filter((item) => item.isTopSignal !== true && item.rank !== 1);
+        return withoutTopSignal.length >= 3
+          ? pick.isTopSignal !== true && pick.rank !== 1
+          : pick.isTopSignal !== true;
+      })
       .slice(0, 3)
       .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Exclusive", index))
       : []
