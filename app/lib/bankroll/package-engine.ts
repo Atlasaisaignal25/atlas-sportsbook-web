@@ -29,10 +29,6 @@ type PackagePlanCandidate = {
   startTime: string;
 };
 
-const SOCCER_SPORT: AtlasPlanSport = "SOCCER";
-const SOCCER_PREMIUM_LIMIT = 3;
-const SOCCER_EXCLUSIVE_LIMIT = 3;
-
 export type AtlasPackageSourcePick = {
   id: string;
   sport: AtlasPlanSport;
@@ -225,33 +221,21 @@ function getCandidatesForMembership(membership: MembershipContext, sources?: Atl
   if (membership.package === "free") {
     if (!includeFreeSignals) return [];
     const sports = resolveSports(membership, liveSources.signals);
-    return [
-      ...pickCandidatesBySports(liveSources.signals, sports.filter((sport) => sport !== SOCCER_SPORT), Number.POSITIVE_INFINITY),
-      ...(sports.includes(SOCCER_SPORT) ? getSoccerFreeCandidates(liveSources) : []),
-    ].sort(sortCandidatesForDisplay);
+    return pickCandidatesBySports(liveSources.signals, sports, Number.POSITIVE_INFINITY).sort(sortCandidatesForDisplay);
   }
 
   if (membership.package === "exclusive") {
     const sports = resolveSports(membership, [...liveSources.top3, ...liveSources.signals]);
-    return [
-      ...pickCandidatesBySports(liveSources.top3, sports.filter((sport) => sport !== SOCCER_SPORT), 3),
-      ...(sports.includes(SOCCER_SPORT) ? getSoccerExclusiveCandidates(liveSources) : []),
-    ].sort(sortCandidatesForDisplay);
+    return pickCandidatesBySports(liveSources.top3, sports, 3).sort(sortCandidatesForDisplay);
   }
 
   if (membership.package === "unlimited") {
     const sports = resolveSports(membership, liveSources.top5);
-    return [
-      ...pickCandidatesBySports(liveSources.top5, sports.filter((sport) => sport !== SOCCER_SPORT), 5),
-      ...(sports.includes(SOCCER_SPORT) ? getSoccerPremiumCandidates(liveSources) : []),
-    ].sort(sortCandidatesForDisplay);
+    return pickCandidatesBySports(liveSources.top5, sports, Number.POSITIVE_INFINITY).sort(sortCandidatesForDisplay);
   }
 
   const sports = membership.selectedSport ? [membership.selectedSport] : resolveSports(membership, liveSources.top5).slice(0, 1);
-  return [
-    ...pickCandidatesBySports(liveSources.top5, sports.filter((sport) => sport !== SOCCER_SPORT), 5),
-    ...(sports.includes(SOCCER_SPORT) ? getSoccerPremiumCandidates(liveSources) : []),
-  ].sort(sortCandidatesForDisplay);
+  return pickCandidatesBySports(liveSources.top5, sports, 3).sort(sortCandidatesForDisplay);
 }
 
 function getTopCandidatesForMembership(membership: MembershipContext, sources?: AtlasPackageSources) {
@@ -263,56 +247,6 @@ function pickCandidatesBySports(candidates: PackagePlanCandidate[], sports: Atla
   return candidates
     .filter((candidate) => sports.includes(candidate.sport) && candidate.rank <= maxRank)
     .sort((a, b) => a.sport.localeCompare(b.sport) || a.rank - b.rank);
-}
-
-function getSoccerTopSignalCandidate(liveSources: ReturnType<typeof normalizeAtlasPackageSources>) {
-  return liveSources.top5
-    .filter((candidate) => candidate.sport === SOCCER_SPORT)
-    .sort((a, b) => a.rank - b.rank)[0] ?? null;
-}
-
-function getSoccerPremiumCandidates(liveSources: ReturnType<typeof normalizeAtlasPackageSources>) {
-  const topSignal = getSoccerTopSignalCandidate(liveSources);
-  const topSignalKey = candidateKey(topSignal);
-
-  return liveSources.top5
-    .filter((candidate) => candidate.sport === SOCCER_SPORT && candidateKey(candidate) !== topSignalKey)
-    .sort((a, b) => a.rank - b.rank)
-    .slice(0, SOCCER_PREMIUM_LIMIT)
-    .map((candidate, index) => ({ ...candidate, rank: index + 1, source: "top5" as AtlasPlanSource }));
-}
-
-function getSoccerFreeCandidates(liveSources: ReturnType<typeof normalizeAtlasPackageSources>) {
-  const excludedKeys = new Set([
-    candidateKey(getSoccerTopSignalCandidate(liveSources)),
-    ...getSoccerPremiumCandidates(liveSources).map(candidateKey),
-  ].filter(Boolean));
-
-  return liveSources.signals
-    .filter((candidate) => candidate.sport === SOCCER_SPORT && !excludedKeys.has(candidateKey(candidate)))
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-    .map((candidate, index) => ({ ...candidate, rank: index + 1, source: "signals" as AtlasPlanSource }));
-}
-
-function getSoccerExclusiveCandidates(liveSources: ReturnType<typeof normalizeAtlasPackageSources>) {
-  const top5RankByKey = new Map(
-    liveSources.top5
-      .filter((candidate) => candidate.sport === SOCCER_SPORT)
-      .map((candidate) => [candidateKey(candidate), candidate.rank]),
-  );
-
-  return getSoccerFreeCandidates(liveSources)
-    .sort((a, b) => {
-      const aRank = top5RankByKey.get(candidateKey(a)) ?? Number.POSITIVE_INFINITY;
-      const bRank = top5RankByKey.get(candidateKey(b)) ?? Number.POSITIVE_INFINITY;
-      return aRank - bRank || new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-    })
-    .slice(0, SOCCER_EXCLUSIVE_LIMIT)
-    .map((candidate, index) => ({ ...candidate, rank: index + 1, source: "top3" as AtlasPlanSource }));
-}
-
-function candidateKey(candidate: PackagePlanCandidate | null | undefined) {
-  return candidate?.eventId || candidate?.id || "";
 }
 
 function sortCandidatesForDisplay(a: PackagePlanCandidate, b: PackagePlanCandidate) {

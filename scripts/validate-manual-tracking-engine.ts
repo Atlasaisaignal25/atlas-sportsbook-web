@@ -125,7 +125,7 @@ const premiumMembership: MembershipContext = {
   availableSports: ["MLB"],
 };
 const premiumPicks = filterPicksByMembership(premiumMembership, now, validationAtlasSources);
-assert.equal(premiumPicks.length, 5);
+assert.equal(premiumPicks.length, 3);
 assert.equal(premiumPicks.every((pick) => pick.source === "top5" && pick.sport === "MLB"), true);
 
 const unlimitedMembership: MembershipContext = {
@@ -142,7 +142,7 @@ const configWithMembership = normalizeBankrollConfig({
   membership: premiumMembership,
 });
 const availableAtlasPicks = loadAvailableAtlasPicks(configWithMembership, now, validationAtlasSources);
-assert.equal(availableAtlasPicks.length, 5);
+assert.equal(availableAtlasPicks.length, 3);
 
 const trackedCollection = createTrackedPick(
   createManualTracking(now, 500),

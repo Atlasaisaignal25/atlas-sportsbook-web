@@ -90,8 +90,8 @@ const soccerFreeTracking = getTrackingCandidatesForMembership(
   now,
   soccerAdaptiveSources,
 );
-assert.equal(soccerFreeTracking.length, 2);
-assert.deepEqual(soccerFreeTracking.map((pick) => pick.selection), ["Soccer Signal 5", "Soccer Signal 6"]);
+assert.equal(soccerFreeTracking.length, 3);
+assert.deepEqual(soccerFreeTracking.map((pick) => pick.selection), ["Soccer Signal 4", "Soccer Signal 5", "Soccer Signal 6"]);
 assert.equal(soccerFreeTracking.every((pick) => pick.source === "signals"), true);
 
 const soccerExclusiveTracking = getTrackingCandidatesForMembership(
@@ -99,8 +99,8 @@ const soccerExclusiveTracking = getTrackingCandidatesForMembership(
   now,
   soccerAdaptiveSources,
 );
-assert.equal(soccerExclusiveTracking.length, 2);
-assert.deepEqual(soccerExclusiveTracking.map((pick) => pick.selection), ["Soccer Signal 5", "Soccer Signal 6"]);
+assert.equal(soccerExclusiveTracking.length, 3);
+assert.deepEqual(soccerExclusiveTracking.map((pick) => pick.selection), ["Soccer Signal 4", "Soccer Signal 5", "Soccer Signal 6"]);
 assert.equal(soccerExclusiveTracking.every((pick) => pick.source === "top3"), true);
 
 const soccerPremiumCandidates = getPlanCandidatesForMembership(
@@ -121,14 +121,14 @@ assert.equal(soccerUnlimitedCandidates.length, 3);
 assert.deepEqual(soccerUnlimitedCandidates.map((pick) => pick.selection), ["Soccer Signal 2", "Soccer Signal 3", "Soccer Signal 4"]);
 
 const compactSoccerSources = soccerSources(4, 4);
-assert.equal(getTrackingCandidatesForMembership({ package: "free", selectedSport: null, availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 0);
-assert.equal(getTrackingCandidatesForMembership({ package: "exclusive", selectedSport: null, availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 0);
+assert.equal(getTrackingCandidatesForMembership({ package: "free", selectedSport: null, availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 1);
+assert.equal(getTrackingCandidatesForMembership({ package: "exclusive", selectedSport: null, availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 1);
 assert.equal(getPlanCandidatesForMembership({ package: "premium", selectedSport: "SOCCER", availableSports: ["SOCCER"] }, now, compactSoccerSources).length, 3);
 
 console.log("Package engine validation OK");
 
 function soccerSources(signalCount: number, top5Count: number): AtlasPackageSources {
-  const signals = Array.from({ length: signalCount }, (_, index) => source(
+  const masterSignals = Array.from({ length: signalCount }, (_, index) => source(
     `soccer-game-${index + 1}`,
     "SOCCER",
     `Soccer Signal ${index + 1}`,
@@ -136,7 +136,7 @@ function soccerSources(signalCount: number, top5Count: number): AtlasPackageSour
     -110 - index,
     index + 1,
   ));
-  const top5 = Array.from({ length: top5Count }, (_, index) => source(
+  const dynamicRanking = Array.from({ length: top5Count }, (_, index) => source(
     `soccer-game-${index + 1}`,
     "SOCCER",
     `Soccer Signal ${index + 1}`,
@@ -144,10 +144,13 @@ function soccerSources(signalCount: number, top5Count: number): AtlasPackageSour
     -110 - index,
     index + 1,
   ));
+  const signals = masterSignals.slice(3).map((pick, index) => ({ ...pick, rank: index + 1 }));
+  const top3 = signals.slice(0, 3).map((pick, index) => ({ ...pick, rank: index + 1 }));
+  const top5 = dynamicRanking.slice(1, 4).map((pick, index) => ({ ...pick, rank: index + 1 }));
 
   return {
     signals,
-    top3: top5.filter((pick) => (pick.rank ?? 999) <= 3),
+    top3,
     top5,
   };
 }

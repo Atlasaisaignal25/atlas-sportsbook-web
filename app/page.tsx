@@ -5,7 +5,6 @@ import { Suspense, type FormEvent, type ReactNode, useEffect, useMemo, useRef, u
 import nbaSignals from "@/data/nba-public-signals.json";
 import nhlSignals from "@/data/nhl-public-signals.json";
 import soccerSignals from "@/data/soccer-public-signals.json";
-import mlbTop5 from "@/data/mlb-top5.json";
 import nbaTop5 from "@/data/nba-top5.json";
 import nhlTop5 from "@/data/nhl-top5.json";
 import soccerTop5 from "@/data/soccer-top5.json";
@@ -15,6 +14,12 @@ import {getMlbPublicSignals,getMlbTop5Live,} from "@/app/lib/supabase/mlbLiveSig
 import { getNbaPublicSignals, getNbaTop5Live } from "@/app/lib/supabase/nbaLiveSignals";
 import { getNhlPublicSignals, getNhlTop5Live } from "@/app/lib/supabase/nhlLiveSignals";
 import {getSoccerPublicSignals,getSoccerTop5Live,} from "@/app/lib/supabase/soccerLiveSignals";
+import {
+  buildUniversalProductDistribution,
+  type DistributedProductRow,
+  type SportProductDistribution,
+  type UniversalProductDistribution,
+} from "@/app/lib/product-distribution";
 import { atlasPulseMock } from "@/app/data/atlasPulseMock";
 import { createAtlasEventsFromPulseItems } from "@/lib/market-impact/eventEngine";
 import type { AtlasEvent, AtlasSource } from "@/types/atlasEvent";
@@ -174,6 +179,16 @@ type MyAtlasBoardRow = {
   rank?: number | null;
   startTime?: string | null;
   source: "Top Signal" | "Premium" | "Exclusive";
+};
+
+type AtlasProductDistributionRow = Top5Entry & {
+  sport: AtlasPlanSport;
+  game_id?: string | number | null;
+  gameId?: string | number | null;
+  id?: string | number | null;
+  selection?: string | null;
+  start_time?: string | null;
+  sourceKind: "signals" | "top5";
 };
 
 type LiveScore = {
@@ -449,6 +464,152 @@ function hasAllSportsAccessPlan(plan: UserPlan) {
   return plan === "elite" || plan === "unlimited" || plan === "admin";
 }
 
+function signalGameToDistributionRow(pick: SignalGame, sport: AtlasPlanSport): AtlasProductDistributionRow | null {
+  const startTime = normalizeAtlasSourceStartTime(pick.startTime);
+  if (!pick.pick || !startTime) return null;
+
+  return {
+    gameId: pick.gameId,
+    game_id: pick.gameId,
+    id: pick.gameId,
+    sport,
+    awayTeam: pick.awayTeam,
+    homeTeam: pick.homeTeam,
+    pick: pick.pick,
+    selection: pick.pick,
+    market: pick.market,
+    line: pick.line,
+    odds: pick.odds,
+    status: pick.status,
+    rank: pick.topRank ?? undefined,
+    isTopSignal: pick.isTopSignal,
+    confidence: null,
+    internalScore: null,
+    startTime,
+    start_time: startTime,
+    sourceKind: "signals",
+  };
+}
+
+function topFiveEntryToDistributionRow(pick: Top5Entry, sport: AtlasPlanSport, index: number): AtlasProductDistributionRow | null {
+  const startTime = normalizeAtlasSourceStartTime(pick.startTime);
+  if (!pick.pick || !startTime) return null;
+
+  return {
+    ...pick,
+    gameId: pick.gameId ?? `${sport}-${index}`,
+    game_id: pick.gameId ?? `${sport}-${index}`,
+    id: pick.gameId ?? `${sport}-${index}`,
+    sport,
+    selection: pick.pick,
+    startTime,
+    start_time: startTime,
+    sourceKind: "top5",
+  };
+}
+
+function buildAtlasProductDistribution(params: {
+  mlbSignals: SignalGame[];
+  nbaSignals: SignalGame[];
+  nhlSignals: SignalGame[];
+  soccerSignals: SignalGame[];
+  mlbTop5: Top5Entry[];
+  nbaTop5: Top5Entry[];
+  nhlTop5: Top5Entry[];
+  soccerTop5: Top5Entry[];
+}): UniversalProductDistribution<AtlasProductDistributionRow> {
+  const rows = [
+    ...params.mlbTop5.map((pick, index) => topFiveEntryToDistributionRow(pick, "MLB", index)),
+    ...params.nbaTop5.map((pick, index) => topFiveEntryToDistributionRow(pick, "NBA", index)),
+    ...params.nhlTop5.map((pick, index) => topFiveEntryToDistributionRow(pick, "NHL", index)),
+    ...params.soccerTop5.map((pick, index) => topFiveEntryToDistributionRow(pick, "SOCCER", index)),
+    ...params.mlbSignals.map((pick) => signalGameToDistributionRow(pick, "MLB")),
+    ...params.nbaSignals.map((pick) => signalGameToDistributionRow(pick, "NBA")),
+    ...params.nhlSignals.map((pick) => signalGameToDistributionRow(pick, "NHL")),
+    ...params.soccerSignals.map((pick) => signalGameToDistributionRow(pick, "SOCCER")),
+  ].filter((row): row is AtlasProductDistributionRow => Boolean(row));
+
+  return buildUniversalProductDistribution<AtlasProductDistributionRow>(rows);
+}
+
+function distributedRowToTop5Entry(row: DistributedProductRow<AtlasProductDistributionRow>): Top5Entry {
+  return {
+    gameId: row.gameId ?? row.game_id ?? row.id ?? null,
+    awayTeam: row.awayTeam,
+    homeTeam: row.homeTeam,
+    pick: row.pick,
+    market: row.market,
+    line: row.line,
+    odds: row.odds,
+    startTime: row.startTime ?? row.start_time ?? null,
+    status: row.status,
+    rank: row.rank,
+    isTopSignal: row.distributionProduct === "top_signal" || row.isTopSignal,
+    confidence: row.confidence,
+    internalScore: row.internalScore,
+  };
+}
+
+function distributedRowToSignalGame(row: DistributedProductRow<AtlasProductDistributionRow>): SignalGame {
+  return {
+    gameId: row.gameId ?? row.game_id ?? row.id ?? "",
+    awayTeam: row.awayTeam,
+    homeTeam: row.homeTeam,
+    pick: row.pick,
+    market: row.market,
+    line: numberLineOrNull(row.line ?? null),
+    odds: row.odds,
+    status: row.status,
+    isTopSignal: row.distributionProduct === "top_signal" || row.isTopSignal,
+    topRank: row.rank ?? null,
+    startTime: row.startTime ?? row.start_time ?? null,
+  };
+}
+
+function distributedRowToAtlasSourcePick(row: DistributedProductRow<AtlasProductDistributionRow>, product: "signals" | "top3" | "top5"): AtlasPackageSourcePick | null {
+  const pick = distributedRowToTop5Entry(row);
+  const odds = Number(pick.odds);
+  const market = String(pick.market ?? "").trim();
+  const startTime = normalizeAtlasSourceStartTime(pick.startTime);
+  if (!pick.pick || !market || !Number.isFinite(odds) || !startTime) return null;
+
+  return {
+    id: `${product}-${row.sport.toLowerCase()}-${String(pick.gameId ?? row.rank ?? 1)}`,
+    sport: row.sport,
+    league: row.sport,
+    eventId: pick.gameId ? String(pick.gameId) : null,
+    homeTeam: pick.homeTeam ?? "",
+    awayTeam: pick.awayTeam ?? "",
+    selection: pick.pick,
+    market,
+    odds,
+    status: normalizeAtlasSourceStatus(pick.status),
+    rank: pick.rank ?? 1,
+    startTime,
+  };
+}
+
+function distributionToAtlasPackageSources(distribution: UniversalProductDistribution<AtlasProductDistributionRow>): AtlasPackageSources {
+  return {
+    signals: distribution.signalsDetected
+      .map((row) => distributedRowToAtlasSourcePick(row, "signals"))
+      .filter((pick): pick is AtlasPackageSourcePick => Boolean(pick)),
+    top3: distribution.exclusiveTop3
+      .map((row) => distributedRowToAtlasSourcePick(row, "top3"))
+      .filter((pick): pick is AtlasPackageSourcePick => Boolean(pick)),
+    top5: distribution.premium
+      .map((row) => distributedRowToAtlasSourcePick(row, "top5"))
+      .filter((pick): pick is AtlasPackageSourcePick => Boolean(pick)),
+  };
+}
+
+function getSportDistribution(
+  distribution: UniversalProductDistribution<AtlasProductDistributionRow>,
+  sport: SportTab,
+): SportProductDistribution<AtlasProductDistributionRow> | null {
+  return distribution.sports.find((item) => item.sport === sport) ?? null;
+}
+
 function buildBankrollAtlasSources(params: {
   mlbSignals: SignalGame[];
   nbaSignals: SignalGame[];
@@ -459,24 +620,7 @@ function buildBankrollAtlasSources(params: {
   nhlTop5: Top5Entry[];
   soccerTop5: Top5Entry[];
 }): AtlasPackageSources {
-  const signalSources = [
-    ...params.mlbSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "MLB", index)),
-    ...params.nbaSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "NBA", index)),
-    ...params.nhlSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "NHL", index)),
-    ...params.soccerSignals.map((pick, index) => signalGameToAtlasSourcePick(pick, "SOCCER", index)),
-  ].filter((pick): pick is AtlasPackageSourcePick => Boolean(pick));
-  const topFiveSources = [
-    ...params.mlbTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "MLB", index)),
-    ...params.nbaTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "NBA", index)),
-    ...params.nhlTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "NHL", index)),
-    ...params.soccerTop5.map((pick, index) => topFiveEntryToAtlasSourcePick(pick, "SOCCER", index)),
-  ].filter((pick): pick is AtlasPackageSourcePick => Boolean(pick));
-
-  return {
-    signals: signalSources,
-    top3: topFiveSources.filter((pick) => (pick.rank ?? 999) <= 3),
-    top5: topFiveSources,
-  };
+  return distributionToAtlasPackageSources(buildAtlasProductDistribution(params));
 }
 
 function getBankrollMembershipFromAccess(userAccess: UserAccess, selectedPackSport: CheckoutSport, sources: AtlasPackageSources): {
@@ -500,50 +644,6 @@ function getBankrollMembershipFromAccess(userAccess: UserAccess, selectedPackSpo
     package: planPackage,
     selectedSport,
     availableSports,
-  };
-}
-
-function signalGameToAtlasSourcePick(pick: SignalGame, sport: AtlasPlanSport, index: number): AtlasPackageSourcePick | null {
-  const odds = Number(pick.odds);
-  const market = String(pick.market ?? "").trim();
-  const startTime = normalizeAtlasSourceStartTime(pick.startTime);
-  if (!pick.pick || !market || !Number.isFinite(odds) || !startTime) return null;
-
-  return {
-    id: `signals-${sport.toLowerCase()}-${String(pick.gameId ?? index)}`,
-    sport,
-    league: sport,
-    eventId: pick.gameId ? String(pick.gameId) : null,
-    homeTeam: pick.homeTeam ?? "",
-    awayTeam: pick.awayTeam ?? "",
-    selection: pick.pick,
-    market,
-    odds,
-    status: normalizeAtlasSourceStatus(pick.status),
-    rank: index + 1,
-    startTime,
-  };
-}
-
-function topFiveEntryToAtlasSourcePick(pick: Top5Entry, sport: AtlasPlanSport, index: number): AtlasPackageSourcePick | null {
-  const odds = Number(pick.odds);
-  const market = String(pick.market ?? "").trim();
-  const startTime = normalizeAtlasSourceStartTime(pick.startTime);
-  if (!pick.pick || !market || !Number.isFinite(odds) || !startTime) return null;
-
-  return {
-    id: `top5-${sport.toLowerCase()}-${String(pick.gameId ?? pick.rank ?? index)}`,
-    sport,
-    league: sport,
-    eventId: pick.gameId ? String(pick.gameId) : null,
-    homeTeam: pick.homeTeam ?? "",
-    awayTeam: pick.awayTeam ?? "",
-    selection: pick.pick,
-    market,
-    odds,
-    status: normalizeAtlasSourceStatus(pick.status),
-    rank: pick.rank ?? index + 1,
-    startTime,
   };
 }
 
@@ -2348,21 +2448,6 @@ function formatStatusLabel(status?: string) {
   return normalizeProductStatus(status);
 }
 
-function getTop5BySport(
-  sport: SportTab,
-  mlbTop5DataParam: { top5: Top5Entry[] },
-  nbaTop5DataParam: { top5: Top5Entry[] },
-  nhlTop5DataParam: { top5: Top5Entry[] },
-  soccerTop5DataParam: { top5: Top5Entry[] }
-): Top5Entry[] {
-  if (sport === "MLB") return mlbTop5DataParam.top5 ?? [];
-  if (sport === "NBA") return nbaTop5DataParam.top5 ?? [];
-  if (sport === "NHL") return nhlTop5DataParam.top5 ?? [];
-  if (sport === "SOCCER") return soccerTop5DataParam.top5 ?? [];
-
-  return [];
-}
-
 function sortPicksByStartTime<T extends Top5Entry>(picks: T[]) {
   return [...picks].sort((a, b) => {
     const aTime = a.startTime ? new Date(a.startTime).getTime() : Number.POSITIVE_INFINITY;
@@ -2372,49 +2457,6 @@ function sortPicksByStartTime<T extends Top5Entry>(picks: T[]) {
 
     return Number(a.rank ?? 999) - Number(b.rank ?? 999);
   });
-}
-
-function getPickValuePriority(pick: Top5Entry) {
-  const rankScore = Number.isFinite(Number(pick.rank))
-    ? 1000 - Number(pick.rank) * 100
-    : 0;
-  const internalScore = Number(pick.internalScore);
-  const confidence = Number(pick.confidence);
-
-  return (
-    rankScore +
-    (Number.isFinite(internalScore) ? internalScore : 0) +
-    (Number.isFinite(confidence) ? confidence : 0)
-  );
-}
-
-function sortPicksByAtlasValue<T extends Top5Entry>(picks: T[]) {
-  return [...picks].sort((a, b) => {
-    const valueDiff = getPickValuePriority(b) - getPickValuePriority(a);
-    if (valueDiff !== 0) return valueDiff;
-
-    const rankDiff = Number(a.rank ?? 999) - Number(b.rank ?? 999);
-    if (rankDiff !== 0) return rankDiff;
-
-    const aTime = a.startTime ? new Date(a.startTime).getTime() : Number.POSITIVE_INFINITY;
-    const bTime = b.startTime ? new Date(b.startTime).getTime() : Number.POSITIVE_INFINITY;
-    return aTime - bTime;
-  });
-}
-
-function isTopSignalPick(pick: Top5Entry) {
-  return pick.isTopSignal === true || Number(pick.rank) === 1;
-}
-
-function getSubscriptionEligiblePicks(picks: Top5Entry[]) {
-  return picks.filter((pick) => !isTopSignalPick(pick));
-}
-
-function labelSubscriptionPicks(picks: Top5Entry[], ranked: boolean) {
-  return picks.slice(0, 3).map((pick, index) => ({
-    ...pick,
-    label: ranked ? `Ranked Top 3 #${index + 1}` : "Top 3",
-  }));
 }
 
 function mapHistoryRowToTop5Entry(row: any): Top5Entry {
@@ -2514,41 +2556,46 @@ async function loadHistoricalSnapshotSources(): Promise<{ sources: AtlasPackageS
 function getSubPicksForUser(
   userAccess: UserAccess,
   selectedSport: SportTab,
-  mlbTop5DataParam: { top5: Top5Entry[] },
-  nbaTop5DataParam: { top5: Top5Entry[] },
-  nhlTop5DataParam: { top5: Top5Entry[] },
-  soccerTop5DataParam: { top5: Top5Entry[] }
+  distribution: UniversalProductDistribution<AtlasProductDistributionRow>
 ) {
   if (!hasSportAccess(userAccess, selectedSport)) return [];
 
-  const top5 = getTop5BySport(
-    selectedSport,
-    mlbTop5DataParam,
-    nbaTop5DataParam,
-    nhlTop5DataParam,
-    soccerTop5DataParam
-  );
-  const subscriptionPicks = getSubscriptionEligiblePicks(top5);
+  const sportDistribution = getSportDistribution(distribution, selectedSport);
+  if (!sportDistribution) return [];
 
   if (userAccess.plan === "exclusive") {
-    return labelSubscriptionPicks(sortPicksByStartTime(subscriptionPicks), false);
+    return sportDistribution.exclusiveTop3.map((row, index) => ({
+      ...distributedRowToTop5Entry(row),
+      label: "Top 3",
+      rank: index + 1,
+    }));
   }
 
   if (userAccess.plan === "premium") {
-    return labelSubscriptionPicks(sortPicksByAtlasValue(subscriptionPicks), true);
+    return sportDistribution.premium.map((row, index) => ({
+      ...distributedRowToTop5Entry(row),
+      label: `Ranked Top 3 #${index + 1}`,
+      rank: index + 1,
+    }));
   }
 
   if (userAccess.plan === "elite" || userAccess.plan === "unlimited") {
-    return labelSubscriptionPicks(sortPicksByAtlasValue(subscriptionPicks), true);
+    return sportDistribution.unlimited
+      .filter((row) => row.distributionProduct !== "top_signal")
+      .map((row, index) => ({
+        ...distributedRowToTop5Entry(row),
+        label: `Ranked #${index + 1}`,
+        rank: index + 1,
+      }));
   }
 
   if (userAccess.plan === "admin") {
-    return top5.map((pick) => ({
-      ...pick,
+    return sportDistribution.unlimited.map((row) => ({
+      ...distributedRowToTop5Entry(row),
       label:
-        pick.isTopSignal === true || pick.rank === 1
-          ? `Top Signal #${pick.rank ?? 1}`
-          : `Top 5 #${pick.rank ?? ""}`,
+        row.distributionProduct === "top_signal"
+          ? `Top Signal #${row.rank ?? 1}`
+          : `Dynamic #${row.rank ?? ""}`,
     }));
   }
 
@@ -5441,19 +5488,22 @@ const [soccerTop5LiveData, setSoccerTop5LiveData] = useState<{
 }>({
   top5: [],
 });
-const bankrollAtlasSources = useMemo(
-  () =>
-    buildBankrollAtlasSources({
-      mlbSignals: mlbSignalsData.games,
-      nbaSignals: nbaSignalsData.games,
-      nhlSignals: nhlSignalsData.games,
-      soccerSignals: soccerSignalsLiveData.games,
-      mlbTop5: mlbTop5Data.top5,
-      nbaTop5: nbaTop5Data.top5,
-      nhlTop5: nhlTop5Data.top5,
-      soccerTop5: soccerTop5LiveData.top5,
-    }),
+const officialProductDistribution = useMemo(
+  () => buildAtlasProductDistribution({
+    mlbSignals: mlbSignalsData.games,
+    nbaSignals: nbaSignalsData.games,
+    nhlSignals: nhlSignalsData.games,
+    soccerSignals: soccerSignalsLiveData.games,
+    mlbTop5: mlbTop5Data.top5,
+    nbaTop5: nbaTop5Data.top5,
+    nhlTop5: nhlTop5Data.top5,
+    soccerTop5: soccerTop5LiveData.top5,
+  }),
   [mlbSignalsData, mlbTop5Data, nbaSignalsData, nbaTop5Data, nhlSignalsData, nhlTop5Data, soccerSignalsLiveData, soccerTop5LiveData],
+);
+const bankrollAtlasSources = useMemo(
+  () => distributionToAtlasPackageSources(officialProductDistribution),
+  [officialProductDistribution],
 );
 const effectiveBankrollAtlasSources = bankrollAtlasSources;
 const bankrollMembership = useMemo(
@@ -5745,49 +5795,20 @@ const groupedFilteredLiveGames = useMemo(() => {
 }, [filteredLiveGames]);
 
 const isHistoricalDay = activeDay < getRelativeDayKey(0);
-const historicalTop5Data = useMemo(
-  () => ({
-    top5: sortPicksByStartTime(
-      top5History
-        .filter((row) => String(row.date ?? "") === activeDay)
-        .map(mapHistoryRowToTop5Entry)
-    ),
-  }),
-  [top5History, activeDay]
-);
-
-const hasTop5HistoryForActiveDay = historicalTop5Data.top5.length > 0;
-const activeMlbTop5Data =
-  selectedSport === "MLB" && hasTop5HistoryForActiveDay
-    ? historicalTop5Data
-    : mlbTop5Data;
-const activeNbaTop5Data =
-  selectedSport === "NBA" && hasTop5HistoryForActiveDay
-    ? historicalTop5Data
-    : nbaTop5Data;
-const activeNhlTop5Data =
-  selectedSport === "NHL" && hasTop5HistoryForActiveDay
-    ? historicalTop5Data
-    : nhlTop5Data;
-const activeSoccerTop5Data =
-  selectedSport === "SOCCER" && hasTop5HistoryForActiveDay
-    ? historicalTop5Data
-    : soccerTop5LiveData;
 
 const activeSubscriptionSports = useMemo(() => {
   const available = checkoutSports.filter((sport) => {
     if (sport === "NFL") return false;
-    return getTop5BySport(
-      sport,
-      activeMlbTop5Data,
-      activeNbaTop5Data,
-      activeNhlTop5Data,
-      activeSoccerTop5Data
-    ).some((pick) => !isTopSignalPick(pick));
+    const distribution = getSportDistribution(officialProductDistribution, sport);
+    return Boolean(distribution && (
+      distribution.exclusiveTop3.length > 0 ||
+      distribution.premium.length > 0 ||
+      distribution.unlimited.length > 0
+    ));
   });
 
   return available.length > 0 ? available : (["MLB"] as CheckoutSport[]);
-}, [activeMlbTop5Data, activeNbaTop5Data, activeNhlTop5Data, activeSoccerTop5Data]);
+}, [officialProductDistribution]);
 
 useEffect(() => {
   if (!activeSubscriptionSports.includes(selectedPackSport)) {
@@ -5796,20 +5817,7 @@ useEffect(() => {
 }, [activeSubscriptionSports, selectedPackSport]);
 
 function getSignalSourceForSport(sport: SportTab) {
-  if (sport === "MLB") return mlbSignalsData.games;
-  if (sport === "NBA") return nbaSignalsData.games;
-  if (sport === "NHL") return nhlSignalsData.games;
-  if (sport === "SOCCER") return soccerSignalsLiveData.games;
-  return [];
-}
-
-function getSignalsDetectedProductExclusions(sport: SportTab, top5: Top5Entry[]) {
-  if (sport !== "SOCCER") return top5;
-
-  return top5
-    .slice()
-    .sort((a, b) => Number(a.rank ?? 999) - Number(b.rank ?? 999))
-    .slice(0, 4);
+  return getSportDistribution(officialProductDistribution, sport)?.signalsDetected.map(distributedRowToSignalGame) ?? [];
 }
 
 function getSignalSportKey(sport: SportTab) {
@@ -5885,30 +5893,12 @@ const groupedSignalLiveGames = useMemo(() => {
 
   return sportsToShow
     .map((sport) => {
-      const top5 = getSignalsDetectedProductExclusions(sport, getTop5BySport(
-        sport,
-        activeMlbTop5Data,
-        activeNbaTop5Data,
-        activeNhlTop5Data,
-        activeSoccerTop5Data
-      ));
-
       const games = getSignalSourceForSport(sport)
         .filter(
           (signal) =>
             signal.awayTeam &&
             signal.homeTeam &&
-            signal.pick &&
-            !top5.some((pick) =>
-              isSameMatch(
-                {
-                  away_team: signal.awayTeam ?? "",
-                  home_team: signal.homeTeam ?? "",
-                  commence_time: signal.startTime ?? `${activeDay}T12:00:00-04:00`,
-                } as LiveScore,
-                pick
-              )
-            )
+            signal.pick
         )
         .map((signal) => signalToLiveScore(signal, sport))
         .sort(
@@ -5927,15 +5917,8 @@ const groupedSignalLiveGames = useMemo(() => {
     .filter((group) => group.games.length > 0);
 }, [
   selectedSport,
-  filteredLiveGames,
-  mlbSignalsData,
-  nbaSignalsData,
-  nhlSignalsData,
-  soccerSignalsLiveData,
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
+  activeDay,
+  officialProductDistribution,
 ]);
 
 function getLiveDisplayName(teamName: string) {
@@ -6888,18 +6871,12 @@ const subsPicks = useMemo(() => {
   return getSubPicksForUser(
     userAccess,
     selectedSport,
-    activeMlbTop5Data,
-    activeNbaTop5Data,
-    activeNhlTop5Data,
-    activeSoccerTop5Data
+    officialProductDistribution
   );
 }, [
   userAccess,
   selectedSport,
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
+  officialProductDistribution,
 ]);
 
 const subscriptionSportGroups = useMemo(() => {
@@ -6917,31 +6894,17 @@ const subscriptionSportGroups = useMemo(() => {
       sport,
       picks:
         userAccess.plan === "admin"
-          ? sortPicksByAtlasValue(
-              getTop5BySport(
-                sport,
-                activeMlbTop5Data,
-                activeNbaTop5Data,
-                activeNhlTop5Data,
-                activeSoccerTop5Data
-              )
-            )
+          ? getSubPicksForUser(userAccess, sport, officialProductDistribution)
           : getSubPicksForUser(
               userAccess,
               sport,
-              activeMlbTop5Data,
-              activeNbaTop5Data,
-              activeNhlTop5Data,
-              activeSoccerTop5Data
+              officialProductDistribution
             ),
     }))
     .filter((group) => group.picks.length > 0);
 }, [
   activeSubscriptionSports,
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
+  officialProductDistribution,
   selectedSport,
   userAccess,
 ]);
@@ -6956,15 +6919,14 @@ const myAtlasBoardSports = useMemo(() => {
     selectedMyAtlasSport === "all"
       ? null
       : officialSelectedSportToSportCode[selectedMyAtlasSport] as CheckoutSport;
-  const availableSports = checkoutSports.filter((sport) =>
-    getTop5BySport(
-      sport,
-      activeMlbTop5Data,
-      activeNbaTop5Data,
-      activeNhlTop5Data,
-      activeSoccerTop5Data
-    ).length > 0
-  );
+  const availableSports = checkoutSports.filter((sport) => {
+    const distribution = getSportDistribution(officialProductDistribution, sport);
+    return Boolean(distribution && (
+      distribution.topSignal ||
+      distribution.premium.length > 0 ||
+      distribution.exclusiveTop3.length > 0
+    ));
+  });
 
   const sportsForSelection = selectedBoardSport
     ? [selectedBoardSport]
@@ -6976,10 +6938,7 @@ const myAtlasBoardSports = useMemo(() => {
 
   return sportsForSelection.filter((sport) => userAccess.sports.includes(sport));
 }, [
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
+  officialProductDistribution,
   selectedMyAtlasSport,
   userAccess,
 ]);
@@ -7041,23 +7000,11 @@ const myAtlasTopSignalRows = useMemo(() => {
   return myAtlasBoardSports
     .filter((sport) => canViewMyAtlas(sport, "top_signal"))
     .flatMap((sport) => {
-      const board = sortPicksByAtlasValue(
-        getTop5BySport(
-          sport,
-          activeMlbTop5Data,
-          activeNbaTop5Data,
-          activeNhlTop5Data,
-          activeSoccerTop5Data
-        )
-      );
-      const topSignal = board.find((pick) => pick.isTopSignal === true || pick.rank === 1) ?? board[0];
-      return topSignal ? [mapMyAtlasBoardRow(topSignal, sport, "Top Signal", 0)] : [];
+      const topSignal = getSportDistribution(officialProductDistribution, sport)?.topSignal ?? null;
+      return topSignal ? [mapMyAtlasBoardRow(distributedRowToTop5Entry(topSignal), sport, "Top Signal", 0)] : [];
     });
 }, [
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
+  officialProductDistribution,
   myAtlasBoardSports,
   userAccess,
 ]);
@@ -7066,25 +7013,12 @@ const myAtlasTop5Rows = useMemo(() => {
   return myAtlasBoardSports.flatMap((sport) =>
     canViewMyAtlas(sport, "premium_top3")
       ?
-    sortPicksByAtlasValue(
-      getTop5BySport(
-        sport,
-        activeMlbTop5Data,
-        activeNbaTop5Data,
-        activeNhlTop5Data,
-        activeSoccerTop5Data
-      )
-    )
-      .filter((pick) => !isTopSignalPick(pick))
-      .slice(0, 3)
-      .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Premium", index))
+    (getSportDistribution(officialProductDistribution, sport)?.premium ?? [])
+      .map((row, index) => mapMyAtlasBoardRow(distributedRowToTop5Entry(row), sport, "Premium", index))
       : []
   );
 }, [
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
+  officialProductDistribution,
   myAtlasBoardSports,
   userAccess.plan,
 ]);
@@ -7093,25 +7027,12 @@ const myAtlasTop3Rows = useMemo(() => {
   return myAtlasBoardSports.flatMap((sport) =>
     canViewMyAtlas(sport, "exclusive_top3")
       ?
-    sortPicksByAtlasValue(
-      getTop5BySport(
-        sport,
-        activeMlbTop5Data,
-        activeNbaTop5Data,
-        activeNhlTop5Data,
-        activeSoccerTop5Data
-      )
-    )
-      .filter((pick) => !isTopSignalPick(pick))
-      .slice(0, 3)
-      .map((pick, index) => mapMyAtlasBoardRow(pick, sport, "Exclusive", index))
+    (getSportDistribution(officialProductDistribution, sport)?.exclusiveTop3 ?? [])
+      .map((row, index) => mapMyAtlasBoardRow(distributedRowToTop5Entry(row), sport, "Exclusive", index))
       : []
   );
 }, [
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data,
+  officialProductDistribution,
   myAtlasBoardSports,
   userAccess.plan,
 ]);
@@ -7177,13 +7098,7 @@ const hasSelectedTopSignalUnlock =
 const hasTopPlayUnlock = userAccess.plan === "admin" || userAccess.unlocks.topPlay;
 const selectedPrecisionSignalSport: CheckoutSport = selectedPackSport;
 
-const selectedTop5Count = getTop5BySport(
-  selectedSport,
-  activeMlbTop5Data,
-  activeNbaTop5Data,
-  activeNhlTop5Data,
-  activeSoccerTop5Data
-).length;
+const selectedTop5Count = getSportDistribution(officialProductDistribution, selectedSport)?.premium.length ?? 0;
 
 const availableTeamsForFollowing = useMemo(() => {
   const teams = new Map<string, string>();
@@ -12301,15 +12216,7 @@ const subscriptionPlansBoard = (
             soccer: soccerSignalsLiveData,
           });
 
-          const top5 = getSignalsDetectedProductExclusions(group.sport, getTop5BySport(
-            group.sport,
-            activeMlbTop5Data,
-            activeNbaTop5Data,
-            activeNhlTop5Data,
-            activeSoccerTop5Data
-          ));
-
-          if (!livePickData || isTop5LiveGame(game, top5)) {
+          if (!livePickData) {
             return [];
           }
 
@@ -13263,15 +13170,7 @@ const subscriptionPlansBoard = (
                         soccer: soccerSignalsLiveData,
                       });
 
-                      const top5 = getSignalsDetectedProductExclusions(group.sport, getTop5BySport(
-                        group.sport,
-                        activeMlbTop5Data,
-                        activeNbaTop5Data,
-                        activeNhlTop5Data,
-                        activeSoccerTop5Data
-                      ));
-
-                      if (!livePickData || isTop5LiveGame(game, top5)) {
+                      if (!livePickData) {
                         return [];
                       }
 
@@ -14017,16 +13916,8 @@ const subscriptionPlansBoard = (
             ) : (
               <div className="space-y-3">
                 {groupedFilteredLiveGames.map((group) => {
-                      const scoreTop5 = getTop5BySport(
-                        group.sport,
-                        activeMlbTop5Data,
-                        activeNbaTop5Data,
-                        activeNhlTop5Data,
-                        activeSoccerTop5Data
-                      );
-                      const scoreTopSignal = scoreTop5.find(
-                        (pick) => pick.isTopSignal || pick.rank === 1
-                      );
+                      const scoreTopSignalRow = getSportDistribution(officialProductDistribution, group.sport)?.topSignal ?? null;
+                      const scoreTopSignal = scoreTopSignalRow ? distributedRowToTop5Entry(scoreTopSignalRow) : null;
                       const scoreGames = [...group.games].sort((a, b) => {
                         const aIsTopSignal = scoreTopSignal
                           ? isTop5LiveGame(a, [scoreTopSignal])
