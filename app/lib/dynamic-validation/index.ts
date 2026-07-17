@@ -8,7 +8,12 @@ export {
   createValidationResult,
   DYNAMIC_VALIDATION_MODULES,
   getDynamicValidationModule,
+  UNIVERSAL_LINE_MOVEMENT_SPORTS,
 } from "./modules";
+export {
+  evaluateLineMovementValidation,
+  isLineMovementSupportedSport,
+} from "./line-movement-module";
 export {
   calculateAppliedScore,
   calculateCurrentConfidence,
@@ -32,3 +37,7 @@ export type {
   DynamicValidationTimelineEvent,
   DynamicValidationTimelineEventType,
 } from "./types";
+export type {
+  LineMovementEvaluationInput,
+  LineMovementSnapshot,
+} from "./line-movement-module";

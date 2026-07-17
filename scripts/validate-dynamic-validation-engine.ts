@@ -5,7 +5,10 @@ import {
   createNeutralValidationResult,
   createValidationResult,
   DYNAMIC_VALIDATION_MODULES,
+  evaluateLineMovementValidation,
+  getDynamicValidationModule,
   runDynamicValidation,
+  UNIVERSAL_LINE_MOVEMENT_SPORTS,
 } from "../app/lib/dynamic-validation";
 import { normalizeAtlasProductSignal } from "../app/lib/product-normalization";
 
@@ -89,7 +92,9 @@ const run = runDynamicValidation(
   now,
 );
 
-assert.equal(DYNAMIC_VALIDATION_MODULES.every((module) => module.enabled === false), true);
+assert.equal(getDynamicValidationModule("line_movement")?.enabled, true);
+assert.deepEqual(UNIVERSAL_LINE_MOVEMENT_SPORTS, ["MLB", "SOCCER", "NBA", "NFL", "NHL", "NCAAB", "NCAAF"]);
+assert.equal(DYNAMIC_VALIDATION_MODULES.filter((module) => module.enabled).map((module) => module.id).join(","), "line_movement");
 assert.equal(DYNAMIC_VALIDATION_MODULES.length >= 8, true);
 
 assert.equal(calculateCurrentConfidence(63, 5), 68);
@@ -120,8 +125,100 @@ for (const signal of run.signals) {
   assert.equal(signal.timeline.some((event) => event.type === "ranking_updated"), true);
 }
 
+const lineMovementSignals = [
+  normalizeAtlasProductSignal(
+    {
+      sport: "SOCCER",
+      game_id: "soccer-line-1",
+      away_team: "Away FC",
+      home_team: "Home FC",
+      pick: "Under 2.5",
+      selection: "Under 2.5",
+      market: "Total",
+      line: 2.5,
+      odds: -110,
+      confidence: 70,
+      rank: 1,
+      start_time: "2026-07-17T20:30:00.000Z",
+    },
+    { sport: "SOCCER", product: "dynamic_candidate_pool", index: 0 },
+  ),
+  normalizeAtlasProductSignal(
+    {
+      sport: "NBA",
+      game_id: "nba-line-1",
+      away_team: "Away",
+      home_team: "Home",
+      pick: "Home -4.5",
+      selection: "Home -4.5",
+      market: "Spread",
+      line: -4.5,
+      odds: -110,
+      confidence: 70,
+      rank: 2,
+      start_time: "2026-07-17T21:00:00.000Z",
+    },
+    { sport: "NBA", product: "dynamic_candidate_pool", index: 1 },
+  ),
+  normalizeAtlasProductSignal(
+    {
+      sport: "MLB",
+      game_id: "mlb-line-1",
+      away_team: "Away",
+      home_team: "Home",
+      pick: "Home ML",
+      market: "Moneyline",
+      odds: -110,
+      confidence: 69,
+      rank: 3,
+      start_time: "2026-07-17T22:00:00.000Z",
+    },
+    { sport: "MLB", product: "dynamic_candidate_pool", index: 2 },
+  ),
+];
+
+const positiveLineMovement = evaluateLineMovementValidation({
+  signal: lineMovementSignals[0],
+  movement: { openingLine: 2.5, currentLine: 3 },
+  timestamp: now,
+});
+const negativeLineMovement = evaluateLineMovementValidation({
+  signal: lineMovementSignals[1],
+  movement: { openingLine: -4.5, currentLine: -5.5 },
+  timestamp: now,
+});
+const neutralLineMovement = evaluateLineMovementValidation({
+  signal: lineMovementSignals[2],
+  movement: null,
+  timestamp: now,
+});
+
+assert.equal(positiveLineMovement.direction, "POSITIVE");
+assert.equal(positiveLineMovement.appliedScore, 2);
+assert.equal(negativeLineMovement.direction, "NEGATIVE");
+assert.equal(negativeLineMovement.appliedScore, -2);
+assert.equal(neutralLineMovement.direction, "NEUTRAL");
+assert.equal(neutralLineMovement.appliedScore, 0);
+
+const lineMovementRun = runDynamicValidation(
+  [
+    createDynamicValidationInput(lineMovementSignals[0], [positiveLineMovement]),
+    createDynamicValidationInput(lineMovementSignals[1], [negativeLineMovement]),
+    createDynamicValidationInput(lineMovementSignals[2], [neutralLineMovement]),
+  ],
+  now,
+);
+
+assert.equal(lineMovementRun.signals[0].signalId, lineMovementSignals[0].signalId);
+assert.equal(lineMovementRun.signals[0].dynamicScore, 2);
+assert.equal(lineMovementRun.signals[0].currentConfidence, 72);
+assert.equal(lineMovementRun.signals[0].timeline.some((event) => event.moduleId === "line_movement" && event.direction === "POSITIVE"), true);
+assert.equal(lineMovementRun.signals[2].dynamicScore, -2);
+assert.equal(lineMovementRun.signals[2].currentConfidence, 68);
+assert.equal(lineMovementRun.topSignal?.signalId, lineMovementSignals[0].signalId);
+
 assert.equal(Object.isFrozen(run), true);
 assert.equal(Object.isFrozen(run.signals), true);
 assert.equal(Object.isFrozen(run.signals[0]), true);
 
-console.log("Dynamic Validation Engine foundation validation passed.");
+console.log("Dynamic Validation Engine line movement validation passed.");

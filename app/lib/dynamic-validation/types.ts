@@ -13,11 +13,23 @@ export type DynamicValidationModuleId =
   | "sharp_money"
   | "closing_line";
 
+export type DynamicValidationSupportedSport =
+  | "MLB"
+  | "SOCCER"
+  | "NBA"
+  | "NFL"
+  | "NHL"
+  | "NCAAB"
+  | "NCAAF";
+
 export type DynamicValidationModuleDefinition = {
   id: DynamicValidationModuleId;
   label: string;
   weight: number;
   enabled: boolean;
+  supportedSports: ReadonlyArray<DynamicValidationSupportedSport>;
+  execution: "market_data_available" | "pregame_only" | "manual";
+  description: string;
 };
 
 export type DynamicValidationResult = {
