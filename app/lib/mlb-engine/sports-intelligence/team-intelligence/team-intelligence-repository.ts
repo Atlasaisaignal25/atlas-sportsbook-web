@@ -8,6 +8,7 @@ import { loadLatestCanonicalWeatherParkFeatures } from "../weather/weather-featu
 import { getVenueById } from "../weather/venue-registry";
 import type { TeamStrengthLineupStabilityInput, TeamStrengthPitcherStatus, TeamStrengthSnapshot } from "../team-strength/team-strength-engine";
 import { loadLatestCanonicalTeamStrengthSnapshots } from "../team-strength/team-strength-repository";
+import { resolveMlbSlateWindow } from "@/app/lib/mlb-engine/slate-date";
 import {
   buildTeamIntelligence,
   GAME_CONTEXT_CERTAINTY_VERSION,
@@ -223,11 +224,14 @@ function keyForTeam(input: { teamId?: string }) {
 
 async function loadLatestCanonicalPitcherQualityRows() {
   const supabase = getSupabaseAdmin();
+  const { startUtc, endUtc } = resolveMlbSlateWindow();
   const { data, error } = await supabase
     .from("mlb_starting_pitcher_quality_snapshots")
     .select("official_game_id,team_id,team_name,side,player_id,player_name,quality_score,quality_version,baseline_version,baseline_source,quality_confidence,readiness_score,readiness_version,captured_at")
     .eq("canonical", true)
     .not("official_game_id", "is", null)
+    .gte("captured_at", startUtc)
+    .lt("captured_at", endUtc)
     .order("captured_at", { ascending: false })
     .limit(200);
   if (error) throw error;

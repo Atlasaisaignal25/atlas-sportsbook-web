@@ -86,7 +86,7 @@ export async function getMlbTop5Live(date = todayMiamiDate()) {
       .select("*")
       .eq("sport", "MLB")
       .eq("date", date)
-      .in("status", ["UNDER_REVIEW", "VALIDATED", "CONFIRMED"])
+      .in("status", ["INTERNAL_CANDIDATE", "UNDER_REVIEW", "VALIDATED", "CONFIRMED"])
       .or("engine_product.eq.PREMIUM_TOP5,engine_product.is.null")
       .order("rank", { ascending: true });
 

@@ -4,10 +4,11 @@ import { runSignalsDetectedEngine } from "@/app/lib/mlb-engine/atlas-core/atlas-
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const config = getAtlasCoreMlbConfig();
-    if (currentHourET() !== config.morningScanHourEt) {
+    const force = new URL(request.url).searchParams.get("force") === "1";
+    if (!force && currentHourET() !== config.morningScanHourEt) {
       return NextResponse.json({ success: true, skipped: true, reason: "Signals Detected runs only at 7:00 AM ET." });
     }
     const result = await runSignalsDetectedEngine();
@@ -17,6 +18,6 @@ export async function GET() {
   }
 }
 
-export async function POST() {
-  return GET();
+export async function POST(request: Request) {
+  return GET(request);
 }

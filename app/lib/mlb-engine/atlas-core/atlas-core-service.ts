@@ -7,6 +7,15 @@ import { analyzeLearningInsights } from "@/app/lib/mlb-engine/sports-intelligenc
 import { buildMlbProjectionResearchSnapshots, insertProjectionResearchSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/projection-research/projection-research-repository";
 import { buildDecisionResearchSnapshots, insertDecisionResearchSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/decision-research/decision-research-repository";
 import { buildMarketEdgeResearchSnapshots, insertMarketEdgeSnapshotsDeduped } from "@/app/lib/mlb-engine/sports-intelligence/market-edge/market-edge-repository";
+import {
+  captureStartingPitcherQuality,
+  insertPitcherQualityBaselinesDeduped,
+  insertStartingPitcherQualitySnapshotsDeduped,
+} from "@/app/lib/mlb-engine/sports-intelligence/pitcher-quality/pitcher-quality-repository";
+import {
+  buildTeamQualityResearchSnapshots,
+  insertTeamQualityResearchSnapshotsDeduped,
+} from "@/app/lib/mlb-engine/sports-intelligence/team-intelligence/team-intelligence-repository";
 
 const SIGNAL_ENGINE_RECALC_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_RECALC_MINUTES ?? 60);
 const SIGNAL_ENGINE_FREEZE_BEFORE_START_MINUTES = Number(process.env.ATLAS_SIGNAL_ENGINE_FREEZE_BEFORE_START_MINUTES ?? 60);
@@ -28,7 +37,7 @@ type MarketEdgeRow = {
   value_percent: number | string | null;
   direction: "HOME" | "AWAY" | "OVER" | "UNDER" | "NONE";
   classification: string | null;
-  market_context: Record<string, any> | null;
+  market_context: Record<string, unknown> | null;
   source_versions: Record<string, unknown> | null;
   snapshot_hash: string | null;
   captured_at: string;
@@ -294,6 +303,16 @@ function selectMorningOpportunities(edges: MarketEdgeRow[]) {
   });
 }
 
+function morningOpportunityRejectionReasons(edge: MarketEdgeRow) {
+  const config = getAtlasCoreMlbConfig();
+  const reasons: string[] = [];
+  const edgeValue = numberValue(edge.edge) ?? 0;
+  if (edge.direction === "NONE") reasons.push("NO_POSITIVE_DIRECTION");
+  if (edgeValue < config.minFinalPickEdge) reasons.push("EDGE_BELOW_THRESHOLD");
+  if (edge.classification === "NO_EDGE") reasons.push("NO_EDGE_CLASSIFICATION");
+  return reasons.length ? reasons : ["QUALIFIED"];
+}
+
 type AtlasCoreCandidate = {
   edge: MarketEdgeRow;
   decision?: DecisionRow;
@@ -485,9 +504,33 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
   const { edges, projectionByGame, decisionByGame, oddsByTeams, oddsRows, slateDate } = await loadCanonicalRows();
   const date = todayET();
   const scanAt = new Date().toISOString();
-  const opportunities = selectMorningOpportunities(edges).filter((edge) => {
+  const highestProbabilityMarkets = selectHighestProbabilityMarketByGame(edges);
+  const opportunityCandidates = selectMorningOpportunities(edges);
+  const opportunities = opportunityCandidates.filter((edge) => {
     const startTime = gameStart(edge, oddsByTeams);
     return Boolean(projectionByGame.get(edge.official_game_id)) && Boolean(decisionByGame.get(edge.official_game_id)) && timestampBelongsToMlbSlate(startTime, slateDate);
+  });
+  const rejectedByReason = highestProbabilityMarkets.reduce((acc: Record<string, number>, edge) => {
+    if (opportunities.some((item) => item.official_game_id === edge.official_game_id)) return acc;
+    const startTime = gameStart(edge, oddsByTeams);
+    const reasons = [
+      ...morningOpportunityRejectionReasons(edge),
+      ...(projectionByGame.get(edge.official_game_id) ? [] : ["MISSING_PROJECTION"]),
+      ...(decisionByGame.get(edge.official_game_id) ? [] : ["MISSING_DECISION"]),
+      ...(timestampBelongsToMlbSlate(startTime, slateDate) ? [] : ["START_TIME_OUTSIDE_SLATE"]),
+    ].filter((reason) => reason !== "QUALIFIED");
+    (reasons.length ? reasons : ["UNKNOWN"]).forEach((reason) => {
+      acc[reason] = (acc[reason] ?? 0) + 1;
+    });
+    return acc;
+  }, {});
+  console.log("[MLB_REJECTED]", {
+    slateDate,
+    scannedMarkets: edges.length,
+    highestProbabilityMarkets: highestProbabilityMarkets.length,
+    opportunities: opportunities.length,
+    rejected: Math.max(0, highestProbabilityMarkets.length - opportunities.length),
+    rejectedByReason,
   });
   const rows = opportunities.map((edge) => {
     const startTime = gameStart(edge, oddsByTeams);
@@ -556,6 +599,11 @@ export async function runAtlasCoreMorningScan(params: { force?: boolean } = {}) 
       .eq("stage", "SIGNALS_DETECTED")
       .not("game_id", "in", `(${keepIds.map((id) => `"${id}"`).join(",")})`);
   }
+  console.log("[MLB_SIGNALS_SAVED]", {
+    slateDate,
+    signals: rows.length,
+    upserted: data?.length ?? 0,
+  });
   return { enabled: true, scanned: edges.length, signalsDetected: rows.length, upserted: data?.length ?? 0, slateDate, freshnessGate: "PASSED" };
 }
 
@@ -717,6 +765,11 @@ export async function runSignalsDetectedEngine() {
     const inserted = await supabase.from("signals_detected_history").upsert(rows, { onConflict: "slate_date,engine,game_id" }).select("id");
     if (inserted.error) throw inserted.error;
   }
+  console.log("[MLB_COMPLETE]", {
+    slateDate: pipeline.slateDate,
+    signalsDetected: rows.length,
+    signalsDetectedHistory: rows.length,
+  });
   return { ...pipeline, signalsDetectedHistory: rows.length, engine: "SIGNALS_DETECTED" };
 }
 
@@ -736,16 +789,28 @@ export async function runExclusiveTop3Engine() {
   const gameIds = new Set<string>(frozenSignals.map((row: any) => String(row.game_id)));
   const { candidates, oddsRows } = await buildAtlasCoreCandidates({ gameIds });
   const top3 = candidates.slice(0, 3);
-  const freezeNow = shouldFreeze(firstStartTime(frozenSignals as any[]));
+  console.log("[MLB_TOP3]", {
+    slateDate,
+    frozenSignals: frozenSignals.length,
+    candidates: candidates.length,
+    top3: top3.length,
+  });
+  const freezeNow = shouldFreeze(firstStartTime(frozenSignals as Array<{ start_time?: string | null }>));
   await insertTop5HistoryRows({ engine: "EXCLUSIVE_TOP3", runType: freezeNow ? "OFFICIAL_FREEZE" : "INTERNAL_RANKING", rows: top3, oddsRows, slateDate, frozen: freezeNow, published: freezeNow });
   if (!freezeNow) {
-    await supabase
-      .from("atlas_core_mlb_picks")
-      .update({ status: "INTERNAL_CANDIDATE", rank: null, is_top_signal: false, updated_at: new Date().toISOString() })
-      .eq("date", slateDate)
-      .eq("engine_product", "EXCLUSIVE_TOP3")
-      .is("ranking_frozen_at", null);
-    return { enabled: true, engine: "EXCLUSIVE_TOP3", internalRanked: top3.length, published: false, recalcMinutes: SIGNAL_ENGINE_RECALC_MINUTES, slateDate };
+    const now = new Date().toISOString();
+    const rows = top3.map((item, index) => ({
+      ...operationalPickRow(item, index, oddsRows, { date: slateDate, now, engineProduct: "EXCLUSIVE_TOP3" }),
+      status: "INTERNAL_CANDIDATE",
+      is_top_signal: false,
+      ranking_frozen_at: null,
+      updated_at: now,
+    }));
+    if (rows.length) {
+      const upsert = await supabase.from("atlas_core_mlb_picks").upsert(rows, { onConflict: "date,game_id,engine_product" });
+      if (upsert.error) throw upsert.error;
+    }
+    return { enabled: true, engine: "EXCLUSIVE_TOP3", internalRanked: top3.length, persisted: rows.length, published: false, recalcMinutes: SIGNAL_ENGINE_RECALC_MINUTES, slateDate };
   }
 
   const now = new Date().toISOString();
@@ -772,16 +837,27 @@ export async function runPremiumTop5Engine() {
   const slateDate = resolveMlbSlateDate();
   const { candidates, oddsRows } = await buildAtlasCoreCandidates();
   const top5 = candidates.slice(0, 5);
+  console.log("[MLB_TOP5]", {
+    slateDate,
+    candidates: candidates.length,
+    top5: top5.length,
+  });
   const freezeNow = shouldFreeze(firstStartTime(top5.map((item) => ({ start_time: item.startTime }))));
   await insertTop5HistoryRows({ engine: "PREMIUM_TOP5", runType: freezeNow ? "OFFICIAL_FREEZE" : "INTERNAL_RANKING", rows: top5, oddsRows, slateDate, frozen: freezeNow, published: freezeNow });
   if (!freezeNow) {
-    await supabase
-      .from("atlas_core_mlb_picks")
-      .update({ status: "INTERNAL_CANDIDATE", rank: null, is_top_signal: false, updated_at: new Date().toISOString() })
-      .eq("date", slateDate)
-      .eq("engine_product", "PREMIUM_TOP5")
-      .is("ranking_frozen_at", null);
-    return { enabled: true, engine: "PREMIUM_TOP5", internalRanked: top5.length, published: false, recalcMinutes: SIGNAL_ENGINE_RECALC_MINUTES, slateDate };
+    const now = new Date().toISOString();
+    const rows = top5.map((item, index) => ({
+      ...operationalPickRow(item, index, oddsRows, { date: slateDate, now, engineProduct: "PREMIUM_TOP5" }),
+      status: "INTERNAL_CANDIDATE",
+      is_top_signal: false,
+      ranking_frozen_at: null,
+      updated_at: now,
+    }));
+    if (rows.length) {
+      const upsert = await supabase.from("atlas_core_mlb_picks").upsert(rows, { onConflict: "date,game_id,engine_product" });
+      if (upsert.error) throw upsert.error;
+    }
+    return { enabled: true, engine: "PREMIUM_TOP5", internalRanked: top5.length, persisted: rows.length, published: false, recalcMinutes: SIGNAL_ENGINE_RECALC_MINUTES, slateDate };
   }
 
   const now = new Date().toISOString();
@@ -923,21 +999,45 @@ export async function runAtlasSignalEnginesValidation() {
 
 export async function runAtlasCoreDailyPipeline(mode: "MORNING" | "LIVE") {
   const slateDate = resolveMlbSlateDate();
+  console.log("[MLB_ENGINE_START]", { mode, slateDate });
+  const upstreamRefresh =
+    mode === "MORNING"
+      ? await refreshMlbAtlasCorePrerequisites()
+      : {
+          pitcherQuality: null,
+          teamQualityResearch: null,
+        };
   const projectionCapture = await buildMlbProjectionResearchSnapshots();
   const projectionStorage = await insertProjectionResearchSnapshotsDeduped(projectionCapture.projections);
   const decisionCapture = await buildDecisionResearchSnapshots();
   const decisionStorage = await insertDecisionResearchSnapshotsDeduped(decisionCapture.decisions);
   const marketEdgeCapture = await buildMarketEdgeResearchSnapshots();
   const marketEdgeStorage = await insertMarketEdgeSnapshotsDeduped(marketEdgeCapture.marketEdges);
+  console.log("[MLB_GAMES_RECEIVED]", {
+    slateDate,
+    pitcherGames: upstreamRefresh.pitcherQuality?.gamesInspected ?? null,
+    projectionGames: projectionCapture.gamesInspected,
+    decisionGames: decisionCapture.gamesInspected,
+    marketEdgeGames: marketEdgeCapture.gamesInspected,
+    marketEdgeGamesAnalyzed: marketEdgeCapture.gamesAnalyzed,
+  });
+  console.log("[MLB_CANDIDATES_CREATED]", {
+    slateDate,
+    marketEdges: marketEdgeCapture.marketEdges.length,
+    projectionRows: projectionCapture.projections.length,
+    decisionRows: decisionCapture.decisions.length,
+  });
   const atlasCore =
     mode === "MORNING"
       ? await runAtlasCoreMorningScan({ force: true })
       : { enabled: true, skipped: true, reason: "LIVE pipeline refreshes upstream only. Signal Engines V2 own publication." };
+  console.log("[MLB_SIGNALS_CREATED]", atlasCore);
 
   return {
     ok: true,
     mode,
     slateDate,
+    prerequisites: upstreamRefresh,
     projection: { games: projectionCapture.projections.length, inserted: projectionStorage.inserted, skipped: projectionStorage.skipped, errors: projectionStorage.errors },
     decision: { games: decisionCapture.decisions.length, inserted: decisionStorage.inserted, skipped: decisionStorage.skipped, errors: decisionStorage.errors },
     marketEdge: { markets: marketEdgeCapture.marketEdges.length, inserted: marketEdgeStorage.inserted, skipped: marketEdgeStorage.skipped, errors: marketEdgeStorage.errors },
@@ -946,7 +1046,41 @@ export async function runAtlasCoreDailyPipeline(mode: "MORNING" | "LIVE") {
       projectionStorage.errors.length === 0 &&
       decisionStorage.errors.length === 0 &&
       marketEdgeStorage.errors.length === 0 &&
-      !(atlasCore as any).publicationBlocked,
+      !(
+        typeof atlasCore === "object" &&
+        atlasCore !== null &&
+        "publicationBlocked" in atlasCore &&
+        Boolean(atlasCore.publicationBlocked)
+      ),
+  };
+}
+
+async function refreshMlbAtlasCorePrerequisites() {
+  const pitcherCapture = await captureStartingPitcherQuality();
+  const pitcherBaselineStorage = await insertPitcherQualityBaselinesDeduped(pitcherCapture.baselines);
+  const pitcherStorage = await insertStartingPitcherQualitySnapshotsDeduped(pitcherCapture.snapshots);
+  const teamQualityCapture = await buildTeamQualityResearchSnapshots({ asOf: pitcherCapture.asOf });
+  const teamQualityStorage = await insertTeamQualityResearchSnapshotsDeduped(
+    teamQualityCapture.snapshots,
+    teamQualityCapture.v1ByKey,
+  );
+
+  return {
+    pitcherQuality: {
+      gamesInspected: pitcherCapture.gamesInspected,
+      snapshots: pitcherCapture.snapshots.length,
+      inserted: pitcherStorage.inserted,
+      skipped: pitcherStorage.skipped,
+      errors: [...pitcherCapture.providerErrors, ...pitcherStorage.errors, ...pitcherBaselineStorage.errors],
+    },
+    teamQualityResearch: {
+      gamesInspected: teamQualityCapture.gamesInspected,
+      teamSidesInspected: teamQualityCapture.teamSidesInspected,
+      snapshots: teamQualityCapture.snapshots.length,
+      inserted: teamQualityStorage.inserted,
+      skipped: teamQualityStorage.skipped,
+      errors: [...teamQualityCapture.providerErrors, ...teamQualityStorage.errors],
+    },
   };
 }
 

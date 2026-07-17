@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { getSupabaseAdmin } from "@/app/lib/supabase/admin";
-import { resolveMlbSlateDate } from "@/app/lib/mlb-engine/slate-date";
+import { resolveMlbSlateDate, resolveMlbSlateWindow } from "@/app/lib/mlb-engine/slate-date";
 import { loadLatestCanonicalBullpenTeamFeatures } from "../bullpen/bullpen-feature-repository";
 import { loadLatestCanonicalWeatherParkFeatures } from "../weather/weather-feature-repository";
 import {
@@ -55,12 +55,15 @@ function key(gameId?: string, side?: string) {
 
 async function loadTeamQualityResearchRows() {
   const supabase = getSupabaseAdmin();
+  const { startUtc, endUtc } = resolveMlbSlateWindow();
   const { data, error } = await supabase
     .from("mlb_team_intelligence_snapshots")
     .select("official_game_id,team_id,team_name,side,team_quality_v2_research_score,team_quality_availability,quality_confidence,offense_score,starting_pitcher_quality_score,bullpen_quality_score,game_readiness_score,context_certainty_score,captured_at")
     .eq("team_quality_version", "team_quality_v2_research")
     .eq("canonical", true)
     .not("official_game_id", "is", null)
+    .gte("captured_at", startUtc)
+    .lt("captured_at", endUtc)
     .order("captured_at", { ascending: false })
     .limit(300);
   if (error) throw error;
