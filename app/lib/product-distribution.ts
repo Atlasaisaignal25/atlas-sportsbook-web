@@ -1,6 +1,6 @@
 export type AtlasDistributionProduct =
   | "master_signal_pool"
-  | "initial_premium_pool"
+  | "initial_reserved_pool"
   | "signals_detected"
   | "exclusive_top3"
   | "dynamic_candidate_pool"
@@ -39,7 +39,7 @@ export type DistributedProductRow<T extends DistributionItemBase> = T & {
 export type SportProductDistribution<T extends DistributionItemBase> = {
   sport: string;
   masterSignalPool: Array<DistributedProductRow<T>>;
-  initialPremiumPool: Array<DistributedProductRow<T>>;
+  initialReservedPool: Array<DistributedProductRow<T>>;
   signalsDetected: Array<DistributedProductRow<T>>;
   exclusiveTop3: Array<DistributedProductRow<T>>;
   dynamicCandidatePool: Array<DistributedProductRow<T>>;
@@ -52,7 +52,7 @@ export type SportProductDistribution<T extends DistributionItemBase> = {
 export type UniversalProductDistribution<T extends DistributionItemBase> = {
   sports: Array<SportProductDistribution<T>>;
   masterSignalPool: Array<DistributedProductRow<T>>;
-  initialPremiumPool: Array<DistributedProductRow<T>>;
+  initialReservedPool: Array<DistributedProductRow<T>>;
   signalsDetected: Array<DistributedProductRow<T>>;
   exclusiveTop3: Array<DistributedProductRow<T>>;
   dynamicCandidatePool: Array<DistributedProductRow<T>>;
@@ -152,10 +152,10 @@ function buildSportDistribution<T extends DistributionItemBase>(
   const masterSignalPool = sortMasterRows(dedupeRows(rows)).map((row, index) =>
     markRow(row, index + 1, index + 1, "master_signal_pool"),
   );
-  const initialPremiumPool = masterSignalPool.slice(0, 3).map((row) => ({
+  const initialReservedPool = masterSignalPool.slice(0, 3).map((row) => ({
     ...row,
-    distributionProduct: "initial_premium_pool" as const,
-    distributionBucket: "initial_premium_pool" as const,
+    distributionProduct: "initial_reserved_pool" as const,
+    distributionBucket: "initial_reserved_pool" as const,
   }));
   const signalsDetected = masterSignalPool.slice(3).map((row) => ({
     ...row,
@@ -169,7 +169,9 @@ function buildSportDistribution<T extends DistributionItemBase>(
     distributionProduct: "exclusive_top3" as const,
     distributionBucket: "exclusive_top3" as const,
   }));
-  const dynamicCandidatePool = sortMasterRows([...initialPremiumPool, ...signalsDetected]).map((row, index) => ({
+  // Dynamic Validation Engine will attach here in the next phase.
+  // It must read only this pool and must not mutate Signals Detected or Exclusive.
+  const dynamicCandidatePool = sortMasterRows([...initialReservedPool, ...signalsDetected]).map((row, index) => ({
     ...row,
     dynamicRank: index + 1,
     distributionProduct: "dynamic_candidate_pool" as const,
@@ -202,7 +204,7 @@ function buildSportDistribution<T extends DistributionItemBase>(
   return {
     sport,
     masterSignalPool,
-    initialPremiumPool,
+    initialReservedPool,
     signalsDetected,
     exclusiveTop3,
     dynamicCandidatePool,
@@ -229,7 +231,7 @@ export function buildUniversalProductDistribution<T extends DistributionItemBase
   return {
     sports,
     masterSignalPool: sports.flatMap((sport) => sport.masterSignalPool),
-    initialPremiumPool: sports.flatMap((sport) => sport.initialPremiumPool),
+    initialReservedPool: sports.flatMap((sport) => sport.initialReservedPool),
     signalsDetected: sports.flatMap((sport) => sport.signalsDetected),
     exclusiveTop3: sports.flatMap((sport) => sport.exclusiveTop3),
     dynamicCandidatePool: sports.flatMap((sport) => sport.dynamicCandidatePool),

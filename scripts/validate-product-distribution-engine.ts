@@ -33,7 +33,7 @@ assert.ok(mlb);
 assert.ok(soccer);
 
 assert.equal(mlb.masterSignalPool.length, 10);
-assert.deepEqual(mlb.initialPremiumPool.map((row) => row.game_id), ["mlb-1", "mlb-2", "mlb-3"]);
+assert.deepEqual(mlb.initialReservedPool.map((row) => row.game_id), ["mlb-1", "mlb-2", "mlb-3"]);
 assert.deepEqual(mlb.signalsDetected.map((row) => row.game_id), ["mlb-4", "mlb-5", "mlb-6", "mlb-7", "mlb-8", "mlb-9", "mlb-10"]);
 assert.deepEqual(mlb.exclusiveTop3.map((row) => row.game_id), ["mlb-4", "mlb-5", "mlb-6"]);
 assert.deepEqual(mlb.dynamicCandidatePool.map((row) => row.game_id), ["mlb-1", "mlb-2", "mlb-3", "mlb-4", "mlb-5", "mlb-6", "mlb-7", "mlb-8", "mlb-9", "mlb-10"]);
