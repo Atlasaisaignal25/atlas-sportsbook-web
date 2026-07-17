@@ -15,6 +15,7 @@ import { SportSignalDetailSheet } from "./SportSignalDetailSheet";
 import { TodayActivityCard, type ActivityMetric } from "./TodayActivityCard";
 import { TopPlayCard, type TopPlayViewModel } from "./TopPlayCard";
 import { TopPlayDetailSheet } from "./TopPlayDetailSheet";
+import { normalizeProductStatus } from "@/app/lib/product-normalization";
 import { teamBranding } from "../../lib/teamBranding";
 import {
   AtlasControlCenterPanel,
@@ -615,9 +616,9 @@ export function getNextSignalBySport(
 }
 
 function getSignalViewAllResultBadge(status?: string | null) {
-  const normalized = (status ?? "").trim().toUpperCase();
+  const normalized = normalizeProductStatus(status);
 
-  if (["WON", "WIN", "WINNER", "W"].includes(normalized)) {
+  if (normalized === "WON") {
     return {
       icon: "✓",
       label: "WIN",
@@ -627,7 +628,7 @@ function getSignalViewAllResultBadge(status?: string | null) {
     };
   }
 
-  if (["LOST", "LOSS", "LOSE", "L"].includes(normalized)) {
+  if (normalized === "LOSS") {
     return {
       icon: "✕",
       label: "LOSS",
@@ -698,10 +699,7 @@ function getSignalDisplayStatus(row: SignalDetectedRow) {
   const liveStatus = row.liveStatus?.trim().toUpperCase();
   if (liveStatus) return liveStatus;
 
-  const normalized = row.status?.trim().toUpperCase();
-  if (["WON", "LOST", "PUSH", "LIVE", "FINAL", "CANCELLED"].includes(normalized)) return normalized;
-
-  return "PENDING";
+  return normalizeProductStatus(row.status);
 }
 
 function getSignalStatusClasses(status: string) {
@@ -709,7 +707,7 @@ function getSignalStatusClasses(status: string) {
 
   if (normalized === "LIVE") return "border-emerald-300/45 bg-emerald-400/10 text-emerald-200";
   if (normalized === "FINAL" || normalized === "CANCELLED") return "border-white/22 bg-white/8 text-white/70";
-  if (normalized === "WON" || normalized === "LOST" || normalized === "PUSH") return "border-white/20 bg-white/8 text-white/78";
+  if (normalized === "WON" || normalized === "LOSS" || normalized === "PUSH") return "border-white/20 bg-white/8 text-white/78";
 
   return "border-cyan-300/45 bg-cyan-300/10 text-cyan-200";
 }
@@ -717,7 +715,7 @@ function getSignalStatusClasses(status: string) {
 function getSignalPrimaryTimeLabel(row: SignalDetectedRow) {
   const status = getSignalDisplayStatus(row);
 
-  if (status === "LIVE" || status === "FINAL" || status === "WON" || status === "LOST" || status === "PUSH") {
+  if (status === "LIVE" || status === "FINAL" || status === "WON" || status === "LOSS" || status === "PUSH") {
     return row.displayTime || row.time;
   }
 
@@ -728,7 +726,7 @@ function getSignalSecondaryTimeLabel(row: SignalDetectedRow) {
   const status = getSignalDisplayStatus(row);
 
   if (status === "LIVE") return row.liveDetail || "Live";
-  if (status === "FINAL" || status === "WON" || status === "LOST" || status === "PUSH") return row.liveDetail;
+  if (status === "FINAL" || status === "WON" || status === "LOSS" || status === "PUSH") return row.liveDetail;
 
   return null;
 }
@@ -1481,7 +1479,12 @@ function ActivityMetricIcon({ index, className = "" }: { index: number; classNam
 }
 
 function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
-  const [lastUpdateLabel, setLastUpdateLabel] = useState<string | null>(null);
+  const [lastUpdateLabel] = useState(() =>
+    new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date()),
+  );
   const stageStyles = [
     {
       state: "SCANNING",
@@ -1525,15 +1528,6 @@ function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
     },
   ];
 
-  useEffect(() => {
-    setLastUpdateLabel(
-      new Intl.DateTimeFormat(undefined, {
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(new Date()),
-    );
-  }, []);
-
   return (
     <section className="rounded-[17px] border border-white/14 bg-[radial-gradient(circle_at_top_left,rgba(0,213,255,0.08),transparent_36%),linear-gradient(180deg,rgba(6,18,31,0.92),rgba(3,8,20,0.96))] px-3 py-1.5 shadow-[0_0_18px_rgba(0,213,255,0.06)]">
       <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-cyan-300">TODAY&apos;S ACTIVITY</h2>
@@ -1575,7 +1569,7 @@ function FrameTodayActivityCard({ metrics }: { metrics: ActivityMetric[] }) {
       </div>
       <div className="mt-1 flex justify-end">
         <p className="text-[7px] font-black uppercase tracking-[0.14em] text-white/34">
-          Last Update <span className="text-cyan-300/70">{lastUpdateLabel ?? "Live"}</span>
+          Last Update <span className="text-cyan-300/70">{lastUpdateLabel}</span>
         </p>
       </div>
     </section>
@@ -2931,9 +2925,10 @@ function profileTone(code: string) {
 }
 
 function statusTone(status: string) {
-  if (status === "READY" || status === "CONFIRMED" || status === "ACTIVE") return "bg-emerald-400/16 text-emerald-300";
+  const productStatus = normalizeProductStatus(status);
+  if (status === "READY" || status === "ACTIVE" || productStatus === "WON" || productStatus === "LIVE") return "bg-emerald-400/16 text-emerald-300";
   if (status === "DETECTED" || status === "UNDER REVIEW" || status === "EXPIRES SOON") return "bg-yellow-400/15 text-yellow-300";
-  if (status === "DOWNGRADED" || status === "WITHDRAWN" || status === "CANCELLED") return "bg-red-500/15 text-red-300";
+  if (status === "WITHDRAWN" || productStatus === "LOSS" || productStatus === "CANCELLED") return "bg-red-500/15 text-red-300";
   return "bg-white/8 text-white/52";
 }
 

@@ -2323,31 +2323,29 @@ function buildHistoryRecordStats(history: any[]) {
 }
 
 function getStatusStyles(status?: string) {
-  const s = String(status ?? "PENDING").toUpperCase();
+  const s = normalizeProductStatus(status);
 
-  if (s === "CONFIRMED") {
-    return "bg-green-500/15 text-green-300 border-green-400/30";
-  }
-
-  if (s === "REMOVED") {
+  if (s === "CANCELLED") {
     return "bg-red-500/15 text-red-300 border-red-400/30";
   }
 
-  if (s === "DOWNGRADED") {
-    return "bg-yellow-500/15 text-yellow-300 border-yellow-400/30";
+  if (s === "LIVE" || s === "WON") {
+    return "bg-green-500/15 text-green-300 border-green-400/30";
   }
 
-  return "bg-white/10 text-white/60 border-white/15";
+  if (s === "LOSS") {
+    return "bg-red-500/15 text-red-300 border-red-400/30";
+  }
+
+  if (s === "PUSH" || s === "FINAL") {
+    return "bg-white/10 text-white/60 border-white/15";
+  }
+
+  return "bg-cyan-400/10 text-cyan-300 border-cyan-400/25";
 }
 
 function formatStatusLabel(status?: string) {
-  const s = String(status ?? "PENDING").toUpperCase();
-
-  if (s === "CONFIRMED") return "CONFIRMED ✅";
-  if (s === "REMOVED") return "REMOVED ❌";
-  if (s === "DOWNGRADED") return "DOWNGRADED ⬇️";
-
-  return s;
+  return normalizeProductStatus(status);
 }
 
 function getTop5BySport(
@@ -7291,23 +7289,27 @@ const atlasAlerts = useMemo<AtlasAlert[]>(() => {
 
   subsPicks
     .filter((pick) => {
-      const status = String(pick.status ?? "").toUpperCase();
-      return status === "CONFIRMED" || status === "REMOVED" || status === "DOWNGRADED";
+      const status = normalizeProductStatus(pick.status);
+      return status === "LIVE" || status === "WON" || status === "LOSS" || status === "PUSH" || status === "CANCELLED";
     })
     .slice(0, 4)
     .forEach((pick, index) => {
-      const status = String(pick.status ?? "").toUpperCase();
+      const status = normalizeProductStatus(pick.status);
       alerts.push({
         id: `${selectedSport}-validation-${index}`,
-        tone: status === "CONFIRMED" ? "green" : status === "REMOVED" ? "red" : "yellow",
+        tone: status === "WON" || status === "LIVE" ? "green" : status === "LOSS" || status === "CANCELLED" ? "red" : "yellow",
         label: status,
         title: `${pick.awayTeam ?? ""} vs ${pick.homeTeam ?? ""}`,
         body:
-          status === "CONFIRMED"
-            ? "This signal has been confirmed by the pregame validation flow."
-            : status === "REMOVED"
+          status === "LIVE"
+            ? "This signal is currently live."
+            : status === "WON"
+            ? "This signal has been graded as won."
+            : status === "LOSS"
+            ? "This signal has been graded as lost."
+            : status === "CANCELLED"
             ? "This signal was removed before game time."
-            : "This signal was downgraded before game time.",
+            : "This signal is waiting for final grading.",
         action: () => {
           setAppSection("signals");
           setViewMode("odds");
@@ -12323,9 +12325,9 @@ const subscriptionPlansBoard = (
           const awayScore = getLiveScoreValue(game, game.away_team);
           const homeScore = getLiveScoreValue(game, game.home_team);
           const hasScore = awayScore !== "-" || homeScore !== "-";
-          const liveStatus: "PENDING" | "LIVE" | "FINAL" | "WON" | "LOST" | "PUSH" =
+          const liveStatus: "PENDING" | "LIVE" | "FINAL" | "WON" | "LOSS" | "PUSH" =
             pickResult !== "PENDING"
-              ? pickResult
+              ? pickResult === "LOST" ? "LOSS" : pickResult
               : game.completed
               ? "FINAL"
               : live
@@ -13413,11 +13415,12 @@ const subscriptionPlansBoard = (
                       </div>
 
                       <p className="mt-2 text-[11px] text-white/40">
-                        {pick.status === "CONFIRMED" && "Validated by system"}
-                        {pick.status === "REMOVED" && "Signal removed due to market shift"}
-                        {pick.status === "DOWNGRADED" &&
-                          "Confidence reduced before game time"}
-                        {!pick.status && "Monitoring market conditions"}
+                        {normalizeProductStatus(pick.status) === "PENDING" && "Monitoring market conditions"}
+                        {normalizeProductStatus(pick.status) === "LIVE" && "Signal is live"}
+                        {normalizeProductStatus(pick.status) === "WON" && "Signal won"}
+                        {normalizeProductStatus(pick.status) === "LOSS" && "Signal lost"}
+                        {normalizeProductStatus(pick.status) === "PUSH" && "Signal pushed"}
+                        {normalizeProductStatus(pick.status) === "CANCELLED" && "Signal cancelled"}
                       </p>
                     </div>
                   </article>
@@ -13893,11 +13896,12 @@ const subscriptionPlansBoard = (
             </div>
 
             <p className="mt-2 text-[11px] text-white/40">
-              {pick.status === "CONFIRMED" && "Validated by system"}
-              {pick.status === "REMOVED" && "Signal removed due to market shift"}
-              {pick.status === "DOWNGRADED" &&
-                "Confidence reduced before game time"}
-              {!pick.status && "Monitoring market conditions"}
+              {normalizeProductStatus(pick.status) === "PENDING" && "Monitoring market conditions"}
+              {normalizeProductStatus(pick.status) === "LIVE" && "Signal is live"}
+              {normalizeProductStatus(pick.status) === "WON" && "Signal won"}
+              {normalizeProductStatus(pick.status) === "LOSS" && "Signal lost"}
+              {normalizeProductStatus(pick.status) === "PUSH" && "Signal pushed"}
+              {normalizeProductStatus(pick.status) === "CANCELLED" && "Signal cancelled"}
             </p>
           </div>
         </article>

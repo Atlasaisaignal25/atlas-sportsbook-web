@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { normalizeProductStatus } from "@/app/lib/product-normalization";
 import type { SportCode } from "./SportSignalCard";
 import { getAtlasSportDisplayName, SportLineIcon } from "./sportVisuals";
 
@@ -15,7 +16,7 @@ export type SignalDetectedRow = {
   time: string;
   startTime?: string | null;
   detectedAt?: string | null;
-  liveStatus?: "PENDING" | "LIVE" | "FINAL" | "WON" | "LOST" | "PUSH";
+  liveStatus?: "PENDING" | "LIVE" | "FINAL" | "WON" | "LOSS" | "PUSH" | "CANCELLED";
   liveScore?: string | null;
   liveDetail?: string | null;
   displayTime?: string | null;
@@ -36,7 +37,7 @@ function formatOdds(value?: number | null) {
 }
 
 type SportFilter = "ALL" | SportCode;
-type StatusFilter = "ALL" | "PENDING" | "CONFIRMED" | "REMOVED" | "DOWNGRADED";
+type StatusFilter = "ALL" | "PENDING" | "LIVE" | "FINAL" | "WON" | "LOSS" | "PUSH" | "CANCELLED";
 
 const sportFilters: Array<{ label: string; value: SportFilter }> = [
   { label: "All", value: "ALL" },
@@ -50,24 +51,26 @@ const sportFilters: Array<{ label: string; value: SportFilter }> = [
 const statusFilters: Array<{ label: string; value: StatusFilter }> = [
   { label: "All", value: "ALL" },
   { label: "Pending", value: "PENDING" },
-  { label: "Confirmed", value: "CONFIRMED" },
-  { label: "Removed", value: "REMOVED" },
-  { label: "Downgraded", value: "DOWNGRADED" },
+  { label: "Live", value: "LIVE" },
+  { label: "Final", value: "FINAL" },
+  { label: "Won", value: "WON" },
+  { label: "Loss", value: "LOSS" },
+  { label: "Push", value: "PUSH" },
+  { label: "Cancelled", value: "CANCELLED" },
 ];
 
 const statusRank: Record<string, number> = {
   PENDING: 0,
-  CONFIRMED: 1,
-  DOWNGRADED: 2,
-  REMOVED: 3,
+  LIVE: 1,
+  FINAL: 2,
+  WON: 3,
+  LOSS: 4,
+  PUSH: 5,
+  CANCELLED: 6,
 };
 
 function normalizeStatus(status: string) {
-  const value = status.trim().toUpperCase();
-  if (value.includes("CONFIRM") || value === "WON") return "CONFIRMED";
-  if (value.includes("REMOVE")) return "REMOVED";
-  if (value.includes("DOWNGRADE")) return "DOWNGRADED";
-  return "PENDING";
+  return normalizeProductStatus(status);
 }
 
 function getDisplayStatus(row: SignalDetectedRow) {
@@ -75,7 +78,7 @@ function getDisplayStatus(row: SignalDetectedRow) {
   if (liveStatus) return liveStatus;
 
   const status = row.status.trim().toUpperCase();
-  if (["WON", "LOST", "PUSH", "CANCELLED", "LIVE", "FINAL"].includes(status)) return status;
+  if (["WON", "LOSS", "PUSH", "CANCELLED", "LIVE", "FINAL"].includes(status)) return status;
 
   return normalizeStatus(row.status);
 }
@@ -105,7 +108,7 @@ function getCompletedResultCard(row: SignalDetectedRow) {
       rowClassName: "ring-1 ring-inset ring-emerald-300/18 bg-emerald-400/[0.025]",
     };
   }
-  if (status === "LOST") {
+  if (status === "LOSS") {
     if (!score) return null;
     return {
       score,

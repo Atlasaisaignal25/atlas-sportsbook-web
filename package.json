@@ -40,6 +40,7 @@
     "validate:manual-summary-engine": "npx --yes tsx scripts/validate-manual-summary-engine.ts",
     "validate:snapshot-engine": "npx --yes tsx scripts/validate-snapshot-engine.ts",
     "validate:product-distribution-engine": "npx --yes tsx scripts/validate-product-distribution-engine.ts",
+    "validate:product-normalization-architecture": "npx --yes tsx scripts/validate-product-normalization-architecture.ts",
     "validate:mlb-projection-research": "npx --yes tsx scripts/validate-mlb-projection-research.ts",
     "validate:mlb-decision-research": "npx --yes tsx scripts/validate-mlb-decision-research.ts"
   },
