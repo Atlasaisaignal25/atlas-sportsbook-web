@@ -4164,6 +4164,7 @@ function MoreTabFoundation({
   onCreateAccount,
   onMembership,
   onBilling,
+  onAdminDashboard,
 }: {
   authSession: AuthSessionState;
   authLoaded: boolean;
@@ -4172,6 +4173,7 @@ function MoreTabFoundation({
   onCreateAccount: () => void;
   onMembership: () => void;
   onBilling: () => void;
+  onAdminDashboard: () => void;
 }) {
   const planLabel = authLoaded && authSession.authenticated ? userAccess.plan.toUpperCase() : "FREE";
   const displayName = authSession.email?.split("@")[0]?.replace(/[._-]+/g, " ") ?? "Atlas Member";
@@ -4268,6 +4270,18 @@ function MoreTabFoundation({
           ))}
         </div>
       </section>
+
+      {userAccess.plan === "admin" ? (
+        <MoreSectionCard title="Admin">
+          <MoreOptionRow
+            icon="code"
+            label="Dashboard"
+            detail="Open Atlas Control Center and Signal Engines."
+            value="Admin"
+            onClick={onAdminDashboard}
+          />
+        </MoreSectionCard>
+      ) : null}
 
       <MoreSectionCard>
         <MoreOptionRow icon="membership" label="Membership" detail="Plans, packs and Atlas access." value={planLabel} onClick={onMembership} />
@@ -4468,6 +4482,7 @@ const [checkoutPlan, setCheckoutPlan] = useState<CheckoutProduct | null>(null);
 const [selectedPackSport, setSelectedPackSport] = useState<CheckoutSport>("MLB");
 const [selectedMembershipDetail, setSelectedMembershipDetail] = useState<HomeMembershipDetailCode | null>(null);
 const [billingBusy, setBillingBusy] = useState(false);
+const [adminDashboardOpen, setAdminDashboardOpen] = useState(false);
 const [selectedSignalInsight, setSelectedSignalInsight] = useState<SignalInsight | null>(null);
 const [signalListExpanded, setSignalListExpanded] = useState(false);
 const [activeDay, setActiveDay] = useState(() => getRelativeDayKey(0));
@@ -12048,8 +12063,8 @@ const subscriptionPlansBoard = (
     );
   }
 
-  if ((appSection as string) === "alerts" && userAccess.plan === "admin") {
-    return <AdminDashboard adminEmail={authSession.email ?? "admin"} />;
+  if ((appSection as string) === "more" && userAccess.plan === "admin" && adminDashboardOpen) {
+    return <AdminDashboard adminEmail={authSession.email ?? "admin"} onBack={() => setAdminDashboardOpen(false)} />;
   }
 
   if ((appSection as string) === "alerts" && hasPaidSubscription) {
@@ -14469,6 +14484,7 @@ const subscriptionPlansBoard = (
             onCreateAccount={() => router.push("/login?intent=free")}
             onMembership={() => navigateAppState({ section: "alerts" })}
             onBilling={handleManageBilling}
+            onAdminDashboard={() => setAdminDashboardOpen(true)}
           />
         ) : (
           <div className="space-y-3">

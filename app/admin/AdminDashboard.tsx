@@ -3259,7 +3259,7 @@ function MarketCards({ rows }: { rows: Array<PerformanceMetricSet & { market: st
   );
 }
 
-export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
+export default function AdminDashboard({ adminEmail, onBack }: { adminEmail: string; onBack?: () => void }) {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [controlCenter, setControlCenter] = useState<AtlasControlCenterData | null>(null);
@@ -3728,7 +3728,14 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
       <div className="min-h-screen pb-20 lg:ml-[210px] lg:pb-6">
         <header className="sticky top-0 z-20 border-b border-white/10 bg-[#020915]/95 px-4 py-2 backdrop-blur lg:static lg:px-8 lg:py-2.5">
           <div className="mx-auto flex max-w-5xl items-center justify-between">
-            <button className="grid h-7 w-7 place-items-center text-[25px] text-white/85 lg:hidden">≡</button>
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label={onBack ? "Back to More" : "Open admin navigation"}
+              className="grid h-7 w-7 place-items-center text-[25px] text-white/85 lg:hidden"
+            >
+              {onBack ? "‹" : "≡"}
+            </button>
             <AtlasAdminLogo />
             <button className="relative grid h-7 w-7 place-items-center text-lg text-white/85">
               ♧
@@ -3739,9 +3746,20 @@ export default function AdminDashboard({ adminEmail }: { adminEmail: string }) {
 
         <div className="mx-auto grid max-w-5xl gap-2 px-3 py-2.5 sm:px-4 lg:px-8">
           <div className="hidden items-center justify-between lg:flex">
-            <div>
-              <h1 className="text-[22px] font-black uppercase text-white">Admin Dashboard</h1>
-              <p className="text-xs text-white/45">Atlas Admin Command Center · {adminEmail}</p>
+            <div className="flex items-center gap-3">
+              {onBack ? (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-cyan-200"
+                >
+                  Back
+                </button>
+              ) : null}
+              <div>
+                <h1 className="text-[22px] font-black uppercase text-white">Admin Dashboard</h1>
+                <p className="text-xs text-white/45">Atlas Admin Command Center · {adminEmail}</p>
+              </div>
             </div>
             <button
               onClick={loadOverview}
