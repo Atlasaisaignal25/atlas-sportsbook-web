@@ -92,6 +92,7 @@ import {
 } from "@/app/components/signals/OfficialSportSelectorRow";
 import AdminDashboard, { AtlasControlCenterTabBar } from "@/app/admin/AdminDashboard";
 import { canViewMyAtlasProduct, describeMyAtlasLockedAccess } from "@/app/lib/my-atlas-access";
+import { normalizeAtlasProductSignal, normalizeProductStatus } from "@/app/lib/product-normalization";
 
 
 
@@ -547,8 +548,8 @@ function topFiveEntryToAtlasSourcePick(pick: Top5Entry, sport: AtlasPlanSport, i
 }
 
 function normalizeAtlasSourceStatus(status: unknown): AtlasPlanStatus {
-  const normalized = String(status ?? "pending").toLowerCase().replace(/\s+/g, "_");
-  if (normalized === "confirmed" || normalized === "validated") return "confirmed";
+  const normalized = normalizeProductStatus(status).toLowerCase().replace(/\s+/g, "_");
+  if (normalized === "confirmed") return "confirmed";
   if (normalized === "started" || normalized === "live" || normalized === "in_progress") return "started";
   if (normalized === "won" || normalized === "win") return "won";
   if (normalized === "lost" || normalized === "loss") return "lost";
@@ -3929,12 +3930,12 @@ function AtlasAccessGate({
 
 function MyAtlasRankingRow({ row, isLast }: { row: MyAtlasBoardRow; isLast: boolean }) {
   const oddsLabel = formatAmericanOdds(row.odds ?? null);
-  const status = String(row.status ?? "PENDING").toUpperCase();
-  const statusLabel = status === "CONFIRMED" ? "Confirmed" : status === "VALIDATED" ? "Confirmed" : status === "PENDING" ? "Pending" : formatStatusLabel(status);
+  const status = normalizeProductStatus(row.status);
+  const statusLabel = formatStatusLabel(status);
 
   return (
     <div
-      className={`grid min-h-[64px] w-full grid-cols-[76px_minmax(0,1fr)_78px_14px] items-center gap-2 px-3 py-2 text-left ${
+      className={`grid min-h-[64px] w-full grid-cols-[76px_minmax(0,1fr)_58px_14px] items-center gap-2 px-3 py-2 text-left ${
         !isLast ? "border-b border-white/10" : ""
       }`}
     >
@@ -3966,7 +3967,7 @@ function MyAtlasRankingRow({ row, isLast }: { row: MyAtlasBoardRow; isLast: bool
       </div>
 
       <div className="justify-self-end text-right">
-        <span className={`inline-flex min-w-[62px] items-center justify-center rounded-[9px] border px-2 py-1 text-[8px] font-black uppercase ${getStatusStyles(status)}`}>
+        <span className={`inline-flex min-w-[48px] items-center justify-center rounded-[8px] border px-1.5 py-0.5 text-[7px] font-black uppercase ${getStatusStyles(status)}`}>
           {statusLabel}
         </span>
       </div>
@@ -5567,27 +5568,31 @@ useEffect(() => {
     });
 
     setMlbTop5Data({
-  top5: (mlbTop5 || []).map((g: any) => ({
-    gameId: g.gameId ?? g.game_id,
-    awayTeam: g.awayTeam ?? g.away_team,
-    homeTeam: g.homeTeam ?? g.home_team,
-    pick: g.pick,
-    market: g.market,
-    line: g.line,
-    odds: g.odds,
-    status: g.status,
-    rank: g.rank,
-    isTopSignal: g.isTopSignal ?? g.is_top_signal ?? g.rank === 1,
-    confidence: g.confidence,
-    internalScore: g.internalScore ?? g.internal_score,
-    edge: g.edge,
-    analysisSummary: g.analysisSummary ?? g.analysis_summary,
-    confidenceLabel: g.confidenceLabel ?? g.confidence_label,
-    edgeLabel: g.edgeLabel ?? g.edge_label,
-    riskNote: g.riskNote ?? g.risk_note,
-    modelFactors: g.modelFactors ?? g.model_factors,
-    startTime: g.startTime ?? g.start_time,
-  })),
+  top5: (mlbTop5 || []).map((g: any, index: number) => {
+    const signal = normalizeAtlasProductSignal(g, { sport: "MLB", product: "top5", index });
+
+    return {
+      gameId: signal.eventId,
+      awayTeam: signal.awayTeam,
+      homeTeam: signal.homeTeam,
+      pick: signal.selection,
+      market: signal.market,
+      line: signal.line,
+      odds: signal.odds,
+      status: signal.status,
+      rank: signal.rank ?? undefined,
+      isTopSignal: signal.isTopSignal,
+      confidence: signal.confidence,
+      internalScore: signal.internalScore,
+      edge: g.edge,
+      analysisSummary: g.analysisSummary ?? g.analysis_summary,
+      confidenceLabel: g.confidenceLabel ?? g.confidence_label,
+      edgeLabel: g.edgeLabel ?? g.edge_label,
+      riskNote: g.riskNote ?? g.risk_note,
+      modelFactors: g.modelFactors ?? g.model_factors,
+      startTime: signal.timestamp,
+    };
+  }),
 });
 
     setNbaSignalsData({
@@ -5696,27 +5701,31 @@ useEffect(() => {
     });
 
     setSoccerTop5LiveData({
-      top5: (soccerTop5 || []).map((g: any) => ({
-        gameId: g.game_id,
-        awayTeam: g.away_team,
-        homeTeam: g.home_team,
-        pick: g.pick,
-        market: g.market,
-        line: g.line,
-        odds: g.odds,
-        status: g.status,
-        rank: g.rank,
-        isTopSignal: g.is_top_signal,
-        confidence: g.confidence,
-        internalScore: g.internal_score,
-        edge: g.edge,
-        analysisSummary: g.analysis_summary,
-        confidenceLabel: g.confidence_label,
-        edgeLabel: g.edge_label,
-        riskNote: g.risk_note,
-        modelFactors: g.model_factors,
-        startTime: g.start_time,
-      })),
+      top5: (soccerTop5 || []).map((g: any, index: number) => {
+        const signal = normalizeAtlasProductSignal(g, { sport: "SOCCER", product: "top5", index });
+
+        return {
+          gameId: signal.eventId,
+          awayTeam: signal.awayTeam,
+          homeTeam: signal.homeTeam,
+          pick: signal.selection,
+          market: signal.market,
+          line: signal.line,
+          odds: signal.odds,
+          status: signal.status,
+          rank: signal.rank ?? undefined,
+          isTopSignal: signal.isTopSignal,
+          confidence: signal.confidence,
+          internalScore: signal.internalScore,
+          edge: g.edge,
+          analysisSummary: g.analysis_summary,
+          confidenceLabel: g.confidence_label,
+          edgeLabel: g.edge_label,
+          riskNote: g.risk_note,
+          modelFactors: g.model_factors,
+          startTime: signal.timestamp,
+        };
+      }),
     });
   }
 
